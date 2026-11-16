@@ -59,8 +59,8 @@ final class StatusBarClickAtTest extends TestCase
         $status = $this->bar();
         $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
 
-        $this->assertSame('ide_problems', $status->clickAt(self::columnOf($row, 'AB')));
-        $this->assertSame('goto_line', $status->clickAt(self::columnOf($row, 'CD')));
+        $this->assertSame('ide_problems', $status->clickAt(self::columnOf($row, needle: 'AB')));
+        $this->assertSame('goto_line', $status->clickAt(self::columnOf($row, needle: 'CD')));
     }
 
     public function testTheGapBetweenTwoCellsBelongsToNeither(): void
@@ -68,7 +68,7 @@ final class StatusBarClickAtTest extends TestCase
         $status = $this->bar();
         $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
 
-        $this->assertNull($status->clickAt(self::columnOf($row, 'AB') + 2));
+        $this->assertNull($status->clickAt(self::columnOf($row, needle: 'AB') + 2));
     }
 
     public function testTheLeftSideAndTheEmptyGapAreNotClickable(): void
@@ -87,11 +87,11 @@ final class StatusBarClickAtTest extends TestCase
         $status = $this->bar();
 
         $narrow = $status->render(new RenderContext(40, 1))[0];
-        $narrowCol = self::columnOf($narrow, 'AB');
+        $narrowCol = self::columnOf($narrow, needle: 'AB');
         $this->assertSame('ide_problems', $status->clickAt($narrowCol));
 
         $wide = $status->render(new RenderContext(100, 1))[0];
-        $wideCol = self::columnOf($wide, 'AB');
+        $wideCol = self::columnOf($wide, needle: 'AB');
         $this->assertNotSame($narrowCol, $wideCol, 'the right segment must actually move');
         $this->assertSame('ide_problems', $status->clickAt($wideCol));
     }
@@ -104,27 +104,27 @@ final class StatusBarClickAtTest extends TestCase
     public function testAFlashKeepsTheRightCellsItStillDraws(): void
     {
         $status = $this->bar();
-        $status->flash('Saved!', 5.0);
+        $status->flash('Saved!', seconds: 5.0);
 
         $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
 
-        $this->assertSame('ide_problems', $status->clickAt(self::columnOf($row, 'AB')));
-        $this->assertSame('goto_line', $status->clickAt(self::columnOf($row, 'CD')));
+        $this->assertSame('ide_problems', $status->clickAt(self::columnOf($row, needle: 'AB')));
+        $this->assertSame('goto_line', $status->clickAt(self::columnOf($row, needle: 'CD')));
     }
 
     /** A cut right side keeps only the cells that end before its ellipsis. */
     public function testACutRightKeepsOnlyTheCellsDrawnWhole(): void
     {
         $status = $this->bar(left: \str_repeat('L', times: 30), right: 'AB CDXY');
-        $status->flash(\str_repeat('F', times: 10), 5.0); // `◦ FFFFFFFFFF`: 12 columns, leaving the right 5
+        $status->flash(\str_repeat('F', times: 10), seconds: 5.0); // `◦ FFFFFFFFFF`: 12 columns, leaving the right 5
 
         $row = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(20, 1))[0]);
 
         // CD's span, [3,5), ends exactly at the cut right's width — but its
         // last column is the ellipsis, so it is not drawn whole.
         $this->assertStringContainsString('AB C…', $row);
-        $this->assertSame('ide_problems', $status->clickAt(self::columnOf($row, 'AB')));
-        $this->assertNull($status->clickAt(self::columnOf($row, 'AB') + 3), 'CD was cut: its half and the ellipsis are no target');
+        $this->assertSame('ide_problems', $status->clickAt(self::columnOf($row, needle: 'AB')));
+        $this->assertNull($status->clickAt(self::columnOf($row, needle: 'AB') + 3), 'CD was cut: its half and the ellipsis are no target');
     }
 
     public function testAProviderWithNoClickSpansOffersNothing(): void
@@ -162,13 +162,13 @@ final class StatusBarClickAtTest extends TestCase
     {
         $status = $this->fileBar('/p/src/a.php');
         $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
-        $at = self::columnOf($row, 'src/a.php');
+        $at = self::columnOf($row, needle: 'src/a.php');
 
         $this->assertNull($status->fileAt($at - 1), 'the leading space');
         $this->assertSame('/p/src/a.php', $status->fileAt($at));
         $this->assertSame('/p/src/a.php', $status->fileAt($at + 8), 'its last column');
         $this->assertNull($status->fileAt($at + 9));
-        $this->assertNull($status->fileAt(self::columnOf($row, 'boom')), 'the diagnostic names no file');
+        $this->assertNull($status->fileAt(self::columnOf($row, needle: 'boom')), 'the diagnostic names no file');
     }
 
     public function testTheFileSpanFollowsTheCellsAheadOfIt(): void
@@ -176,8 +176,8 @@ final class StatusBarClickAtTest extends TestCase
         $status = $this->fileBar('/p/src/a.php', [['text' => 'main', 'menu' => null]]);
         $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
 
-        $this->assertNull($status->fileAt(self::columnOf($row, 'main')));
-        $this->assertSame('/p/src/a.php', $status->fileAt(self::columnOf($row, 'src/a.php')));
+        $this->assertNull($status->fileAt(self::columnOf($row, needle: 'main')));
+        $this->assertSame('/p/src/a.php', $status->fileAt(self::columnOf($row, needle: 'src/a.php')));
     }
 
     public function testAPathCutToFitIsStillTheFileButOnlyWhereDrawn(): void
@@ -199,7 +199,7 @@ final class StatusBarClickAtTest extends TestCase
         $this->assertNull($prompt->fileAt(1), 'the open-a-file prompt');
 
         $status = $this->fileBar('/p/src/a.php');
-        $status->flash('Saved!', 5.0);
+        $status->flash('Saved!', seconds: 5.0);
         $status->render(new RenderContext(self::COLUMNS, 1));
         $this->assertNull($status->fileAt(1), 'a flash has the left');
     }
@@ -247,20 +247,20 @@ final class StatusBarClickAtTest extends TestCase
     {
         $status = $this->barWithAProblem();
         $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
-        $at = self::columnOf($row, '✗ boom');
+        $at = self::columnOf($row, needle: '✗ boom');
 
         $this->assertSame('ide_reveal_caret_problem', $status->clickAt($at));
         $this->assertSame('ide_reveal_caret_problem', $status->clickAt($at + 5), 'its last cell');
         $this->assertNull($status->clickAt($at + 6), 'not past it');
         $this->assertNull($status->clickAt($at - 1), 'not the gap before it');
-        $this->assertSame('/p/src/A.php', $status->fileAt(self::columnOf($row, 'src/A.php')), 'the path is still the file');
+        $this->assertSame('/p/src/A.php', $status->fileAt(self::columnOf($row, needle: 'src/A.php')), 'the path is still the file');
         $this->assertSame("✗ boom\nClick to show it in the Problems panel", $status->tooltipAt(0, $at)?->text, 'its card says what a click does');
     }
 
     public function testTheCaretProblemUnderlinesUnderThePointer(): void
     {
         $status = $this->barWithAProblem();
-        $at = self::columnOf($status->render(new RenderContext(self::COLUMNS, 1))[0], '✗ boom');
+        $at = self::columnOf($status->render(new RenderContext(self::COLUMNS, 1))[0], needle: '✗ boom');
 
         $this->assertTrue($status->hoverAt($at + 2));
 
@@ -277,7 +277,7 @@ final class StatusBarClickAtTest extends TestCase
     {
         // 45 columns leave the left 40: the path its floor of 24, the
         // problem 14 after the two-space gap.
-        $status = $this->barWithAProblem('src/Editor/BufferNavigator.php ●', 'Syntax error: unexpected token');
+        $status = $this->barWithAProblem('src/Editor/BufferNavigator.php ●', problem: 'Syntax error: unexpected token');
         $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(45, 1))[0]);
 
         $this->assertSame(' src/Editor/…igator.php ●  ✗ Syntax erro…', \rtrim(\mb_substr($plain, start: 0, length: \mb_strpos($plain, needle: 'AB'))));
@@ -294,7 +294,7 @@ final class StatusBarClickAtTest extends TestCase
     public function testAProblemWithNoRoomLeavesThePathTheLeft(): void
     {
         // 31 columns leave the left 26: past the floor and the gap, the problem 0.
-        $status = $this->barWithAProblem('src/Editor/BufferNavigator.php ●', 'Syntax error');
+        $status = $this->barWithAProblem('src/Editor/BufferNavigator.php ●', problem: 'Syntax error');
         $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(31, 1))[0]);
 
         $this->assertStringNotContainsString('✗', $plain);
@@ -302,7 +302,7 @@ final class StatusBarClickAtTest extends TestCase
         $this->assertNull($status->clickAt(\mb_strpos($plain, needle: '●') + 2), 'nothing is left to click');
 
         // One more column of room and the problem shows: its glyph and its mark.
-        $plain = AnsiUtils::stripAnsiCodes($this->barWithAProblem('src/Editor/BufferNavigator.php ●', 'Syntax error')->render(new RenderContext(33, 1))[0]);
+        $plain = AnsiUtils::stripAnsiCodes($this->barWithAProblem('src/Editor/BufferNavigator.php ●', problem: 'Syntax error')->render(new RenderContext(33, 1))[0]);
         $this->assertStringContainsString('●  ✗…', $plain);
     }
 
@@ -313,7 +313,7 @@ final class StatusBarClickAtTest extends TestCase
     public function testAPathGivesAProblemOnlyTheRoomItNeeds(): void
     {
         // 50 columns leave the left 45: 33 for the path, 2 for the gap, 10 for the problem.
-        $status = $this->barWithAProblem('src/Some/Deep/Directory/LongClassName.php', '12345678');
+        $status = $this->barWithAProblem('src/Some/Deep/Directory/LongClassName.php', problem: '12345678');
         $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(50, 1))[0]);
 
         $this->assertSame(' src/Some/Deep/Di…ongClassName.php  ✗ 12345678', \rtrim(\mb_substr($plain, start: 0, length: \mb_strpos($plain, needle: 'AB'))));

@@ -42,7 +42,7 @@ final class LspClientTest extends TestCase
     /** A root with `#` or a space in its name is percent-encoded, as every document URI under it is. */
     public function testTheWorkspaceRootIsAnEncodedUri(): void
     {
-        $params = Probe::invoke(new LspClient(['unused'], '/porta-no-such-root/C# Projects/app'), 'initializeParams');
+        $params = Probe::invoke(new LspClient(['unused'], '/porta-no-such-root/C# Projects/app'), method: 'initializeParams');
 
         $this->assertSame('file:///porta-no-such-root/C%23%20Projects/app', $params['rootUri'], 'not read as a fragment, `C` and the rest');
         $this->assertSame('file:///porta-no-such-root/C%23%20Projects/app', $params['workspaceFolders'][0]['uri']);
@@ -55,7 +55,7 @@ final class LspClientTest extends TestCase
         // so this reflects the handshake payload directly and cheaply.
         $client = new LspClient(['unused'], '/tmp/proj');
 
-        $params = Probe::invoke($client, 'initializeParams');
+        $params = Probe::invoke($client, method: 'initializeParams');
 
         $this->assertSame(\getmypid(), $params['processId']);
         $this->assertSame('file:///tmp/proj', $params['rootUri']);
@@ -83,7 +83,7 @@ final class LspClientTest extends TestCase
     {
         $client = new LspClient(['unused'], '/tmp/proj', initializationOptions: ['workspaceTrust' => false, 'environment' => 'dev']);
 
-        $params = Probe::invoke($client, 'initializeParams');
+        $params = Probe::invoke($client, method: 'initializeParams');
 
         $this->assertSame(['workspaceTrust' => false, 'environment' => 'dev'], $params['initializationOptions']);
     }
@@ -104,8 +104,8 @@ final class LspClientTest extends TestCase
 
         // Close stderr behind the client's back: stop() must skip the dead
         // resource in its pipe-closing loop and still close the rest cleanly.
-        $transport = Probe::get($client, 'transport');
-        $stderr = Probe::get($transport, 'stderr');
+        $transport = Probe::get($client, property: 'transport');
+        $stderr = Probe::get($transport, property: 'stderr');
         if (\is_resource($stderr)) {
             \fclose($stderr);
         }
@@ -188,7 +188,7 @@ final class LspClientTest extends TestCase
         $this->assertSame(['queued', 'init', 'immediate'], $order);
         // An immediate call must not also queue the action — it already ran,
         // and there is nothing left to ever drain it a second time.
-        $this->assertSame([], Probe::get($client, 'whenReady'));
+        $this->assertSame([], Probe::get($client, property: 'whenReady'));
     }
 
     public function testRenameHoverReferencesSignature(): void
@@ -247,7 +247,7 @@ final class LspClientTest extends TestCase
             static function () use (&$ready): bool {
                 return null !== $ready;
             },
-            2.0,
+            timeout: 2.0,
             what: 'the crash to surface as a start outcome',
         );
         $this->assertFalse($ready, 'EOF before initialize reports Failed — "starting…" forever was the old defect');
@@ -272,7 +272,7 @@ final class LspClientTest extends TestCase
         $this->assertSame([Outcome::Ok], $outcomes);
         $this->assertTrue($client->isInitialized);
 
-        $process = Probe::get(Probe::get($client, 'transport'), 'process');
+        $process = Probe::get(Probe::get($client, property: 'transport'), property: 'process');
         \assert(\is_resource($process), description: 'the transport holds a live process while the client is up');
         \proc_terminate($process, signal: 9);
 
@@ -314,7 +314,7 @@ final class LspClientTest extends TestCase
 
         $this->await(static function () use (&$ready): bool {
             return null !== $ready;
-        }, 2.0);
+        }, timeout: 2.0);
         $this->assertTrue($ready, 'valid frame after garbage still parsed');
     }
 
@@ -340,7 +340,7 @@ final class LspClientTest extends TestCase
         // after initialize, then echoes our replies back as a notification.
         $this->await(static function () use (&$echoed): bool {
             return null !== $echoed;
-        }, 3.0);
+        }, timeout: 3.0);
 
         $this->assertNotNull($applied, 'applyEdit handler received the edit');
         $this->assertSame([null], $echoed['configuration'], 'workspace/configuration answered with nulls');
@@ -364,7 +364,7 @@ final class LspClientTest extends TestCase
 
         $this->await(static function () use (&$answered): bool {
             return null !== $answered;
-        }, 3.0);
+        }, timeout: 3.0);
         $this->assertSame(1, $refreshed, 'the refresh reached its handler');
         $this->assertTrue($answered, 'and the server was answered, so it does not wait');
     }
@@ -411,7 +411,7 @@ final class LspClientTest extends TestCase
             return $ready;
         });
 
-        $transport = Probe::get($client, 'transport');
+        $transport = Probe::get($client, property: 'transport');
         $onMessage = static function (): void {};
 
         // Live pipe with no pending data: empty read, not EOF
@@ -435,7 +435,7 @@ final class LspClientTest extends TestCase
         });
         $this->await(static function () use (&$ready): bool {
             return null !== $ready;
-        }, 2.0);
+        }, timeout: 2.0);
 
         $this->assertFalse($ready);
     }
@@ -488,7 +488,7 @@ final class LspClientTest extends TestCase
         });
         $this->await(static function () use (&$ticked): bool {
             return $ticked;
-        }, 2.0);
+        }, timeout: 2.0);
         $this->assertTrue($ticked, 'the event loop kept running while the server sat on a full pipe');
 
         $client->stop();
@@ -516,7 +516,7 @@ final class LspClientTest extends TestCase
             return \str_contains($log, 'sigterm-ignored');
         }, what: 'the child to ignore SIGTERM');
 
-        $process = Probe::get(Probe::object($client, 'transport'), 'process');
+        $process = Probe::get(Probe::object($client, 'transport'), property: 'process');
         \assert(\is_resource($process), description: 'the transport holds the spawned process');
         $pid = \proc_get_status($process)['pid'];
 
@@ -547,8 +547,8 @@ final class LspClientTest extends TestCase
             return $ready;
         });
 
-        $transport = Probe::get($client, 'transport');
-        $process = Probe::get($transport, 'process');
+        $transport = Probe::get($client, property: 'transport');
+        $process = Probe::get($transport, property: 'process');
         \assert(\is_resource($process), description: 'the transport holds the spawned process');
         $pid = \proc_get_status($process)['pid'];
 
@@ -603,8 +603,8 @@ final class LspClientTest extends TestCase
             // Without params, neither carries the member: `null` is not a
             // JSON-RPC params value, and a strict server rejects the message.
             \file_put_contents($log, data: '');
-            $client->request('porta/bare', null, static function (): void {});
-            $client->notify('porta/bareNote', null);
+            $client->request('porta/bare', params: null, onResult: static function (): void {});
+            $client->notify('porta/bareNote', params: null);
             $this->await(static fn (): bool => 2 === \substr_count((string) \file_get_contents($log), needle: "\n"), timeout: 15.0, what: 'both bare messages to be logged');
             $lines = \array_values(\array_filter(\explode("\n", (string) \file_get_contents($log))));
             $bare = \array_map(static fn (string $l): mixed => \json_decode($l, associative: true, flags: \JSON_THROW_ON_ERROR), $lines);
@@ -758,7 +758,7 @@ final class LspClientTest extends TestCase
 
         $this->await(static function () use (&$digests): bool {
             return 3 === \count($digests);
-        }, 15.0);
+        }, timeout: 15.0);
         $this->assertSame($expected, $digests, 'all frames crossed the slow pipe intact and in send order');
     }
 
@@ -782,13 +782,13 @@ final class LspClientTest extends TestCase
         $overflowed = static fn (array $log): bool => [] !== \array_filter($log, static fn (string $l): bool => \str_contains($l, 'overflow'));
         $this->await(static function () use (&$log, &$overflowed): bool {
             return $overflowed($log);
-        }, 2.0);
+        }, timeout: 2.0);
         $this->assertTrue($overflowed($log), 'the overflow was logged');
 
         // The wedged server was terminated — the session ends like any crash.
         $this->await(static function () use (&$client): bool {
             return !$client->isRunning();
-        }, 3.0);
+        }, timeout: 3.0);
         $this->assertFalse($client->isRunning());
     }
 
@@ -806,7 +806,7 @@ final class LspClientTest extends TestCase
         $this->assertGreaterThan($baseline, \count(EventLoop::getIdentifiers()), 'the pipe watchers are armed');
 
         // The crashing server exits immediately; EOF must retire the watchers.
-        $this->await(static fn (): bool => \count(EventLoop::getIdentifiers()) <= $baseline, 5.0, 'the EOF path to cancel both pipe watchers');
+        $this->await(static fn (): bool => \count(EventLoop::getIdentifiers()) <= $baseline, timeout: 5.0, what: 'the EOF path to cancel both pipe watchers');
         $this->assertCount($baseline, EventLoop::getIdentifiers(), 'no watcher survives the peer');
     }
 
@@ -818,7 +818,7 @@ final class LspClientTest extends TestCase
             $answers[] = $error;
         });
 
-        $process = Probe::get(Probe::get($client, 'transport'), 'process');
+        $process = Probe::get(Probe::get($client, property: 'transport'), property: 'process');
         \assert(\is_resource($process), description: 'a live process while the client is up');
         \proc_terminate($process, signal: 9);
 

@@ -66,7 +66,7 @@ final readonly class BreadcrumbsClickRouter
     {
         if (null !== $line) {
             $this->tui->setFocus($this->panes->editor);
-            $this->panes->editor->jumpTo($line, 0);
+            $this->panes->editor->jumpTo($line, utf16Col: 0);
         }
 
         return null !== $line;

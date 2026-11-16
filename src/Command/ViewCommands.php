@@ -134,15 +134,15 @@ final readonly class ViewCommands implements CommandProvider
             ->add('toggle_type_hints', fn () => $this->settings->toggle('inlayTypeHints'), label: 'Toggle Type Hints', checked: fn (): bool => $this->settings->isOn('inlayTypeHints'))
             // The verbs a right-click on a hint offers, PhpStorm's way: each
             // one the setting it changes, so they persist like the form does.
-            ->add('hide_parameter_hints', fn (): bool => $this->settings->changeSetting('inlayParameterHints', 'none'), label: 'Hide Parameter Name Hints')
+            ->add('hide_parameter_hints', fn (): bool => $this->settings->changeSetting('inlayParameterHints', value: 'none'), label: 'Hide Parameter Name Hints')
             ->add(
                 'toggle_parameter_hints_literals',
                 fn (): bool => $this->settings->changeSetting('inlayParameterHints', 'literals' === $this->settings->choice('inlayParameterHints') ? 'all' : 'literals'),
                 label: 'Show Parameter Name Hints Only for Literals',
                 checked: fn (): bool => 'literals' === $this->settings->choice('inlayParameterHints'),
             )
-            ->add('hide_type_hints', fn (): bool => $this->settings->changeSetting('inlayTypeHints', false), label: 'Hide Type Hints')
-            ->add('hide_inlay_hints', fn (): bool => $this->settings->changeSetting('inlayHints', 'none'), label: 'Hide All Inlay Hints')
+            ->add('hide_type_hints', fn (): bool => $this->settings->changeSetting('inlayTypeHints', value: false), label: 'Hide Type Hints')
+            ->add('hide_inlay_hints', fn (): bool => $this->settings->changeSetting('inlayHints', value: 'none'), label: 'Hide All Inlay Hints')
             ->add('cycle_line_numbers', fn () => $this->settings->cycleChoice('lineNumbers'), keyBound: KeyDispatch::Bound)
             ->add('toggle_auto_pairs', fn () => $this->settings->toggle('autoPairs'), label: 'Toggle Auto-Pairs', checked: fn (): bool => $this->settings->isOn('autoPairs'))
             ->add('toggle_format_on_save', fn () => $this->settings->toggle('formatOnSave'), label: 'Toggle Format on Save', checked: fn (): bool => $this->settings->isOn('formatOnSave'))

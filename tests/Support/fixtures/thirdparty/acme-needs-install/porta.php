@@ -9,6 +9,6 @@ use Porta\Plugin\Api\PluginApi;
 return new class('acme-needs-install') extends AbstractPlugin {
     public function activate(PluginApi $api): void
     {
-        $api->registerCommand('boom', 'Acme: Boom', static fn () => null);
+        $api->registerCommand('boom', label: 'Acme: Boom', handler: static fn () => null);
     }
 };

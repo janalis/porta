@@ -49,7 +49,7 @@ final class IdeStatusBarClickTest extends TestCase
                     $grid = $this->screenGrid($tui, $terminal);
                     // The status row is found by its content, not by counting
                     // rows: the dock and the find bar move it.
-                    $row = $this->rowOf($grid, 'LSP:');
+                    $row = $this->rowOf($grid, needle: 'LSP:');
                     $this->assertNotNull($row, 'the status bar is on screen');
                     $col = \mb_strpos($grid[$row], needle: '1:1');
                     $this->assertIsInt($col, 'the caret position cell is on the status bar');
@@ -61,7 +61,7 @@ final class IdeStatusBarClickTest extends TestCase
                 320 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->frame($tui);
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'Go to line'), 'clicking the caret cell opens the Go to line prompt');
+                    $this->assertNotNull($this->rowOf($grid, needle: 'Go to line'), 'clicking the caret cell opens the Go to line prompt');
                 },
             ],
         );
@@ -85,10 +85,10 @@ final class IdeStatusBarClickTest extends TestCase
                     Services::resolve($ide, BufferService::class)
                         ->openFile($project->path('src/deep/Target.php'), OpenFocus::Editor);
                     $this->frame($tui);
-                    $tree = Widgets::byId($tui, 'tree', FileTreeWidget::class);
+                    $tree = Widgets::byId($tui, id: 'tree', class: FileTreeWidget::class);
                     $this->assertNotSame('Target.php', $tree->selectedNode()?->name, 'opening a file does not reveal it in the tree');
 
-                    [$col, $row] = $this->statusFile($tui, $terminal, 'src/deep/Target.php');
+                    [$col, $row] = $this->statusFile($tui, $terminal, path: 'src/deep/Target.php');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $row + 1));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col + 1, $row + 1));
                     $this->assertNotSame('Target.php', $tree->selectedNode()?->name, 'a single click reveals nothing');
@@ -120,16 +120,16 @@ final class IdeStatusBarClickTest extends TestCase
                     Services::resolve($ide, BufferService::class)
                         ->openFile($project->path('src/deep/Target.php'), OpenFocus::Editor);
                     $this->frame($tui);
-                    [$col, $row] = $this->statusFile($tui, $terminal, 'src/deep/Target.php');
+                    [$col, $row] = $this->statusFile($tui, $terminal, path: 'src/deep/Target.php');
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $col + 1, $row + 1));
-                    $this->awaitPainted($tui, $terminal, 'Select Opened File in Tree');
+                    $this->awaitPainted($tui, $terminal, needle: 'Select Opened File in Tree');
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'Copy Relative Path'), 'the tree\'s path-copy pair is offered');
-                    $this->assertNull($this->rowOf($grid, 'Close Others'), 'not the tab menu');
+                    $this->assertNotNull($this->rowOf($grid, needle: 'Copy Relative Path'), 'the tree\'s path-copy pair is offered');
+                    $this->assertNull($this->rowOf($grid, needle: 'Close Others'), 'not the tab menu');
 
                     $tui->handleInput("\r"); // the first item is selected
                     $this->frame($tui);
-                    $this->assertSame('Target.php', Widgets::byId($tui, 'tree', FileTreeWidget::class)->selectedNode()?->name, 'the file is selected in the tree');
+                    $this->assertSame('Target.php', Widgets::byId($tui, id: 'tree', class: FileTreeWidget::class)->selectedNode()?->name, 'the file is selected in the tree');
                     $this->assertSame('tree', $tui->getFocus()?->getId(), 'and the tree has focus');
                 },
             ],
@@ -173,15 +173,15 @@ final class IdeStatusBarClickTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'on-trunk');
+                    $this->awaitPainted($tui, $terminal, needle: 'on-trunk');
                     $grid = $this->screenGrid($tui, $terminal);
-                    $row = $this->rowOf($grid, 'on-trunk');
+                    $row = $this->rowOf($grid, needle: 'on-trunk');
                     $this->assertNotNull($row);
                     $col = \mb_strpos($grid[$row], needle: 'on-trunk');
                     $this->assertIsInt($col);
 
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 2, $row + 1));
-                    $this->awaitPainted($tui, $terminal, 'Switch to another branch');
+                    $this->awaitPainted($tui, $terminal, needle: 'Switch to another branch');
                 },
             ],
         );
@@ -196,7 +196,7 @@ final class IdeStatusBarClickTest extends TestCase
     private function statusFile(Tui $tui, VirtualTerminal $terminal, string $path): array
     {
         $grid = $this->screenGrid($tui, $terminal);
-        $row = $this->rowOf($grid, 'LSP:');
+        $row = $this->rowOf($grid, needle: 'LSP:');
         $this->assertNotNull($row, 'the status bar is on screen');
         $col = \mb_strpos($grid[$row], $path);
         $this->assertIsInt($col, 'the file part is on the status bar');

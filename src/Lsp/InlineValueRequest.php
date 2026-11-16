@@ -46,7 +46,7 @@ final readonly class InlineValueRequest
      */
     public function forRange(string $path, int $fromLine, int $toLine, int $frameId, int $stoppedLine, \Closure $deliver): bool
     {
-        if (true !== $this->lsp->serverCapability($path, 'inlineValueProvider')) {
+        if (true !== $this->lsp->serverCapability($path, name: 'inlineValueProvider')) {
             return false;
         }
         $this->lsp->request(

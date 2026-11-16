@@ -21,7 +21,7 @@ final class WorkspaceResolverTest extends TestCase
     {
         $project = new TempProject(['a.php' => '']);
 
-        $ws = $this->resolver->resolve($project->dir, '/nowhere');
+        $ws = $this->resolver->resolve($project->dir, cwd: '/nowhere');
 
         $this->assertSame(\realpath($project->dir), $ws->rootDir);
         $this->assertNull($ws->initialFile);
@@ -32,7 +32,7 @@ final class WorkspaceResolverTest extends TestCase
     {
         $project = new TempProject(['composer.json' => '{}', 'src/Foo.php' => "<?php\n"]);
 
-        $ws = $this->resolver->resolve($project->path('src/Foo.php'), '/nowhere');
+        $ws = $this->resolver->resolve($project->path('src/Foo.php'), cwd: '/nowhere');
 
         $this->assertSame(\realpath($project->dir), $ws->rootDir, 'root is the enclosing composer project');
         $this->assertSame(\realpath($project->path('src/Foo.php')), $ws->initialFile);
@@ -42,7 +42,7 @@ final class WorkspaceResolverTest extends TestCase
     {
         $project = new TempProject(['src/Foo.php' => "<?php\n"]); // no composer.json anywhere above
 
-        $ws = $this->resolver->resolve($project->path('src/Foo.php'), '/nowhere');
+        $ws = $this->resolver->resolve($project->path('src/Foo.php'), cwd: '/nowhere');
 
         $this->assertSame(\realpath($project->path('src')), $ws->rootDir);
         $this->assertSame(\realpath($project->path('src/Foo.php')), $ws->initialFile);
@@ -61,7 +61,7 @@ final class WorkspaceResolverTest extends TestCase
     {
         $project = new TempProject(['a.php' => "1\n2\n3\n"]);
 
-        $ws = $this->resolver->resolve($project->path('a.php').':42', '/nowhere');
+        $ws = $this->resolver->resolve($project->path('a.php').':42', cwd: '/nowhere');
 
         $this->assertSame(\realpath($project->path('a.php')), $ws->initialFile);
         $this->assertSame(42, $ws->line);
@@ -73,14 +73,14 @@ final class WorkspaceResolverTest extends TestCase
         $project = new TempProject(['a.php' => '']);
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->resolver->resolve($project->path('a.php').':oops', '/nowhere');
+        $this->resolver->resolve($project->path('a.php').':oops', cwd: '/nowhere');
     }
 
     public function testColonSuffixOnAMissingFileIsNotSplit(): void
     {
         // "nope:5" matches the regex but "nope" is not a file → not split → missing.
         $this->expectExceptionMessageIsOrContains('no such file or directory: /nope:5');
-        $this->resolver->resolve('/nope:5', '/nowhere');
+        $this->resolver->resolve('/nope:5', cwd: '/nowhere');
     }
 
     public function testTrailingNonDigitAfterTheLineNumberIsNotSplit(): void
@@ -91,7 +91,7 @@ final class WorkspaceResolverTest extends TestCase
         $project = new TempProject(['a.php' => '']);
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->resolver->resolve($project->path('a.php').':42abc', '/nowhere');
+        $this->resolver->resolve($project->path('a.php').':42abc', cwd: '/nowhere');
     }
 
     public function testALeadingNewlineBeforeTheShorthandIsNotSplit(): void
@@ -102,13 +102,13 @@ final class WorkspaceResolverTest extends TestCase
         $project = new TempProject(['a.php' => '']);
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->resolver->resolve("\n".$project->path('a.php').':42', '/nowhere');
+        $this->resolver->resolve("\n".$project->path('a.php').':42', cwd: '/nowhere');
     }
 
     public function testMissingTargetThrows(): void
     {
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessageIsOrContains('no such file or directory: /does/not/exist');
-        $this->resolver->resolve('/does/not/exist', '/nowhere');
+        $this->resolver->resolve('/does/not/exist', cwd: '/nowhere');
     }
 }

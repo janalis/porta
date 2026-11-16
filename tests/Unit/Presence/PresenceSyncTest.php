@@ -114,7 +114,7 @@ final class PresenceSyncTest extends TestCase
 
     private function mine(PresenceSync $sync): ?Beacon
     {
-        $file = $this->project->path(PresenceBoard::DIR.'/'.Probe::get($sync, 'id').'.json');
+        $file = $this->project->path(PresenceBoard::DIR.'/'.Probe::get($sync, property: 'id').'.json');
 
         return \is_file($file) ? Beacon::fromJson((string) \file_get_contents($file)) : null;
     }
@@ -122,8 +122,8 @@ final class PresenceSyncTest extends TestCase
     public function testTheOthersAreShownWhereTheyAreAndTheirCaretFollowsThem(): void
     {
         $sync = $this->sync();
-        $this->peer(self::ADA, 'Ada');
-        $this->peer(self::BO, 'Bo', path: null);
+        $this->peer(self::ADA, name: 'Ada');
+        $this->peer(self::BO, name: 'Bo', path: null);
 
         $sync->tick();
         $this->assertSame(['+peer:'.self::ADA.' Ada src/A.php:1'], $this->shown(), 'one with no file open has no caret to show…');
@@ -133,15 +133,15 @@ final class PresenceSyncTest extends TestCase
         $sync->tick();
         $this->assertSame([], $this->shown(), 'nothing moved: nothing said again');
 
-        $this->peer(self::ADA, 'Ada', line: 2);
+        $this->peer(self::ADA, name: 'Ada', line: 2);
         $sync->tick();
         $this->assertSame(['-peer:'.self::ADA, '+peer:'.self::ADA.' Ada src/A.php:2'], $this->shown());
 
-        $this->peer(self::ADA, 'Ada', path: 'img.png', line: -1);
+        $this->peer(self::ADA, name: 'Ada', path: 'img.png', line: -1);
         $sync->tick();
         $this->assertSame(['-peer:'.self::ADA, '+peer:'.self::ADA.' Ada img.png:-1'], $this->shown(), 'off the last file first, or its caret stays there');
 
-        $this->project->write(PresenceBoard::DIR.'/'.self::ADA.'.json', '');
+        $this->project->write(PresenceBoard::DIR.'/'.self::ADA.'.json', content: '');
         $sync->tick();
         $this->assertSame(['-peer:'.self::ADA], $this->shown(), 'gone from the board: gone');
         $this->assertSame(['Bo'], $this->roster());
@@ -153,12 +153,12 @@ final class PresenceSyncTest extends TestCase
         // key in digits is an INT: handed to show(string) and hide(string),
         // that was a TypeError out of the loop for every Porta on the project.
         $sync = $this->sync();
-        $this->peer('1234567890123456', 'Cy');
+        $this->peer('1234567890123456', name: 'Cy');
 
         $sync->tick();
         $this->assertSame(['+peer:1234567890123456 Cy src/A.php:1'], $this->shown());
 
-        $this->project->write(PresenceBoard::DIR.'/1234567890123456.json', '');
+        $this->project->write(PresenceBoard::DIR.'/1234567890123456.json', content: '');
         $sync->tick();
         $this->assertSame(['-peer:1234567890123456'], $this->shown(), 'gone from the board: gone');
     }
@@ -166,7 +166,7 @@ final class PresenceSyncTest extends TestCase
     public function testTheCaretIsShownAsTheEditorHasIt(): void
     {
         $sync = $this->sync();
-        $this->peer(self::ADA, 'Ada');
+        $this->peer(self::ADA, name: 'Ada');
         $sync->tick();
         $event = $this->events->take(AgentActivity::class)[0];
         $this->assertEquals(new AgentActivity('peer:'.self::ADA, 'Ada', $this->root.'/src/A.php', AgentActivityKind::Reading, 1, 2, 86_400.0, -1, 0), $event);
@@ -181,19 +181,19 @@ final class PresenceSyncTest extends TestCase
         $this->assertSame(['Me', 'local', null, -1], [$mine->name, $mine->via, $mine->path, $mine->line], 'no file open: here, nowhere in particular');
         $this->assertSame([], $this->roster(), 'never its own participant');
 
-        $document = $this->buffers->open($this->root.'/src/A.php', "<?php\n\$a = 1;\n\$b = 2;\n")->document;
-        $document->setSelectionRange(2, 3, 1, 1);
+        $document = $this->buffers->open($this->root.'/src/A.php', content: "<?php\n\$a = 1;\n\$b = 2;\n")->document;
+        $document->setSelectionRange(2, startCol: 3, endLine: 1, endCol: 1);
         $sync->tick();
         $mine = $this->mine($sync);
         $this->assertInstanceOf(Beacon::class, $mine);
         $this->assertSame(['src/A.php', 1, 1, 2, 3], [$mine->path, $mine->line, $mine->column, $mine->anchorLine, $mine->anchorColumn], 'selected upwards: the anchor is the end');
-        $document->setSelectionRange(1, 1, 2, 3);
+        $document->setSelectionRange(1, startCol: 1, endLine: 2, endCol: 3);
         $sync->tick();
         $mine = $this->mine($sync);
         $this->assertInstanceOf(Beacon::class, $mine);
         $this->assertSame([2, 3, 1, 1], [$mine->line, $mine->column, $mine->anchorLine, $mine->anchorColumn], 'selected downwards: the anchor is the start');
 
-        \unlink($this->project->path(PresenceBoard::DIR.'/'.Probe::get($sync, 'id').'.json'));
+        \unlink($this->project->path(PresenceBoard::DIR.'/'.Probe::get($sync, property: 'id').'.json'));
         $this->now += 4.9;
         $sync->tick();
         $this->assertNull($this->mine($sync), 'no news, no heartbeat due: nothing written');
@@ -201,13 +201,13 @@ final class PresenceSyncTest extends TestCase
         $sync->tick();
         $this->assertInstanceOf(Beacon::class, $this->mine($sync), 'a heartbeat');
 
-        $this->buffers->openPane($this->root.'/img.png', 'image', null);
+        $this->buffers->openPane($this->root.'/img.png', paneId: 'image', payload: null);
         $sync->tick();
         $this->assertSame(['img.png', -1], [$this->mine($sync)?->path, $this->mine($sync)?->line], 'a viewer: the file, no caret');
-        $this->buffers->open('/elsewhere/B.php', '');
+        $this->buffers->open('/elsewhere/B.php', content: '');
         $sync->tick();
         $this->assertNull($this->mine($sync)?->path, 'outside the project: not theirs to know');
-        $this->buffers->open($this->root.'/.porta/notes.md', '');
+        $this->buffers->open($this->root.'/.porta/notes.md', content: '');
         $sync->tick();
         $this->assertNull($this->mine($sync)?->path, 'nor Porta\'s own files');
 
@@ -219,12 +219,12 @@ final class PresenceSyncTest extends TestCase
     public function testOneWhoGoesQuietLeavesAndIsForgottenLater(): void
     {
         $sync = $this->sync();
-        $this->peer(self::ADA, 'Ada', beat: 1);
+        $this->peer(self::ADA, name: 'Ada', beat: 1);
         $sync->tick();
         $this->assertSame(['Ada'], $this->roster(), 'its writer\'s clock may be any distance from this one: first seen is seen now');
         $this->assertFileExists($this->project->path(PresenceBoard::DIR.'/'.self::ADA.'.json'), 'and not wiped for being behind');
 
-        $this->peer(self::ADA, 'Ada');
+        $this->peer(self::ADA, name: 'Ada');
         $sync->tick();
         $this->shown();
         $this->now += 15.0;
@@ -246,10 +246,10 @@ final class PresenceSyncTest extends TestCase
     {
         $sync = $this->sync();
         $beat = \time();
-        $this->peer(self::ADA, 'Ada', beat: $beat);
+        $this->peer(self::ADA, name: 'Ada', beat: $beat);
         $sync->tick();
         $this->now += 15.0;
-        $this->peer(self::ADA, 'Ada', line: 2, beat: $beat);
+        $this->peer(self::ADA, name: 'Ada', line: 2, beat: $beat);
         $sync->tick();
         $this->now += 15.0;
         $sync->tick();
@@ -262,7 +262,7 @@ final class PresenceSyncTest extends TestCase
     public function testALostLinkKeepsTheOthersAsLastSeenUntilItIsBack(): void
     {
         $sync = $this->sync();
-        $this->peer(self::ADA, 'Ada');
+        $this->peer(self::ADA, name: 'Ada');
         $sync->tick();
         $this->shown();
         $dir = $this->project->path(PresenceBoard::DIR);
@@ -273,7 +273,7 @@ final class PresenceSyncTest extends TestCase
             $sync->tick();
             $this->assertSame(['-peer:'.self::ADA], $this->shown(), 'where they were is no longer where they are');
             $this->assertSame(['Ada'], $this->roster(), 'but they are not gone');
-            $this->assertArrayHasKey(PresenceSync::SOURCE, Probe::array($this->participants, 'lost'));
+            $this->assertArrayHasKey(PresenceSync::SOURCE, Probe::array($this->participants, property: 'lost'));
             $sync->tick();
             $this->assertSame([], $this->shown());
             $this->assertCount(1, $this->scheduler->scheduled, 'lost once, however long');
@@ -281,11 +281,11 @@ final class PresenceSyncTest extends TestCase
             \chmod($dir, permissions: 0o700);
         }
 
-        \unlink($dir.'/'.Probe::get($sync, 'id').'.json');
+        \unlink($dir.'/'.Probe::get($sync, property: 'id').'.json');
         $this->now += 1.0;
         $sync->tick();
         $this->assertSame(['+peer:'.self::ADA.' Ada src/A.php:1'], $this->shown(), 'back, though their beat did not move while this side was away');
-        $this->assertArrayNotHasKey(PresenceSync::SOURCE, Probe::array($this->participants, 'lost'));
+        $this->assertArrayNotHasKey(PresenceSync::SOURCE, Probe::array($this->participants, property: 'lost'));
         $sync->tick();
         $this->assertInstanceOf(Beacon::class, $this->mine($sync), 'and this side says where it is at once, heartbeat or not: the others stopped hearing it');
     }
@@ -293,7 +293,7 @@ final class PresenceSyncTest extends TestCase
     public function testALinkLostForTooLongTakesThemOut(): void
     {
         $sync = $this->sync();
-        $this->peer(self::ADA, 'Ada');
+        $this->peer(self::ADA, name: 'Ada');
         $sync->tick();
         \chmod($this->project->path(PresenceBoard::DIR), permissions: 0o300);
         try {
@@ -308,7 +308,7 @@ final class PresenceSyncTest extends TestCase
     public function testNotSharingTakesThisSideOffTheBoardAndStillSeesTheOthers(): void
     {
         $sync = $this->sync();
-        $this->peer(self::ADA, 'Ada');
+        $this->peer(self::ADA, name: 'Ada');
         $sync->tick();
         $this->assertInstanceOf(Beacon::class, $this->mine($sync));
 
@@ -329,17 +329,17 @@ final class PresenceSyncTest extends TestCase
     {
         $sync = $this->sync();
         $sync->start();
-        $this->assertCount(2, Probe::get($sync, 'timers'));
-        foreach (Probe::get($sync, 'timers') as $timer) {
+        $this->assertCount(2, Probe::get($sync, property: 'timers'));
+        foreach (Probe::get($sync, property: 'timers') as $timer) {
             $this->assertFalse(EventLoop::isReferenced($timer), 'a look never keeps the loop alive');
         }
-        $this->peer(self::ADA, 'Ada');
+        $this->peer(self::ADA, name: 'Ada');
         $sync->tick();
         $this->assertInstanceOf(Beacon::class, $this->mine($sync));
         $this->shown();
 
         $sync->stop();
-        $this->assertSame([], Probe::get($sync, 'timers'));
+        $this->assertSame([], Probe::get($sync, property: 'timers'));
         $this->assertNull($this->mine($sync));
         $this->assertSame(['-peer:'.self::ADA], $this->shown(), 'the others\' carets go with it: nothing of theirs outlives this side');
     }
@@ -357,9 +357,9 @@ final class PresenceSyncTest extends TestCase
         $this->assertSame(['mkdir .porta/presence'], $transport->calls, 'one look at a time');
         $transport->release();
         $this->assertSame(['Ada'], $this->roster());
-        $mine = Beacon::fromJson((string) \file_get_contents($server->path(PresenceBoard::DIR.'/'.Probe::get($sync, 'id').'.json')));
+        $mine = Beacon::fromJson((string) \file_get_contents($server->path(PresenceBoard::DIR.'/'.Probe::get($sync, property: 'id').'.json')));
         $this->assertSame('ftp', $mine?->via);
-        $this->assertSame([10.0], [Probe::get($sync, 'board')->cadence()['tick']]);
+        $this->assertSame([10.0], [Probe::get($sync, property: 'board')->cadence()['tick']]);
 
         $transport->calls = [];
         $transport->hold = true;
@@ -368,7 +368,7 @@ final class PresenceSyncTest extends TestCase
         $sync->stop();
         EventLoop::cancel($release);
         $this->assertLessThan(PresenceSync::LEAVE_WAIT, \microtime(true) - $started, 'waited for the answer, not the time limit');
-        $this->assertSame(['remove .porta/presence/'.Probe::get($sync, 'id').'.json'], $transport->calls);
+        $this->assertSame(['remove .porta/presence/'.Probe::get($sync, property: 'id').'.json'], $transport->calls);
         $this->assertSame([self::ADA.'.json'], \array_values(\array_diff((array) \scandir($server->path(PresenceBoard::DIR)), ['.', '..'])), 'off the server before the session ends');
         $this->assertTrue($transport->closed);
     }
@@ -426,7 +426,7 @@ final class PresenceSyncTest extends TestCase
     public function testALookThatThrowsIsNotTheLast(): void
     {
         $sync = $this->sync();
-        $this->buffers->open($this->root."/src/\xff.php", "x\n");
+        $this->buffers->open($this->root."/src/\xff.php", content: "x\n");
 
         try {
             $sync->tick();
@@ -435,7 +435,7 @@ final class PresenceSyncTest extends TestCase
         }
 
         $this->assertInstanceOf(Beacon::class, $this->mine($sync));
-        $this->assertFalse(Probe::get($sync, 'busy'), 'and the next look goes out');
+        $this->assertFalse(Probe::get($sync, property: 'busy'), 'and the next look goes out');
     }
 
     public function testALookThatThrowsLeavesTheNextOneFree(): void
@@ -452,7 +452,7 @@ final class PresenceSyncTest extends TestCase
             $this->assertSame('a bug in a transport', $error->getMessage());
         }
 
-        $this->assertFalse(Probe::get($sync, 'busy'), 'not frozen for the session');
+        $this->assertFalse(Probe::get($sync, property: 'busy'), 'not frozen for the session');
         $sync->tick();
         $this->assertContains('list .porta/presence', $transport->calls);
         $sync->stop();

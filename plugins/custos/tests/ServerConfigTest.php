@@ -23,15 +23,15 @@ final class ServerConfigTest extends TestCase
         // An empty `php` sent as an override would replace the project's own
         // target version with nothing; "project" is no style custos knows.
         $this->assertSame([], new ServerConfig()->initializationOptions('', ServerConfig::PROJECT));
-        $this->assertSame([], new ServerConfig()->initializationOptions("  \t", ''));
+        $this->assertSame([], new ServerConfig()->initializationOptions("  \t", comparisonStyle: ''));
     }
 
     public function testOnlyTheValuesTheUserChoseTravel(): void
     {
         $config = new ServerConfig();
 
-        $this->assertSame(['php' => '8.3', 'comparisonStyle' => 'yoda'], $config->initializationOptions(' 8.3 ', 'yoda'));
-        $this->assertSame(['comparisonStyle' => 'regular'], $config->initializationOptions('', ' regular '));
+        $this->assertSame(['php' => '8.3', 'comparisonStyle' => 'yoda'], $config->initializationOptions(' 8.3 ', comparisonStyle: 'yoda'));
+        $this->assertSame(['comparisonStyle' => 'regular'], $config->initializationOptions('', comparisonStyle: ' regular '));
         $this->assertSame(['php' => '8.1'], $config->initializationOptions('8.1', ServerConfig::PROJECT));
     }
 
@@ -39,20 +39,24 @@ final class ServerConfigTest extends TestCase
     {
         // A hand-edited .porta.json can hold anything; sent, custos would
         // refuse the whole initialize over it.
-        $this->assertSame([], new ServerConfig()->initializationOptions('', 'Yoda!'));
+        $this->assertSame([], new ServerConfig()->initializationOptions('', comparisonStyle: 'Yoda!'));
     }
 
     public function testTheFixReadsTheProjectRootConfigAndTheSameOverrides(): void
     {
         $config = new ServerConfig();
 
-        $this->assertSame(['fix', '--config', '/p', '/p/src/A.php'], $config->fixArguments('/p/src/A.php', '/p', '', ServerConfig::PROJECT));
-        $this->assertSame(['fix', '--config', '/p', '--php', '8.2', '/p/A.php'], $config->fixArguments('/p/A.php', '/p', ' 8.2 ', ServerConfig::PROJECT));
-        $this->assertSame(['fix', '--config', '/p', '--comparison-style', 'yoda', '/p/A.php'], $config->fixArguments('/p/A.php', '/p', '', 'yoda'));
+        $this->assertSame(['fix', '--config', '/p', '/p/src/A.php'], $config->fixArguments('/p/src/A.php', projectRoot: '/p', php: '', comparisonStyle: ServerConfig::PROJECT));
+        $this->assertSame(['fix', '--config', '/p', '--php', '8.2', '/p/A.php'], $config->fixArguments('/p/A.php', projectRoot: '/p', php: ' 8.2 ', comparisonStyle: ServerConfig::PROJECT));
+        $this->assertSame(['fix', '--config', '/p', '--comparison-style', 'yoda', '/p/A.php'], $config->fixArguments('/p/A.php', projectRoot: '/p', php: '', comparisonStyle: 'yoda'));
         $this->assertSame(
             ['fix', '--config', '/p', '--php', '8.3', '--comparison-style', 'regular', '/p/A.php'],
-            $config->fixArguments('/p/A.php', '/p', '8.3', 'regular'),
+            $config->fixArguments('/p/A.php', projectRoot: '/p', php: '8.3', comparisonStyle: 'regular'),
         );
-        $this->assertSame(['fix', '--config', '/p', '/p/A.php'], $config->fixArguments('/p/A.php', '/p', '', 'Yoda!'), 'an unknown style is left to the project, as for the server');
+        $this->assertSame(
+            ['fix', '--config', '/p', '/p/A.php'],
+            $config->fixArguments('/p/A.php', projectRoot: '/p', php: '', comparisonStyle: 'Yoda!'),
+            'an unknown style is left to the project, as for the server',
+        );
     }
 }

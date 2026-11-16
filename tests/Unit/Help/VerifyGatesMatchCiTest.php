@@ -50,7 +50,7 @@ final class VerifyGatesMatchCiTest extends TestCase
         \preg_match_all('/^\s*(?:- )?run: composer ([a-z:]+)/m', (string) \file_get_contents($root.'/.github/workflows/ci.yml'), $matches);
         $ci = \array_values(\array_unique(\array_diff($matches[1], self::NOT_IN_VERIFY)));
 
-        $reachedByVerify = self::reach($scripts, 'verify');
+        $reachedByVerify = self::reach($scripts, name: 'verify');
         $reachedByCi = [];
         foreach ($ci as $script) {
             $reachedByCi = [...$reachedByCi, ...self::reach($scripts, $script)];

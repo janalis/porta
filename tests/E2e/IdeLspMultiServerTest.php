@@ -126,11 +126,11 @@ final class IdeLspMultiServerTest extends TestCase
                     // status bar: both servers are the same binary, so a
                     // painted name says nothing about which one is up.
                     $this->await(
-                        static fn (): bool => self::saw($own, 'didOpen') && self::saw($beside, 'didOpen'),
+                        static fn (): bool => self::saw($own, method: 'didOpen') && self::saw($beside, method: 'didOpen'),
                         what: 'both servers to be told the file is open',
                     );
 
-                    $this->awaitPainted($tui, $terminal, 'LSP:zeta-ls +alpha-ls');
+                    $this->awaitPainted($tui, $terminal, needle: 'LSP:zeta-ls +alpha-ls');
                     $this->assertStringContainsString(
                         'LSP:zeta-ls +alpha-ls',
                         AnsiUtils::stripAnsiCodes($terminal->getOutput()),
@@ -145,7 +145,7 @@ final class IdeLspMultiServerTest extends TestCase
                     $tui->handleInput('x');
                     $tui->handleInput("\x13"); // ctrl+s
                     $this->await(
-                        static fn (): bool => self::saw($own, 'didSave') && self::saw($beside, 'didSave'),
+                        static fn (): bool => self::saw($own, method: 'didSave') && self::saw($beside, method: 'didSave'),
                         what: 'both servers to be told the file was saved',
                     );
                 },
@@ -228,16 +228,16 @@ final class IdeLspMultiServerTest extends TestCase
             $project->path('a.php'),
             [
                 400 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'LSP:zeta-ls +alpha-ls');
+                    $this->awaitPainted($tui, $terminal, needle: 'LSP:zeta-ls +alpha-ls');
 
-                    Widgets::editor($tui)->getDocument()->setCursor(1, 7);
+                    Widgets::editor($tui)->getDocument()->setCursor(1, col: 7);
                     $tui->handleInput("\x00"); // ctrl+space
 
                     // Awaited, not asserted after a gap: the two answers land
                     // independently, so the popup holds one item before it
                     // holds both.
-                    $this->awaitPainted($tui, $terminal, 'alpha_item');
-                    $this->awaitPainted($tui, $terminal, 'zeta_item');
+                    $this->awaitPainted($tui, $terminal, needle: 'alpha_item');
+                    $this->awaitPainted($tui, $terminal, needle: 'zeta_item');
                 },
             ],
         );

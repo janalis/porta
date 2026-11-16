@@ -30,11 +30,11 @@ final class GraphViewerPixelsTest extends TestCase
     {
         $this->engine = new FakeLayoutEngine();
         $this->engine->nextResult = self::layout();
-        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $this->engine->nextPng = PngFixture::bytes(260, height: 36);
         $this->scheduler = new FakeScheduler();
         [$graphics, $this->terminal] = PixelGraphics::answered(cellWidth: 8);
         $this->widget = new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler, graphics: $graphics);
-        $this->widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $this->widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
     }
 
     private static function layout(): GraphLayout
@@ -100,10 +100,10 @@ final class GraphViewerPixelsTest extends TestCase
     {
         $engine = new FakeLayoutEngine();
         $engine->nextResult = DotJsonParser::parse((string) \file_get_contents(\dirname(__DIR__, levels: 3).'/tests/Support/fixtures/graph/clustered.json'));
-        $engine->nextPng = PngFixture::bytes(1250, 295); // three pixels a point, as asked
+        $engine->nextPng = PngFixture::bytes(1250, height: 295); // three pixels a point, as asked
         [$graphics, $terminal] = PixelGraphics::answered(cellWidth: 8);
         $widget = new GraphViewerWidget($engine, new Translator('en'), scheduler: $this->scheduler, graphics: $graphics);
-        $widget->show('/p/arch.dot', 'clustered');
+        $widget->show('/p/arch.dot', payload: 'clustered');
         $this->settle();
         $widget->render(new RenderContext(80, 24));
         $this->settle();

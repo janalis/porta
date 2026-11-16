@@ -392,7 +392,7 @@ final class FtpTransport extends CommandTransport
      */
     private function curl(array $options, string $url, \Closure $done): void
     {
-        $this->exec($this->command($options, $url), null, $done);
+        $this->exec($this->command($options, $url), stdin: null, done: $done);
     }
 
     /**

@@ -102,7 +102,7 @@ final class StatusBarPrefixTest extends TestCase
 
         // The row's leading space, then `⎇ main ▾`: its visible width, not its byte length.
         $width = AnsiUtils::visibleWidth('⎇ main ▾');
-        $this->assertSame(\range(1, $width), self::menuColumns($bar, 40));
+        $this->assertSame(\range(1, $width), self::menuColumns($bar, upTo: 40));
     }
 
     public function testALaterCellsSpanShiftsRightByWhatPrecedesItSeparatorsIncluded(): void
@@ -115,7 +115,7 @@ final class StatusBarPrefixTest extends TestCase
         ]);
 
         $from = 1 + AnsiUtils::visibleWidth('⏸ prog.php:3') + 3; // the pad, the cell, ` │ `
-        $this->assertSame($from, self::menuColumns($bar, 60)[0] ?? null, 'only the clickable cell answers, from its own first column');
+        $this->assertSame($from, self::menuColumns($bar, upTo: 60)[0] ?? null, 'only the clickable cell answers, from its own first column');
     }
 
     public function testATextLessCellReservesNoColumnsAtAll(): void
@@ -128,7 +128,7 @@ final class StatusBarPrefixTest extends TestCase
             [new StatusCell('⎇ main', StatusTone::Accent, static fn (): array => [])],
         ]);
 
-        $this->assertSame(1, self::menuColumns($bar, 40)[0] ?? null, 'the branch is still the first thing painted');
+        $this->assertSame(1, self::menuColumns($bar, upTo: 40)[0] ?? null, 'the branch is still the first thing painted');
     }
 
     public function testOneSourceMayContributeSeveralCellsEachWithItsOwnSpan(): void
@@ -140,6 +140,6 @@ final class StatusBarPrefixTest extends TestCase
             new StatusCell('⎇ main', StatusTone::Accent, static fn (): array => []),
         ]]);
 
-        $this->assertSame(1 + AnsiUtils::visibleWidth('▶ build') + 3, self::menuColumns($bar, 60)[0] ?? null);
+        $this->assertSame(1 + AnsiUtils::visibleWidth('▶ build') + 3, self::menuColumns($bar, upTo: 60)[0] ?? null);
     }
 }

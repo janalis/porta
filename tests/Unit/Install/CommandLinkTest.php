@@ -68,7 +68,7 @@ final class CommandLinkTest extends TestCase
 
     public function testAFileThatIsNotALinkIsForeignAndLeftAlone(): void
     {
-        $this->home->write('.local/bin/porta', 'a copied phar');
+        $this->home->write('.local/bin/porta', content: 'a copied phar');
 
         $this->assertSame(CommandLinkStatus::Foreign, $this->link()->status());
         $this->assertNotNull($this->link()->link());
@@ -120,7 +120,7 @@ final class CommandLinkTest extends TestCase
 
     public function testADirectoryItCannotWriteIsReported(): void
     {
-        $this->home->write('.local/keep', '');
+        $this->home->write('.local/keep', content: '');
         \chmod($this->home->path('.local'), permissions: 0o555);
         try {
             $this->assertStringContainsString('could not create', (string) $this->link()->link());

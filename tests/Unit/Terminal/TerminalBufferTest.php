@@ -346,7 +346,7 @@ final class TerminalBufferTest extends TestCase
     {
         $b = new TerminalBuffer();
         $b->feed($first);
-        $this->assertSame(\substr($first, offset: 1), Probe::get($b, 'pending'), 'held to be parsed whole');
+        $this->assertSame(\substr($first, offset: 1), Probe::get($b, property: 'pending'), 'held to be parsed whole');
         $b->feed($second);
 
         $this->assertSame('xred', AnsiUtils::stripAnsiCodes($b->lines[0]), 'the halves joined into one sequence');
@@ -362,7 +362,7 @@ final class TerminalBufferTest extends TestCase
         $b = new TerminalBuffer();
         $b->feed("before\x1b]1337;File=".\str_repeat('x', times: 65_533)); // one past the cap
         $b->feed(\str_repeat('y', times: 100_000)."\nstill inside");
-        $this->assertSame('', Probe::get($b, 'pending'), 'nothing held');
+        $this->assertSame('', Probe::get($b, property: 'pending'), 'nothing held');
         $b->feed("yy\x07after");
         $b->feed(' and on');
 
@@ -414,7 +414,7 @@ final class TerminalBufferTest extends TestCase
     {
         $b = new TerminalBuffer();
         $b->feed("\x1b]0;".\str_repeat('x', times: 65_532)); // exactly 65_536 bytes
-        $this->assertSame(65_536, \strlen((string) Probe::get($b, 'pending')), 'HELD — not swallowed: a split sequence is still parsed whole');
+        $this->assertSame(65_536, \strlen((string) Probe::get($b, property: 'pending')), 'HELD — not swallowed: a split sequence is still parsed whole');
         $b->feed("\x07visible");
 
         $this->assertSame(['visible'], \array_map(AnsiUtils::stripAnsiCodes(...), $this->rows($b->lines)), 'held until the terminator, then swallowed whole');

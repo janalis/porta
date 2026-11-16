@@ -23,7 +23,7 @@ final class IndentModelTest extends TestCase
      */
     public function testABlankLineDoesNotStopTheScanBelowIt(): void
     {
-        $model = IndentModel::detect(['<?php', '', 'class A', '{', '  public $x;', '    public $y;'], 4);
+        $model = IndentModel::detect(['<?php', '', 'class A', '{', '  public $x;', '    public $y;'], default: 4);
 
         $this->assertSame(2, $model->indentSize, 'the two-space step below the blank line was still seen');
         $this->assertFalse($model->usesTabs);
@@ -51,7 +51,7 @@ final class IndentModelTest extends TestCase
     public function testSetClampsSizeToAtLeastOne(): void
     {
         $indent = new IndentModel(usesTabs: false, indentSize: 4, tabWidth: 4);
-        $indent->set(IndentKind::Spaces, 0);
+        $indent->set(IndentKind::Spaces, size: 0);
 
         $this->assertSame(1, $indent->indentSize);
         $this->assertSame(1, $indent->tabWidth);
@@ -60,7 +60,7 @@ final class IndentModelTest extends TestCase
     public function testSetWithTabsKindSwitchesToTabs(): void
     {
         $indent = new IndentModel(usesTabs: false, indentSize: 4, tabWidth: 4);
-        $indent->set(IndentKind::Tabs, 4);
+        $indent->set(IndentKind::Tabs, size: 4);
 
         $this->assertTrue($indent->usesTabs);
     }

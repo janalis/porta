@@ -30,7 +30,7 @@ final class CorePanesTest extends TestCase
     {
         [$panes] = $this->registered();
 
-        $this->assertSame('', $panes->load(MarkdownPreviewWidget::PANE_ID, '/does/not/exist.md'));
+        $this->assertSame('', $panes->load(MarkdownPreviewWidget::PANE_ID, path: '/does/not/exist.md'));
     }
 
     /** A file that is not text is refused rather than rendered as mojibake. */

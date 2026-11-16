@@ -44,7 +44,7 @@ final class StatusBarWidgetTest extends TestCase
         $status->setProvider(static fn (): array => ['left' => 'normal', 'right' => 'R']);
         $status->beforeRender();
 
-        $status->flash('Saved!', 0.05);
+        $status->flash('Saved!', seconds: 0.05);
         $line = $status->render(new RenderContext(40, 1))[0];
         $this->assertStringContainsString('Saved!', $line);
 
@@ -61,7 +61,7 @@ final class StatusBarWidgetTest extends TestCase
         $status->setProvider(static fn (): array => ['left' => 'file.php', 'right' => '1:1  LSP:none  Ctrl+S save  Ctrl+T panel  Ctrl+Q quit']);
         $status->beforeRender();
 
-        $status->flash('Saved a/really/long/path/src/Demo.php', 1.0);
+        $status->flash('Saved a/really/long/path/src/Demo.php', seconds: 1.0);
         $line = $status->render(new RenderContext(50, 1))[0];
         $this->assertSame(50, AnsiUtils::visibleWidth($line));
         $this->assertStringContainsString('Saved a/really/long/path/src/Demo.php', $line, 'the flash renders whole — the legend yields');
@@ -143,7 +143,7 @@ final class StatusBarWidgetTest extends TestCase
         // A flash LONGER than the cell, deliberately: a short one is excluded
         // by the truncation filter anyway, so this would pass with the flash
         // guard deleted and prove nothing about it.
-        $status->flash(\str_repeat('Saved ', times: 4), 1.0);
+        $status->flash(\str_repeat('Saved ', times: 4), seconds: 1.0);
         $status->render(new RenderContext(60, 1));
 
         $this->assertNull($status->menuAt(1), 'a flash replaces the prefix, so there is no hit region');
@@ -156,7 +156,7 @@ final class StatusBarWidgetTest extends TestCase
         $status->setProvider(static fn (): array => ['left' => 'normal', 'right' => 'R']);
         $status->beforeRender();
 
-        $status->flash('Saved!', 10.0);
+        $status->flash('Saved!', seconds: 10.0);
         $status->beforeRender(); // a second frame, no time elapsed: must not already be expired
 
         $line = $status->render(new RenderContext(40, 1))[0];
@@ -180,7 +180,7 @@ final class StatusBarWidgetTest extends TestCase
         $status->setProvider(static fn (): array => ['left' => 'normal', 'right' => 'R']);
         $status->beforeRender();
 
-        $status->flash('Saved!', 0.0); // until == now, exactly
+        $status->flash('Saved!', seconds: 0.0); // until == now, exactly
         $status->beforeRender(); // no time elapsed → now == until still
 
         $line = $status->render(new RenderContext(40, 1))[0];
@@ -193,7 +193,7 @@ final class StatusBarWidgetTest extends TestCase
         $status = new StatusBarWidget($clock);
         $status->setProvider(static fn (): array => ['left' => 'normal', 'right' => 'R']);
         $status->beforeRender();
-        $status->flash('Saved!', 0.01);
+        $status->flash('Saved!', seconds: 0.01);
         $clock->sleep(0.02);
 
         $before = $status->getRenderRevision();
@@ -243,7 +243,7 @@ final class StatusBarWidgetTest extends TestCase
         $status = new StatusBarWidget($clock);
         $status->setProvider(static fn (): array => ['left' => 'x', 'right' => \str_repeat('R', times: 30)]);
         $status->beforeRender();
-        $status->flash(\str_repeat('F', times: 25), 5.0);
+        $status->flash(\str_repeat('F', times: 25), seconds: 5.0);
 
         $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(20, 1))[0]);
         $this->assertStringEndsWith('  ', $plain, 'the right side is fully squeezed out (rightMax = 0), leaving two trailing spaces');
@@ -255,7 +255,7 @@ final class StatusBarWidgetTest extends TestCase
         $status = new StatusBarWidget($clock);
         $status->setProvider(static fn (): array => ['left' => 'x', 'right' => \str_repeat('R', times: 30)]);
         $status->beforeRender();
-        $status->flash('SAVED', 5.0); // `◦ SAVED`: visibleWidth 7, well under the columns-3 cap
+        $status->flash('SAVED', seconds: 5.0); // `◦ SAVED`: visibleWidth 7, well under the columns-3 cap
 
         $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(20, 1))[0]);
         // rightMax = max(0, 20 - 7 - 3) = 10 → 9 'R's + the ellipsis.

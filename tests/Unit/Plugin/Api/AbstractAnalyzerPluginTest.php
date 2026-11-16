@@ -95,7 +95,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
         $this->status = new StatusBarWidget();
         $this->buffers = new BufferManager();
         $this->sink = new RecordingDiagnosticsSink();
-        $tui = TestTui::create(100, 24);
+        $tui = TestTui::create(100, rows: 24);
         $this->manager->wireRuntime(new PluginRuntime(
             new Notifier($this->status, $tui),
             new Translator('en'),
@@ -178,7 +178,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
         $this->assertNull($api->bufferedMenuItems()[1]['when'], 'the toggle is always available');
 
         // No tab open, so the command stops at the active-file guard.
-        $this->handler($api, 'analyse')();
+        $this->handler($api, id: 'analyse')();
         $this->assertStringContainsString('demo: open a PHP file first', $this->flashText($this->status));
     }
 
@@ -202,7 +202,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
         $saved('/p/a.php');
         $this->assertSame('', $this->flashText($this->status), 'the setting is off');
 
-        $api->changeSetting('autoLint', true);
+        $api->changeSetting('autoLint', value: true);
         $saved('/p/notes.txt');
         $this->assertSame('', $this->flashText($this->status), 'not a PHP file');
 
@@ -216,13 +216,13 @@ final class AbstractAnalyzerPluginTest extends TestCase
         // an array" once, here, instead of in every plugin file.
         $analyzer = $this->analyzer();
 
-        $this->assertSame([[], []], $analyzer->walk('not an array at all', 'files'), 'a report that is not an array holds nothing');
-        $this->assertSame([[], []], $analyzer->walk(['other' => []], 'files'), 'a key that is not there');
-        $this->assertSame([[], []], $analyzer->walk(['files' => 'a string'], 'files'), 'a key holding something else');
-        $this->assertSame([['x' => 1], []], $analyzer->walk(['files' => ['x' => 1]], 'files'), 'an array of scalars is an array, but no rows');
+        $this->assertSame([[], []], $analyzer->walk('not an array at all', key: 'files'), 'a report that is not an array holds nothing');
+        $this->assertSame([[], []], $analyzer->walk(['other' => []], key: 'files'), 'a key that is not there');
+        $this->assertSame([[], []], $analyzer->walk(['files' => 'a string'], key: 'files'), 'a key holding something else');
+        $this->assertSame([['x' => 1], []], $analyzer->walk(['files' => ['x' => 1]], key: 'files'), 'an array of scalars is an array, but no rows');
         $this->assertSame(
             [[['line' => 2], 7], [['line' => 2]]],
-            $analyzer->walk(['files' => [['line' => 2], 7]], 'files'),
+            $analyzer->walk(['files' => [['line' => 2], 7]], key: 'files'),
             'a row of some other shape is dropped rather than guessed at',
         );
     }
@@ -230,8 +230,8 @@ final class AbstractAnalyzerPluginTest extends TestCase
     public function testAValidReportBecomesDiagnosticsAndACount(): void
     {
         $api = $this->withShim('{"rows":[{"line":3,"message":"boom"},{"line":9,"message":"bang"}]}', code: 0);
-        $this->buffers->open($this->project->path('a.php'), "<?php\n");
-        $this->handler($api, 'analyse')();
+        $this->buffers->open($this->project->path('a.php'), content: "<?php\n");
+        $this->handler($api, id: 'analyse')();
 
         $this->await(fn (): bool => [] !== $this->sink->published, what: 'the analysis to land');
         $published = $this->sink->published[0];
@@ -244,8 +244,8 @@ final class AbstractAnalyzerPluginTest extends TestCase
     public function testAnEmptyReportClearsTheDiagnostics(): void
     {
         $api = $this->withShim('{"rows":[]}', code: 0);
-        $this->buffers->open($this->project->path('a.php'), "<?php\n");
-        $this->handler($api, 'analyse')();
+        $this->buffers->open($this->project->path('a.php'), content: "<?php\n");
+        $this->handler($api, id: 'analyse')();
 
         $this->await(fn (): bool => [] !== $this->sink->published, what: 'the analysis to land');
         $this->assertSame([], $this->sink->published[0]['byLine']);
@@ -255,8 +255,8 @@ final class AbstractAnalyzerPluginTest extends TestCase
     public function testARejectedExitCodeReportsAFailureAndKeepsTheOldDiagnostics(): void
     {
         $api = $this->withShim('{"rows":[{"line":1,"message":"never read"}]}', code: 7);
-        $this->buffers->open($this->project->path('a.php'), "<?php\n");
-        $this->handler($api, 'analyse')();
+        $this->buffers->open($this->project->path('a.php'), content: "<?php\n");
+        $this->handler($api, id: 'analyse')();
 
         $this->await(fn (): bool => \str_contains($this->flashText($this->status), 'code 7'), what: 'the failure report');
         $this->assertSame([], $this->sink->published, 'a failed run publishes nothing');
@@ -265,8 +265,8 @@ final class AbstractAnalyzerPluginTest extends TestCase
     public function testAnUnparseableReportIsAFailureEvenOnAnAcceptedExitCode(): void
     {
         $api = $this->withShim('not json at all', code: 0);
-        $this->buffers->open($this->project->path('a.php'), "<?php\n");
-        $this->handler($api, 'analyse')();
+        $this->buffers->open($this->project->path('a.php'), content: "<?php\n");
+        $this->handler($api, id: 'analyse')();
 
         $this->await(fn (): bool => \str_contains($this->flashText($this->status), 'code 0'), what: 'the failure report');
         $this->assertSame([], $this->sink->published);
@@ -282,7 +282,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
     {
         $api = $this->withShim('{"rows":[{"line":4,"message":"chained"}]}', code: 0);
         $file = $this->project->path('a.php');
-        $this->buffers->open($file, "<?php\n");
+        $this->buffers->open($file, content: "<?php\n");
 
         $binary = Probe::invoke($this->plugin, 'acquire', $api);
         $this->assertNotNull($binary, 'the chaining plugin holds the slot');
@@ -290,7 +290,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
 
         $this->await(fn (): bool => [] !== $this->sink->published, what: 'the chained analysis to land');
         $this->assertSame('chained', $this->sink->published[0]['byLine'][4][0]['message']);
-        $this->assertFalse(Probe::get($this->plugin, 'running'), 'the chain released the slot at its end');
+        $this->assertFalse(Probe::get($this->plugin, property: 'running'), 'the chain released the slot at its end');
     }
 
     /**
@@ -304,8 +304,8 @@ final class AbstractAnalyzerPluginTest extends TestCase
     public function testASpawnThatFailsReleasesTheSlot(): void
     {
         $api = $this->withShim('{"rows":[]}', code: 0);
-        $this->buffers->open($this->project->path('a.php'), "<?php\n");
-        $analyse = $this->handler($api, 'analyse');
+        $this->buffers->open($this->project->path('a.php'), content: "<?php\n");
+        $analyse = $this->handler($api, id: 'analyse');
         $working = (string) \file_get_contents($this->project->path('vendor/bin/demo'));
         // Executable, resolvable, unspawnable — what a fork-starved machine, a
         // deleted binary or a bad interpreter all look like to proc_open.
@@ -325,8 +325,8 @@ final class AbstractAnalyzerPluginTest extends TestCase
     public function testASecondRunIsRefusedWhileOneIsInFlight(): void
     {
         $api = $this->withShim('{"rows":[]}', code: 0);
-        $this->buffers->open($this->project->path('a.php'), "<?php\n");
-        $analyse = $this->handler($api, 'analyse');
+        $this->buffers->open($this->project->path('a.php'), content: "<?php\n");
+        $analyse = $this->handler($api, id: 'analyse');
 
         $analyse();
         $analyse();

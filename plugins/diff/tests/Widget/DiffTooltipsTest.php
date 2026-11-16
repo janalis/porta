@@ -27,7 +27,7 @@ final class DiffTooltipsTest extends TestCase
             [$tip?->key, $tip?->text, $tip?->row, $tip?->rows],
             'the gear on the bar row',
         );
-        $this->assertNull($diff->tooltipAt(0, 2), 'the title');
+        $this->assertNull($diff->tooltipAt(0, col: 2), 'the title');
         $this->assertNull($diff->tooltipAt(1, $anchor[0] + 1), 'the close under the bar');
         $this->assertNull($diff->tooltipAt(5, $anchor[0] + 1), 'below the toolbar');
 
@@ -39,17 +39,17 @@ final class DiffTooltipsTest extends TestCase
     public function testAHunksExpandMarkSaysWhatAClickDoes(): void
     {
         $diff = new DiffViewWidget(new Translator('en'));
-        $diff->setDocument(DiffDocument::parse("--- a/f\n+++ b/f\n@@ -1,1 +1,1 @@\n-a\n+b\n"), 'f');
+        $diff->setDocument(DiffDocument::parse("--- a/f\n+++ b/f\n@@ -1,1 +1,1 @@\n-a\n+b\n"), path: 'f');
         $lines = \array_map(AnsiUtils::stripAnsiCodes(...), $diff->render(new RenderContext(80, 10)));
         $hunkRow = \array_key_first(\array_filter($lines, static fn (string $line): bool => \str_contains($line, '@@')));
         $this->assertIsInt($hunkRow);
 
-        $tip = $diff->tooltipAt($hunkRow, 1);
+        $tip = $diff->tooltipAt($hunkRow, col: 1);
         $this->assertSame(['diff:expand', 'Show more of the file around the changes (c)', $hunkRow], [$tip?->key, $tip?->text, $tip?->row]);
-        $this->assertNull($diff->tooltipAt($hunkRow, 10), 'past the mark, the header says nothing');
-        $this->assertNull($diff->tooltipAt($hunkRow + 1, 1), 'a changed line has no mark');
+        $this->assertNull($diff->tooltipAt($hunkRow, col: 10), 'past the mark, the header says nothing');
+        $this->assertNull($diff->tooltipAt($hunkRow + 1, col: 1), 'a changed line has no mark');
 
         $diff->makeReadOnly();
-        $this->assertNull($diff->tooltipAt($hunkRow, 1), 'read-only, a click expands nothing');
+        $this->assertNull($diff->tooltipAt($hunkRow, col: 1), 'read-only, a click expands nothing');
     }
 }

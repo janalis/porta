@@ -472,14 +472,14 @@ final class NavigationController extends AbstractLspController implements Editor
     #[\Override]
     public function requestCallHierarchy(int $line, int $col): void
     {
-        $this->requestCalls($line, $col, 'callHierarchy/incomingCalls', 'from', 'Callers of %symbol%', 'No callers found');
+        $this->requestCalls($line, $col, method: 'callHierarchy/incomingCalls', side: 'from', title: 'Callers of %symbol%', empty: 'No callers found');
     }
 
     /** The other direction: what the symbol at the caret calls. */
     #[\Override]
     public function requestOutgoingCalls(int $line, int $col): void
     {
-        $this->requestCalls($line, $col, 'callHierarchy/outgoingCalls', 'to', 'Calls from %symbol%', 'No outgoing calls found');
+        $this->requestCalls($line, $col, method: 'callHierarchy/outgoingCalls', side: 'to', title: 'Calls from %symbol%', empty: 'No outgoing calls found');
     }
 
     /**
@@ -495,7 +495,7 @@ final class NavigationController extends AbstractLspController implements Editor
         // found" — which reads as "this symbol has none" when the truth is that
         // nothing was asked. Measured against both servers, 2026-09-02.
         /** @var array<string, mixed>|bool|null $capability LSP: boolean or a CallHierarchyOptions object */
-        $capability = $this->lsp->serverCapability($this->editor->getFilePath(), 'callHierarchyProvider');
+        $capability = $this->lsp->serverCapability($this->editor->getFilePath(), name: 'callHierarchyProvider');
         if (null === $capability || false === $capability) {
             $this->flash($this->trans('This language server has no call hierarchy'));
 
@@ -597,7 +597,7 @@ final class NavigationController extends AbstractLspController implements Editor
                 $this->editor->openListOverlay($title, $items, function (string $value): void {
                     [$file, $lineNo] = [\substr($value, offset: 0, length: (int) \strrpos($value, needle: ':')), (int) \substr($value, (int) \strrpos($value, needle: ':') + 1)];
                     $this->files->openFile($file, focus: OpenFocus::Editor);
-                    $this->editor->jumpTo($lineNo, 0);
+                    $this->editor->jumpTo($lineNo, utf16Col: 0);
                     $this->tui->requestRender();
                 });
                 $this->tui->requestRender();
@@ -620,7 +620,7 @@ final class NavigationController extends AbstractLspController implements Editor
 
                 $items = [];
                 /** @var list<array<array-key, mixed>> $result */
-                LspMapper::flattenSymbols($result, 0, $items);
+                LspMapper::flattenSymbols($result, depth: 0, items: $items);
                 $this->editor->openListOverlay($this->trans('File Structure'), $items, function (string $pos): void {
                     [$line, $character] = \array_map(\intval(...), \explode(':', $pos));
                     $this->editor->jumpTo($line, $character);
@@ -706,7 +706,7 @@ final class NavigationController extends AbstractLspController implements Editor
     private function structureRows(array $symbols, ?string $path): array
     {
         $items = [];
-        LspMapper::flattenSymbols($symbols, 0, $items);
+        LspMapper::flattenSymbols($symbols, depth: 0, items: $items);
 
         $relative = null === $path ? '' : $this->paths->relative($path);
         $rows = [];

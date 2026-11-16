@@ -16,15 +16,15 @@ final class ThemesTest extends TestCase
 {
     public function testPlainColorModeSelectsMonochromeWhateverTheTheme(): void
     {
-        $this->assertEquals(MonochromeTheme::definition(), Themes::definition(ColorMode::Plain, 'dark'));
-        $this->assertEquals(MonochromeTheme::definition(), Themes::definition(ColorMode::Plain, 'light'));
+        $this->assertEquals(MonochromeTheme::definition(), Themes::definition(ColorMode::Plain, theme: 'dark'));
+        $this->assertEquals(MonochromeTheme::definition(), Themes::definition(ColorMode::Plain, theme: 'light'));
     }
 
     public function testThemeSelection(): void
     {
-        $this->assertEquals(DarkTheme::definition(), Themes::definition(ColorMode::Ansi, 'dark'));
-        $this->assertEquals(LightTheme::definition(), Themes::definition(ColorMode::Ansi, 'light'));
-        $this->assertEquals(HighContrastTheme::definition(), Themes::definition(ColorMode::Ansi, 'high-contrast'));
-        $this->assertEquals(DarkTheme::definition(), Themes::definition(ColorMode::Ansi, 'unknown'), 'unknown themes fall back to dark');
+        $this->assertEquals(DarkTheme::definition(), Themes::definition(ColorMode::Ansi, theme: 'dark'));
+        $this->assertEquals(LightTheme::definition(), Themes::definition(ColorMode::Ansi, theme: 'light'));
+        $this->assertEquals(HighContrastTheme::definition(), Themes::definition(ColorMode::Ansi, theme: 'high-contrast'));
+        $this->assertEquals(DarkTheme::definition(), Themes::definition(ColorMode::Ansi, theme: 'unknown'), 'unknown themes fall back to dark');
     }
 }

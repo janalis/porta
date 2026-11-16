@@ -77,14 +77,16 @@ final class ListboxOpenerTest extends TestCase
     private function anchorAfterOpening(AbstractWidget $host): int
     {
         $picked = null;
-        $this->opener->openUnder($host, 4, 10, 1, 20, [['a', 'Alpha'], ['b', 'Beta']], 'b', static function (string $value) use (&$picked): void {
+        $this->opener->openUnder($host, relRow: 4, relCol: 10, relAbove: 1, width: 20, options: [['a', 'Alpha'], ['b', 'Beta']], current: 'b', choose: static function (string $value) use (
+            &$picked,
+        ): void {
             $picked = $value;
         });
-        $this->assertTrue(Probe::get($this->menu, 'open') && Probe::get($this->menu, 'listbox'));
+        $this->assertTrue(Probe::get($this->menu, property: 'open') && Probe::get($this->menu, property: 'listbox'));
         $this->menu->handleInput("\r");
         $this->assertSame('b', $picked, 'the list opens on the current option');
 
-        $col = Probe::get(Probe::object($this->opener, 'overlay'), 'contextAnchorCol');
+        $col = Probe::get(Probe::object($this->opener, 'overlay'), property: 'contextAnchorCol');
         \assert(\is_int($col), description: 'the anchor column is an int');
 
         return $col;
@@ -130,8 +132,8 @@ final class ListboxOpenerTest extends TestCase
         }), new PaneReorder());
         $this->host(self::pane());
 
-        $this->opener->openAt(4, 100, 1, 20, [['a', 'Alpha']], 'a', static function (string $value): void {}, drawnOn: 1);
+        $this->opener->openAt(4, col: 100, above: 1, width: 20, options: [['a', 'Alpha']], current: 'a', choose: static function (string $value): void {}, drawnOn: 1);
 
-        $this->assertSame(100, Probe::get(Probe::object($this->opener, 'overlay'), 'contextAnchorCol'));
+        $this->assertSame(100, Probe::get(Probe::object($this->opener, 'overlay'), property: 'contextAnchorCol'));
     }
 }

@@ -54,7 +54,7 @@ final class ViewWindowPresenterTest extends TestCase
     public function testNothingIsDrawnBeforeTheFirstFrameLaysTheWorkspaceOut(): void
     {
         $presenter = $this->presenter();
-        $this->window->open($this->regions->mint('settings'), 'settings');
+        $this->window->open($this->regions->mint('settings'), id: 'settings');
 
         $presenter->compose();
 
@@ -67,7 +67,7 @@ final class ViewWindowPresenterTest extends TestCase
         $presenter = $this->presenter();
         $this->tui->requestRender(force: true);
         $this->tui->processRender();
-        $this->window->open($this->regions->mint('settings'), 'settings');
+        $this->window->open($this->regions->mint('settings'), id: 'settings');
 
         $presenter->compose();
         $this->assertInstanceOf(ModalBox::class, $presenter->box());
@@ -113,7 +113,7 @@ final class ViewWindowPresenterTest extends TestCase
         foreach ($region->panes() as $pane) {
             $region->area()->add($pane); // what PaneLayout::arrangeViewAreas() does in the IDE
         }
-        $window->open($region, 'demo');
+        $window->open($region, id: 'demo');
 
         return $presenter;
     }

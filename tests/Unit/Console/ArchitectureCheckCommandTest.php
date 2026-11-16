@@ -35,8 +35,8 @@ final class ArchitectureCheckCommandTest extends TestCase
     public function testAMatchingTreePasses(): void
     {
         $project = new TempProject([
-            'src/Alpha/One.php' => $this->file('Alpha', 'One', '    public function f(): void { new Two(); }', "use Porta\\Beta\\Two;\n"),
-            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+            'src/Alpha/One.php' => $this->file('Alpha', class: 'One', body: '    public function f(): void { new Two(); }', uses: "use Porta\\Beta\\Two;\n"),
+            'src/Beta/Two.php' => $this->file('Beta', class: 'Two'),
             'src/Beta/notes.txt' => 'not PHP: skipped by the walker',
             'tests/E2e/SmallTest.php' => "<?php\n    public function testOne(): void {}\n",
         ]);
@@ -51,8 +51,8 @@ final class ArchitectureCheckCommandTest extends TestCase
     public function testANewEdgeAndAVanishedEdgeBothFail(): void
     {
         $project = new TempProject([
-            'src/Alpha/One.php' => $this->file('Alpha', 'One', '    public function f(): void { new Two(); }', "use Porta\\Beta\\Two;\n"),
-            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+            'src/Alpha/One.php' => $this->file('Alpha', class: 'One', body: '    public function f(): void { new Two(); }', uses: "use Porta\\Beta\\Two;\n"),
+            'src/Beta/Two.php' => $this->file('Beta', class: 'Two'),
         ]);
 
         // Pins claim an edge the tree does not have, and miss the one it does.
@@ -72,8 +72,8 @@ final class ArchitectureCheckCommandTest extends TestCase
             // The import is mentioned only in a docblock, and a second one is
             // never mentioned at all: neither is coupling.
             'src/Alpha/One.php' => "<?php\n\nnamespace Porta\\Alpha;\n\nuse Porta\\Beta\\Two;\nuse Porta\\Gamma\\Three;\n\n/** Prose about {@see Two} and Three. */\nfinal class One\n{\n}\n",
-            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
-            'src/Gamma/Three.php' => $this->file('Gamma', 'Three'),
+            'src/Beta/Two.php' => $this->file('Beta', class: 'Two'),
+            'src/Gamma/Three.php' => $this->file('Gamma', class: 'Three'),
         ]);
 
         $tester = $this->tester();
@@ -86,8 +86,8 @@ final class ArchitectureCheckCommandTest extends TestCase
     public function testAnUnpinnedCycleFailsAndAPinnedOnePasses(): void
     {
         $project = new TempProject([
-            'src/Alpha/One.php' => $this->file('Alpha', 'One', '    public function f(): void { new Two(); }', "use Porta\\Beta\\Two;\n"),
-            'src/Beta/Two.php' => $this->file('Beta', 'Two', '    public function g(): void { new One(); }', "use Porta\\Alpha\\One;\n"),
+            'src/Alpha/One.php' => $this->file('Alpha', class: 'One', body: '    public function f(): void { new Two(); }', uses: "use Porta\\Beta\\Two;\n"),
+            'src/Beta/Two.php' => $this->file('Beta', class: 'Two', body: '    public function g(): void { new One(); }', uses: "use Porta\\Alpha\\One;\n"),
         ]);
         $edges = ['Alpha>Beta', 'Beta>Alpha'];
         $cycle = ['Porta\Alpha\One', 'Porta\Beta\Two'];
@@ -103,7 +103,7 @@ final class ArchitectureCheckCommandTest extends TestCase
 
     public function testAVanishedPinnedCycleFails(): void
     {
-        $project = new TempProject(['src/Alpha/One.php' => $this->file('Alpha', 'One')]);
+        $project = new TempProject(['src/Alpha/One.php' => $this->file('Alpha', class: 'One')]);
 
         $tester = $this->tester([], [['Porta\Alpha\One', 'Porta\Beta\Two']]);
         $status = $tester->execute(['path' => $project->dir], ['capture_stderr_separately' => true]);
@@ -117,7 +117,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         // AaFineTest sits exactly AT the cap and sorts first: the boundary
         // must pass, and grading must WALK PAST it to reach the oversized one.
         $project = new TempProject([
-            'src/Alpha/One.php' => $this->file('Alpha', 'One'),
+            'src/Alpha/One.php' => $this->file('Alpha', class: 'One'),
             'tests/E2e/AaFineTest.php' => "<?php\n".\str_repeat("    public function testMany(): void {}\n", times: 60),
             'tests/E2e/HugeTest.php' => "<?php\n".\str_repeat("    public function testMany(): void {}\n", times: 61),
         ]);
@@ -139,7 +139,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         // which scans THIS file too, only sees it inside the written fixture.
         $chain = 'new TempProject';
         $project = new TempProject([
-            'src/Alpha/One.php' => $this->file('Alpha', 'One'),
+            'src/Alpha/One.php' => $this->file('Alpha', class: 'One'),
             'tests/Unit/LeakyTest.php' => "<?php\n// an inline {$chain}(...)->dir frees the fixture\n\$held = {$chain}([]);\n\$read = \$held->dir; // beware {$chain}([])->dir here too\n\$leak = {$chain}([])->dir;\n",
             'plugins/demo/tests/AlsoLeakyTest.php' => "<?php\n\$leak = {$chain}()->path('x');\n",
         ]);
@@ -173,7 +173,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         // line 3 a public signature read, lines 4-6 the three private reads.
         $new = 'new \\Reflection';
         $project = new TempProject([
-            'src/Alpha/One.php' => $this->file('Alpha', 'One'),
+            'src/Alpha/One.php' => $this->file('Alpha', class: 'One'),
             'tests/Unit/PeekTest.php' =>
                 "<?php\n// {$new}Property(\$o, 'x') is what Probe replaces\n\$p = {$new}Method(\$c, 'm')->getParameters();\n\$v = {$new}Property(\$o, 'x')->getValue(\$o);\n\$k = {$new}Class(\$c)->getConst"
                     .'ant(\'K\');'
@@ -203,8 +203,8 @@ final class ArchitectureCheckCommandTest extends TestCase
         // The edge is pinned, so BOTH directions prove the file was read —
         // skipping it would fail as a vanished edge.
         $project = new TempProject([
-            'src/Alpha/.Hidden.php' => $this->file('Alpha', 'Hidden', '    public function f(): void { new Two(); }', "use Porta\\Beta\\Two;\n"),
-            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+            'src/Alpha/.Hidden.php' => $this->file('Alpha', class: 'Hidden', body: '    public function f(): void { new Two(); }', uses: "use Porta\\Beta\\Two;\n"),
+            'src/Beta/Two.php' => $this->file('Beta', class: 'Two'),
         ]);
 
         $tester = $this->tester(['Alpha>Beta']);
@@ -219,7 +219,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         // #[Test]-attributed method must not silently zero a file's count.
         $methods = \str_repeat("    public function testMany(): void {}\n", times: 60)."    #[Test]\n    public function attributedStyle(): void {}\n";
         $project = new TempProject([
-            'src/Alpha/One.php' => $this->file('Alpha', 'One'),
+            'src/Alpha/One.php' => $this->file('Alpha', class: 'One'),
             'plugins/thing/tests/HugeTest.php' => "<?php\n".$methods,
         ]);
 
@@ -244,7 +244,7 @@ final class ArchitectureCheckCommandTest extends TestCase
 
     public function testStderrLessOutputStillReportsFailures(): void
     {
-        $project = new TempProject(['src/Alpha/One.php' => $this->file('Alpha', 'One')]);
+        $project = new TempProject(['src/Alpha/One.php' => $this->file('Alpha', class: 'One')]);
 
         $tester = $this->tester(['Gone>Edge']);
         $status = $tester->execute(['path' => $project->dir]);
@@ -257,9 +257,9 @@ final class ArchitectureCheckCommandTest extends TestCase
     {
         // The plugin's directory name says nothing; its composer.json psr-4 does.
         $project = new TempProject([
-            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+            'src/Beta/Two.php' => $this->file('Beta', class: 'Two'),
             'plugins/graph-viewer/composer.json' => '{"autoload": {"psr-4": {"Porta\\\\GraphViewer\\\\": "src/"}}}',
-            'plugins/graph-viewer/src/Artifact.php' => $this->file('GraphViewer', 'Artifact', '    public function f(): void { new Two(); }', "use Porta\\Beta\\Two;\n"),
+            'plugins/graph-viewer/src/Artifact.php' => $this->file('GraphViewer', class: 'Artifact', body: '    public function f(): void { new Two(); }', uses: "use Porta\\Beta\\Two;\n"),
         ]);
 
         $tester = $this->tester(['GraphViewer>Beta']);
@@ -272,7 +272,7 @@ final class ArchitectureCheckCommandTest extends TestCase
     public function testAPluginUnderItsOwnVendorPrefixKeepsIt(): void
     {
         $project = new TempProject([
-            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+            'src/Beta/Two.php' => $this->file('Beta', class: 'Two'),
             'plugins/acme/composer.json' => '{"autoload": {"psr-4": {"Acme\\\\Tools\\\\": "lib"}}}',
             'plugins/acme/lib/Greeting.php' => "<?php\n\nnamespace Acme\\Tools;\n\nuse Porta\\Beta\\Two;\n\nfinal class Greeting\n{\n    public function f(): void { new Two(); }\n}\n",
         ]);
@@ -313,7 +313,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         // check misses it, and the "bad" dir (which is real and has a class)
         // gets scanned under a near-empty prefix, producing a bogus edge.
         $project = new TempProject([
-            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+            'src/Beta/Two.php' => $this->file('Beta', class: 'Two'),
             'plugins/acme/composer.json' => '{"autoload": {"psr-4": {"\\\\": "bad"}}}',
             'plugins/acme/bad/Ghost.php' => "<?php\n\nuse Porta\\Beta\\Two;\n\nfinal class Ghost\n{\n    public function f(): void { new Two(); }\n}\n",
         ]);
@@ -330,7 +330,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         // only the bad entry; `break` would abort the whole foreach and the
         // second, valid entry would never be scanned.
         $project = new TempProject([
-            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+            'src/Beta/Two.php' => $this->file('Beta', class: 'Two'),
             'plugins/acme/composer.json' => '{"autoload": {"psr-4": {"\\\\": "bad", "Acme\\\\": "lib"}}}',
             'plugins/acme/lib/Greeting.php' => "<?php\n\nnamespace Acme;\n\nuse Porta\\Beta\\Two;\n\nfinal class Greeting\n{\n    public function f(): void { new Two(); }\n}\n",
         ]);
@@ -346,7 +346,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         // (invalid), the second is real. `continue` skips only the bad one;
         // `break` would abort before the real one is ever tried.
         $project = new TempProject([
-            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+            'src/Beta/Two.php' => $this->file('Beta', class: 'Two'),
             'plugins/acme/composer.json' => '{"autoload": {"psr-4": {"Acme\\\\": [7, "lib"]}}}',
             'plugins/acme/lib/Greeting.php' => "<?php\n\nnamespace Acme;\n\nuse Porta\\Beta\\Two;\n\nfinal class Greeting\n{\n    public function f(): void { new Two(); }\n}\n",
         ]);
@@ -363,9 +363,9 @@ final class ArchitectureCheckCommandTest extends TestCase
         // must still name the vanished-edge line in sorted order, proving
         // sort() ran rather than just relying on dict insertion order.
         $project = new TempProject([
-            'src/Zulu/One.php' => $this->file('Zulu', 'One', '    public function f(): void { new Two(); }', "use Porta\\Alpha\\Two;\n"),
-            'src/Alpha/Two.php' => $this->file('Alpha', 'Two', '    public function g(): void { new One(); }', "use Porta\\Beta\\One;\n"),
-            'src/Beta/One.php' => $this->file('Beta', 'One'),
+            'src/Zulu/One.php' => $this->file('Zulu', class: 'One', body: '    public function f(): void { new Two(); }', uses: "use Porta\\Alpha\\Two;\n"),
+            'src/Alpha/Two.php' => $this->file('Alpha', class: 'Two', body: '    public function g(): void { new One(); }', uses: "use Porta\\Beta\\One;\n"),
+            'src/Beta/One.php' => $this->file('Beta', class: 'One'),
         ]);
 
         $tester = $this->tester();
@@ -385,8 +385,8 @@ final class ArchitectureCheckCommandTest extends TestCase
         // $sccs doesn't stop after the first non-matching entry (continue, not
         // break) and that the failures array isn't truncated to one entry.
         $project = new TempProject([
-            'src/Alpha/One.php' => $this->file('Alpha', 'One', '    public function f(): void { new Two(); }', "use Porta\\Beta\\Two;\n"),
-            'src/Beta/Two.php' => $this->file('Beta', 'Two', '    public function g(): void { new One(); }', "use Porta\\Alpha\\One;\n"),
+            'src/Alpha/One.php' => $this->file('Alpha', class: 'One', body: '    public function f(): void { new Two(); }', uses: "use Porta\\Beta\\Two;\n"),
+            'src/Beta/Two.php' => $this->file('Beta', class: 'Two', body: '    public function g(): void { new One(); }', uses: "use Porta\\Alpha\\One;\n"),
         ]);
         $edges = ['Alpha>Beta', 'Beta>Alpha'];
         $vanished = ['Porta\Gamma\Ghost', 'Porta\Delta\Ghost'];
@@ -408,8 +408,8 @@ final class ArchitectureCheckCommandTest extends TestCase
         // match instead of continuing past it, the vanished second pin would
         // never be reached or reported.
         $project = new TempProject([
-            'src/Alpha/One.php' => $this->file('Alpha', 'One', '    public function f(): void { new Two(); }', "use Porta\\Beta\\Two;\n"),
-            'src/Beta/Two.php' => $this->file('Beta', 'Two', '    public function g(): void { new One(); }', "use Porta\\Alpha\\One;\n"),
+            'src/Alpha/One.php' => $this->file('Alpha', class: 'One', body: '    public function f(): void { new Two(); }', uses: "use Porta\\Beta\\Two;\n"),
+            'src/Beta/Two.php' => $this->file('Beta', class: 'Two', body: '    public function g(): void { new One(); }', uses: "use Porta\\Alpha\\One;\n"),
         ]);
         $edges = ['Alpha>Beta', 'Beta>Alpha'];
         $realCycle = ['Porta\Alpha\One', 'Porta\Beta\Two'];
@@ -430,10 +430,10 @@ final class ArchitectureCheckCommandTest extends TestCase
         // pinned match instead of continuing, the second, genuinely new cycle
         // would never be reached or reported.
         $project = new TempProject([
-            'src/Alpha/One.php' => $this->file('Alpha', 'One', '    public function f(): void { new Two(); }', "use Porta\\Beta\\Two;\n"),
-            'src/Beta/Two.php' => $this->file('Beta', 'Two', '    public function g(): void { new One(); }', "use Porta\\Alpha\\One;\n"),
-            'src/Gamma/Three.php' => $this->file('Gamma', 'Three', '    public function h(): void { new Four(); }', "use Porta\\Delta\\Four;\n"),
-            'src/Delta/Four.php' => $this->file('Delta', 'Four', '    public function i(): void { new Three(); }', "use Porta\\Gamma\\Three;\n"),
+            'src/Alpha/One.php' => $this->file('Alpha', class: 'One', body: '    public function f(): void { new Two(); }', uses: "use Porta\\Beta\\Two;\n"),
+            'src/Beta/Two.php' => $this->file('Beta', class: 'Two', body: '    public function g(): void { new One(); }', uses: "use Porta\\Alpha\\One;\n"),
+            'src/Gamma/Three.php' => $this->file('Gamma', class: 'Three', body: '    public function h(): void { new Four(); }', uses: "use Porta\\Delta\\Four;\n"),
+            'src/Delta/Four.php' => $this->file('Delta', class: 'Four', body: '    public function i(): void { new Three(); }', uses: "use Porta\\Gamma\\Three;\n"),
         ]);
         $edges = ['Alpha>Beta', 'Beta>Alpha', 'Gamma>Delta', 'Delta>Gamma'];
         $pinned = ['Porta\Alpha\One', 'Porta\Beta\Two'];
@@ -448,7 +448,7 @@ final class ArchitectureCheckCommandTest extends TestCase
     public function testTwoOversizedSuitesAreBothReported(): void
     {
         $project = new TempProject([
-            'src/Alpha/One.php' => $this->file('Alpha', 'One'),
+            'src/Alpha/One.php' => $this->file('Alpha', class: 'One'),
             'tests/E2e/AaHugeTest.php' => "<?php\n".\str_repeat("    public function testMany(): void {}\n", times: 61),
             'tests/E2e/ZzHugeTest.php' => "<?php\n".\str_repeat("    public function testMany(): void {}\n", times: 61),
         ]);
@@ -473,7 +473,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         // still find and wrongly grade this src file.
         $methods = \str_repeat("    public function testMany(): void {}\n", times: 61);
         $project = new TempProject([
-            'src/Alpha/One.php' => $this->file('Alpha', 'One'),
+            'src/Alpha/One.php' => $this->file('Alpha', class: 'One'),
             'plugins/thing/src/NotATest.php' => "<?php\n".$methods,
         ]);
 
@@ -489,7 +489,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         // leaf-import branch must still mark it visited and move on rather
         // than treating it as newly-discoverable or a stack member.
         $project = new TempProject([
-            'src/Alpha/One.php' => $this->file('Alpha', 'One', '    public function f(): void { new Two(); }', "use Porta\\Beta\\Two;\n"),
+            'src/Alpha/One.php' => $this->file('Alpha', class: 'One', body: '    public function f(): void { new Two(); }', uses: "use Porta\\Beta\\Two;\n"),
         ]);
 
         $tester = $this->tester(['Alpha>Beta']);
@@ -507,9 +507,9 @@ final class ArchitectureCheckCommandTest extends TestCase
         // simplest fixture where over- and under-merging diverge from the
         // correct single-SCC answer.
         $project = new TempProject([
-            'src/Alpha/One.php' => $this->file('Alpha', 'One', '    public function f(): void { new Two(); }', "use Porta\\Beta\\Two;\n"),
-            'src/Beta/Two.php' => $this->file('Beta', 'Two', '    public function g(): void { new Three(); }', "use Porta\\Gamma\\Three;\n"),
-            'src/Gamma/Three.php' => $this->file('Gamma', 'Three', '    public function h(): void { new One(); }', "use Porta\\Alpha\\One;\n"),
+            'src/Alpha/One.php' => $this->file('Alpha', class: 'One', body: '    public function f(): void { new Two(); }', uses: "use Porta\\Beta\\Two;\n"),
+            'src/Beta/Two.php' => $this->file('Beta', class: 'Two', body: '    public function g(): void { new Three(); }', uses: "use Porta\\Gamma\\Three;\n"),
+            'src/Gamma/Three.php' => $this->file('Gamma', class: 'Three', body: '    public function h(): void { new One(); }', uses: "use Porta\\Alpha\\One;\n"),
         ]);
         $edges = ['Alpha>Beta', 'Beta>Gamma', 'Gamma>Alpha'];
         $cycle = ['Porta\Alpha\One', 'Porta\Beta\Two', 'Porta\Gamma\Three'];
@@ -528,7 +528,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         // shows up at all if that file was scanned — a class it imports being
         // there too would form the edge regardless of VCS-walking.
         $project = new TempProject([
-            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+            'src/Beta/Two.php' => $this->file('Beta', class: 'Two'),
             // The scanner derives its FQCN from the PATH, not this declaration
             // (a namespace segment can't syntactically start with a dot).
             'src/.git/Ghost.php' => "<?php\n\nnamespace Porta\\GitDir;\n\nuse Porta\\Beta\\Two;\n\nfinal class Ghost\n{\n    public function f(): void { new Two(); }\n}\n",
@@ -548,7 +548,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         // docblock-only {@see Two} reference would count as a code edge.
         $project = new TempProject([
             'src/Alpha/One.php' => "<?php\n\nnamespace Porta\\Alpha;\n\nuse Porta\\Beta\\Two;\n\n/**\n * Prose about Two.\n */\nfinal class One\n{\n}\n",
-            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+            'src/Beta/Two.php' => $this->file('Beta', class: 'Two'),
         ]);
 
         $tester = $this->tester();
@@ -565,7 +565,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         // reference that appears ONLY in a plain `//` line comment.
         $project = new TempProject([
             'src/Alpha/One.php' => "<?php\n\nnamespace Porta\\Alpha;\n\nuse Porta\\Beta\\Two;\n\n// Prose about Two, not real code.\nfinal class One\n{\n}\n",
-            'src/Beta/Two.php' => $this->file('Beta', 'Two'),
+            'src/Beta/Two.php' => $this->file('Beta', class: 'Two'),
         ]);
 
         $tester = $this->tester();

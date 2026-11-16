@@ -80,7 +80,7 @@ final class PositionMapperTest extends TestCase
         // Widen the tab stop and invalidate the cache directly: the document's
         // own version never changes, so only invalidateVisualLines() (not the
         // version check) can force the next call to re-expand at the new width.
-        $document->setIndent(IndentKind::Spaces, 2);
+        $document->setIndent(IndentKind::Spaces, size: 2);
         $mapper->invalidateVisualLines();
 
         $this->assertSame(['a b'], $mapper->visualLines(), 'invalidated: must rebuild even at the same document version');

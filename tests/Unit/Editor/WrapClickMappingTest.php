@@ -83,9 +83,9 @@ final class WrapClickMappingTest extends TestCase
     {
         $mouse = $this->mouse();
 
-        $this->assertSame(0, $this->clickAt($mouse, 0, 3, null)[0]);
-        $this->assertSame(1, $this->clickAt($mouse, 1, 3, null)[0], 'second');
-        $this->assertSame(2, $this->clickAt($mouse, 2, 3, null)[0], 'third');
+        $this->assertSame(0, $this->clickAt($mouse, row: 0, col: 3, wrapWidth: null)[0]);
+        $this->assertSame(1, $this->clickAt($mouse, row: 1, col: 3, wrapWidth: null)[0], 'second');
+        $this->assertSame(2, $this->clickAt($mouse, row: 2, col: 3, wrapWidth: null)[0], 'third');
     }
 
     /** Wrapped, the long line holds three rows and the short lines follow it. */
@@ -93,13 +93,13 @@ final class WrapClickMappingTest extends TestCase
     {
         $mouse = $this->mouse();
 
-        $this->assertSame(0, $this->clickAt($mouse, 0, 3, self::WIDTH)[0], 'first segment');
-        $this->assertSame(0, $this->clickAt($mouse, 1, 3, self::WIDTH)[0], 'second segment, same line');
-        $this->assertSame(0, $this->clickAt($mouse, 2, 3, self::WIDTH)[0], 'third segment, still the same line');
+        $this->assertSame(0, $this->clickAt($mouse, row: 0, col: 3, wrapWidth: self::WIDTH)[0], 'first segment');
+        $this->assertSame(0, $this->clickAt($mouse, row: 1, col: 3, wrapWidth: self::WIDTH)[0], 'second segment, same line');
+        $this->assertSame(0, $this->clickAt($mouse, row: 2, col: 3, wrapWidth: self::WIDTH)[0], 'third segment, still the same line');
 
-        $this->assertSame(1, $this->clickAt($mouse, 3, 3, self::WIDTH)[0], 'second');
-        $this->assertSame(2, $this->clickAt($mouse, 4, 3, self::WIDTH)[0], 'third');
-        $this->assertSame(3, $this->clickAt($mouse, 5, 3, self::WIDTH)[0], 'fourth');
+        $this->assertSame(1, $this->clickAt($mouse, row: 3, col: 3, wrapWidth: self::WIDTH)[0], 'second');
+        $this->assertSame(2, $this->clickAt($mouse, row: 4, col: 3, wrapWidth: self::WIDTH)[0], 'third');
+        $this->assertSame(3, $this->clickAt($mouse, row: 5, col: 3, wrapWidth: self::WIDTH)[0], 'fourth');
     }
 
     /** The column resolves within its own segment, not from the line's start. */
@@ -107,9 +107,9 @@ final class WrapClickMappingTest extends TestCase
     {
         $mouse = $this->mouse();
 
-        $this->assertSame([0, 3], $this->clickAt($mouse, 0, 3, self::WIDTH), 'first segment: the column as clicked');
-        $this->assertSame([0, self::WIDTH + 3], $this->clickAt($mouse, 1, 3, self::WIDTH), 'second segment: one width further in');
-        $this->assertSame([0, (2 * self::WIDTH) + 3], $this->clickAt($mouse, 2, 3, self::WIDTH), 'third segment: two');
+        $this->assertSame([0, 3], $this->clickAt($mouse, row: 0, col: 3, wrapWidth: self::WIDTH), 'first segment: the column as clicked');
+        $this->assertSame([0, self::WIDTH + 3], $this->clickAt($mouse, row: 1, col: 3, wrapWidth: self::WIDTH), 'second segment: one width further in');
+        $this->assertSame([0, (2 * self::WIDTH) + 3], $this->clickAt($mouse, row: 2, col: 3, wrapWidth: self::WIDTH), 'third segment: two');
     }
 
     /** Past the last row, the click lands on the last line rather than nowhere. */
@@ -117,7 +117,7 @@ final class WrapClickMappingTest extends TestCase
     {
         $mouse = $this->mouse();
 
-        $this->assertSame(4, $this->clickAt($mouse, 11, 0, self::WIDTH)[0]);
+        $this->assertSame(4, $this->clickAt($mouse, row: 11, col: 0, wrapWidth: self::WIDTH)[0]);
     }
 
     /**
@@ -130,12 +130,12 @@ final class WrapClickMappingTest extends TestCase
         $mouse = $this->mouse();
         $this->store->setCodeLenses([0 => [self::lens('3 usages')], 1 => [self::lens('1 usage'), self::lens('2 implementations')]]);
 
-        $this->assertSame(0, $this->clickAt($mouse, 0, 3, null)[0], 'the lens above line 0');
-        $this->assertSame(0, $this->clickAt($mouse, 1, 3, null)[0], 'then line 0 itself');
-        $this->assertSame(1, $this->clickAt($mouse, 2, 3, null)[0], "line 1's first lens");
-        $this->assertSame(1, $this->clickAt($mouse, 3, 3, null)[0], 'its second');
-        $this->assertSame(1, $this->clickAt($mouse, 4, 3, null)[0], 'then line 1 itself');
-        $this->assertSame(2, $this->clickAt($mouse, 5, 3, null)[0], 'and line 2 follows');
+        $this->assertSame(0, $this->clickAt($mouse, row: 0, col: 3, wrapWidth: null)[0], 'the lens above line 0');
+        $this->assertSame(0, $this->clickAt($mouse, row: 1, col: 3, wrapWidth: null)[0], 'then line 0 itself');
+        $this->assertSame(1, $this->clickAt($mouse, row: 2, col: 3, wrapWidth: null)[0], "line 1's first lens");
+        $this->assertSame(1, $this->clickAt($mouse, row: 3, col: 3, wrapWidth: null)[0], 'its second');
+        $this->assertSame(1, $this->clickAt($mouse, row: 4, col: 3, wrapWidth: null)[0], 'then line 1 itself');
+        $this->assertSame(2, $this->clickAt($mouse, row: 5, col: 3, wrapWidth: null)[0], 'and line 2 follows');
     }
 
     /** A click on a lens row means the line it describes, at its start. */
@@ -144,7 +144,7 @@ final class WrapClickMappingTest extends TestCase
         $mouse = $this->mouse();
         $this->store->setCodeLenses([1 => [self::lens('3 usages')]]);
 
-        $this->assertSame([1, 0], $this->clickAt($mouse, 1, 7, null), 'the lens row carries none of the line\'s columns');
+        $this->assertSame([1, 0], $this->clickAt($mouse, row: 1, col: 7, wrapWidth: null), 'the lens row carries none of the line\'s columns');
     }
 
     /** Lenses and wrapping compose: both add rows to the same line. */
@@ -154,10 +154,10 @@ final class WrapClickMappingTest extends TestCase
         $this->store->setCodeLenses([0 => [self::lens('3 usages')]]);
 
         // Row 0 is the lens, rows 1..3 the three wrapped segments, row 4 'second'.
-        $this->assertSame(0, $this->clickAt($mouse, 0, 3, self::WIDTH)[0]);
-        $this->assertSame([0, 3], $this->clickAt($mouse, 1, 3, self::WIDTH), 'first segment, not offset by the lens');
-        $this->assertSame([0, self::WIDTH + 3], $this->clickAt($mouse, 2, 3, self::WIDTH), 'second segment');
-        $this->assertSame(1, $this->clickAt($mouse, 4, 3, self::WIDTH)[0], 'second');
+        $this->assertSame(0, $this->clickAt($mouse, row: 0, col: 3, wrapWidth: self::WIDTH)[0]);
+        $this->assertSame([0, 3], $this->clickAt($mouse, row: 1, col: 3, wrapWidth: self::WIDTH), 'first segment, not offset by the lens');
+        $this->assertSame([0, self::WIDTH + 3], $this->clickAt($mouse, row: 2, col: 3, wrapWidth: self::WIDTH), 'second segment');
+        $this->assertSame(1, $this->clickAt($mouse, row: 4, col: 3, wrapWidth: self::WIDTH)[0], 'second');
     }
 
     /**
@@ -171,10 +171,10 @@ final class WrapClickMappingTest extends TestCase
         $this->store->setCodeLenses([1 => [self::lens('3 usages'), self::lens('2 implementations')]]);
 
         // Row 0 is line 0; rows 1 and 2 are line 1's two lenses.
-        $this->clickAt($mouse, 1, 4, null);
+        $this->clickAt($mouse, row: 1, col: 4, wrapWidth: null);
         $this->assertSame(['1:0'], $this->ran, 'the first lens above line 1');
 
-        $this->clickAt($mouse, 2, 4, null);
+        $this->clickAt($mouse, row: 2, col: 4, wrapWidth: null);
         $this->assertSame(['1:0', '1:1'], $this->ran, 'and the second');
 
         $this->assertSame(1, $this->document->cursorLine, 'the caret went to the line the lens describes');
@@ -186,7 +186,7 @@ final class WrapClickMappingTest extends TestCase
         $mouse = $this->mouse();
         $this->store->setCodeLenses([1 => [self::lens('3 usages')]]);
 
-        $this->clickAt($mouse, 2, 4, null); // line 1 itself, below its lens
+        $this->clickAt($mouse, row: 2, col: 4, wrapWidth: null); // line 1 itself, below its lens
 
         $this->assertSame([], $this->ran);
         $this->assertSame(1, $this->document->cursorLine);
@@ -198,14 +198,14 @@ final class WrapClickMappingTest extends TestCase
         $mouse = $this->mouse();
         $this->store->setLineBlocks([1 => ['alice: rename', 'bob: why?']]);
 
-        $this->assertSame(1, $this->clickAt($mouse, 1, 3, null)[0], 'second');
-        $this->assertSame([1, 3], $this->clickAt($mouse, 2, 3, null), 'the first block row is its line, as the line\'s own last row');
-        $this->assertSame(1, $this->clickAt($mouse, 3, 3, null)[0], 'and the second');
-        $this->assertSame(2, $this->clickAt($mouse, 4, 3, null)[0], 'third follows the block');
+        $this->assertSame(1, $this->clickAt($mouse, row: 1, col: 3, wrapWidth: null)[0], 'second');
+        $this->assertSame([1, 3], $this->clickAt($mouse, row: 2, col: 3, wrapWidth: null), 'the first block row is its line, as the line\'s own last row');
+        $this->assertSame(1, $this->clickAt($mouse, row: 3, col: 3, wrapWidth: null)[0], 'and the second');
+        $this->assertSame(2, $this->clickAt($mouse, row: 4, col: 3, wrapWidth: null)[0], 'third follows the block');
 
         // Wrapped, a block row is the line's LAST segment, never a segment past it.
         $this->store->setLineBlocks([0 => ['note']]);
-        $this->assertSame([0, 43], $this->clickAt($mouse, 3, 3, self::WIDTH), 'the block under the three segments: the last one\'s column 3, never a fourth\'s');
-        $this->assertSame(1, $this->clickAt($mouse, 4, 3, self::WIDTH)[0], 'then second');
+        $this->assertSame([0, 43], $this->clickAt($mouse, row: 3, col: 3, wrapWidth: self::WIDTH), 'the block under the three segments: the last one\'s column 3, never a fourth\'s');
+        $this->assertSame(1, $this->clickAt($mouse, row: 4, col: 3, wrapWidth: self::WIDTH)[0], 'then second');
     }
 }

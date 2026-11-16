@@ -52,7 +52,7 @@ trait PagesThroughRows
         self::assertSame(
             [],
             \array_values(\array_diff($labels, \array_keys($seen))),
-            'paging to the bottom scrolled past rows that were never drawn',
+            message: 'paging to the bottom scrolled past rows that were never drawn',
         );
     }
 }

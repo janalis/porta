@@ -461,6 +461,7 @@ final class LspSessionPool
         }
         $session = $this->sessions[$owner] ?? null;
         if (null === $session) {
+            // @mago-expect lint:literal-named-argument -- a variadic, which cannot take a named argument: mago#2741
             EventLoop::queue($onResult(...), null, ['code' => -32_002, 'message' => 'That language server is no longer running']);
 
             return;
@@ -817,7 +818,7 @@ final class LspSessionPool
                 if (\array_key_exists($path, $relaunched->openDocuments())) {
                     continue;
                 }
-                $relaunched->notifyDidOpen($path, \is_string($text) ? $text : $text->getText(), ProjectPaths::languageId($path), 0);
+                $relaunched->notifyDidOpen($path, \is_string($text) ? $text : $text->getText(), ProjectPaths::languageId($path), version: 0);
             }
         }));
         $this->relaunches[$signature] = ['timer' => $timer, 'documents' => $documents];

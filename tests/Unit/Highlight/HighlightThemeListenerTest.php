@@ -23,23 +23,23 @@ final class HighlightThemeListenerTest extends TestCase
     public function testDropsEveryOpenBuffersHighlightCache(): void
     {
         $buffers = new BufferManager();
-        $one = $buffers->open('/x/a.php', "<?php\nreturn 1;");
-        $two = $buffers->open('/x/b.php', "<?php\nreturn 2;");
+        $one = $buffers->open('/x/a.php', content: "<?php\nreturn 1;");
+        $two = $buffers->open('/x/b.php', content: "<?php\nreturn 2;");
 
         foreach ([$one, $two] as $buffer) {
-            $buffer->highlighter->highlight(['<?php', 'return 1;'], 1);
+            $buffer->highlighter->highlight(['<?php', 'return 1;'], version: 1);
         }
 
-        $before = \array_map(static fn (Buffer $b): int => Probe::get($b->highlighter, 'fullParses'), [$one, $two]);
+        $before = \array_map(static fn (Buffer $b): int => Probe::get($b->highlighter, property: 'fullParses'), [$one, $two]);
 
         new HighlightThemeListener($buffers)->onThemeChanged(new ThemeChanged(Theme::Light));
 
         // The cache is gone, so the next paint re-parses rather than replaying.
         foreach ([$one, $two] as $buffer) {
-            $buffer->highlighter->highlight(['<?php', 'return 1;'], 1);
+            $buffer->highlighter->highlight(['<?php', 'return 1;'], version: 1);
         }
 
-        $after = \array_map(static fn (Buffer $b): int => Probe::get($b->highlighter, 'fullParses'), [$one, $two]);
+        $after = \array_map(static fn (Buffer $b): int => Probe::get($b->highlighter, property: 'fullParses'), [$one, $two]);
 
         $this->assertSame([$before[0] + 1, $before[1] + 1], $after);
     }
@@ -47,13 +47,13 @@ final class HighlightThemeListenerTest extends TestCase
     public function testRepaintAfterTheSwitchStillProducesTheSameText(): void
     {
         $buffers = new BufferManager();
-        $buffer = $buffers->open('/x/a.php', "<?php\nreturn 1;");
+        $buffer = $buffers->open('/x/a.php', content: "<?php\nreturn 1;");
         $lines = ['<?php', 'return 1;'];
 
-        $buffer->highlighter->highlight($lines, 1);
+        $buffer->highlighter->highlight($lines, version: 1);
         new HighlightThemeListener($buffers)->onThemeChanged(new ThemeChanged(Theme::Light));
 
-        $repainted = $buffer->highlighter->highlight($lines, 1);
+        $repainted = $buffer->highlighter->highlight($lines, version: 1);
 
         $this->assertSame($lines, \array_map(AnsiUtils::stripAnsiCodes(...), $repainted));
     }

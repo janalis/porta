@@ -55,7 +55,7 @@ final class XyTest extends TestCase
     #[DataProvider('upstreamFixtures')]
     public function testPinnedUpstreamExamplesRenderWithoutCli(string $file): void
     {
-        $result = NativeFixtureRows::render((string) \file_get_contents($file), 28);
+        $result = NativeFixtureRows::render((string) \file_get_contents($file), width: 28);
         $this->assertNotEmpty($result->rows);
         $this->assertCount(\count($result->rows), $result->origins);
     }

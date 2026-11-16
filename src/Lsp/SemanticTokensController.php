@@ -41,7 +41,7 @@ final readonly class SemanticTokensController
     {
         $path = $this->editor->getFilePath();
         /** @var array<string, mixed>|bool|null $capability LSP: a SemanticTokensOptions object */
-        $capability = $this->lsp->serverCapability($path, 'semanticTokensProvider');
+        $capability = $this->lsp->serverCapability($path, name: 'semanticTokensProvider');
         if (null === $path || !\is_array($capability)) {
             return;
         }
@@ -159,8 +159,6 @@ final readonly class SemanticTokensController
         if (!\is_array($value)) {
             return [];
         }
-
-        /** @var list<string> $strings */
         $strings = \array_values(\array_filter($value, \is_string(...)));
 
         return \count($strings) === \count($value) ? $strings : [];
@@ -181,8 +179,6 @@ final readonly class SemanticTokensController
         if (!\is_array($value)) {
             return [];
         }
-
-        /** @var list<int> $ints */
         $ints = \array_values(\array_filter($value, \is_int(...)));
 
         return \count($ints) === \count($value) ? $ints : [];

@@ -213,7 +213,7 @@ final class DotLayoutEngineTest extends TestCase
     {
         $engine = $this->engine('fake-dot-fail');
         $result = null;
-        $engine->export(self::SMALL_DOT, Format::Png, '/tmp/never-written.png', static function (?string $message) use (&$result): void {
+        $engine->export(self::SMALL_DOT, Format::Png, outPath: '/tmp/never-written.png', onDone: static function (?string $message) use (&$result): void {
             $result = $message;
         });
         $this->await(static function () use (&$result): bool {
@@ -256,11 +256,11 @@ final class DotLayoutEngineTest extends TestCase
 
         $engine->render(
             self::SMALL_DOT,
-            144,
-            static function (string $bytes) use (&$png): void {
+            dpi: 144,
+            onPng: static function (string $bytes) use (&$png): void {
                 $png = $bytes;
             },
-            $onError,
+            onError: $onError,
         );
         $this->await(static function () use (&$png): bool {
             return null !== $png;
@@ -280,11 +280,11 @@ final class DotLayoutEngineTest extends TestCase
         $error = null;
         $engine->render(
             self::SMALL_DOT,
-            72,
-            static function (): never {
+            dpi: 72,
+            onPng: static function (): never {
                 self::fail('onPng must not fire for a failing dot');
             },
-            static function (string $message) use (&$error): void {
+            onError: static function (string $message) use (&$error): void {
                 $error = $message;
             },
         );
@@ -314,11 +314,11 @@ final class DotLayoutEngineTest extends TestCase
         );
         $engine->render(
             self::SMALL_DOT,
-            72,
-            static function (string $bytes) use (&$png): void {
+            dpi: 72,
+            onPng: static function (string $bytes) use (&$png): void {
                 $png = $bytes;
             },
-            $onError,
+            onError: $onError,
         );
 
         $this->await(static function () use (&$layout, &$png): bool {
@@ -337,19 +337,19 @@ final class DotLayoutEngineTest extends TestCase
         };
         $engine->render(
             self::SMALL_DOT,
-            72,
-            static function () use (&$fired): void {
+            dpi: 72,
+            onPng: static function () use (&$fired): void {
                 $fired[] = 'first';
             },
-            $onError,
+            onError: $onError,
         );
         $engine->render(
             self::SMALL_DOT,
-            144,
-            static function () use (&$fired): void {
+            dpi: 144,
+            onPng: static function () use (&$fired): void {
                 $fired[] = 'second';
             },
-            $onError,
+            onError: $onError,
         );
         $this->await(static function () use (&$fired): bool {
             return [] !== $fired;
@@ -366,11 +366,11 @@ final class DotLayoutEngineTest extends TestCase
         $fired = false;
         $engine->render(
             self::SMALL_DOT,
-            72,
-            static function () use (&$fired): void {
+            dpi: 72,
+            onPng: static function () use (&$fired): void {
                 $fired = true;
             },
-            static function () use (&$fired): void {
+            onError: static function () use (&$fired): void {
                 $fired = true;
             },
         );
@@ -388,21 +388,21 @@ final class DotLayoutEngineTest extends TestCase
         \putenv('PATH=/nonexistent');
         $engine = new DotLayoutEngine(\sys_get_temp_dir());
         $png = $this->awaitString(static function (\Closure $done) use ($engine): void {
-            $engine->render(self::SMALL_DOT, 144, $done, static function (string $message): never {
+            $engine->render(self::SMALL_DOT, dpi: 144, onPng: $done, onError: static function (string $message): never {
                 self::fail($message);
             });
         });
-        $expected = Work::run(new NativeRenderer(new DotPipeline())->image(self::SMALL_DOT, Format::Png, 192));
+        $expected = Work::run(new NativeRenderer(new DotPipeline())->image(self::SMALL_DOT, Format::Png, dpi: 192));
         $this->assertSame($expected, $png, "dot's 144 dpi is twice its 1:1, so viz draws at twice its own 96");
 
         $error = $this->awaitString(static function (\Closure $done) use ($engine): void {
             $engine->render(
                 'digraph {',
-                72,
-                static function (): never {
+                dpi: 72,
+                onPng: static function (): never {
                     self::fail('a source that does not parse draws nothing');
                 },
-                $done,
+                onError: $done,
             );
         });
         $this->assertNotSame('', $error);
@@ -442,11 +442,11 @@ final class DotLayoutEngineTest extends TestCase
         $error = null;
         new DotLayoutEngine(\sys_get_temp_dir())->render(
             self::SMALL_DOT,
-            72,
-            static function (string $bytes) use (&$png): void {
+            dpi: 72,
+            onPng: static function (string $bytes) use (&$png): void {
                 $png = $bytes;
             },
-            static function (string $message) use (&$error): void {
+            onError: static function (string $message) use (&$error): void {
                 $error = $message;
             },
         );

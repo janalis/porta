@@ -82,7 +82,7 @@ final class LspSessionPoolTest extends TestCase
             static function (array $params): void {},
             static fn (array $edit): bool => false,
         );
-        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: '<?php', languageId: 'php', version: 1);
 
         $this->clients[0]['onLog']('stderr says hi');
 
@@ -101,9 +101,9 @@ final class LspSessionPoolTest extends TestCase
     public function testClosingUnderAFolderReachesEveryRunningServer(): void
     {
         $pool = $this->pool(self::SERVERS);
-        $pool->notifyDidOpen('/tmp/proj/src/Old/a.php', '<?php', 'php', 1);
-        $pool->notifyDidOpen('/tmp/proj/src/Old/a.ts', 'x', 'typescript', 1);
-        $pool->notifyDidOpen('/tmp/proj/src/Keep/b.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/src/Old/a.php', text: '<?php', languageId: 'php', version: 1);
+        $pool->notifyDidOpen('/tmp/proj/src/Old/a.ts', text: 'x', languageId: 'typescript', version: 1);
+        $pool->notifyDidOpen('/tmp/proj/src/Keep/b.php', text: '<?php', languageId: 'php', version: 1);
         $this->assertCount(2, $this->clients, 'two languages, two sessions — otherwise this proves nothing');
         foreach ($this->clients as $built) {
             $built['client']->notifications = [];
@@ -132,7 +132,7 @@ final class LspSessionPoolTest extends TestCase
         $pool = $this->pool(self::SERVERS);
         $this->assertCount(0, $this->clients, 'nothing starts at configure time');
 
-        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: '<?php', languageId: 'php', version: 1);
 
         $this->assertCount(1, $this->clients);
         $this->assertSame(['php-ls'], $this->clients[0]['command']);
@@ -143,8 +143,8 @@ final class LspSessionPoolTest extends TestCase
     public function testLanguagesSharingACommandShareOneSession(): void
     {
         $pool = $this->pool(self::SERVERS);
-        $pool->notifyDidOpen('/tmp/proj/a.js', 'x', 'javascript', 1);
-        $pool->notifyDidOpen('/tmp/proj/b.ts', 'y', 'typescript', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.js', text: 'x', languageId: 'javascript', version: 1);
+        $pool->notifyDidOpen('/tmp/proj/b.ts', text: 'y', languageId: 'typescript', version: 1);
 
         $this->assertCount(1, $this->clients, 'JS and TS share the ts-ls process');
         $this->assertCount(2, $this->clients[0]['client']->notifications);
@@ -158,17 +158,17 @@ final class LspSessionPoolTest extends TestCase
         $pool = $this->pool(self::SERVERS);
         $this->clientOutcome = Outcome::Failed;
 
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
         $this->assertCount(1, $this->clients);
         $this->assertSame('failed', $pool->statusFor('/tmp/proj/a.php'));
 
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 2);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 2);
         $this->assertCount(2, $this->clients, 'the dead slot was evicted, so the next didOpen retried');
 
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 3);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 3);
         $this->assertCount(3, $this->clients, 'third and final attempt');
 
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 4);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 4);
         $this->assertCount(3, $this->clients, 'past the cap the failure is sticky until a reconfigure');
         $this->assertSame('failed', $pool->statusFor('/tmp/proj/a.php'));
     }
@@ -177,33 +177,33 @@ final class LspSessionPoolTest extends TestCase
     {
         $pool = $this->pool(self::SERVERS);
         $this->clientOutcome = Outcome::Failed;
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1); // failure 1
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1); // failure 1
         $this->clientOutcome = Outcome::Ok;
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 2);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 2);
         $this->assertSame('php-ls', $pool->statusFor('/tmp/proj/a.php'), 'up');
 
         $this->die(1); // failure 2: it was not up long enough to have earned anything
-        $this->assertSame([2], \array_values(Probe::get($pool, 'startFailures')));
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 3);
+        $this->assertSame([2], \array_values(Probe::get($pool, property: 'startFailures')));
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 3);
         $this->assertCount(3, $this->clients, 'one attempt was left');
 
         // This one stays up past STABLE before it dies: a fresh slate.
-        $upSince = Probe::get($pool, 'upSince');
+        $upSince = Probe::get($pool, property: 'upSince');
         $this->assertIsArray($upSince);
-        Probe::set($pool, 'upSince', \array_map(static fn (float $t): float => $t - LspSessionPool::STABLE, $upSince));
+        Probe::set($pool, property: 'upSince', value: \array_map(static fn (float $t): float => $t - LspSessionPool::STABLE, $upSince));
         $this->die(2);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 4);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 4);
         $this->assertCount(4, $this->clients, 'evicted with a fresh budget');
-        $this->assertSame([1], \array_values(Probe::get($pool, 'startFailures')), 'only the failure that came after');
+        $this->assertSame([1], \array_values(Probe::get($pool, property: 'startFailures')), 'only the failure that came after');
         $pool->stop();
     }
 
     public function testAServerThatDiesWhileUpIsLaunchedAgainAndToldEveryFileItHadOpen(): void
     {
         $pool = $this->pool(self::SERVERS);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'a', 'php', 1);
-        $pool->notifyDidOpen('/tmp/proj/b.php', 'b', 'php', 1);
-        $pool->notifyDidOpen('/tmp/proj/c.php', 'c', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'a', languageId: 'php', version: 1);
+        $pool->notifyDidOpen('/tmp/proj/b.php', text: 'b', languageId: 'php', version: 1);
+        $pool->notifyDidOpen('/tmp/proj/c.php', text: 'c', languageId: 'php', version: 1);
 
         $this->die(0);
         $edited = new Document('a, edited while it was down');
@@ -235,10 +235,10 @@ final class LspSessionPoolTest extends TestCase
     public function testADidOpenDuringTheBackoffLaunchesAtOnceAndTheRestFollowWithoutRepeats(): void
     {
         $pool = $this->pool(self::SERVERS);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'a', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'a', languageId: 'php', version: 1);
         $this->die(0);
 
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'a again', 'php', 2);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'a again', languageId: 'php', version: 2);
         $this->assertCount(2, $this->clients);
         $this->pump(Backoff::after(0) + 0.2);
 
@@ -251,7 +251,7 @@ final class LspSessionPoolTest extends TestCase
     public function testStoppingCancelsAPendingRelaunch(): void
     {
         $pool = $this->pool(self::SERVERS);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'a', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'a', languageId: 'php', version: 1);
         $this->die(0);
 
         $pool->stop();
@@ -272,12 +272,11 @@ final class LspSessionPoolTest extends TestCase
                 $published[] = [$owner, $params['uri'], \count($params['diagnostics'])];
             },
             static fn (array $edit): bool => false,
-            null,
-            static function (array $params) use (&$progress): void {
+            onProgress: static function (array $params) use (&$progress): void {
                 $progress[] = [$params['token'], $params['value']['kind']];
             },
         );
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'a', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'a', languageId: 'php', version: 1);
         $client = $this->clients[0]['client'];
         $client->notificationHandlers['textDocument/publishDiagnostics'](['uri' => 'file:///tmp/proj/a.php', 'diagnostics' => [['message' => 'x']]]);
         // What the session hands on from a pull (DiagnosticPull marks it): its own slot, not the published one's.
@@ -322,11 +321,11 @@ final class LspSessionPoolTest extends TestCase
         );
         $this->clientOutcome = Outcome::Failed;
         foreach ([1, 2, 3, 4] as $version) {
-            $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', $version);
+            $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: $version);
         }
 
         $this->assertCount(3, $this->clients);
-        $this->assertSame([], Probe::get($pool, 'relaunches'), 'a server that never came up is not relaunched behind anyone\'s back');
+        $this->assertSame([], Probe::get($pool, property: 'relaunches'), 'a server that never came up is not relaunched behind anyone\'s back');
         $this->assertSame([['type' => 1, 'message' => '[php-ls] stopped 3 times and is not started again — change its settings or restart Porta']], $messages);
     }
 
@@ -356,7 +355,7 @@ final class LspSessionPoolTest extends TestCase
     public function testReloadDropsTheSessionEvenWhenTheMapIsUnchanged(): void
     {
         $pool = $this->pool(self::SERVERS);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
         $client = $this->clients[0]['client'];
 
         $this->assertFalse($pool->reconfigure(self::SERVERS), 'sanity: the identical map is still skipped');
@@ -365,7 +364,7 @@ final class LspSessionPoolTest extends TestCase
         $pool->reload(self::SERVERS);
 
         $this->assertTrue($client->stopped, 'the stale process is stopped');
-        $pool->notifyDidOpen('/tmp/proj/b.php', 'y', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/b.php', text: 'y', languageId: 'php', version: 1);
         $this->assertCount(2, $this->clients, 'and the next didOpen starts a fresh one from the map it was handed');
     }
 
@@ -375,12 +374,12 @@ final class LspSessionPoolTest extends TestCase
         // provider plugin — a fix-on-save toggle must not cost every
         // language its warm session and re-index.
         $pool = $this->pool(self::SERVERS);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
         $client = $this->clients[0]['client'];
 
         $this->assertFalse($pool->reconfigure(self::SERVERS), 'identical map: no-op, and callers skip the buffer re-open');
         $this->assertFalse($client->stopped, 'the warm session survived');
-        $pool->notifyDidOpen('/tmp/proj/b.php', 'y', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/b.php', text: 'y', languageId: 'php', version: 1);
         $this->assertCount(1, $this->clients, 'and still serves didOpens');
 
         $this->assertTrue($pool->reconfigure(['php' => [['command' => ['other-ls'], 'name' => 'other-ls']]]), 'a changed map still applies');
@@ -394,13 +393,13 @@ final class LspSessionPoolTest extends TestCase
             'twig' => [['command' => ['sf-ls'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => false]]],
             'yaml' => [['command' => ['sf-ls'], 'name' => 'sf-ls', 'initializationOptions' => ['workspaceTrust' => true]]],
         ]);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
-        $pool->notifyDidOpen('/tmp/proj/b.twig', 'y', 'twig', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
+        $pool->notifyDidOpen('/tmp/proj/b.twig', text: 'y', languageId: 'twig', version: 1);
 
         $this->assertCount(1, $this->clients, 'same command + same options share one process');
         $this->assertSame(['workspaceTrust' => false], $this->clients[0]['options']);
 
-        $pool->notifyDidOpen('/tmp/proj/c.yaml', 'z', 'yaml', 1);
+        $pool->notifyDidOpen('/tmp/proj/c.yaml', text: 'z', languageId: 'yaml', version: 1);
 
         $this->assertCount(2, $this->clients, 'same command under different options launches separately');
         $this->assertSame(['workspaceTrust' => true], $this->clients[1]['options']);
@@ -409,7 +408,7 @@ final class LspSessionPoolTest extends TestCase
     public function testAServerWithoutOptionsHandsTheFactoryNull(): void
     {
         $pool = $this->pool(self::SERVERS);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
 
         $this->assertNull($this->clients[0]['options']);
     }
@@ -417,8 +416,8 @@ final class LspSessionPoolTest extends TestCase
     public function testDistinctLanguagesGetDistinctSessions(): void
     {
         $pool = $this->pool(self::SERVERS);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
-        $pool->notifyDidOpen('/tmp/proj/b.ts', 'y', 'typescript', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
+        $pool->notifyDidOpen('/tmp/proj/b.ts', text: 'y', languageId: 'typescript', version: 1);
 
         $this->assertCount(2, $this->clients);
     }
@@ -426,7 +425,7 @@ final class LspSessionPoolTest extends TestCase
     public function testUnmatchedLanguageIsANoOpWithoutACatchAll(): void
     {
         $pool = $this->pool(self::SERVERS);
-        $pool->notifyDidOpen('/tmp/proj/notes.md', 'x', 'markdown', 1);
+        $pool->notifyDidOpen('/tmp/proj/notes.md', text: 'x', languageId: 'markdown', version: 1);
         $pool->notifyDidClose('/tmp/proj/notes.md');
 
         $this->assertCount(0, $this->clients);
@@ -436,8 +435,8 @@ final class LspSessionPoolTest extends TestCase
     public function testCatchAllServesEveryLanguage(): void
     {
         $pool = $this->pool(['*' => [['command' => ['any-ls'], 'name' => 'any-ls']]]);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
-        $pool->notifyDidOpen('/tmp/proj/notes.md', 'y', 'markdown', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
+        $pool->notifyDidOpen('/tmp/proj/notes.md', text: 'y', languageId: 'markdown', version: 1);
 
         $this->assertCount(1, $this->clients);
         $this->assertCount(2, $this->clients[0]['client']->notifications);
@@ -449,7 +448,7 @@ final class LspSessionPoolTest extends TestCase
             '*' => [['command' => ['any-ls'], 'name' => 'any-ls']],
             'php' => [['command' => ['php-ls'], 'name' => 'php-ls']],
         ]);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
 
         $this->assertSame(['php-ls'], $this->clients[0]['command']);
     }
@@ -457,8 +456,8 @@ final class LspSessionPoolTest extends TestCase
     public function testRequestsRouteByTheActiveFile(): void
     {
         $pool = $this->pool(self::SERVERS);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
-        $pool->notifyDidOpen('/tmp/proj/b.ts', 'y', 'typescript', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
+        $pool->notifyDidOpen('/tmp/proj/b.ts', text: 'y', languageId: 'typescript', version: 1);
 
         $this->activeFile->set('/tmp/proj/b.ts');
         $pool->request('textDocument/definition', ['x' => 1], static function (): void {});
@@ -479,7 +478,7 @@ final class LspSessionPoolTest extends TestCase
     public function testWhenReadyRunsAgainstTheActiveFilesSession(): void
     {
         $pool = $this->pool(self::SERVERS);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
         $this->activeFile->set('/tmp/proj/a.php');
 
         $ran = false;
@@ -507,7 +506,7 @@ final class LspSessionPoolTest extends TestCase
         $pool = $this->pool(self::SERVERS);
         $this->assertFalse($pool->isInitialized(), 'nothing open yet');
 
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
         $this->activeFile->set('/tmp/proj/a.php');
         $this->assertTrue($pool->isInitialized(), 'FakeLspClient initializes synchronously');
     }
@@ -524,7 +523,7 @@ final class LspSessionPoolTest extends TestCase
     public function testFlushPendingChangeReachesTheMatchingSession(): void
     {
         $pool = $this->pool(self::SERVERS);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
         $doc = new Document('x');
         $before = \count(EventLoop::getIdentifiers());
         $pool->scheduleDidChange($doc, static fn (): string => '/tmp/proj/a.php', static function (): void {});
@@ -540,7 +539,7 @@ final class LspSessionPoolTest extends TestCase
         // Only '*' is configured (no explicit 'php' entry): with no active
         // file, a workspace-level request must still reach it.
         $pool = $this->pool(['*' => [['command' => ['any-ls'], 'name' => 'any-ls']]]);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1); // starts the catch-all session
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1); // starts the catch-all session
         $this->activeFile->set(null);
 
         $pool->request('workspace/symbol', ['query' => 'x'], static function (): void {});
@@ -555,7 +554,7 @@ final class LspSessionPoolTest extends TestCase
         $this->assertSame('no server', $pool->statusFor('/tmp/proj/notes.md'));
         $this->assertSame('php-ls', $pool->statusFor(null), 'no file falls back to the PHP server');
 
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
         $this->assertSame('php-ls', $pool->statusFor('/tmp/proj/a.php'), 'FakeLspClient initializes synchronously');
     }
 
@@ -580,7 +579,7 @@ final class LspSessionPoolTest extends TestCase
             static fn (array $edit): bool => false,
         );
 
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
 
         $this->assertSame('failed', $pool->statusFor('/tmp/proj/a.php'), 'not the server\'s static name');
     }
@@ -613,12 +612,12 @@ final class LspSessionPoolTest extends TestCase
     {
         $pool = $this->pool([], configure: Presence::Without);
         $this->assertSame('no server', $pool->statusFor('/tmp/proj/a.php'), 'before startLsp runs');
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
         $this->assertCount(0, $this->clients, 'unconfigured pool never starts sessions');
 
         $pool->disable();
         $this->assertSame('disabled', $pool->statusFor('/tmp/proj/a.php'));
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
         $this->assertCount(0, $this->clients);
 
         $pool->restrict();
@@ -636,7 +635,7 @@ final class LspSessionPoolTest extends TestCase
         $pool->restrict();
         $pool->configure($relayed, static function (string $line): void {}, static function (array $params): void {}, static fn (array $edit): bool => false);
 
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
 
         $this->assertCount(1, $this->clients);
         $this->assertStringStartsWith('assist', $pool->statusFor('/tmp/proj/a.php'));
@@ -649,8 +648,8 @@ final class LspSessionPoolTest extends TestCase
     public function testStopStopsEveryStartedSession(): void
     {
         $pool = $this->pool(self::SERVERS);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
-        $pool->notifyDidOpen('/tmp/proj/b.ts', 'y', 'typescript', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
+        $pool->notifyDidOpen('/tmp/proj/b.ts', text: 'y', languageId: 'typescript', version: 1);
 
         $pool->stop();
 
@@ -670,7 +669,7 @@ final class LspSessionPoolTest extends TestCase
     public function testSyncCallsRouteByPath(): void
     {
         $pool = $this->pool(self::SERVERS);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
         $phpClient = $this->clients[0]['client'];
 
         $doc = new Document('x');
@@ -713,7 +712,7 @@ final class LspSessionPoolTest extends TestCase
                 return true;
             },
         );
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
         $client = $this->clients[0]['client'];
 
         $client->notificationHandlers['textDocument/publishDiagnostics'](['uri' => 'file:///tmp/proj/a.php', 'diagnostics' => []]);
@@ -733,7 +732,7 @@ final class LspSessionPoolTest extends TestCase
         $pool = $this->pool([], configure: Presence::Without);
         $pool->reconfigure(self::SERVERS);
 
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'x', languageId: 'php', version: 1);
         $client = $this->clients[0]['client'];
 
         $this->assertFalse(($client->applyEditHandler)(['changes' => []]), 'the default apply-edit hook refuses the edit');
@@ -742,7 +741,7 @@ final class LspSessionPoolTest extends TestCase
     public function testReconfigureStopsSessionsAndRelaunchesUnderTheNewCommand(): void
     {
         $pool = $this->pool(self::SERVERS);
-        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: '<?php', languageId: 'php', version: 1);
         $old = $this->clients[0]['client'];
         $this->assertFalse($old->stopped);
 
@@ -750,7 +749,7 @@ final class LspSessionPoolTest extends TestCase
         $this->assertTrue($old->stopped, 'the running session is stopped');
 
         // The next didOpen relaunches under the new command.
-        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: '<?php', languageId: 'php', version: 1);
         $this->assertCount(2, $this->clients);
         $this->assertSame(['new-php-ls'], $this->clients[1]['command']);
         $this->assertSame('new-php-ls', $pool->statusFor('/tmp/proj/a.php'));
@@ -774,7 +773,7 @@ final class LspSessionPoolTest extends TestCase
     {
         $pool = $this->pool(self::TWO_ON_PHP);
 
-        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: '<?php', languageId: 'php', version: 1);
 
         $this->assertSame([['php-ls'], ['sf-ls']], \array_column($this->clients, 'command'));
         foreach ($this->clients as $built) {
@@ -796,7 +795,7 @@ final class LspSessionPoolTest extends TestCase
     public function testTheWholeDocumentLifecycleReachesEveryServer(): void
     {
         $pool = $this->pool(self::TWO_ON_PHP);
-        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: '<?php', languageId: 'php', version: 1);
         foreach ($this->clients as $built) {
             $built['client']->notifications = [];
         }
@@ -824,7 +823,7 @@ final class LspSessionPoolTest extends TestCase
     public function testAFeatureRequestGoesToTheLanguagesOwnServerOnly(): void
     {
         $pool = $this->pool(self::TWO_ON_PHP);
-        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: '<?php', languageId: 'php', version: 1);
         $this->activeFile->set('/tmp/proj/a.php');
 
         $pool->request('textDocument/definition', [], static function (mixed $result, ?array $error): void {});
@@ -842,7 +841,7 @@ final class LspSessionPoolTest extends TestCase
     public function testAFailingSecondServerLeavesTheFirstServing(): void
     {
         $pool = $this->pool(self::TWO_ON_PHP);
-        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: '<?php', languageId: 'php', version: 1);
         // The companion dies mid-session: the same start callback fires again.
         $died = $this->clients[1]['client']->lastOnReady;
         $this->assertNotNull($died);
@@ -863,7 +862,7 @@ final class LspSessionPoolTest extends TestCase
         $pool = $this->pool(self::TWO_ON_PHP);
         $this->assertSame('php-ls +sf-ls', $pool->statusFor('/tmp/proj/a.php'), 'before either starts, their names');
 
-        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: '<?php', languageId: 'php', version: 1);
         $died = $this->clients[1]['client']->lastOnReady;
         $this->assertNotNull($died);
         $died(Outcome::Failed);
@@ -887,7 +886,7 @@ final class LspSessionPoolTest extends TestCase
             ],
         ]);
 
-        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: '<?php', languageId: 'php', version: 1);
 
         $this->assertCount(1, $this->clients);
         $this->assertSame(['textDocument/didOpen'], \array_column($this->clients[0]['client']->notifications, 'method'), 'told once, not twice');
@@ -911,7 +910,7 @@ final class LspSessionPoolTest extends TestCase
             ],
         ]);
 
-        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: '<?php', languageId: 'php', version: 1);
 
         $this->assertSame([['php-ls'], ['sf-ls']], \array_column($this->clients, 'command'));
         foreach ($this->clients as $built) {
@@ -930,7 +929,7 @@ final class LspSessionPoolTest extends TestCase
     public function testANotRunningServerDoesNotHideTheOnesAfterIt(): void
     {
         $pool = $this->pool(self::TWO_ON_PHP);
-        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: '<?php', languageId: 'php', version: 1);
         $died = $this->clients[0]['client']->lastOnReady;
         $this->assertNotNull($died);
         $died(Outcome::Failed); // evicts the FIRST server's slot
@@ -968,10 +967,10 @@ final class LspSessionPoolTest extends TestCase
             $capabilities,
             $built,
         );
-        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: '<?php', languageId: 'php', version: 1);
         $this->activeFile->set('/tmp/proj/a.php');
 
-        $asked = $pool->requestAll('textDocument/codeLens', [], 'codeLensProvider', static function (mixed $r, ?array $e, string $o): void {});
+        $asked = $pool->requestAll('textDocument/codeLens', [], capability: 'codeLensProvider', onResult: static function (mixed $r, ?array $e, string $o): void {});
 
         $this->assertSame([1, 0, 1], \array_map(static fn (FakeLspClient $c): int => \count($c->requests), $built));
         $this->assertSame(2, $asked, 'it says how many it asked');
@@ -984,11 +983,11 @@ final class LspSessionPoolTest extends TestCase
     public function testReadyAnswersTheFirstServerNotTheLast(): void
     {
         $pool = $this->pool(self::TWO_ON_PHP);
-        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: '<?php', languageId: 'php', version: 1);
         // Only the SECOND is past initialize, so "the last one that answered"
         // and "the language's own server" give different answers. Written
         // through Probe because a client's readiness is its own to set.
-        Probe::set($this->clients[0]['client'], 'isInitialized', false);
+        Probe::set($this->clients[0]['client'], property: 'isInitialized', value: false);
 
         $this->assertNull($pool->ready('/tmp/proj/a.php', new Document('<?php')), 'the language\'s own server is not ready, so nothing is');
         $this->assertTrue($this->clients[1]['client']->isInitialized, 'the other one IS, which is what makes this a real distinction');
@@ -998,17 +997,17 @@ final class LspSessionPoolTest extends TestCase
     public function testAFollowUpToAServerThatIsGoneFailsAndGoesToNobodyElse(): void
     {
         $pool = $this->pool(self::TWO_ON_PHP);
-        $pool->notifyDidOpen('/tmp/proj/a.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: '<?php', languageId: 'php', version: 1);
         $this->activeFile->set('/tmp/proj/a.php');
         foreach ($this->clients as $built) {
             $built['client']->requests = [];
         }
 
         $error = null;
-        $pool->requestTo('a server that never existed', 'completionItem/resolve', [], static function (mixed $r, ?array $e) use (&$error): void {
+        $pool->requestTo('a server that never existed', method: 'completionItem/resolve', params: [], onResult: static function (mixed $r, ?array $e) use (&$error): void {
             $error = $e;
         });
-        $this->assertNull($pool->capabilityOf('a server that never existed', 'completionProvider'));
+        $this->assertNull($pool->capabilityOf('a server that never existed', name: 'completionProvider'));
         $this->await(static function () use (&$error): bool {
             return null !== $error;
         }, what: 'the answer');
@@ -1052,7 +1051,7 @@ final class LspSessionPoolTest extends TestCase
     public function testARelaunchDueAfterTheServersWereDisabledLaunchesNothing(): void
     {
         $pool = $this->pool(self::SERVERS);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'a', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'a', languageId: 'php', version: 1);
         $this->die(0);
 
         $pool->disable();
@@ -1064,7 +1063,7 @@ final class LspSessionPoolTest extends TestCase
     public function testARelaunchThatFailsToStartTellsItNothing(): void
     {
         $pool = $this->pool(self::SERVERS);
-        $pool->notifyDidOpen('/tmp/proj/a.php', 'a', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', text: 'a', languageId: 'php', version: 1);
         $this->die(0);
         $this->clientOutcome = Outcome::Failed;
 

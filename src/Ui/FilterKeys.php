@@ -30,12 +30,12 @@ enum FilterKeys
     /** What $data does to $field, the change already made. */
     public static function edit(TextField $field, string $data, Keybindings $kb): self
     {
-        if ($kb->matches($data, 'exit_view')) {
+        if ($kb->matches($data, action: 'exit_view')) {
             $field->clear();
 
             return self::Left;
         }
-        $backspace = $kb->matches($data, 'delete_char_backward');
+        $backspace = $kb->matches($data, action: 'delete_char_backward');
         $changed = $backspace ? $field->backspace() : $field->editKey($data, $kb) || $field->insert($data);
 
         return match (true) {

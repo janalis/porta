@@ -63,7 +63,7 @@ final class EditorPaneWidgetTest extends TestCase
         $handler = new RecordingViewerTabHandler();
         $pane->setHandler($handler);
 
-        $pane->scrollBy(1, 2);
+        $pane->scrollBy(1, dyHalfRows: 2);
 
         $this->assertSame(['view'], $handler->events, 'the status bar is told the view moved');
     }
@@ -73,9 +73,9 @@ final class EditorPaneWidgetTest extends TestCase
         // Every handler call is `?->`: a pane constructed in a test, or one
         // registered before the IDE wires its tab handler, must not fatal.
         $pane = $this->pane();
-        $this->assertNull(Probe::get($pane, 'handler'));
+        $this->assertNull(Probe::get($pane, property: 'handler'));
 
-        $pane->scrollBy(1, 2);
+        $pane->scrollBy(1, dyHalfRows: 2);
 
         $this->addToAssertionCount(1);
     }
@@ -88,12 +88,12 @@ final class EditorPaneWidgetTest extends TestCase
         $pane = $this->pane();
 
         $pane->forget('/p/anything.demo');
-        $pane->selectAt(3, 4);
+        $pane->selectAt(3, relCol: 4);
         $revision = $pane->getRenderRevision();
-        $pane->followSource(5, 2);
+        $pane->followSource(5, byteCol: 2);
         $pane->textBeside(true);
 
-        $this->assertFalse($pane->press(1, 2), 'a press takes focus and arms no drag');
+        $this->assertFalse($pane->press(1, relCol: 2), 'a press takes focus and arms no drag');
         $this->assertSame($revision, $pane->getRenderRevision(), 'nothing to follow, no text to speak for: nothing redrawn');
         $this->assertSame([], $pane->statusClicks(), 'its hints are only printed');
         $this->assertFalse($pane->runStatusAction('zoom_in'), 'so a status click is not its to run');
@@ -136,10 +136,10 @@ final class EditorPaneWidgetTest extends TestCase
     {
         $pane = $this->pane();
         $pane->render(new RenderContext(10, 2));
-        $before = Probe::get($pane, 'renderRevision');
+        $before = Probe::get($pane, property: 'renderRevision');
 
         $pane->refreshTheme();
 
-        $this->assertNotSame($before, Probe::get($pane, 'renderRevision'), 'the cached lines are dropped so baked SGR codes are re-made');
+        $this->assertNotSame($before, Probe::get($pane, property: 'renderRevision'), 'the cached lines are dropped so baked SGR codes are re-made');
     }
 }

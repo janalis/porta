@@ -94,7 +94,7 @@ final readonly class ToolInstaller
     public function install(ToolRequirement $tool, ToolSource $source, \Closure $onProgress, \Closure $onDone): void
     {
         ToolManager::Github === $source->manager
-            ? $this->download($tool, $source, null, '', $onProgress, $onDone)
+            ? $this->download($tool, $source, tag: null, was: '', onProgress: $onProgress, onDone: $onDone)
             : $this->manage($source, $source->manager->installArgs($source->package), ToolOutcome::Installed, $onDone);
     }
 

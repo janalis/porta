@@ -46,13 +46,13 @@ final class TestBottomDock
         $translator = new Translator('en');
         $panels->register(
             $debug,
-            'debug',
-            static function () use ($debug, $translator): string {
+            id: 'debug',
+            label: static function () use ($debug, $translator): string {
                 $title = $debug->getTitle();
 
                 return $translator->trans('Debug').('' === $title ? '' : ': '.$title);
             },
-            DockTab::Debug,
+            tab: DockTab::Debug,
         );
 
         $dock = new BottomDock(

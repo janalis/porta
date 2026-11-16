@@ -49,10 +49,10 @@ final class BreadcrumbsTogglesTest extends TestCase
         $this->mode = PreviewMode::Split;
         $bar = $this->bar();
 
-        $this->assertSame(\str_repeat(' ', times: 57).' Editor  [Split]  Preview  ', self::plain($bar, 84), 'right-aligned, a gap after each tag');
+        $this->assertSame(\str_repeat(' ', times: 57).' Editor  [Split]  Preview  ', self::plain($bar, columns: 84), 'right-aligned, a gap after each tag');
 
         $this->mode = null;
-        $this->assertSame('', self::plain($bar, 84), 'no preview, no scope: no bar at all');
+        $this->assertSame('', self::plain($bar, columns: 84), 'no preview, no scope: no bar at all');
     }
 
     public function testTheTogglesSitBesideTheTrail(): void
@@ -61,7 +61,7 @@ final class BreadcrumbsTogglesTest extends TestCase
         $bar = $this->bar();
         $bar->setProvider(static fn (): array => [['label' => 'Intro', 'line' => 3]]);
 
-        $row = self::plain($bar, 60);
+        $row = self::plain($bar, columns: 60);
         $this->assertStringStartsWith(' Intro', $row);
         $this->assertStringEndsWith('[Editor]  Split   Preview  ', $row);
         $this->assertSame(60, AnsiUtils::visibleWidth($row));
@@ -71,7 +71,7 @@ final class BreadcrumbsTogglesTest extends TestCase
     {
         $this->mode = PreviewMode::Split;
         $bar = $this->bar();
-        $row = self::plain($bar, 84);
+        $row = self::plain($bar, columns: 84);
 
         $this->assertSame(PreviewMode::Preview, $bar->previewModeAt(\strpos($row, needle: 'Preview')));
         $this->assertSame(PreviewMode::Editor, $bar->previewModeAt(\strpos($row, needle: 'Editor') - 1), 'a tag is its whole box, its padding too');
@@ -87,7 +87,7 @@ final class BreadcrumbsTogglesTest extends TestCase
     {
         $this->mode = PreviewMode::Split;
         $bar = $this->bar();
-        $row = self::plain($bar, 84);
+        $row = self::plain($bar, columns: 84);
         $preview = (int) \strpos($row, needle: 'Preview');
 
         $this->assertTrue($bar->hoverAt($preview), 'onto a toggle');
@@ -101,7 +101,7 @@ final class BreadcrumbsTogglesTest extends TestCase
         $this->mode = PreviewMode::Split;
         $bar = $this->bar();
 
-        $this->assertSame(\str_repeat(' ', times: 20), self::plain($bar, 20));
+        $this->assertSame(\str_repeat(' ', times: 20), self::plain($bar, columns: 20));
         $this->assertNull($bar->previewModeAt(10), 'and none can be clicked');
     }
 
@@ -125,7 +125,7 @@ final class BreadcrumbsTogglesTest extends TestCase
         $this->mode = PreviewMode::Preview;
         $bar = $this->bar('fr');
 
-        $this->assertStringContainsString('[Aperçu]', self::plain($bar, 84));
+        $this->assertStringContainsString('[Aperçu]', self::plain($bar, columns: 84));
     }
 
     public function testTheHoveredToggleIsDrawnHoveredAndNoOther(): void
@@ -133,7 +133,7 @@ final class BreadcrumbsTogglesTest extends TestCase
         $this->mode = PreviewMode::Split;
         $bar = $this->bar();
         $render = static fn (): string => \implode('', $bar->render(new RenderContext(84, 1)));
-        $row = self::plain($bar, 84);
+        $row = self::plain($bar, columns: 84);
         $rest = $render();
 
         $bar->hoverAt((int) \strpos($row, needle: 'Preview'));
@@ -156,7 +156,7 @@ final class BreadcrumbsTogglesTest extends TestCase
         $this->mode = PreviewMode::Split;
         $bar = $this->bar();
         $bar->setProvider(static fn (): array => [['label' => 'Intro', 'line' => 3]]);
-        $row = self::plain($bar, 60);
+        $row = self::plain($bar, columns: 60);
 
         $this->assertTrue($bar->hoverAt(1), 'onto the first crumb');
         $this->assertTrue($bar->hoverAt((int) \strpos($row, needle: 'Split')), 'onto the second toggle: a change, whatever the indices');
@@ -167,8 +167,8 @@ final class BreadcrumbsTogglesTest extends TestCase
         $this->mode = PreviewMode::Split;
         $bar = $this->bar();
 
-        $this->assertSame('  Editor  [Split]  Preview  ', self::plain($bar, 28), 'the leading space is all there is');
-        $this->assertSame(\str_repeat(' ', times: 27), self::plain($bar, 27));
+        $this->assertSame('  Editor  [Split]  Preview  ', self::plain($bar, columns: 28), 'the leading space is all there is');
+        $this->assertSame(\str_repeat(' ', times: 27), self::plain($bar, columns: 27));
     }
 
     public function testARenderWithoutTogglesForgetsTheLastOnesColumns(): void
@@ -176,10 +176,10 @@ final class BreadcrumbsTogglesTest extends TestCase
         $this->mode = PreviewMode::Split;
         $bar = $this->bar();
         $bar->setProvider(static fn (): array => [['label' => 'Intro', 'line' => 3]]);
-        $at = (int) \strpos(self::plain($bar, 60), needle: 'Split');
+        $at = (int) \strpos(self::plain($bar, columns: 60), needle: 'Split');
 
         $this->mode = null;
-        self::plain($bar, 60);
+        self::plain($bar, columns: 60);
 
         $this->assertNull($bar->previewModeAt($at), 'no toggles drawn, none to click');
     }
@@ -192,10 +192,10 @@ final class BreadcrumbsTogglesTest extends TestCase
 
         $bar->hide();
 
-        $row = self::plain($bar, 60);
+        $row = self::plain($bar, columns: 60);
         $this->assertStringNotContainsString('Intro', $row, 'the setting is about the trail');
         $this->assertStringEndsWith(' Editor  [Split]  Preview  ', $row, 'the toggles are the way to the preview, and stay');
         $this->mode = null;
-        $this->assertSame('', self::plain($bar, 60), 'hidden, with nothing to toggle: no bar');
+        $this->assertSame('', self::plain($bar, columns: 60), 'hidden, with nothing to toggle: no bar');
     }
 }

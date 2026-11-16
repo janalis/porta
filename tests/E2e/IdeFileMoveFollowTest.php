@@ -74,7 +74,7 @@ final class IdeFileMoveFollowTest extends TestCase
             $project->path('src/Bar.php'),
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
-                    $this->awaitLspReady($tui, $terminal, 'file-rename-lsp-server');
+                    $this->awaitLspReady($tui, $terminal, server: 'file-rename-lsp-server');
 
                     // Neither is announced: a text file is not one the server
                     // registered for, nor is a folder, even one named like a PHP file.
@@ -83,7 +83,7 @@ final class IdeFileMoveFollowTest extends TestCase
                     $this->assertStringNotContainsString('willRenameFiles', self::requests($project));
 
                     self::move($ide, $project, 'src/Foo.php');
-                    $this->awaitPainted($tui, $terminal, 'Updated 2 files for the move');
+                    $this->awaitPainted($tui, $terminal, needle: 'Updated 2 files for the move');
                     $this->assertSame(
                         "<?php\nnamespace App\\Sub;\nfinal class Foo {}\n",
                         (string) \file_get_contents($project->path('src/Sub/Foo.php')),
@@ -112,7 +112,7 @@ final class IdeFileMoveFollowTest extends TestCase
                 $project->path('src/Bar.php'),
                 [
                     100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project, $said): void {
-                        $this->awaitLspReady($tui, $terminal, 'file-rename-lsp-server');
+                        $this->awaitLspReady($tui, $terminal, server: 'file-rename-lsp-server');
                         self::move($ide, $project, 'src/Foo.php');
                         $this->await(static fn (): bool => \str_contains(self::requests($project), 'willRenameFiles'), what: 'the server to be asked');
                         if (null !== $said) {
@@ -147,7 +147,7 @@ final class IdeFileMoveFollowTest extends TestCase
                 $project->path('src/Bar.php'),
                 [
                     100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project, $said, $moved, $mode): void {
-                        $this->awaitLspReady($tui, $terminal, 'file-rename-lsp-server');
+                        $this->awaitLspReady($tui, $terminal, server: 'file-rename-lsp-server');
                         self::move($ide, $project, 'src/Foo.php');
                         $this->awaitPainted($tui, $terminal, $said);
                         $this->assertSame(

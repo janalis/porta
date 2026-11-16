@@ -13,13 +13,13 @@ final class BreakpointStoreTest extends TestCase
     {
         $store = new BreakpointStore();
 
-        $this->assertTrue($store->toggle('/p/a.php', 9));
-        $this->assertTrue($store->toggle('/p/a.php', 3));
-        $this->assertTrue($store->toggle('/p/b.php', 3));
+        $this->assertTrue($store->toggle('/p/a.php', line: 9));
+        $this->assertTrue($store->toggle('/p/a.php', line: 3));
+        $this->assertTrue($store->toggle('/p/b.php', line: 3));
         $this->assertSame([3, 9], $store->linesFor('/p/a.php'), 'ascending order');
         $this->assertSame([3], $store->linesFor('/p/b.php'), 'files are isolated');
 
-        $this->assertFalse($store->toggle('/p/a.php', 9), 'second toggle clears');
+        $this->assertFalse($store->toggle('/p/a.php', line: 9), 'second toggle clears');
         $this->assertSame([3], $store->linesFor('/p/a.php'));
         $this->assertSame([], $store->linesFor('/p/unknown.php'));
     }
@@ -27,12 +27,12 @@ final class BreakpointStoreTest extends TestCase
     public function testConditionsCreateEditAndClearWithTheBreakpoint(): void
     {
         $store = new BreakpointStore();
-        $store->toggle('/p/a.php', 3);
-        $this->assertSame(['condition' => null, 'hitCondition' => null, 'logMessage' => null], $store->conditionAt('/p/a.php', 3));
-        $this->assertNull($store->conditionAt('/p/a.php', 9), 'no breakpoint, no condition record');
+        $store->toggle('/p/a.php', line: 3);
+        $this->assertSame(['condition' => null, 'hitCondition' => null, 'logMessage' => null], $store->conditionAt('/p/a.php', line: 3));
+        $this->assertNull($store->conditionAt('/p/a.php', line: 9), 'no breakpoint, no condition record');
 
-        $store->setDetails('/p/a.php', 3, '$x > 1', null, null);
-        $store->setDetails('/p/a.php', 7, null, '5', null); // creates the breakpoint on a bare line
+        $store->setDetails('/p/a.php', line: 3, condition: '$x > 1', hitCondition: null, logMessage: null);
+        $store->setDetails('/p/a.php', line: 7, condition: null, hitCondition: '5', logMessage: null); // creates the breakpoint on a bare line
         $this->assertSame([3, 7], $store->linesFor('/p/a.php'));
         $this->assertSame([3, 7], $store->conditionalLinesFor('/p/a.php'));
         $this->assertSame(
@@ -43,12 +43,12 @@ final class BreakpointStoreTest extends TestCase
             $store->breakpointsFor('/p/a.php'),
         );
 
-        $store->setDetails('/p/a.php', 3, null, null, null); // cleared: still a breakpoint, no longer conditional
+        $store->setDetails('/p/a.php', line: 3, condition: null, hitCondition: null, logMessage: null); // cleared: still a breakpoint, no longer conditional
         $this->assertSame([3, 7], $store->linesFor('/p/a.php'));
         $this->assertSame([7], $store->conditionalLinesFor('/p/a.php'));
 
-        $store->toggle('/p/a.php', 7); // off — the condition dies with it
-        $store->toggle('/p/a.php', 7); // back on: unconditional again
+        $store->toggle('/p/a.php', line: 7); // off — the condition dies with it
+        $store->toggle('/p/a.php', line: 7); // back on: unconditional again
         $this->assertSame([], $store->conditionalLinesFor('/p/a.php'));
     }
 
@@ -58,23 +58,23 @@ final class BreakpointStoreTest extends TestCase
         // Inserted out of ascending order, on purpose: both accessors sort
         // their result, and inserting in order would let a missing sort()
         // pass unnoticed.
-        $store->setDetails('/p/a.php', 8, '$x > 1', null, null);
-        $store->setDetails('/p/a.php', 2, '$y > 1', null, null);
-        $store->setDetails('/p/a.php', 4, null, null, 'x={$x}');
-        $store->setDetails('/p/a.php', 1, null, null, 'y={$y}');
+        $store->setDetails('/p/a.php', line: 8, condition: '$x > 1', hitCondition: null, logMessage: null);
+        $store->setDetails('/p/a.php', line: 2, condition: '$y > 1', hitCondition: null, logMessage: null);
+        $store->setDetails('/p/a.php', line: 4, condition: null, hitCondition: null, logMessage: 'x={$x}');
+        $store->setDetails('/p/a.php', line: 1, condition: null, hitCondition: null, logMessage: 'y={$y}');
 
         $this->assertSame([1, 4], $store->logpointLinesFor('/p/a.php'), 'ascending, not insertion order');
         $this->assertSame([2, 8], $store->conditionalLinesFor('/p/a.php'), 'ascending, not insertion order');
-        $this->assertSame('x={$x}', $store->conditionAt('/p/a.php', 4)['logMessage'] ?? null);
+        $this->assertSame('x={$x}', $store->conditionAt('/p/a.php', line: 4)['logMessage'] ?? null);
     }
 
     public function testAllDropsEmptiedFilesAndClearEmptiesEverything(): void
     {
         $store = new BreakpointStore();
-        $store->toggle('/p/a.php', 1);
-        $store->toggle('/p/c.php', 5);
-        $store->toggle('/p/b.php', 2);
-        $store->toggle('/p/b.php', 2); // toggles off → the file disappears
+        $store->toggle('/p/a.php', line: 1);
+        $store->toggle('/p/c.php', line: 5);
+        $store->toggle('/p/b.php', line: 2);
+        $store->toggle('/p/b.php', line: 2); // toggles off → the file disappears
 
         $this->assertSame(
             [
@@ -91,14 +91,14 @@ final class BreakpointStoreTest extends TestCase
     public function testRenameCarriesBreakpointsAndTheirConditionsToTheNewPath(): void
     {
         $store = new BreakpointStore();
-        $store->toggle('/p/Old.php', 3);
-        $store->setDetails('/p/Old.php', 3, '$x > 1', null, null);
-        $store->toggle('/p/Other.php', 1);
+        $store->toggle('/p/Old.php', line: 3);
+        $store->setDetails('/p/Old.php', line: 3, condition: '$x > 1', hitCondition: null, logMessage: null);
+        $store->toggle('/p/Other.php', line: 1);
 
-        $store->rename('/p/Old.php', '/p/New.php');
+        $store->rename('/p/Old.php', to: '/p/New.php');
 
         $this->assertSame([3], $store->linesFor('/p/New.php'));
-        $this->assertSame('$x > 1', $store->conditionAt('/p/New.php', 3)['condition'], 'the condition came with it');
+        $this->assertSame('$x > 1', $store->conditionAt('/p/New.php', line: 3)['condition'], 'the condition came with it');
         $this->assertSame([], $store->linesFor('/p/Old.php'));
         $this->assertSame([1], $store->linesFor('/p/Other.php'), 'its neighbour is untouched');
     }
@@ -106,9 +106,9 @@ final class BreakpointStoreTest extends TestCase
     public function testRenamingAFileWithNoBreakpointsAddsNoEmptyEntry(): void
     {
         $store = new BreakpointStore();
-        $store->toggle('/p/Other.php', 1);
+        $store->toggle('/p/Other.php', line: 1);
 
-        $store->rename('/p/Unmarked.php', '/p/Renamed.php');
+        $store->rename('/p/Unmarked.php', to: '/p/Renamed.php');
 
         $this->assertSame(['/p/Other.php'], \array_keys($store->all()));
     }
@@ -119,9 +119,9 @@ final class BreakpointStoreTest extends TestCase
         // fixture with every match at the front cannot tell "skip this one"
         // from "stop here".
         $store = new BreakpointStore();
-        $store->toggle('/p/olden/b.php', 1);
-        $store->toggle('/p/old/a.php', 1);
-        $store->setDetails('/p/old/a.php', 3, 'i > 2', null, null);
+        $store->toggle('/p/olden/b.php', line: 1);
+        $store->toggle('/p/old/a.php', line: 1);
+        $store->setDetails('/p/old/a.php', line: 3, condition: 'i > 2', hitCondition: null, logMessage: null);
 
         $store->forget('/p/old');
 
@@ -132,12 +132,12 @@ final class BreakpointStoreTest extends TestCase
     public function testRenamingADirectoryMovesTheBreakpointsInsideIt(): void
     {
         $store = new BreakpointStore();
-        $store->toggle('/p/olden/b.php', 1);
-        $store->setDetails('/p/old/a.php', 2, 'i > 2', null, null);
+        $store->toggle('/p/olden/b.php', line: 1);
+        $store->setDetails('/p/old/a.php', line: 2, condition: 'i > 2', hitCondition: null, logMessage: null);
 
-        $store->rename('/p/old', '/p/new');
+        $store->rename('/p/old', to: '/p/new');
 
-        $this->assertSame(['condition' => 'i > 2', 'hitCondition' => null, 'logMessage' => null], $store->conditionAt('/p/new/a.php', 2), 'the condition came with it');
+        $this->assertSame(['condition' => 'i > 2', 'hitCondition' => null, 'logMessage' => null], $store->conditionAt('/p/new/a.php', line: 2), 'the condition came with it');
         $this->assertSame([], $store->linesFor('/p/old/a.php'));
         $this->assertSame([1], $store->linesFor('/p/olden/b.php'));
     }

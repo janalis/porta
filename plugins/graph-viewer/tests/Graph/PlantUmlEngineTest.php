@@ -55,7 +55,7 @@ final class PlantUmlEngineTest extends TestCase
         $engine = new PlantUmlEngine(\sys_get_temp_dir(), self::stub());
         $this->assertSame(96, $engine->baseDpi(), "PlantUML's natural size, not graphviz's 72");
 
-        [$png, $error] = $this->render($engine, self::SMALL_UML, 192);
+        [$png, $error] = $this->render($engine, self::SMALL_UML, dpi: 192);
         $this->assertNull($error);
         $image = new ImageDecoder()->decodeBytes((string) $png);
         $this->assertInstanceOf(ImageData::class, $image, 'the bytes decode as an image — no temp file in between');
@@ -68,7 +68,7 @@ final class PlantUmlEngineTest extends TestCase
         // -failfast2 is what makes this an ERROR: by default PlantUML draws the
         // message into the image and exits 0, which would reach the pane as a
         // perfectly valid picture of a mistake.
-        [$png, $error] = $this->render(new PlantUmlEngine(\sys_get_temp_dir(), self::stub()), "@startuml\nbroken\n@enduml", 96);
+        [$png, $error] = $this->render(new PlantUmlEngine(\sys_get_temp_dir(), self::stub()), source: "@startuml\nbroken\n@enduml", dpi: 96);
 
         $this->assertNull($png);
         $this->assertStringContainsString('Syntax Error', (string) $error);
@@ -83,19 +83,19 @@ final class PlantUmlEngineTest extends TestCase
         };
         $engine->render(
             self::SMALL_UML,
-            96,
-            static function () use (&$fired): void {
+            dpi: 96,
+            onPng: static function () use (&$fired): void {
                 $fired[] = 'first';
             },
-            $onError,
+            onError: $onError,
         );
         $engine->render(
             self::SMALL_UML,
-            192,
-            static function () use (&$fired): void {
+            dpi: 192,
+            onPng: static function () use (&$fired): void {
                 $fired[] = 'second';
             },
-            $onError,
+            onError: $onError,
         );
         $this->await(static function () use (&$fired): bool {
             return [] !== $fired;
@@ -112,7 +112,7 @@ final class PlantUmlEngineTest extends TestCase
         $mark = static function () use (&$fired): void {
             $fired = true;
         };
-        $engine->render(self::SMALL_UML, 96, $mark, $mark);
+        $engine->render(self::SMALL_UML, dpi: 96, onPng: $mark, onError: $mark);
         $engine->cancel();
         $engine->cancel();
         $this->pump(0.2);
@@ -126,12 +126,12 @@ final class PlantUmlEngineTest extends TestCase
         $engine = new PlantUmlEngine(\sys_get_temp_dir());
         $this->assertNull($engine->binary());
 
-        [$png, $error] = $this->render($engine, self::SMALL_UML, 96);
+        [$png, $error] = $this->render($engine, self::SMALL_UML, dpi: 96);
         $this->assertNull($error);
         $expected = Work::run(new NativeRenderer(PlantUmlPipeline::native())->image(self::SMALL_UML, Format::Png));
         $this->assertSame($expected, $png, 'drawn by viz at its own 1:1, which is PlantUML\'s 96 dpi');
 
-        [$png, $error] = $this->render($engine, "@startuml\n!include local.puml\nBob -> Alice\n@enduml\n", 96);
+        [$png, $error] = $this->render($engine, source: "@startuml\n!include local.puml\nBob -> Alice\n@enduml\n", dpi: 96);
         $this->assertNull($png);
         $this->assertStringContainsString('leaves !include of a file or a URL to PlantUML', (string) $error);
     }
@@ -202,7 +202,7 @@ final class PlantUmlEngineTest extends TestCase
             new Filesystem()->remove($out);
         }
         $error = $this->awaitString(static function (\Closure $done) use ($engine): void {
-            $engine->export(self::SMALL_UML, Format::Pdf, '/nonexistent/seq.pdf', static fn (?string $error) => $done($error ?? ''));
+            $engine->export(self::SMALL_UML, Format::Pdf, outPath: '/nonexistent/seq.pdf', onDone: static fn (?string $error) => $done($error ?? ''));
         });
         $this->assertStringContainsString('/nonexistent', $error, 'a write that fails says why');
 
@@ -221,11 +221,11 @@ final class PlantUmlEngineTest extends TestCase
         });
         $engine->render(
             self::SMALL_UML,
-            96,
-            static function () use (&$fired): void {
+            dpi: 96,
+            onPng: static function () use (&$fired): void {
                 $fired = true;
             },
-            static function () use (&$fired): void {
+            onError: static function () use (&$fired): void {
                 $fired = true;
             },
         );

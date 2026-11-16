@@ -55,7 +55,7 @@ final class BlockPasteTest extends TestCase
         $mc = new MultiCaret($doc, self::noop(), self::noop());
         self::caretsDown($doc, $mc, 1, 0, 1, 2);
 
-        self::paste($mc, "X\nY\nZ");
+        self::paste($mc, clipboard: "X\nY\nZ");
 
         $this->assertSame("aX\nbY\ncZ\n", $doc->getText());
     }
@@ -69,7 +69,7 @@ final class BlockPasteTest extends TestCase
         $mc = new MultiCaret($doc, self::noop(), self::noop());
         self::caretsDown($doc, $mc, 1, 0, 1, 2);
 
-        self::paste($mc, "1\n2\n3");
+        self::paste($mc, clipboard: "1\n2\n3");
 
         $this->assertSame("a1\nb2\nc3\n", $doc->getText());
     }
@@ -80,10 +80,10 @@ final class BlockPasteTest extends TestCase
         // reading order disagree.
         $doc = new Document("a\nb\nc\n");
         $mc = new MultiCaret($doc, self::noop(), self::noop());
-        $doc->setCursor(2, 1);
-        $mc->setExtras([Caret::point(0, 1), Caret::point(1, 1)]);
+        $doc->setCursor(2, col: 1);
+        $mc->setExtras([Caret::point(0, col: 1), Caret::point(1, col: 1)]);
 
-        self::paste($mc, "1\n2\n3");
+        self::paste($mc, clipboard: "1\n2\n3");
 
         $this->assertSame("a1\nb2\nc3\n", $doc->getText());
     }
@@ -96,7 +96,7 @@ final class BlockPasteTest extends TestCase
         $mc = new MultiCaret($doc, self::noop(), self::noop());
         self::caretsDown($doc, $mc, 1, 0, 1, 2);
 
-        self::paste($mc, "X\nY");
+        self::paste($mc, clipboard: "X\nY");
 
         $this->assertSame("aX\nY\nbX\nY\ncX\nY\n", $doc->getText());
     }
@@ -109,7 +109,7 @@ final class BlockPasteTest extends TestCase
         $mc = new MultiCaret($doc, self::noop(), self::noop());
         self::caretsDown($doc, $mc, 1, 0, 1, 2);
 
-        self::paste($mc, 'X');
+        self::paste($mc, clipboard: 'X');
 
         $this->assertSame("aX\nbX\ncX\n", $doc->getText());
     }
@@ -119,7 +119,7 @@ final class BlockPasteTest extends TestCase
         // The round trip itself, through the real copy verb.
         $doc = new Document("12\n34\n56\n");
         $mc = new MultiCaret($doc, self::noop(), self::noop());
-        $doc->setSelectionRange(0, 0, 0, 1);
+        $doc->setSelectionRange(0, startCol: 0, endLine: 0, endCol: 1);
         $mc->setExtras([new Caret(line: 1, col: 1, anchorLine: 1, anchorCol: 0), new Caret(line: 2, col: 1, anchorLine: 2, anchorCol: 0)]);
 
         $copied = $mc->selectedBlockText();

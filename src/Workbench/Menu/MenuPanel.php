@@ -167,8 +167,8 @@ final class MenuPanel
     {
         return IntMath::clamp(
             IntMath::clamp($scroll, $selected - $visibleRows + 1, $selected),
-            0,
-            \max(0, $count - $visibleRows),
+            lo: 0,
+            hi: \max(0, $count - $visibleRows),
         );
     }
 

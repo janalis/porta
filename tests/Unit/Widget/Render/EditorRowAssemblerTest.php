@@ -206,7 +206,7 @@ final class EditorRowAssemblerTest extends TestCase
     {
         $doc = new Document("a\nb\nc\nd\ne\n");
         [$assembler, $foldModel] = $this->assembler($doc);
-        $doc->setCursor(1, 0);
+        $doc->setCursor(1, col: 0);
         $foldModel->setRegions([[1, 3]], $doc->version); // fold covering lines 1-3, 2 lines hidden past the start
         $foldModel->toggle(); // caret sits on line 1, collapses that region
         $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 20, stripeCol: 0);
@@ -224,7 +224,7 @@ final class EditorRowAssemblerTest extends TestCase
     {
         $doc = new Document("a\nb\nc\nd\n");
         [$assembler, $foldModel] = $this->assembler($doc, translator: new Translator('fr'));
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $foldModel->setRegions([[0, 1], [2, 3]], $doc->version);
         $foldModel->toggle();
         $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 20, stripeCol: 0);
@@ -255,7 +255,7 @@ final class EditorRowAssemblerTest extends TestCase
         // equivalent here; this just exercises the padding branch at all).
         $doc = new Document("ab\n");
         [$assembler] = $this->assembler($doc);
-        $decorations = new EditorDecorations(false, null, [Caret::point(0, 5)], [], null);
+        $decorations = new EditorDecorations(false, null, [Caret::point(0, col: 5)], [], null);
         $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 20, stripeCol: 0);
 
         $rows = $assembler->assemble($geo, $decorations, sticky: [], highlighted: ['ab'], stripe: [''], contentRows: 1, vScroll: 0, cursorLine: -1, cursorDisplayCol: 0, hScroll: 0);
@@ -354,7 +354,7 @@ final class EditorRowAssemblerTest extends TestCase
     public function testWithoutColourTheGutterMarksTheCaretLine(): void
     {
         $doc = new Document("a\nb\n");
-        $doc->setCursor(1, 0);
+        $doc->setCursor(1, col: 0);
         $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 5, stripeCol: 0);
         [$mono] = $this->assembler($doc, styles: new Styles(MonochromeTheme::definition()));
         $rows = $mono->assemble($geo, $this->noSelection(), sticky: [], highlighted: ['a', 'b'], stripe: ['', ''], contentRows: 2, vScroll: 0, cursorLine: 1, cursorDisplayCol: 0, hScroll: 0);
@@ -367,7 +367,7 @@ final class EditorRowAssemblerTest extends TestCase
         [$colour] = $this->assembler($doc);
         $rows = $colour->assemble($geo, $this->noSelection(), sticky: [], highlighted: ['a', 'b'], stripe: ['', ''], contentRows: 2, vScroll: 0, cursorLine: 1, cursorDisplayCol: 0, hScroll: 0);
         $this->assertStringNotContainsString(Glyphs::CARET_LINE, AnsiUtils::stripAnsiCodes($rows[1]), 'the band says it');
-        $this->assertStringContainsString("\e[1m", AnsiUtils::sliceByColumn($rows[1], 0, 2), 'and the number is bold here too');
+        $this->assertStringContainsString("\e[1m", AnsiUtils::sliceByColumn($rows[1], startCol: 0, length: 2), 'and the number is bold here too');
     }
 
     /**
@@ -403,7 +403,7 @@ final class EditorRowAssemblerTest extends TestCase
     /** @return array{?string, ?string} the pen a role draws in */
     private static function pen(Styles $styles, Role $role): array
     {
-        return self::penAt($styles->of($role)->apply('X'), 'X');
+        return self::penAt($styles->of($role)->apply('X'), text: 'X');
     }
 
     /** @return list<string> each row's gutter cells, $gutterWidth wide */
@@ -437,7 +437,7 @@ final class EditorRowAssemblerTest extends TestCase
             hScroll: 0,
         );
 
-        return \array_map(static fn (string $row): string => AnsiUtils::sliceByColumn($row, 0, 5), $out);
+        return \array_map(static fn (string $row): string => AnsiUtils::sliceByColumn($row, startCol: 0, length: 5), $out);
     }
 
     /** A problem's line number says it by colour alone: the worst severity's tint, never a glyph. */
@@ -453,9 +453,9 @@ final class EditorRowAssemblerTest extends TestCase
         $styles = Styles::dark();
         $gutters = $this->gutters($store, $doc, $styles, rows: 4);
 
-        $this->assertSame(self::pen($styles, Role::GutterError), self::penAt($gutters[0], '1'), 'an error over a warning on the same line');
-        $this->assertSame(self::pen($styles, Role::GutterNotice), self::penAt($gutters[1], '2'), 'a notice');
-        $this->assertSame([self::pen($styles, Role::Gutter)[0], self::pen($styles, Role::GutterBg)[1]], self::penAt($gutters[2], '3'), 'a hint marks nothing');
+        $this->assertSame(self::pen($styles, Role::GutterError), self::penAt($gutters[0], text: '1'), 'an error over a warning on the same line');
+        $this->assertSame(self::pen($styles, Role::GutterNotice), self::penAt($gutters[1], text: '2'), 'a notice');
+        $this->assertSame([self::pen($styles, Role::Gutter)[0], self::pen($styles, Role::GutterBg)[1]], self::penAt($gutters[2], text: '3'), 'a hint marks nothing');
         foreach ($gutters as $gutter) {
             $this->assertMatchesRegularExpression('/^ *\d+ *$/', AnsiUtils::stripAnsiCodes($gutter), 'the number alone: no glyph beside it');
             $this->assertMatchesRegularExpression('/^(\e\[[0-9;]*m)*\e\[48;5;(234|203|220)m/', $gutter, 'every row on the gutter\'s shade or its tint, from its first cell');
@@ -469,7 +469,7 @@ final class EditorRowAssemblerTest extends TestCase
         $store->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'w', 'col' => 0]]]);
         $styles = Styles::dark();
 
-        $this->assertSame(self::pen($styles, Role::GutterWarning), self::penAt($this->gutters($store, $doc, $styles, rows: 1)[0], '1'));
+        $this->assertSame(self::pen($styles, Role::GutterWarning), self::penAt($this->gutters($store, $doc, $styles, rows: 1)[0], text: '1'));
     }
 
     /** While hints show as cards, a line that has some is faintly tinted; a problem outranks it, and in the line itself they need no tint. */
@@ -484,13 +484,13 @@ final class EditorRowAssemblerTest extends TestCase
 
         $display->setInlayHints(InlayHintMode::Tooltip);
         $cards = $this->gutters($store, $doc, $styles, $display, rows: 2);
-        $this->assertSame(self::pen($styles, Role::GutterInlay), self::penAt($cards[0], '1'));
-        $this->assertSame(self::pen($styles, Role::GutterError), self::penAt($cards[1], '2'), 'the problem outranks the hint');
+        $this->assertSame(self::pen($styles, Role::GutterInlay), self::penAt($cards[0], text: '1'));
+        $this->assertSame(self::pen($styles, Role::GutterError), self::penAt($cards[1], text: '2'), 'the problem outranks the hint');
 
         $display->setInlayHints(InlayHintMode::Inline);
         $this->assertSame(
             [self::pen($styles, Role::Gutter)[0], self::pen($styles, Role::GutterBg)[1]],
-            self::penAt($this->gutters($store, $doc, $styles, $display, rows: 2)[0], '1'),
+            self::penAt($this->gutters($store, $doc, $styles, $display, rows: 2)[0], text: '1'),
             'hints in the line: no tint',
         );
     }

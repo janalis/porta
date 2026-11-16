@@ -29,7 +29,7 @@ trait ExercisesPresence
 
     private function assertTwoInstancesSeeEachOther(PresencePeer $ada, PresencePeer $bo): void
     {
-        $ada->at('src/A.php', 1);
+        $ada->at('src/A.php', line: 1);
         $this->look($ada);
         $this->look($bo);
         Assert::assertSame(['Ada' => 1], $bo->sees(), 'Bo sees Ada, on her line');
@@ -40,7 +40,7 @@ trait ExercisesPresence
 
         // One line down — likely in the same second, at the same size: the
         // listing's stamp cannot tell, and a look once it settled must.
-        $ada->at('src/A.php', 2);
+        $ada->at('src/A.php', line: 2);
         $this->look($ada);
         $this->await(function () use ($bo): bool {
             $this->look($bo);
@@ -54,14 +54,14 @@ trait ExercisesPresence
         $bo->events->dispatched = [];
         $server->stop();
         $this->look($bo);
-        Assert::assertArrayHasKey(PresenceSync::SOURCE, Probe::array($bo->participants, 'lost'), 'out of touch');
+        Assert::assertArrayHasKey(PresenceSync::SOURCE, Probe::array($bo->participants, property: 'lost'), 'out of touch');
         Assert::assertSame(['Ada' => 2], $bo->sees(), 'Ada stays, as last seen');
         Assert::assertCount(1, $bo->events->take(AgentLeft::class), 'without her caret: where she was is not where she is');
 
         $server->start();
         $bo->wait(Backoff::after(0)); // a lost server is looked at again after a backoff, not every tick
         $this->look($bo);
-        Assert::assertArrayNotHasKey(PresenceSync::SOURCE, Probe::array($bo->participants, 'lost'), 'back in touch');
+        Assert::assertArrayNotHasKey(PresenceSync::SOURCE, Probe::array($bo->participants, property: 'lost'), 'back in touch');
         Assert::assertSame(['Ada' => 2], $bo->sees());
         Assert::assertCount(1, $bo->events->take(AgentActivity::class), 'and her caret with her');
         $this->look($bo);
@@ -98,7 +98,7 @@ trait ExercisesPresence
         $this->look($bo);
         Assert::assertSame([], $bo->sees(), 'Ada stopped saying she is here: three heartbeats, and she is gone');
 
-        $ada->at('src/A.php', 3);
+        $ada->at('src/A.php', line: 3);
         $this->look($ada);
         $this->await(function () use ($bo): bool {
             $this->look($bo);

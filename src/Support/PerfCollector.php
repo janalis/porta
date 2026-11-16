@@ -93,7 +93,7 @@ final class PerfCollector
         ?\Closure $loadAvg = null,
         private readonly ?BootTrace $bootTrace = null,
     ) {
-        $this->log = DiagnosticLog::forRoot($rootDir, 'perf', $clock);
+        $this->log = DiagnosticLog::forRoot($rootDir, channel: 'perf', clock: $clock);
         // mago's sys_getloadavg() stub returns an untyped array, so its element
         // is `mixed`. Narrowed rather than cast: is_numeric() is a branch the
         // analyzer can follow, where `(float) $mixed` is not.
@@ -255,20 +255,20 @@ final class PerfCollector
             $this->paceSkips,
             $this->capSkips,
             $this->coalesced,
-            self::ms($this->passGaps, 0.50),
-            self::ms($this->passGaps, 0.95),
+            self::ms($this->passGaps, q: 0.50),
+            self::ms($this->passGaps, q: 0.95),
             [] === $this->passGaps ? self::NO_SAMPLES : \sprintf('%.1f', 1000 * \max($this->passGaps)),
-            self::ms($this->paintDurations, 0.50),
-            self::ms($this->paintDurations, 0.95),
+            self::ms($this->paintDurations, q: 0.50),
+            self::ms($this->paintDurations, q: 0.95),
             (int) (1000 * \array_sum($this->paintDurations)),
-            self::ms($this->renderDurations, 0.50),
-            self::ms($this->renderDurations, 0.95),
-            self::ms($this->bidiDurations, 0.50),
-            self::ms($this->bidiDurations, 0.95),
-            self::ms($this->writeDurations, 0.50),
-            self::ms($this->writeDurations, 0.95),
-            self::ms($this->editorDurations, 0.50),
-            self::ms($this->editorDurations, 0.95),
+            self::ms($this->renderDurations, q: 0.50),
+            self::ms($this->renderDurations, q: 0.95),
+            self::ms($this->bidiDurations, q: 0.50),
+            self::ms($this->bidiDurations, q: 0.95),
+            self::ms($this->writeDurations, q: 0.50),
+            self::ms($this->writeDurations, q: 0.95),
+            self::ms($this->editorDurations, q: 0.50),
+            self::ms($this->editorDurations, q: 0.95),
             $this->hlFull,
             $this->hlSplices,
             null !== $this->pendingBytes ? (int) ($this->pendingBytes)() : 0,

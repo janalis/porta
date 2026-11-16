@@ -56,22 +56,22 @@ final class MermaidInteractionTest extends TestCase
         $this->assertStringEndsWith('· '.$labels[0], $widget->statusInfo());
         $widget->handleInput('p');
         $this->assertStringEndsWith('· '.\array_last($labels), $widget->statusInfo());
-        $scene = Probe::get($widget, 'nativeScene');
+        $scene = Probe::get($widget, property: 'nativeScene');
         $id = \array_key_first($scene->elements);
         $node = $scene->graph->nodes[$id];
         $widget->focusNode($id);
         $handler->events = [];
-        $grid = new GraphCellGrid(180, 80, Probe::get($widget, 'view'), null);
+        $grid = new GraphCellGrid(180, 80, Probe::get($widget, property: 'view'), null);
         $widget->selectAt($grid->rowOf($node->y), $grid->colOf($node->x));
         $this->assertSame(['view', 'reveal:'.$scene->elements[$id].':0'], $handler->events);
-        $widget->followSource($scene->elements[$id], 0);
-        $widget->followSource(999, 0);
+        $widget->followSource($scene->elements[$id], byteCol: 0);
+        $widget->followSource(999, byteCol: 0);
         $this->assertCount(2, $handler->events, 'following the already selected element does not pan again');
         $handler->events = [];
-        $widget->selectAt(0, 0);
+        $widget->selectAt(0, relCol: 0);
         $this->assertSame(['view'], $handler->events, 'Empty space does not reveal a composite whose id happens to be -1');
         $handler->events = [];
-        $widget->followSource($scene->elements[$id], 0);
+        $widget->followSource($scene->elements[$id], byteCol: 0);
         $this->assertSame(['view'], $handler->events);
         $this->assertStringEndsWith('· '.$labels[0], $widget->statusInfo());
         $widget->clear();
@@ -127,28 +127,28 @@ final class MermaidInteractionTest extends TestCase
         $scheduler = new FakeScheduler();
         $mermaid = new FakeLayoutEngine();
         $widget = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'), scheduler: $scheduler, renderMode: 'cells', mermaid: $mermaid);
-        $widget->show('/diagram.mmd', "timeline\ntitle Decoration\nPeriod");
+        $widget->show('/diagram.mmd', payload: "timeline\ntitle Decoration\nPeriod");
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
         $widget->render(new RenderContext(180, 80));
         $widget->focusNode(0);
-        $this->assertNull(Probe::get($widget, 'selected'));
-        $node = Probe::get($widget, 'nativeScene')->graph->nodes[0];
-        $grid = new GraphCellGrid(180, 80, Probe::get($widget, 'view'), null);
+        $this->assertNull(Probe::get($widget, property: 'selected'));
+        $node = Probe::get($widget, property: 'nativeScene')->graph->nodes[0];
+        $grid = new GraphCellGrid(180, 80, Probe::get($widget, property: 'view'), null);
         $widget->selectAt($grid->rowOf($node->y), $grid->colOf($node->x));
-        $this->assertNull(Probe::get($widget, 'selected'));
+        $this->assertNull(Probe::get($widget, property: 'selected'));
         $widget->handleInput('n');
-        $this->assertSame(1, Probe::get($widget, 'selected'));
-        $mermaid->nextPng = PngFixture::bytes(120, 80);
+        $this->assertSame(1, Probe::get($widget, property: 'selected'));
+        $mermaid->nextPng = PngFixture::bytes(120, height: 80);
         $widget->setRenderMode('bitmap');
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
         $this->assertSame([], $widget->nodeChoices());
-        $this->assertNull(Probe::get($widget, 'selected'));
-        $widget->followSource(2, 0);
-        $this->assertNull(Probe::get($widget, 'selected'));
+        $this->assertNull(Probe::get($widget, property: 'selected'));
+        $widget->followSource(2, byteCol: 0);
+        $this->assertNull(Probe::get($widget, property: 'selected'));
         $widget->clear();
     }
 
@@ -159,7 +159,7 @@ final class MermaidInteractionTest extends TestCase
         $mermaid->binary = null;
         $native = new NativeMermaidRenderer(new MermaidTask($scheduler), new MermaidPipeline(encoder: new Encoder(new PngBackend(gdAvailable: false))));
         $widget = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'), scheduler: $scheduler, mermaid: $mermaid, native: $native);
-        $widget->show('/diagram.mmd', 'graph LR; A[Readable]');
+        $widget->show('/diagram.mmd', payload: 'graph LR; A[Readable]');
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
@@ -169,7 +169,7 @@ final class MermaidInteractionTest extends TestCase
         $widget->clear();
 
         $widget = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'), scheduler: $scheduler, renderMode: 'cells', mermaid: $mermaid);
-        $widget->show('/diagram.mmd', 'graph LR; A[Readable]');
+        $widget->show('/diagram.mmd', payload: 'graph LR; A[Readable]');
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
@@ -177,10 +177,10 @@ final class MermaidInteractionTest extends TestCase
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
-        $this->assertTrue(Probe::get($widget, 'nativeBitmap'));
+        $this->assertTrue(Probe::get($widget, property: 'nativeBitmap'));
         $this->assertStringContainsString('▀', \implode('', $widget->render(new RenderContext(80, 20))));
         $widget->setRenderMode('cells');
-        $this->assertFalse(Probe::get($widget, 'nativeBitmap'));
+        $this->assertFalse(Probe::get($widget, property: 'nativeBitmap'));
         $this->assertStringContainsString('Readable', \implode('', $widget->render(new RenderContext(80, 20))));
         $widget->clear();
     }
@@ -191,20 +191,20 @@ final class MermaidInteractionTest extends TestCase
         $mermaid = new FakeLayoutEngine();
         $mermaid->binary = null;
         $widget = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'), scheduler: $scheduler, mermaid: $mermaid);
-        $widget->show('/circle.mmd', 'graph TD; A((Circle))');
+        $widget->show('/circle.mmd', payload: 'graph TD; A((Circle))');
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
         $widget->render(new RenderContext(100, 40));
         $widget->handleInput('1');
-        $node = Probe::get($widget, 'nativeScene')->graph->nodes[0];
-        $grid = new GraphCellGrid(100, 40, Probe::get($widget, 'view'), null);
+        $node = Probe::get($widget, property: 'nativeScene')->graph->nodes[0];
+        $grid = new GraphCellGrid(100, 40, Probe::get($widget, property: 'view'), null);
         $widget->selectAt($grid->rowOf($node->y), $grid->colOf($node->x));
-        $this->assertSame(0, Probe::get($widget, 'selected'));
+        $this->assertSame(0, Probe::get($widget, property: 'selected'));
         $widget->selectAt($grid->rowOf($node->y - ($node->h / 2) + 0.1), $grid->colOf($node->x - ($node->w / 2) + 0.1));
-        $this->assertNull(Probe::get($widget, 'selected'), 'the circle does not fill the corners of its bounding box');
-        $widget->selectAt(0, 0);
-        $this->assertNull(Probe::get($widget, 'selected'), 'empty space has no semantic element');
+        $this->assertNull(Probe::get($widget, property: 'selected'), 'the circle does not fill the corners of its bounding box');
+        $widget->selectAt(0, relCol: 0);
+        $this->assertNull(Probe::get($widget, property: 'selected'), 'empty space has no semantic element');
         $widget->clear();
     }
 }

@@ -590,7 +590,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         $kb = $this->getKeybindings();
         $count = \count($this->visible);
         match (true) {
-            $kb->matches($data, 'select_up') || $kb->matches($data, 'select_down') => $this->extendCursor($kb->matches($data, 'select_up') ? -1 : 1, $count),
+            $kb->matches($data, action: 'select_up') || $kb->matches($data, action: 'select_down') => $this->extendCursor($kb->matches($data, action: 'select_up') ? -1 : 1, $count),
             // A page is what the window holds — {@see windowEntries()}, the same
             // budget render() gives follow() and scrollWindow() gets above.
             // Paging by the full height scrolled one entry past the bottom of the
@@ -599,10 +599,10 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
             // to draw an entry has no page to turn, and ListNavigation already
             // ignores a page of zero.
             ListNavigation::handleKey($data, $kb, $this->list, $count, page: $this->windowEntries($this->lastRows, $this->drawnRuled)) => $this->selectOnlyCursor(),
-            $kb->matches($data, 'collapse') => $this->collapseSelected(),
-            $kb->matches($data, 'expand') => $this->expandSelected(),
-            $kb->matches($data, 'open') => $this->openSelected(),
-            $kb->matches($data, 'reload') => $this->refresh(),
+            $kb->matches($data, action: 'collapse') => $this->collapseSelected(),
+            $kb->matches($data, action: 'expand') => $this->expandSelected(),
+            $kb->matches($data, action: 'open') => $this->openSelected(),
+            $kb->matches($data, action: 'reload') => $this->refresh(),
             default => null,
         };
     }
@@ -993,7 +993,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     {
         $this->visible = [];
         $this->scannedSigs = [];
-        $this->walk($this->rootDir, 0);
+        $this->walk($this->rootDir, depth: 0);
         // A path that has left the tree leaves the selection with it: a
         // collapsed directory or a deleted file must not stay in a pair the
         // user can no longer see.

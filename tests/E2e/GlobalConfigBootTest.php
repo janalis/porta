@@ -73,8 +73,8 @@ final class GlobalConfigBootTest extends TestCase
 
                     // And through the Translator into painted chrome.
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'Fichier'), 'the menu bar is in the language the user chose');
-                    $this->assertNull($this->rowOf($grid, 'Navigate'), 'and not in the default one');
+                    $this->assertNotNull($this->rowOf($grid, needle: 'Fichier'), 'the menu bar is in the language the user chose');
+                    $this->assertNull($this->rowOf($grid, needle: 'Navigate'), 'and not in the default one');
 
                     $this->assertFileDoesNotExist(
                         $this->project->path('.porta.json'),
@@ -121,7 +121,7 @@ final class GlobalConfigBootTest extends TestCase
 
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertNotNull(
-                        $this->rowOf($grid, 'Fichier'),
+                        $this->rowOf($grid, needle: 'Fichier'),
                         'and left the key it does not name to the user file',
                     );
                 },

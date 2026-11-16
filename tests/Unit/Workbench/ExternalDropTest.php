@@ -78,7 +78,7 @@ final class ExternalDropTest extends TestCase
     public function testATreeWithNothingSelectedHasNoFolderToCopyInto(): void
     {
         $ide = $this->boot();
-        Probe::set($this->tree(), 'visible', []);
+        Probe::set($this->tree(), property: 'visible', value: []);
         $this->tui()->setFocus($this->tree());
 
         $this->paste($this->outside->path('x.php'));
@@ -114,7 +114,7 @@ final class ExternalDropTest extends TestCase
 
         $this->paste($this->outside->path('x.php').' '.$this->outside->path('lib'));
 
-        $overlay = Probe::get(Probe::object($this->editor(), 'overlayHost'), 'overlay');
+        $overlay = Probe::get(Probe::object($this->editor(), 'overlayHost'), property: 'overlay');
         $this->assertIsArray($overlay);
         $this->assertSame('2 items dropped', $overlay['title']);
         $this->assertSame(['Insert Paths', 'Open'], \array_column($overlay['items'], 'label'));
@@ -227,7 +227,7 @@ final class ExternalDropTest extends TestCase
         $this->boot(open: 'src/A.php');
         $this->tui()->setFocus($this->tree());
         $typed = null;
-        $this->editor()->openPrompt('Name', '', static function (string $value) use (&$typed): void {
+        $this->editor()->openPrompt('Name', initial: '', onSubmit: static function (string $value) use (&$typed): void {
             $typed = $value;
         });
 
@@ -253,7 +253,7 @@ final class ExternalDropTest extends TestCase
     {
         $this->boot();
         $panel = Services::resolve($this->ide, TerminalPanelWidget::class);
-        Probe::set($panel, 'open', true);
+        Probe::set($panel, property: 'open', value: true);
         $forwarded = [];
         $panel->onInputForward(static function (string $data) use (&$forwarded): void {
             $forwarded[] = $data;

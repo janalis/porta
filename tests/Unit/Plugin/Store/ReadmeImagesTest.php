@@ -139,9 +139,9 @@ final class ReadmeImagesTest extends TestCase
         );
         $this->assertSame('https://raw.githubusercontent.com/acme/rector/main/a.png', ReadmeImages::resolve('https://github.com/acme/rector/raw/main/a.png', self::AT));
         $this->assertSame('https://cdn.test/a.png?w=2', ReadmeImages::resolve('https://cdn.test/a.png?w=2', self::AT));
-        $this->assertSame('https://cdn.test/root.png', ReadmeImages::resolve('/root.png', 'https://cdn.test/docs/README.md'), 'outside GitHub, the host is the root');
-        $this->assertSame('https://cdn.test/docs/a.png', ReadmeImages::resolve('a.png', 'https://cdn.test/docs/README.md?x=1'));
-        $this->assertNull(ReadmeImages::resolve('a.png', 'no-scheme'));
+        $this->assertSame('https://cdn.test/root.png', ReadmeImages::resolve('/root.png', at: 'https://cdn.test/docs/README.md'), 'outside GitHub, the host is the root');
+        $this->assertSame('https://cdn.test/docs/a.png', ReadmeImages::resolve('a.png', at: 'https://cdn.test/docs/README.md?x=1'));
+        $this->assertNull(ReadmeImages::resolve('a.png', at: 'no-scheme'));
     }
 
     public function testAtMostAFewPicturesAndEachOnce(): void

@@ -23,11 +23,11 @@ final readonly class DocsUrlOpener
     {
         $command = BrowserOpener::command($url);
         if (null === $command) {
-            $this->notifier->flash($this->translator->trans('Docs: %url%', ['%url%' => $url]), 5.0);
+            $this->notifier->flash($this->translator->trans('Docs: %url%', ['%url%' => $url]), seconds: 5.0);
 
             return;
         }
         new AsyncProcess($command, $this->rootDir)->start(static function (): void {});
-        $this->notifier->flash($this->translator->trans('Opened %url%', ['%url%' => $url]), 3.0);
+        $this->notifier->flash($this->translator->trans('Opened %url%', ['%url%' => $url]), seconds: 3.0);
     }
 }

@@ -36,13 +36,13 @@ final readonly class CoreDockPanels
     {
         $this->panels->register(
             $this->debugPanel,
-            'debug',
-            function (): string {
+            id: 'debug',
+            label: function (): string {
                 $title = $this->debugPanel->getTitle();
 
                 return $this->translator->trans('Debug').('' === $title ? '' : ': '.$title);
             },
-            DockTab::Debug,
+            tab: DockTab::Debug,
         );
     }
 }

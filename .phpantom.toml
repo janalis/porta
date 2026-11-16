@@ -132,7 +132,7 @@ message = "^(?:Property \\$vScrollSegment expects int, got int\\|float)$"
 [[diagnostics.ignore]]
 identifier = "type_mismatch_return"
 path = "{plugins/mcp/src/Server/ToolCatalog.php,src/Editor/EditorScroll.php}"
-message = "^(?:Return type array<int\\|string, array\\{description: mixed, inputSchema: mixed, handler: mixed, effect: mixed\\}> is incompatible with declared return type array<string, array\\{description: string, inputSchema: array<string, mixed>, handler: Closure\\(array<string, mixed>, Porta\\\\Plugin\\\\Api\\\\ToolCaller=\\): string\\|array<array-key, mixed>\\|Porta\\\\McpPlugin\\\\Server\\\\TextBlocks, effect: \\?Porta\\\\Plugin\\\\Api\\\\ToolEffect\\}>|Return type int\\|float is incompatible with declared return type int)$"
+message = "^(?:Return type array<int\\|string, array\\{description: mixed, inputSchema: mixed, handler: mixed, effect: mixed\\}> is incompatible with declared return type array<string, array\\{description: string, inputSchema: array<string, mixed>, handler: Closure\\(array<string, mixed>, Porta\\\\Plugin\\\\Api\\\\ToolCaller\\): string\\|array<array-key, mixed>\\|Porta\\\\McpPlugin\\\\Server\\\\TextBlocks, effect: \\?Porta\\\\Plugin\\\\Api\\\\ToolEffect\\}>|Return type int\\|float is incompatible with declared return type int)$"
 
 # a same-namespace class used as a closure parameter type is not resolved.
 # phpantom 0.10.0; still reported on main (6fb245f).

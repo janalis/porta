@@ -23,7 +23,7 @@ final class EditorConfigResolverTest extends TestCase
             'a.py' => 'x',
         ]);
 
-        $c = $this->resolve($project, 'a.py');
+        $c = $this->resolve($project, relative: 'a.py');
         $this->assertFalse($c->usesTabs);
         $this->assertSame(2, $c->indentSize);
     }
@@ -36,7 +36,7 @@ final class EditorConfigResolverTest extends TestCase
             'sub/a.py' => 'x',
         ]);
 
-        $c = $this->resolve($project, 'sub/a.py');
+        $c = $this->resolve($project, relative: 'sub/a.py');
         $this->assertSame(4, $c->indentSize, 'the nearer .editorconfig overrides indent_size');
         $this->assertFalse($c->usesTabs, 'unspecified nearer prop falls back to the ancestor');
     }
@@ -49,7 +49,7 @@ final class EditorConfigResolverTest extends TestCase
             'sub/a.py' => 'x',
         ]);
 
-        $c = $this->resolve($project, 'sub/a.py');
+        $c = $this->resolve($project, relative: 'sub/a.py');
         $this->assertSame(2, $c->indentSize);
         $this->assertNull($c->usesTabs, 'the ancestor above the root=true file is not consulted');
     }
@@ -61,7 +61,7 @@ final class EditorConfigResolverTest extends TestCase
             'a.py' => 'x',
         ]);
 
-        $this->assertSame(8, $this->resolve($project, 'a.py')->indentSize);
+        $this->assertSame(8, $this->resolve($project, relative: 'a.py')->indentSize);
     }
 
     public function testUnsetClearsInheritedProperty(): void
@@ -71,7 +71,7 @@ final class EditorConfigResolverTest extends TestCase
             'a.py' => 'x',
         ]);
 
-        $this->assertNull($this->resolve($project, 'a.py')->indentSize);
+        $this->assertNull($this->resolve($project, relative: 'a.py')->indentSize);
     }
 
     public function testNonMatchingSectionDoesNotApply(): void
@@ -81,14 +81,14 @@ final class EditorConfigResolverTest extends TestCase
             'a.py' => 'x',
         ]);
 
-        $this->assertNull($this->resolve($project, 'a.py')->indentSize);
+        $this->assertNull($this->resolve($project, relative: 'a.py')->indentSize);
     }
 
     public function testNoConfigYieldsAllNull(): void
     {
         $project = new TempProject(['a.php' => 'x']);
 
-        $c = $this->resolve($project, 'a.php');
+        $c = $this->resolve($project, relative: 'a.php');
         $this->assertNull($c->indentSize);
         $this->assertNull($c->usesTabs);
         $this->assertNull($c->eol);
@@ -103,7 +103,7 @@ final class EditorConfigResolverTest extends TestCase
             '.editorconfig' => "root = true\n[*]\nindent_size = 4\n",
         ]);
 
-        $this->assertSame(4, $this->resolve($project, 'not-yet-saved.py')->indentSize);
+        $this->assertSame(4, $this->resolve($project, relative: 'not-yet-saved.py')->indentSize);
     }
 
     public function testGlobMatchOnlyAppliesWithinItsOwnEditorconfigsDirectory(): void
@@ -115,7 +115,7 @@ final class EditorConfigResolverTest extends TestCase
             'a.py' => 'x',
         ]);
 
-        $this->assertSame(8, $this->resolve($project, 'a.py')->indentSize);
+        $this->assertSame(8, $this->resolve($project, relative: 'a.py')->indentSize);
     }
 
     public function testUnsetComparisonIsCaseInsensitive(): void
@@ -130,7 +130,7 @@ final class EditorConfigResolverTest extends TestCase
             'a.py' => 'x',
         ]);
 
-        $this->assertNull($this->resolve($project, 'a.py')->charset);
+        $this->assertNull($this->resolve($project, relative: 'a.py')->charset);
     }
 
     public function testUnsetIsStrippedEvenInTheExactSpecCase(): void
@@ -142,7 +142,7 @@ final class EditorConfigResolverTest extends TestCase
             'a.py' => 'x',
         ]);
 
-        $this->assertNull($this->resolve($project, 'a.py')->charset);
+        $this->assertNull($this->resolve($project, relative: 'a.py')->charset);
     }
 
     public function testGlobWithASlashMatchesTheCorrectlyStrippedRelativePath(): void
@@ -158,6 +158,6 @@ final class EditorConfigResolverTest extends TestCase
             'sub/a.py' => 'x',
         ]);
 
-        $this->assertSame(4, $this->resolve($project, 'sub/a.py')->indentSize);
+        $this->assertSame(4, $this->resolve($project, relative: 'sub/a.py')->indentSize);
     }
 }

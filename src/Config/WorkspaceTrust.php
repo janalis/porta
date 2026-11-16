@@ -123,13 +123,13 @@ final readonly class WorkspaceTrust
     /** Trust $rootDir from now on. False when the answer cannot be written. */
     public function trust(string $rootDir): bool
     {
-        return $this->answer($rootDir, 'trusted');
+        return $this->answer($rootDir, as: 'trusted');
     }
 
     /** Open $rootDir restricted from now on, without asking. False when the answer cannot be written. */
     public function restrict(string $rootDir): bool
     {
-        return $this->answer($rootDir, 'restricted');
+        return $this->answer($rootDir, as: 'restricted');
     }
 
     /**

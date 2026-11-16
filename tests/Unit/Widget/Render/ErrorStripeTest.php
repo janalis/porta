@@ -110,7 +110,11 @@ final class ErrorStripeTest extends TestCase
 
         // Any other mark keeps the thumb's shade under it.
         $change = new StripeMarks([], [55 => ChangeMarkKind::Modified], [], []);
-        $this->assertNotSame($this->stripe($change, 10, 100)[5], $this->stripe($change, 10, 100, 50, 79)[5], 'the thumb background merges under a change mark');
+        $this->assertNotSame(
+            $this->stripe($change, rows: 10, lineCount: 100)[5],
+            $this->stripe($change, rows: 10, lineCount: 100, vScroll: 50, lastVisible: 79)[5],
+            'the thumb background merges under a change mark',
+        );
     }
 
     /**
@@ -125,12 +129,12 @@ final class ErrorStripeTest extends TestCase
             [DiagnosticSeverity::Warning,     208],
             [DiagnosticSeverity::Information, 220],
         ] as [$severity, $colour]) {
-            $cell = $this->stripe(new StripeMarks([0 => $severity], [], [], []), 1, 1)[0];
+            $cell = $this->stripe(new StripeMarks([0 => $severity], [], [], []), rows: 1, lineCount: 1)[0];
             $this->assertStringContainsString("\e[38;5;{$colour}m\e[48;5;{$colour}m", $cell, "{$severity->name}: glyph and cell in its colour");
         }
-        $hint = $this->stripe(new StripeMarks([0 => DiagnosticSeverity::Hint], [], [], []), 1, 1)[0];
+        $hint = $this->stripe(new StripeMarks([0 => DiagnosticSeverity::Hint], [], [], []), rows: 1, lineCount: 1)[0];
         $this->assertStringNotContainsString("\e[48;5;", $hint, 'a hint is not filled');
-        $mono = $this->stripe(new StripeMarks([0 => DiagnosticSeverity::Error], [], [], []), 1, 1, styles: new Styles(MonochromeTheme::definition()))[0];
+        $mono = $this->stripe(new StripeMarks([0 => DiagnosticSeverity::Error], [], [], []), rows: 1, lineCount: 1, styles: new Styles(MonochromeTheme::definition()))[0];
         $this->assertSame(Sgr::RESET.Glyphs::STRIPE_ERROR, $mono, 'monochrome: the block alone, never reversed into a blank');
     }
 
@@ -298,16 +302,20 @@ final class ErrorStripeTest extends TestCase
 
         $this->assertSame(
             ['kind' => StripeMark::Diagnostic, 'line' => 15, 'severity' => DiagnosticSeverity::Error, 'change' => null],
-            ErrorStripe::markAt($marks, 1, 10, 100),
+            ErrorStripe::markAt($marks, row: 1, rows: 10, lineCount: 100),
             'the worst on the row, over the search hit',
         );
-        $this->assertSame(StripeMark::Bookmark, ErrorStripe::markAt($marks, 5, 10, 100)['kind'] ?? null);
-        $this->assertNull(ErrorStripe::markAt($marks, 3, 10, 100));
+        $this->assertSame(StripeMark::Bookmark, ErrorStripe::markAt($marks, row: 5, rows: 10, lineCount: 100)['kind'] ?? null);
+        $this->assertNull(ErrorStripe::markAt($marks, row: 3, rows: 10, lineCount: 100));
 
-        $cells = ErrorStripe::cells($marks, 10, 100, 0, 9, Styles::dark(), hoveredRow: 1);
+        $cells = ErrorStripe::cells($marks, rows: 10, lineCount: 100, vScroll: 0, lastVisible: 9, styles: Styles::dark(), hoveredRow: 1);
         $this->assertStringContainsString("\e[4m", $cells[1]);
         $this->assertStringNotContainsString("\e[4m", $cells[5]);
-        $this->assertStringNotContainsString("\e[4m", ErrorStripe::cells($marks, 10, 100, 0, 9, Styles::dark(), hoveredRow: 3)[3], 'a blank row is not underlined');
+        $this->assertStringNotContainsString(
+            "\e[4m",
+            ErrorStripe::cells($marks, rows: 10, lineCount: 100, vScroll: 0, lastVisible: 9, styles: Styles::dark(), hoveredRow: 3)[3],
+            'a blank row is not underlined',
+        );
     }
 
     /** A conversation's mark sits under the bookmark and over an ordinary hit, and is read from the store. */
@@ -323,7 +331,7 @@ final class ErrorStripeTest extends TestCase
         $this->assertSame(Glyphs::COMMENT, $plain[2], 'a comment over an ordinary hit');
         $this->assertSame(Glyphs::BOOKMARK, $plain[4], 'a bookmark over a comment');
         $this->assertSame(Glyphs::COMMENT, $plain[6], 'alone on its row');
-        $this->assertSame(StripeMark::Comment, ErrorStripe::markAt(new StripeMarks([], [], [], [], commentLines: [60]), 6, 10, 100)['kind'] ?? null);
+        $this->assertSame(StripeMark::Comment, ErrorStripe::markAt(new StripeMarks([], [], [], [], commentLines: [60]), row: 6, rows: 10, lineCount: 100)['kind'] ?? null);
 
         $store = new DecorationStore(static function (): void {});
         $store->setCommentMarks([3 => 'alice: rename', 8 => 'bob: why?']);

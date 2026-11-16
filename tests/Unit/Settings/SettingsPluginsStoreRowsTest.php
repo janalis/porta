@@ -73,27 +73,27 @@ final class SettingsPluginsStoreRowsTest extends TestCase
 
     public function testAnOutdatedPluginsPageOffersItsUpdate(): void
     {
-        $this->store->publish('acme/porta-old', 'v1.1.0');
+        $this->store->publish('acme/porta-old', version: 'v1.1.0');
         $this->store->publish('acme/porta-current');
         $this->store->fill();
-        $this->store->installed('acme/porta-old', 'v1.0.0');
-        $this->store->installed('acme/porta-current', 'v1.0.0');
+        $this->store->installed('acme/porta-old', version: 'v1.0.0');
+        $this->store->installed('acme/porta-current', version: 'v1.0.0');
         $controller = $this->controller();
 
-        $row = self::rows($controller, 'old')['pluginUpdate:global:old'] ?? null;
+        $row = self::rows($controller, name: 'old')['pluginUpdate:global:old'] ?? null;
         $this->assertInstanceOf(SettingsRow::class, $row);
         $this->assertSame('v1.0.0 → v1.1.0 available', $row->label);
         $this->assertSame('Update', $row->value);
-        $this->assertArrayNotHasKey('pluginUpdate:global:current', self::rows($controller, 'current'), 'current: nothing to offer');
+        $this->assertArrayNotHasKey('pluginUpdate:global:current', self::rows($controller, name: 'current'), 'current: nothing to offer');
 
-        $controller->changePlugin('old', 'pluginUpdate:global:old', true);
-        $this->assertSame('Working…', self::rows($controller, 'old')['pluginUpdate:global:old']->value);
-        $this->assertTrue(self::rows($controller, 'old')['pluginUpdate:global:old']->disabled);
+        $controller->changePlugin('old', key: 'pluginUpdate:global:old', value: true);
+        $this->assertSame('Working…', self::rows($controller, name: 'old')['pluginUpdate:global:old']->value);
+        $this->assertTrue(self::rows($controller, name: 'old')['pluginUpdate:global:old']->disabled);
         $this->await(fn (): bool => \str_starts_with($this->store->toast(), 'Updated'), what: 'the update');
         // The fake composer records no new version, so the row stays — but no longer busy.
-        $this->assertFalse(self::rows($controller, 'old')['pluginUpdate:global:old']->disabled);
+        $this->assertFalse(self::rows($controller, name: 'old')['pluginUpdate:global:old']->disabled);
 
-        $controller->changePlugin('old', 'pluginUpdate:project:old', true);
+        $controller->changePlugin('old', key: 'pluginUpdate:project:old', value: true);
         $this->assertStringStartsWith('Updated', $this->store->toast(), 'a key no row has does nothing');
     }
 
@@ -106,18 +106,18 @@ final class SettingsPluginsStoreRowsTest extends TestCase
         $this->store->bundled('git');
         $controller = $this->controller();
 
-        $offer = self::rows($controller, 'mago')['pluginTakeover'] ?? null;
+        $offer = self::rows($controller, name: 'mago')['pluginTakeover'] ?? null;
         $this->assertInstanceOf(SettingsRow::class, $offer);
         $this->assertSame('Its maintainers publish acme/porta-mago', $offer->label);
         $this->assertSame('Get', $offer->value);
-        $this->assertArrayNotHasKey('pluginTakeover', self::rows($controller, 'git'), 'nobody took git over');
+        $this->assertArrayNotHasKey('pluginTakeover', self::rows($controller, name: 'git'), 'nobody took git over');
 
-        $controller->changePlugin('mago', 'pluginTakeover', true);
+        $controller->changePlugin('mago', key: 'pluginTakeover', value: true);
         $this->await(fn (): bool => [] !== $this->store->lifecycle->activated, what: 'the install');
         $this->assertStringEndsWith('/.porta/plugins/mago/porta.php', $this->store->lifecycle->activated[0], 'installed under the bundled name, which it shadows');
-        $this->assertArrayNotHasKey('pluginTakeover', self::rows($controller, 'mago'), 'installed: the copy that loads is no longer the bundled one');
+        $this->assertArrayNotHasKey('pluginTakeover', self::rows($controller, name: 'mago'), 'installed: the copy that loads is no longer the bundled one');
 
-        $controller->changePlugin('git', 'pluginTakeover', true);
+        $controller->changePlugin('git', key: 'pluginTakeover', value: true);
         $this->assertCount(1, $this->store->lifecycle->activated, 'no package replaces git: nothing installs');
     }
 
@@ -129,8 +129,8 @@ final class SettingsPluginsStoreRowsTest extends TestCase
         $this->store->bundled('mago');
         $controller = $this->controller();
 
-        $this->assertArrayNotHasKey('pluginTakeover', self::rows($controller, 'mago'), 'installed, it would shadow the working built-in copy and be declined');
-        $controller->changePlugin('mago', 'pluginTakeover', true);
+        $this->assertArrayNotHasKey('pluginTakeover', self::rows($controller, name: 'mago'), 'installed, it would shadow the working built-in copy and be declined');
+        $controller->changePlugin('mago', key: 'pluginTakeover', value: true);
         $this->assertSame([], $this->store->lifecycle->activated);
         $this->assertSame('', $this->store->toast(), 'nothing started');
     }
@@ -144,14 +144,14 @@ final class SettingsPluginsStoreRowsTest extends TestCase
         $this->store->fill();
         $controller = $this->controller();
 
-        $row = self::rows($controller, 'lint')['pluginStore'] ?? null;
+        $row = self::rows($controller, name: 'lint')['pluginStore'] ?? null;
         $this->assertInstanceOf(SettingsRow::class, $row);
         $this->assertSame(['In the store', 'Open'], [$row->label, $row->value]);
-        $this->assertArrayNotHasKey('pluginStore', self::rows($controller, 'unlisted'), 'the store does not list it: no row');
+        $this->assertArrayNotHasKey('pluginStore', self::rows($controller, name: 'unlisted'), 'the store does not list it: no row');
 
-        $controller->changePlugin('lint', 'pluginStore', true);
+        $controller->changePlugin('lint', key: 'pluginStore', value: true);
         $this->assertEquals([new SettingsSectionRequested('plugins', PluginStoreWidget::PAGE_PREFIX.'janalis/porta-lint')], $this->requested);
-        $controller->changePlugin('unlisted', 'pluginStore', true);
+        $controller->changePlugin('unlisted', key: 'pluginStore', value: true);
         $this->assertCount(1, $this->requested, 'a stale row asks for nothing');
     }
 }

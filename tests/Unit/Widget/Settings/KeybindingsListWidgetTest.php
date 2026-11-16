@@ -77,11 +77,11 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget = $this->widget($rebinds);
         $widget->handleInput("\x1b[B"); // select duplicate_line
         $widget->handleInput("\r"); // Enter arms capture
-        $this->assertNotNull(Probe::get($widget, 'capturingIndex'));
+        $this->assertNotNull(Probe::get($widget, property: 'capturingIndex'));
         $this->assertStringContainsString('Press a key', $this->plain($widget->render(new RenderContext(60, 8))));
 
         $widget->handleInput("\x04"); // ctrl+d pressed → captured raw
-        $this->assertNull(Probe::get($widget, 'capturingIndex'));
+        $this->assertNull(Probe::get($widget, property: 'capturingIndex'));
         $this->assertSame([['duplicate_line', "\x04"]], $rebinds);
     }
 
@@ -95,7 +95,7 @@ final class KeybindingsListWidgetTest extends TestCase
 
         $widget->handleInput("\r"); // arm
         $widget->handleInput("\x1b"); // Esc cancels capture
-        $this->assertNull(Probe::get($widget, 'capturingIndex'));
+        $this->assertNull(Probe::get($widget, property: 'capturingIndex'));
         $this->assertSame([], $rebinds, 'nothing rebound');
         $this->assertFalse($exited, 'Esc during capture does not leave the view');
     }
@@ -136,10 +136,10 @@ final class KeybindingsListWidgetTest extends TestCase
         $this->assertSame('save', $this->selectedAction($widget));
         $widget->handleClick(3); // rows 0-1 are the title and its rule; render row 3 → index 1
         $this->assertSame('duplicate_line', $this->selectedAction($widget));
-        $this->assertNull(Probe::get($widget, 'capturingIndex'), 'first click only selects');
+        $this->assertNull(Probe::get($widget, property: 'capturingIndex'), 'first click only selects');
 
         $widget->handleClick(3); // click the selected row again arms capture
-        $this->assertNotNull(Probe::get($widget, 'capturingIndex'));
+        $this->assertNotNull(Probe::get($widget, property: 'capturingIndex'));
 
         // A click while capturing selects (does not re-arm on a different row).
         $widget->handleClick(2);
@@ -165,7 +165,7 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->onInput(static fn (string $data): bool => true);
         $widget->handleInput("\r"); // swallowed: no capture armed
-        $this->assertNull(Probe::get($widget, 'capturingIndex'));
+        $this->assertNull(Probe::get($widget, property: 'capturingIndex'));
     }
 
     public function testArmingIsANoOpWithNoRows(): void
@@ -173,7 +173,7 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget = new KeybindingsListWidget(new Translator('en'));
         $widget->setRows([]);
         $widget->handleInput("\r");
-        $this->assertNull(Probe::get($widget, 'capturingIndex'));
+        $this->assertNull(Probe::get($widget, property: 'capturingIndex'));
         $this->assertNull($this->selectedAction($widget));
     }
 
@@ -186,7 +186,7 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget->handleInput("\x1b"); // no onExit
         $widget->handleInput("\r"); // arm (no onRebind)
         $widget->handleInput('a'); // capture with no onRebind is safe
-        $this->assertNull(Probe::get($widget, 'capturingIndex'));
+        $this->assertNull(Probe::get($widget, property: 'capturingIndex'));
     }
 
     public function testSetRowsDropsCaptureAndHover(): void
@@ -194,9 +194,9 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->hoverRow(2);
         $widget->handleInput("\r");
-        $this->assertNotNull(Probe::get($widget, 'capturingIndex'));
+        $this->assertNotNull(Probe::get($widget, property: 'capturingIndex'));
         $widget->setRows($this->rows());
-        $this->assertNull(Probe::get($widget, 'capturingIndex'));
+        $this->assertNull(Probe::get($widget, property: 'capturingIndex'));
     }
 
     public function testScrollFollowsSelectionInAShortViewport(): void
@@ -314,8 +314,8 @@ final class KeybindingsListWidgetTest extends TestCase
         $this->assertTrue($widget->hoverCrumb(15), 'the page shown is no link: the tint goes');
         $this->assertStringNotContainsString("\x1b[48;5;240m", $widget->render(new RenderContext(60, 8))[0]);
 
-        $widget->handleClick(0, 15);
-        $widget->handleClick(0, 3);
+        $widget->handleClick(0, relCol: 15);
+        $widget->handleClick(0, relCol: 3);
         $this->assertSame(['general'], $opened, 'only the Settings crumb asks for a page');
         $this->assertSame('save', $this->selectedAction($widget), 'a title click selects no row');
     }
@@ -393,7 +393,7 @@ final class KeybindingsListWidgetTest extends TestCase
     /** The action of the row under the selection (the widget's private rows + list, via Probe). */
     private function selectedAction(KeybindingsListWidget $widget): ?string
     {
-        return (Probe::get($widget, 'rows')[Probe::get($widget, 'list')->selected()] ?? null)?->action;
+        return (Probe::get($widget, property: 'rows')[Probe::get($widget, property: 'list')->selected()] ?? null)?->action;
     }
 
     public function testTheFilterNarrowsTheListByLabelAndByKey(): void
@@ -521,17 +521,17 @@ final class KeybindingsListWidgetTest extends TestCase
         ]);
 
         $lines = $widget->render(new RenderContext(60, 6));
-        $overridden = $this->rowWith($lines, 'Save');
-        $plain = $this->rowWith($lines, 'Duplicate Line');
+        $overridden = $this->rowWith($lines, label: 'Save');
+        $plain = $this->rowWith($lines, label: 'Duplicate Line');
 
         $this->assertNotSame(
-            $this->markup($overridden, 'Ctrl+S'),
-            $this->markup($plain, 'Ctrl+D'),
+            $this->markup($overridden, needle: 'Ctrl+S'),
+            $this->markup($plain, needle: 'Ctrl+D'),
             'the two shortcuts are drawn differently',
         );
         $this->assertStringContainsString('● Ctrl+S', AnsiUtils::stripAnsiCodes($overridden), 'marked by a shape, and the key itself still reads');
         $this->assertStringNotContainsString('●', AnsiUtils::stripAnsiCodes($plain));
-        self::assertExactWidth($lines, 60);
+        self::assertExactWidth($lines, width: 60);
     }
 
     /** @param list<string> $lines */
@@ -731,7 +731,7 @@ final class KeybindingsListWidgetTest extends TestCase
         $widget->handleInput("\x1b[D");
         $widget->handleInput("\x1b[200~sav\x1b[201~");
 
-        $this->assertSame('save', Probe::get($widget, 'filter')->value());
+        $this->assertSame('save', Probe::get($widget, property: 'filter')->value());
     }
 
     /** With the filter open, its box sits under the title's rule and the list starts under the box. */

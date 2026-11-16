@@ -55,10 +55,10 @@ final class QuickFixProbeTest extends TestCase
             static fn (array $edit): bool => false,
         );
         $editor = new CodeEditorWidget();
-        $buffer = new BufferManager()->open('/tmp/proj/a.php', "<?php\n\$x = foo();\n");
+        $buffer = new BufferManager()->open('/tmp/proj/a.php', content: "<?php\n\$x = foo();\n");
         $editor->showDocument('/tmp/proj/a.php', $buffer->document);
         if ($open) {
-            $pool->notifyDidOpen('/tmp/proj/a.php', $buffer->document->getText(), 'php', 1);
+            $pool->notifyDidOpen('/tmp/proj/a.php', $buffer->document->getText(), languageId: 'php', version: 1);
         }
 
         return new QuickFixProbe($pool, $editor, $this->scheduler = new FakeScheduler());
@@ -102,8 +102,8 @@ final class QuickFixProbeTest extends TestCase
 
         $request['respond']([['title' => 'Extract', 'kind' => 'refactor'], ['title' => 'Create function foo', 'kind' => 'quickfix']], error: null);
 
-        $this->assertEquals([FixLookup::found('Create function foo', 2)], $this->heard);
-        $this->assertEquals(FixLookup::found('Create function foo', 2), $this->ask($probe), 'remembered: asking again sends nothing');
+        $this->assertEquals([FixLookup::found('Create function foo', actions: 2)], $this->heard);
+        $this->assertEquals(FixLookup::found('Create function foo', actions: 2), $this->ask($probe), 'remembered: asking again sends nothing');
         $this->assertSame([], $this->scheduler->scheduled);
     }
 
@@ -118,7 +118,7 @@ final class QuickFixProbeTest extends TestCase
 
         $first['respond']([['title' => 'Fix first']], error: null);
         $this->assertSame([], $this->heard, 'the pointer has moved on');
-        $this->assertEquals(FixLookup::found('Fix first', 1), $this->ask($probe, self::problem('first')), 'but the answer is kept');
+        $this->assertEquals(FixLookup::found('Fix first', actions: 1), $this->ask($probe, self::problem('first')), 'but the answer is kept');
 
         $second['respond']([], error: null);
         $this->assertSame([], $this->heard, 'and the first is the current one again');
@@ -133,13 +133,13 @@ final class QuickFixProbeTest extends TestCase
         $this->codeActionRequests(0)[0]['respond']([['title' => 'Maybe']], error: null);
         $this->assertSame([], $this->heard, 'a plain fix waits for the other server');
         $this->codeActionRequests(1)[0]['respond'](null, error: ['code' => -1, 'message' => 'boom']);
-        $this->assertEquals([FixLookup::found('Maybe', 1)], $this->heard);
+        $this->assertEquals([FixLookup::found('Maybe', actions: 1)], $this->heard);
 
         $this->heard = [];
         $this->ask($probe, self::problem('other'));
         $this->scheduler->fire();
         $this->codeActionRequests(0)[1]['respond']([['title' => 'Best', 'isPreferred' => true]], error: null);
-        $this->assertEquals([FixLookup::found('Best', 1)], $this->heard, 'the preferred fix is the answer at once');
+        $this->assertEquals([FixLookup::found('Best', actions: 1)], $this->heard, 'the preferred fix is the answer at once');
         $this->codeActionRequests(1)[1]['respond']([['title' => 'Late']], error: null);
         $this->assertCount(1, $this->heard, 'and a later answer changes nothing');
     }
@@ -195,7 +195,7 @@ final class QuickFixProbeTest extends TestCase
         $probe->onDiagnosticsChanged(new DiagnosticsChanged());
         $this->codeActionRequests()[0]['respond']([['title' => 'Fix']], error: null);
 
-        $this->assertEquals([FixLookup::found('Fix', 1)], $this->heard);
+        $this->assertEquals([FixLookup::found('Fix', actions: 1)], $this->heard);
     }
 
     /** The card asks, then Ctrl+F1 asks about the same problem: one question, and the popup hears it. */
@@ -212,7 +212,7 @@ final class QuickFixProbeTest extends TestCase
         $this->assertCount(1, $this->codeActionRequests(), 'asked once');
         $this->codeActionRequests()[0]['respond']([['title' => 'Fix']], error: null);
 
-        $this->assertEquals([FixLookup::found('Fix', 1)], $this->heard, 'the popup, opened last');
+        $this->assertEquals([FixLookup::found('Fix', actions: 1)], $this->heard, 'the popup, opened last');
         $this->assertSame([], $card);
     }
 }

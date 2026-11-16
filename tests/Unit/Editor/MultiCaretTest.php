@@ -61,7 +61,7 @@ final class MultiCaretTest extends TestCase
         $doc = new Document("abc\n");
         $mc = new MultiCaret($doc, $this->noop(), $this->noop());
 
-        $caret = Caret::point(0, 1); // well within "abc"; no clamping needed
+        $caret = Caret::point(0, col: 1); // well within "abc"; no clamping needed
         $mc->setExtras([$caret]);
 
         $this->assertSame($caret, $mc->carets()[0], 'a caret needing no clamping is returned as the same instance');
@@ -85,7 +85,7 @@ final class MultiCaretTest extends TestCase
         $doc = new Document("a\n");
         $mc = new MultiCaret($doc, $this->invalidate(), $this->noop());
 
-        $mc->setExtras([Caret::point(0, 0)]);
+        $mc->setExtras([Caret::point(0, col: 0)]);
 
         $this->assertContains('invalidate', $this->calls);
     }
@@ -95,7 +95,7 @@ final class MultiCaretTest extends TestCase
     public function testAddVerticallyPastTheLastLineIsANoOpThatDoesNotRedraw(): void
     {
         $doc = new Document("a\nb\n"); // lines 0, 1, and the trailing empty line 2
-        $doc->setCursor($doc->getLineCount() - 1, 0); // sit on the actual last line
+        $doc->setCursor($doc->getLineCount() - 1, col: 0); // sit on the actual last line
         $mc = new MultiCaret($doc, $this->invalidate(), $this->noop());
 
         $mc->addVertically(1); // one past the last line
@@ -117,7 +117,7 @@ final class MultiCaretTest extends TestCase
     public function testAddVerticallyRoundTripDedupesTheReturnedCaret(): void
     {
         $doc = new Document("aaa\nbbb\nccc\n");
-        $doc->setCursor(1, 0);
+        $doc->setCursor(1, col: 0);
         $mc = new MultiCaret($doc, $this->noop(), $this->noop());
 
         $mc->addVertically(-1); // primary -> line 0, extra left at line 1
@@ -131,7 +131,7 @@ final class MultiCaretTest extends TestCase
     public function testAddNextOccurrenceSkipsTheOccurrenceAtTheCursorItself(): void
     {
         $doc = new Document("foo foo foo\n");
-        $doc->setCursor(0, 0); // sitting exactly at the first occurrence's start
+        $doc->setCursor(0, col: 0); // sitting exactly at the first occurrence's start
         $mc = new MultiCaret($doc, $this->noop(), $this->noop());
 
         $mc->addNextOccurrence();
@@ -144,7 +144,7 @@ final class MultiCaretTest extends TestCase
     public function testAddNextOccurrenceLeavesEveryCaretAtItsWordsEnd(): void
     {
         $doc = new Document("foo foo foo\n");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $mc = new MultiCaret($doc, $this->noop(), $this->noop());
 
         $mc->addNextOccurrence();
@@ -158,7 +158,7 @@ final class MultiCaretTest extends TestCase
     public function testOccurrencesAreWholeIdentifiers(): void
     {
         $doc = new Document("\$id = 1; \$idx = 2; \$id;\n");
-        $doc->setCursor(0, 1);
+        $doc->setCursor(0, col: 1);
         $mc = new MultiCaret($doc, $this->noop(), $this->noop());
 
         $mc->selectAllOccurrences();
@@ -167,7 +167,7 @@ final class MultiCaretTest extends TestCase
         $this->assertSame([22], \array_map(static fn (Caret $c): int => $c->col, $mc->carets()), 'not 13, the end of $idx');
 
         $doc = new Document("id = \$id;\n");
-        $doc->setCursor(0, 1);
+        $doc->setCursor(0, col: 1);
         $mc = new MultiCaret($doc, $this->noop(), $this->noop());
         $mc->selectAllOccurrences();
         $this->assertSame([], $mc->carets(), 'nor `id` in `$id`');
@@ -191,7 +191,7 @@ final class MultiCaretTest extends TestCase
         // An extra already sits exactly where the (old) primary is about to be
         // pushed to — its word's end; growing the set must not leave that
         // position doubled up.
-        $mc->setExtras([Caret::point(0, 3)]);
+        $mc->setExtras([Caret::point(0, col: 3)]);
 
         $mc->addNextOccurrence();
 
@@ -204,7 +204,7 @@ final class MultiCaretTest extends TestCase
     {
         $doc = new Document("foo x foo\nfoo\n");
         $mc = new MultiCaret($doc, $this->invalidate(), $this->noop());
-        $mc->setExtras([Caret::point(1, 0)]); // replaced wholesale, not added to
+        $mc->setExtras([Caret::point(1, col: 0)]); // replaced wholesale, not added to
         $this->calls = [];
 
         $mc->selectRanges([new Caret(0, 3, 0, 0), new Caret(0, 9, 0, 6), new Caret(1, 3, 1, 0)], primary: 1);

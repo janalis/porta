@@ -17,8 +17,8 @@ final class FloatingLayerTest extends TestCase
 {
     public function testAnEmptyLayerIsABlankCanvasOfTheFramesSize(): void
     {
-        $this->assertSame(['    ', '    ', '    '], new FloatingLayer()->rows(4, 3));
-        $this->assertSame([], new FloatingLayer()->rows(4, 0));
+        $this->assertSame(['    ', '    ', '    '], new FloatingLayer()->rows(4, rows: 3));
+        $this->assertSame([], new FloatingLayer()->rows(4, rows: 0));
     }
 
     public function testTheSlotsStackModalToastTooltipMenu(): void
@@ -26,7 +26,7 @@ final class FloatingLayerTest extends TestCase
         $layer = new FloatingLayer();
         $span = static fn (string $text): array => [['row' => 0, 'col' => 0, 'width' => 4, 'segment' => $text]];
 
-        $top = static fn (): string => AnsiUtils::stripAnsiCodes($layer->rows(4, 1)[0]);
+        $top = static fn (): string => AnsiUtils::stripAnsiCodes($layer->rows(4, rows: 1)[0]);
 
         $layer->setMenu($span('menu'));
         $layer->setTooltip($span('tip!'));
@@ -51,7 +51,7 @@ final class FloatingLayerTest extends TestCase
         $layer = new FloatingLayer();
         $layer->setToast([['row' => 1, 'col' => 2, 'width' => 2, 'segment' => 'ab']]);
 
-        $this->assertSame(['      ', '  ab  '], \array_map(AnsiUtils::stripAnsiCodes(...), $layer->rows(6, 2)));
+        $this->assertSame(['      ', '  ab  '], \array_map(AnsiUtils::stripAnsiCodes(...), $layer->rows(6, rows: 2)));
     }
 
     /** A pane invalidates itself when its spans change; the layer's caller asks for the frame instead. */

@@ -170,7 +170,7 @@ final class Participants implements StatusSegment
         }
         $this->opener->openFile($path, OpenFocus::Editor);
         if ($line >= 0) {
-            $this->editor->jumpTo($line, 0);
+            $this->editor->jumpTo($line, utf16Col: 0);
         }
     }
 

@@ -238,14 +238,14 @@ final class WorkspaceTrustTest extends TestCase
         $plugin = ['php' => [['command' => ['/opt/phpantom_lsp'], 'name' => 'phpantom']]];
 
         $this->assertTrue(ServerLocator::restricted($project->dir));
-        $this->assertSame([], ServerLocator::locateAll($project->dir, null, $plugin), 'neither the global one nor a plugin\'s');
-        $this->assertFalse(ServerLocator::restricted($project->dir, 'my-ls'), 'one named for this run is the user\'s call');
-        $this->assertSame(['my-ls'], ServerLocator::locateAll($project->dir, 'my-ls', $plugin)['*'][0]['command']);
-        $this->assertTrue(ServerLocator::restricted($project->dir, ''), 'an empty one names nothing');
+        $this->assertSame([], ServerLocator::locateAll($project->dir, pluginServers: $plugin), 'neither the global one nor a plugin\'s');
+        $this->assertFalse(ServerLocator::restricted($project->dir, override: 'my-ls'), 'one named for this run is the user\'s call');
+        $this->assertSame(['my-ls'], ServerLocator::locateAll($project->dir, override: 'my-ls', pluginServers: $plugin)['*'][0]['command']);
+        $this->assertTrue(ServerLocator::restricted($project->dir, override: ''), 'an empty one names nothing');
 
         new WorkspaceTrust($this->untrustingHome->dir)->trust($project->dir);
         $this->assertFalse(ServerLocator::restricted($project->dir));
-        $this->assertSame(['phpantom_lsp'], ServerLocator::locateAll($project->dir, null, $plugin)['php'][0]['command'], 'trusted: the user\'s own again');
+        $this->assertSame(['phpantom_lsp'], ServerLocator::locateAll($project->dir, pluginServers: $plugin)['php'][0]['command'], 'trusted: the user\'s own again');
     }
 
     public function testAnUntrustedProjectsPluginsAreNotLoaded(): void
@@ -272,7 +272,9 @@ final class WorkspaceTrustTest extends TestCase
     public function testAnUntrustedProjectsPluginIsNotLoadedLiveEither(): void
     {
         $plugin =
-            static fn (string $name): string => "<?php\nreturn new class('{$name}') extends Porta\\Plugin\\Api\\AbstractPlugin { public function activate(Porta\\Plugin\\Api\\PluginApi \$api): void {} };";
+            static fn (
+                string $name,
+            ): string => "<?php\nreturn new class('{$name}') extends Porta\\Plugin\\Api\\AbstractPlugin { public function activate(Porta\\Plugin\\Api\\PluginApi \$api): void {} };";
         $project = new TempProject(['.porta/plugins/mine/porta.php' => $plugin('mine')]);
         $global = new TempProject(['.porta/plugins/theirs/porta.php' => $plugin('theirs')]);
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings($project->dir, []));
@@ -329,13 +331,13 @@ final class WorkspaceTrustTest extends TestCase
         $tool = require \dirname(__DIR__, levels: 3).'/plugins/'.$plugin.'/porta.php';
         \assert(\is_object($tool), description: 'a porta.php returns its plugin');
 
-        $this->assertSame($runs, Probe::invoke($tool, 'runsProjectCode'));
+        $this->assertSame($runs, Probe::invoke($tool, method: 'runsProjectCode'));
     }
 
     public function testUntrustedProjectsCannotOverrideTheUsersUpdatePolicy(): void
     {
         $this->untrustProjects();
-        $this->untrustingHome->write('.porta/config.json', '{"settings":{"ideUpdateCheck":"off","pluginUpdateCheck":"off"}}');
+        $this->untrustingHome->write('.porta/config.json', content: '{"settings":{"ideUpdateCheck":"off","pluginUpdateCheck":"off"}}');
         $project = new TempProject(['.porta.json' => '{"settings":{"ideAutoUpdate":true,"pluginAutoUpdate":true,"ideUpdateCheck":"daily","pluginUpdateCheck":"daily"}}']);
         $restricted = IdeConfig::load($project->dir);
         $this->assertFalse($restricted->settings['ideAutoUpdate']);

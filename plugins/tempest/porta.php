@@ -38,7 +38,7 @@ return new class('tempest') extends AbstractPlugin {
     public function activate(PluginApi $api): void
     {
         $theme = $api->syntaxTheme();
-        $api->registerSetting('languages', 'Languages', 'text', '*', hint: 'comma-separated grammar names, or * for all');
+        $api->registerSetting('languages', label: 'Languages', kind: 'text', default: '*', hint: 'comma-separated grammar names, or * for all');
 
         $api->registerHighlighter('Tempest', fn (): array => $this->claimedLanguages($api), function (string $content, string $language, Closure $deliver) use ($theme): void {
             // Built on first use: the theme holder is swapped in place on a

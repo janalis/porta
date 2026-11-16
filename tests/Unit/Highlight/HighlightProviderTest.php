@@ -28,7 +28,7 @@ final class HighlightProviderTest extends TestCase
         $provider = new PlainTextHighlightProvider();
 
         $this->assertSame('plain', $provider->id);
-        $this->assertSame("<?php\necho 1;", $this->markup($provider, "<?php\necho 1;"));
+        $this->assertSame("<?php\necho 1;", $this->markup($provider, source: "<?php\necho 1;"));
     }
 
     /** The fallback must never decline — that is the whole point of it. */
@@ -46,7 +46,7 @@ final class HighlightProviderTest extends TestCase
         $provider = new TempestHighlightProvider(new DarkTerminalTheme());
 
         $this->assertSame('tempest', $provider->id);
-        $this->assertStringContainsString("\x1b[", $this->markup($provider, "<?php\nreturn 'x';"));
+        $this->assertStringContainsString("\x1b[", $this->markup($provider, source: "<?php\nreturn 'x';"));
     }
 
     /** Tempest falls back to its own TextLanguage, so it claims anything named. */
@@ -94,11 +94,11 @@ final class HighlightProviderTest extends TestCase
         $highlighter = new CodeHighlighter($provider);
         $highlighter->setFile('x.php');
 
-        $highlighter->highlight(['a'], 1);
+        $highlighter->highlight(['a'], version: 1);
         $this->assertSame(1, $provider->calls);
 
         $highlighter->refreshTheme();
-        $highlighter->highlight(['a'], 1);
+        $highlighter->highlight(['a'], version: 1);
 
         $this->assertSame(2, $provider->calls, 'cache dropped, so the backend ran again');
     }
@@ -124,7 +124,7 @@ final class HighlightProviderTest extends TestCase
         $highlighter->setFile('x.php');
 
         for ($i = 0; $i < 25; ++$i) {
-            $highlighter->highlight(['<?php', 'echo 1;'], 7);
+            $highlighter->highlight(['<?php', 'echo 1;'], version: 7);
         }
 
         $this->assertSame(1, $provider->calls);

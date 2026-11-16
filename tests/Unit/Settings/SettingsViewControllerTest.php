@@ -160,7 +160,7 @@ final class SettingsViewControllerTest extends TestCase
         foreach (['general', 'interface', 'highlighting', 'plugins', 'lang:php'] as $page) {
             $this->scope->set(ConfigScope::Project);
             $this->sectionEvents->dispatch(new SettingsSectionRequested($page));
-            $rows = Probe::get($this->form, 'rows');
+            $rows = Probe::get($this->form, property: 'rows');
             \assert(\is_array($rows) && [] !== $rows, description: 'every settings page renders at least one row');
             $first = $rows[0];
             $this->assertInstanceOf(SettingsRow::class, $first, 'the form holds SettingsRow objects');
@@ -213,9 +213,9 @@ final class SettingsViewControllerTest extends TestCase
         $status = new StatusBarWidget();
         $notifier = new Notifier($status, $this->tui);
         $applier = new LiveSettingsApplier(
-            Themes::createSwitchable(ColorMode::Ansi, 'dark'),
+            Themes::createSwitchable(ColorMode::Ansi, theme: 'dark'),
             new StyleSheetThemer($renderer),
-            TerminalThemeFactory::createSwitchable(ColorMode::Ansi, 'dark'),
+            TerminalThemeFactory::createSwitchable(ColorMode::Ansi, theme: 'dark'),
             new CursorStyle(),
             new Translator('en'),
             $regions,
@@ -467,7 +467,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
 
-        $this->selectSettingsSection($this->nav, 'highlighting');
+        $this->selectSettingsSection($this->nav, id: 'highlighting');
         $this->assertSame('highlighting', $this->nav->selectedId());
 
         $screen = \implode("\n", $this->form->render(new RenderContext(80, 60)));
@@ -489,7 +489,7 @@ final class SettingsViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
-        $this->selectSettingsSection($this->nav, 'interface');
+        $this->selectSettingsSection($this->nav, id: 'interface');
         $this->form->render(new RenderContext(100, 22));
         $this->form->handleInput("\x1b[B"); // Language
 
@@ -497,10 +497,10 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertFalse($this->contextMenu->isOpen(), 'a form never drawn on screen has nothing to hang a list from');
 
         // Drawn (its content pane as the root), it has a screen rect to hang the list from.
-        $this->renderer->renderFrame($this->content, 100, 24);
+        $this->renderer->renderFrame($this->content, columns: 100, rows: 24);
         $this->form->handleInput("\r");
 
-        $this->assertTrue(Probe::get($this->contextMenu, 'open') && Probe::get($this->contextMenu, 'listbox'), 'the list is open');
+        $this->assertTrue(Probe::get($this->contextMenu, property: 'open') && Probe::get($this->contextMenu, property: 'listbox'), 'the list is open');
         $this->contextMenu->handleInput("\x1b[B"); // from System, the current option, past English
         $this->contextMenu->handleInput("\x1b[B"); // to Français
         $this->contextMenu->handleInput("\r");
@@ -512,7 +512,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
 
-        $this->selectSettingsSection($this->nav, 'keybindings');
+        $this->selectSettingsSection($this->nav, id: 'keybindings');
         $this->assertSame(['settings-keys'], $this->ids($this->content));
         $this->assertSame($this->keymapList, $controller->focusTarget());
 
@@ -525,7 +525,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
 
-        $this->selectSettingsSection($this->nav, 'interface');
+        $this->selectSettingsSection($this->nav, id: 'interface');
         $this->assertSame('interface', $this->nav->selectedId());
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
@@ -559,7 +559,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
 
-        $this->selectSettingsSection($this->nav, 'lang:php');
+        $this->selectSettingsSection($this->nav, id: 'lang:php');
         $this->assertSame('lang:php', $this->nav->selectedId());
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
@@ -574,8 +574,8 @@ final class SettingsViewControllerTest extends TestCase
         // Indentation legend between its blank rows, so Indent style's label
         // row is pane row 9: the first click on its label moves the selection
         // onto it, the second steps it.
-        $this->form->handleClick(9, 0);
-        $this->form->handleClick(9, 0);
+        $this->form->handleClick(9, relCol: 0);
+        $this->form->handleClick(9, relCol: 0);
         $this->assertSame('spaces', IdeConfig::load($this->project->dir)->languages['php']['indentStyle']);
     }
 
@@ -583,7 +583,7 @@ final class SettingsViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
-        $this->selectSettingsSection($this->nav, 'lang:php');
+        $this->selectSettingsSection($this->nav, id: 'lang:php');
 
         // The LSP row is the third row of a language section (after the two
         // indent rows: it opens the Language server group); edit it inline.
@@ -603,7 +603,7 @@ final class SettingsViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
-        $this->selectSettingsSection($this->nav, 'lang:php');
+        $this->selectSettingsSection($this->nav, id: 'lang:php');
 
         // The debug-adapter row is the fifth row of a language section (after indent + run command + LSP).
         $this->form->handleInput("\x1b[B"); // past the "Save changes to" lead row
@@ -692,7 +692,7 @@ final class SettingsViewControllerTest extends TestCase
 
         $this->sectionEvents->dispatch(new SettingsSectionRequested('lang:php', 'indentStyle'));
 
-        $this->assertSame('lang:php', Probe::get($controller, 'section'));
+        $this->assertSame('lang:php', Probe::get($controller, property: 'section'));
         $this->assertStringContainsString('Indent style', $this->selectedSettingRow($this->form));
     }
 
@@ -709,7 +709,7 @@ final class SettingsViewControllerTest extends TestCase
         AttachedStyles::attach($this->form);
         $this->form->setFocused(true);
         $this->sectionEvents->dispatch(new SettingsSectionRequested('lang:php'));
-        $this->selectSettingRow($this->form, 'Launch config');
+        $this->selectSettingRow($this->form, label: 'Launch config');
 
         $this->form->handleInput("\r"); // open the inline editor
         foreach (\str_split('{not json') as $char) {
@@ -717,7 +717,7 @@ final class SettingsViewControllerTest extends TestCase
         }
         $this->form->handleInput("\r"); // commit → the controller refuses
 
-        $this->assertNotNull(Probe::get($this->form, 'editing'), 'still editing, so the value can be corrected');
+        $this->assertNotNull(Probe::get($this->form, property: 'editing'), 'still editing, so the value can be corrected');
         $screen = AnsiUtils::stripAnsiCodes(\implode('', $this->form->render(new RenderContext(80, 10))));
         $this->assertStringContainsString('{not json', $screen, 'and the typing survived the refusal');
     }
@@ -768,7 +768,7 @@ final class SettingsViewControllerTest extends TestCase
         // begins at pane row 8 — one click selects and toggles it, as a
         // label does (default true → false).
         $this->form->render(new RenderContext(80, 24));
-        $this->form->handleClick(8, 0);
+        $this->form->handleClick(8, relCol: 0);
         $this->assertFalse(IdeConfig::load($this->project->dir)->settings['autoPairs']);
     }
 
@@ -776,7 +776,7 @@ final class SettingsViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
-        $this->selectSettingsSection($this->nav, 'keybindings');
+        $this->selectSettingsSection($this->nav, id: 'keybindings');
 
         $this->keymapList->handleInput("\r"); // arm capture on the first action
         $this->keymapList->handleInput('a');
@@ -788,7 +788,7 @@ final class SettingsViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
-        $this->selectSettingsSection($this->nav, 'keybindings');
+        $this->selectSettingsSection($this->nav, id: 'keybindings');
         $this->keymapList->handleInput("\r");
         $this->keymapList->handleInput('a');
         $this->assertSame(['a'], IdeConfig::load($this->project->dir)->keymap['cursor_up']);
@@ -796,7 +796,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->keymapList->handleInput("\x1b[3~"); // Delete
 
         $this->assertArrayNotHasKey('cursor_up', IdeConfig::load($this->project->dir)->keymap);
-        $rows = \array_column(Probe::get($this->keymapList, 'rows'), null, 'action');
+        $rows = \array_column(Probe::get($this->keymapList, property: 'rows'), null, 'action');
         $this->assertFalse($rows['cursor_up']->overridden, 'and the list was rebuilt, not left showing the override');
     }
 
@@ -848,7 +848,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->nav->setPluginEntries(['demo']);
         $controller->open();
 
-        $this->selectSettingsSection($this->nav, 'plugins');
+        $this->selectSettingsSection($this->nav, id: 'plugins');
         $this->assertSame('plugins', $this->nav->selectedId());
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
@@ -884,19 +884,19 @@ final class SettingsViewControllerTest extends TestCase
         $this->lifecycle->names = ['one', 'two'];
         $this->nav->setPluginEntries(['one', 'two']);
         $controller->open();
-        $this->selectSettingsSection($this->nav, 'plugins');
+        $this->selectSettingsSection($this->nav, id: 'plugins');
         for ($row = 0; $row < 10; ++$row) {
             $this->form->handleInput("\x1b[B"); // to the index's last row
         }
 
-        $this->selectSettingsSection($this->nav, 'plugin:one');
+        $this->selectSettingsSection($this->nav, id: 'plugin:one');
         $this->assertSame(0, Probe::object($this->form, 'list')->selected(), 'Enabled, not the carried-over index: Remove');
 
         $this->form->handleInput("\x1b[B");
         $controller->refresh(); // the same page re-reading itself keeps its place
         $this->assertSame(1, Probe::object($this->form, 'list')->selected());
 
-        $this->selectSettingsSection($this->nav, 'plugin:two');
+        $this->selectSettingsSection($this->nav, id: 'plugin:two');
         $this->assertSame(0, Probe::object($this->form, 'list')->selected(), 'a plugin page to another: Enabled again');
     }
 
@@ -910,7 +910,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller->refresh();
         $this->assertSame(['settings-form'], $this->ids($this->content));
 
-        $this->selectSettingsSection($this->nav, 'plugins');
+        $this->selectSettingsSection($this->nav, id: 'plugins');
         \mkdir($this->project->dir.'/.porta/plugins/late', permissions: 0o777, recursive: true);
         \file_put_contents($this->project->dir.'/.porta/plugins/late/porta.php', data: "<?php\n");
         $this->lifecycle->names = ['late'];
@@ -929,7 +929,7 @@ final class SettingsViewControllerTest extends TestCase
         ]);
         $controller->open();
         $this->nav->setPluginEntries(['demo']);
-        $this->selectSettingsSection($this->nav, 'plugin:demo');
+        $this->selectSettingsSection($this->nav, id: 'plugin:demo');
 
         return $controller;
     }
@@ -950,7 +950,7 @@ final class SettingsViewControllerTest extends TestCase
             $this->form->handleInput($char);
         }
         $this->form->handleInput("\r");
-        $this->assertSame('/opt/x', $this->pluginSettings->value('demo', 'binary'));
+        $this->assertSame('/opt/x', $this->pluginSettings->value('demo', key: 'binary'));
 
         // When the shown plugin vanishes, refresh() falls back to the Plugins section.
         $this->lifecycle->names = [];
@@ -1008,7 +1008,7 @@ final class SettingsViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
-        $this->selectSettingsSection($this->nav, 'interface');
+        $this->selectSettingsSection($this->nav, id: 'interface');
         $this->form->handleInput("\t"); // content -> nav, so a re-run of open() would steal focus back
 
         $controller->open(); // already open: must be a complete no-op
@@ -1026,22 +1026,22 @@ final class SettingsViewControllerTest extends TestCase
         $controller->open();
         $controller->close();
         $this->tui->setFocus($this->form);
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
 
         $controller->open();
 
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'));
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'));
     }
 
     public function testSelectingASectionRequestsARender(): void
     {
         $controller = $this->controller();
         $controller->open();
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
 
-        $this->selectSettingsSection($this->nav, 'interface');
+        $this->selectSettingsSection($this->nav, id: 'interface');
 
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'));
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'));
     }
 
     public function testRefreshWhileClosedIsACompleteNoOpEvenOnAPluginSection(): void
@@ -1053,12 +1053,12 @@ final class SettingsViewControllerTest extends TestCase
         $controller->close();
 
         $this->lifecycle->names = []; // the plugin "vanishes" while closed
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
 
         $controller->refresh();
 
         $this->assertSame('plugin:demo', $this->nav->selectedId(), 'refresh() while closed must not fall back to Plugins');
-        $this->assertFalse(Probe::get($this->tui, 'renderRequested'), 'refresh() while closed must not request a render either');
+        $this->assertFalse(Probe::get($this->tui, property: 'renderRequested'), 'refresh() while closed must not request a render either');
     }
 
     /**
@@ -1074,7 +1074,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->pluginSettings->registerFor('x', []);
         $controller->open();
         $this->nav->setPluginEntries(['x']);
-        $this->selectSettingsSection($this->nav, 'plugin:x');
+        $this->selectSettingsSection($this->nav, id: 'plugin:x');
 
         $controller->refresh();
 
@@ -1092,12 +1092,12 @@ final class SettingsViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open(); // opens on 'general'
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
 
         $controller->refresh();
 
         $this->assertSame('general', $this->nav->selectedId());
-        $this->assertFalse(Probe::get($this->tui, 'renderRequested'), 'an ordinary section is unaffected by refresh() and must not re-render either');
+        $this->assertFalse(Probe::get($this->tui, property: 'renderRequested'), 'an ordinary section is unaffected by refresh() and must not re-render either');
     }
 
     /**
@@ -1115,7 +1115,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->pluginSettings->registerFor('demo', []);
         $controller->open();
         $this->nav->setPluginEntries(['demo']);
-        $this->selectSettingsSection($this->nav, 'plugin:demo');
+        $this->selectSettingsSection($this->nav, id: 'plugin:demo');
         $this->lifecycle->names = []; // vanished
         $revisionBefore = $this->form->getRenderRevision();
         $controller->refresh();
@@ -1129,7 +1129,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->lifecycle->names = ['demo'];
         $controller2->open();
         $this->nav->setPluginEntries(['demo']);
-        $this->selectSettingsSection($this->nav, 'plugin:demo');
+        $this->selectSettingsSection($this->nav, id: 'plugin:demo');
         $revisionBefore2 = $this->form->getRenderRevision();
         Probe::invoke($controller2, 'selectSection', 'plugins');
         $directCallDelta = $this->form->getRenderRevision() - $revisionBefore2;
@@ -1141,15 +1141,15 @@ final class SettingsViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
-        $this->selectSettingsSection($this->nav, 'plugins');
+        $this->selectSettingsSection($this->nav, id: 'plugins');
         \mkdir($this->project->dir.'/.porta/plugins/late', permissions: 0o777, recursive: true);
         \file_put_contents($this->project->dir.'/.porta/plugins/late/porta.php', data: "<?php\n");
         $this->lifecycle->names = ['late'];
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
 
         $controller->refresh();
 
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'refresh() on the plugins section must request a render');
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'), 'refresh() on the plugins section must request a render');
         $screen = AnsiUtils::stripAnsiCodes(\implode("\n", $this->form->render(new RenderContext(80, 40))));
         $this->assertMatchesRegularExpression('/late\s+│\s+Open\s+│/u', $screen);
     }
@@ -1167,25 +1167,25 @@ final class SettingsViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->open();
-        $this->selectSettingsSection($this->nav, 'keybindings');
+        $this->selectSettingsSection($this->nav, id: 'keybindings');
         // cursor_up (row 0, the default selection) is shadowed by the
         // editor's own baked-in arrow-key binding, which always wins over an
         // ideKeys rebind in rows()'s priority order — its displayed binding
         // would never change either way. move_tab_left has no default at any
         // priority level, so a rebind is the only thing that could ever fill
         // it in.
-        $rows = Probe::get($this->keymapList, 'rows');
+        $rows = Probe::get($this->keymapList, property: 'rows');
         $targetIndex = \array_search('move_tab_left', \array_column($rows, 'action'), strict: true);
         \assert(false !== $targetIndex, description: 'move_tab_left is a registered action');
         for ($i = 0; $i < $targetIndex; ++$i) {
             $this->keymapList->handleInput("\x1b[B");
         }
-        $rowBefore = Probe::get($this->keymapList, 'rows')[$targetIndex]->binding;
+        $rowBefore = Probe::get($this->keymapList, property: 'rows')[$targetIndex]->binding;
 
         $this->keymapList->handleInput("\r"); // arm capture on move_tab_left
         $this->keymapList->handleInput('a');
 
-        $rowAfter = Probe::get($this->keymapList, 'rows')[$targetIndex]->binding;
+        $rowAfter = Probe::get($this->keymapList, property: 'rows')[$targetIndex]->binding;
         $this->assertSame('', $rowBefore, 'move_tab_left starts unbound');
         $this->assertSame('a', $rowAfter, "the rebound action's own row must reflect the new binding, proving setRows() re-ran");
     }
@@ -1212,14 +1212,14 @@ final class SettingsViewControllerTest extends TestCase
         $controller->open();
 
         $this->tui->setFocus($this->nav);
-        Probe::set($this->tui, 'renderRequested', false);
-        Probe::invoke($controller, 'focusNav');
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'focusNav() must request a render even when nav was already focused');
+        Probe::set($this->tui, property: 'renderRequested', value: false);
+        Probe::invoke($controller, method: 'focusNav');
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'), 'focusNav() must request a render even when nav was already focused');
 
         $this->tui->setFocus($this->form);
-        Probe::set($this->tui, 'renderRequested', false);
-        Probe::invoke($controller, 'focusContent');
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'focusContent() must request a render even when the form was already focused');
+        Probe::set($this->tui, property: 'renderRequested', value: false);
+        Probe::invoke($controller, method: 'focusContent');
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'), 'focusContent() must request a render even when the form was already focused');
     }
 
     private static function formatOnSave(): FormatOnSave
@@ -1230,10 +1230,10 @@ final class SettingsViewControllerTest extends TestCase
         return new FormatOnSave(
             $pool,
             $editor,
-            new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
+            new Notifier(new StatusBarWidget(), TestTui::create(80, rows: 24)),
             new Translator('en'),
             new FakeScheduler(),
-            TestTui::create(80, 24),
+            TestTui::create(80, rows: 24),
         );
     }
 
@@ -1307,23 +1307,23 @@ final class SettingsViewControllerTest extends TestCase
         $title = AnsiUtils::stripAnsiCodes($this->form->render(new RenderContext(60, 10))[0]);
         $this->assertStringStartsWith(' Settings › Languages › PHP ', $title);
 
-        $this->form->handleClick(0, 14); // 'Languages': a heading, no page
+        $this->form->handleClick(0, relCol: 14); // 'Languages': a heading, no page
         $this->assertSame('lang:php', $this->nav->selectedId());
-        $this->form->handleClick(0, 3); // 'Settings'
+        $this->form->handleClick(0, relCol: 3); // 'Settings'
         $this->assertSame('general', $this->nav->selectedId());
         $this->assertStringStartsWith(' Settings › General ', AnsiUtils::stripAnsiCodes($this->form->render(new RenderContext(60, 10))[0]));
 
         $this->sectionEvents->dispatch(new SettingsSectionRequested('keybindings'));
         $this->keymapList->render(new RenderContext(60, 10)); // the click maps against the drawn trail
-        $this->keymapList->handleClick(0, 3);
+        $this->keymapList->handleClick(0, relCol: 3);
         $this->assertSame('general', $this->nav->selectedId(), 'the keybindings page\'s Settings crumb too');
     }
 
     public function testTheStorePageMountsTheStoreAndFillsItFromTheCatalog(): void
     {
         $store = new StoreFixture();
-        $store->publish('acme/porta-rector', 'v1.1.0', ['title' => 'Rector']);
-        $store->installed('acme/porta-rector', 'v1.0.0');
+        $store->publish('acme/porta-rector', version: 'v1.1.0', store: ['title' => 'Rector']);
+        $store->installed('acme/porta-rector', version: 'v1.0.0');
         $store->fill();
         $controller = $this->controller(store: $store);
         $controller->open();
@@ -1348,7 +1348,7 @@ final class SettingsViewControllerTest extends TestCase
         $store = new StoreFixture();
         $store->publish('acme/porta-rector', store: ['title' => 'Rector']);
         $store->http->bodies['https://raw.githubusercontent.com/acme/porta-rector/ref/README.md'] = "![logo](https://img.test/logo.png)\n";
-        $store->http->bodies['https://img.test/logo.png'] = PngFixture::bytes(40, 40);
+        $store->http->bodies['https://img.test/logo.png'] = PngFixture::bytes(40, height: 40);
         $store->fill();
         $controller = $this->controller(store: $store);
         $controller->openOn('plugins');
@@ -1424,13 +1424,13 @@ final class SettingsViewControllerTest extends TestCase
         $controller->onSectionRequested(new SettingsSectionRequested('plugins', 'configScope'));
         $this->assertSame(['settings-store'], $this->ids($this->content));
         $this->assertSame(StoreTab::Installed, $this->store?->tab(), 'a search hit on the scope lands on the Installed tab');
-        $this->renderer->renderFrame($this->content, 100, 30);
+        $this->renderer->renderFrame($this->content, columns: 100, rows: 30);
         $lines = AnsiUtils::stripAnsiCodes(\implode("\n", $this->store?->render(new RenderContext(100, 30)) ?? []));
         $this->assertStringContainsString('Install from URL or path', $lines);
         $this->assertMatchesRegularExpression('/git\s+╭/u', $lines);
 
         $this->store?->handleInput("\r"); // the scope's list, under it
-        $this->assertTrue(Probe::get($this->contextMenu, 'open') && Probe::get($this->contextMenu, 'listbox'), 'the list is open');
+        $this->assertTrue(Probe::get($this->contextMenu, property: 'open') && Probe::get($this->contextMenu, property: 'listbox'), 'the list is open');
         $this->contextMenu->handleInput("\x1b[B");
         $this->contextMenu->handleInput("\r");
         $this->assertSame(ConfigScope::Global, $this->scope->current(), 'the pick went through the Plugins page');

@@ -27,8 +27,8 @@ return new class('xdebug') extends AbstractPlugin {
         // runs, and WorkspaceTrust drops settings so named from a restricted
         // project's own .porta.json — a project the user has not trusted
         // must not choose what runs.
-        $api->registerSetting('adapterPath', 'php-debug adapter script', 'text', '', hint: 'empty = installed here, then the php-debug of VS Code, Cursor or VSCodium');
-        $api->registerSetting('nodeBinary', 'node binary', 'text', 'node', hint: 'runs the adapter');
+        $api->registerSetting('adapterPath', label: 'php-debug adapter script', kind: 'text', default: '', hint: 'empty = installed here, then the php-debug of VS Code, Cursor or VSCodium');
+        $api->registerSetting('nodeBinary', label: 'node binary', kind: 'text', default: 'node', hint: 'runs the adapter');
         $locate = static fn (): AdapterLocator => new AdapterLocator(PortaHome::base(), PortaHome::expand((string) $api->setting('adapterPath')));
         $setup = new AdapterSetup(
             $api,
@@ -41,9 +41,9 @@ return new class('xdebug') extends AbstractPlugin {
 
             return null === $script ? null : [(string) $api->setting('nodeBinary'), $script];
         });
-        $api->registerCommand('install', 'Xdebug: Install the php-debug Adapter', $setup->install(...));
+        $api->registerCommand('install', label: 'Xdebug: Install the php-debug Adapter', handler: $setup->install(...));
         // A web request, or a CLI run started elsewhere, connects to the adapter: nothing is run for it.
-        $api->registerCommand('listen', 'Xdebug: Start Listening for Connections', static fn () => $api->runs()->debugger()->listen('php'));
+        $api->registerCommand('listen', label: 'Xdebug: Start Listening for Connections', handler: static fn () => $api->runs()->debugger()->listen('php'));
         $api->addMenuItem('listen');
         $api->registerInstaller('php-debug', static fn (): bool => null !== $locate()->script(), [[PluginApi::INSTALL_SELF, 'install']], static fn (): string => $locate()->describe());
     }

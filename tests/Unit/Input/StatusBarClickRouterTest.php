@@ -125,7 +125,7 @@ final class StatusBarClickRouterTest extends TestCase
         $col = \mb_strpos(AnsiUtils::stripAnsiCodes($row), $needle);
         $this->assertNotFalse($col);
 
-        return self::pressAt($col, 0);
+        return self::pressAt($col, row: 0);
     }
 
     public function testAClickOnAToolWindowCellRunsThatCommand(): void
@@ -176,7 +176,7 @@ final class StatusBarClickRouterTest extends TestCase
     {
         $pane = new TestPane('viewer');
         $this->panes->register($pane, static fn (string $path): string => '');
-        $this->buffers->openPane($this->project->path('top.php'), 'viewer', 'payload');
+        $this->buffers->openPane($this->project->path('top.php'), paneId: 'viewer', payload: 'payload');
 
         return $pane;
     }
@@ -206,14 +206,14 @@ final class StatusBarClickRouterTest extends TestCase
         // It must fall through, or the panes below never see their clicks.
         $router = $this->router();
 
-        $this->assertFalse($router->route(self::pressAt(self::DIAGNOSTIC_COL, 0), $this->menus(...), $this->clicks));
+        $this->assertFalse($router->route(self::pressAt(self::DIAGNOSTIC_COL, row: 0), $this->menus(...), $this->clicks));
     }
 
     public function testAClickOutsideTheStatusRowIsNotConsumed(): void
     {
         $router = $this->router();
 
-        $this->assertFalse($router->route(self::pressAt(0, 5), $this->menus(...), $this->clicks));
+        $this->assertFalse($router->route(self::pressAt(0, row: 5), $this->menus(...), $this->clicks));
     }
 
     public function testAClickOnANEARBYRowAtACELLSCOLUMNIsStillNotConsumed(): void
@@ -225,7 +225,7 @@ final class StatusBarClickRouterTest extends TestCase
         $router = $this->router();
         $cellColumn = $this->clickOn('AB')->col;
 
-        $this->assertFalse($router->route(self::pressAt($cellColumn, 7), $this->menus(...), $this->clicks));
+        $this->assertFalse($router->route(self::pressAt($cellColumn, row: 7), $this->menus(...), $this->clicks));
         $this->assertSame([], $this->ran, 'nothing may run from a click off the status row');
     }
 
@@ -238,9 +238,9 @@ final class StatusBarClickRouterTest extends TestCase
     {
         $router = $this->router();
 
-        $this->assertFalse($router->route(self::pressAt(self::DIAGNOSTIC_COL, 0), $this->menus(...), $this->clicks), 'no menu opened: not consumed');
+        $this->assertFalse($router->route(self::pressAt(self::DIAGNOSTIC_COL, row: 0), $this->menus(...), $this->clicks), 'no menu opened: not consumed');
         $this->assertSame([self::DIAGNOSTIC_COL], $this->menuAsked);
-        $this->assertTrue($router->route(self::pressAt(self::DIAGNOSTIC_COL, 0), static fn (): bool => true, $this->clicks), 'a menu opened: consumed');
+        $this->assertTrue($router->route(self::pressAt(self::DIAGNOSTIC_COL, row: 0), static fn (): bool => true, $this->clicks), 'a menu opened: consumed');
 
         $router->route($this->clickOn('AB'), $this->menus(...), $this->clicks);
         $this->assertSame([self::DIAGNOSTIC_COL], $this->menuAsked, 'a cell with an action never asks');
@@ -264,8 +264,8 @@ final class StatusBarClickRouterTest extends TestCase
     {
         $router = $this->router();
 
-        $router->route(self::pressAt(self::DIAGNOSTIC_COL, 0), $this->menus(...), $this->clicks);
-        $router->route(self::pressAt(self::DIAGNOSTIC_COL, 0), $this->menus(...), $this->clicks);
+        $router->route(self::pressAt(self::DIAGNOSTIC_COL, row: 0), $this->menus(...), $this->clicks);
+        $router->route(self::pressAt(self::DIAGNOSTIC_COL, row: 0), $this->menus(...), $this->clicks);
 
         $this->assertNotSame($this->project->path('src/Deep/a.php'), $this->tree->selectedNode()?->path);
     }

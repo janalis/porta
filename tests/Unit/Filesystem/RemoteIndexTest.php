@@ -42,7 +42,7 @@ final class RemoteIndexTest extends TestCase
         $index->file('src/A.php', new RemoteStamp(1, 1), fetched: true);
         $index->file('srcx.php', new RemoteStamp(1, 1), fetched: true);
 
-        $index->move('src', 'lib');
+        $index->move('src', to: 'lib');
         $index->save();
         $this->assertNotNull(new RemoteIndex($dir->path('index.json'))->get('lib/A.php'), 'a move is saved');
 
@@ -80,8 +80,8 @@ final class RemoteIndexTest extends TestCase
         $index->directory('2024');
         $index->file('a.txt', new RemoteStamp(1, 1), fetched: true);
 
-        $index->move('a.txt', 'b.txt');
-        $index->move('2024', '2025');
+        $index->move('a.txt', to: 'b.txt');
+        $index->move('2024', to: '2025');
         $this->assertNull($index->get('a.txt'));
         $this->assertNotNull($index->get('b.txt'));
         $this->assertNotNull($index->get('2025'));
@@ -106,9 +106,9 @@ final class RemoteIndexTest extends TestCase
 
     public function testMovedRerootsOnlyWhatIsUnder(): void
     {
-        $this->assertSame('lib', RemoteIndex::moved('src', 'src', 'lib'));
-        $this->assertSame('lib/a/b', RemoteIndex::moved('src/a/b', 'src', 'lib'));
-        $this->assertNull(RemoteIndex::moved('srcx', 'src', 'lib'));
-        $this->assertNull(RemoteIndex::moved('other', 'src', 'lib'));
+        $this->assertSame('lib', RemoteIndex::moved('src', from: 'src', to: 'lib'));
+        $this->assertSame('lib/a/b', RemoteIndex::moved('src/a/b', from: 'src', to: 'lib'));
+        $this->assertNull(RemoteIndex::moved('srcx', from: 'src', to: 'lib'));
+        $this->assertNull(RemoteIndex::moved('other', from: 'src', to: 'lib'));
     }
 }

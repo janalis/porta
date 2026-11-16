@@ -27,31 +27,31 @@ final class PluginTokenSpansTest extends TestCase
 
     private function api(PluginManager $manager, string $name): PluginApi
     {
-        return $manager->api($name, '/p', new PluginSettings('/p', []));
+        return $manager->api($name, rootDir: '/p', settings: new PluginSettings('/p', []));
     }
 
     public function testAPluginClassifierWinsOverTheBuiltIn(): void
     {
         $manager = $this->manager();
-        $api = $this->api($manager, 'spans');
+        $api = $this->api($manager, name: 'spans');
         $api->registerTokenSpans(['php'], static fn (): array => [['start' => 2, 'end' => 5]]);
         $manager->commit($api);
 
         $classifier = new TokenClassifier(null, $manager);
 
-        $this->assertSame([['start' => 2, 'end' => 5]], $classifier->commentStringSpans('<?php // x', 'php'));
+        $this->assertSame([['start' => 2, 'end' => 5]], $classifier->commentStringSpans('<?php // x', language: 'php'));
     }
 
     /** Declining (null) hands the language back to the built-in classifier. */
     public function testDecliningFallsBackToTheBuiltInClassifier(): void
     {
         $manager = $this->manager();
-        $api = $this->api($manager, 'spans');
+        $api = $this->api($manager, name: 'spans');
         $api->registerTokenSpans(['php'], static fn (): ?array => null);
         $manager->commit($api);
 
         $classifier = new TokenClassifier(null, $manager);
-        $spans = $classifier->commentStringSpans("<?php\n// a comment\n", 'php');
+        $spans = $classifier->commentStringSpans("<?php\n// a comment\n", language: 'php');
 
         $this->assertNotSame([], $spans, 'the built-in classified it');
     }
@@ -59,47 +59,47 @@ final class PluginTokenSpansTest extends TestCase
     public function testAClassifierIsSkippedForLanguagesItDoesNotClaim(): void
     {
         $manager = $this->manager();
-        $api = $this->api($manager, 'spans');
+        $api = $this->api($manager, name: 'spans');
         $api->registerTokenSpans(['rust'], static fn (): array => [['start' => 0, 'end' => 1]]);
         $manager->commit($api);
 
-        $this->assertNull($manager->commentStringSpans('<?php', 'php'));
+        $this->assertNull($manager->commentStringSpans('<?php', language: 'php'));
     }
 
     public function testStarClaimsEveryLanguage(): void
     {
         $manager = $this->manager();
-        $api = $this->api($manager, 'spans');
+        $api = $this->api($manager, name: 'spans');
         $api->registerTokenSpans(['*'], static fn (): array => [['start' => 1, 'end' => 2]]);
         $manager->commit($api);
 
-        $this->assertSame([['start' => 1, 'end' => 2]], $manager->commentStringSpans('x', 'rust'));
+        $this->assertSame([['start' => 1, 'end' => 2]], $manager->commentStringSpans('x', language: 'rust'));
     }
 
     public function testFirstClaimerInLoadOrderWins(): void
     {
         $manager = $this->manager();
 
-        $one = $this->api($manager, 'one');
+        $one = $this->api($manager, name: 'one');
         $one->registerTokenSpans(['php'], static fn (): array => [['start' => 1, 'end' => 2]]);
         $manager->commit($one);
 
-        $two = $this->api($manager, 'two');
+        $two = $this->api($manager, name: 'two');
         $two->registerTokenSpans(['php'], static fn (): array => [['start' => 9, 'end' => 9]]);
         $manager->commit($two);
 
-        $this->assertSame([['start' => 1, 'end' => 2]], $manager->commentStringSpans('x', 'php'));
+        $this->assertSame([['start' => 1, 'end' => 2]], $manager->commentStringSpans('x', language: 'php'));
     }
 
     /** A faulting classifier must never break search — it just declines. */
     public function testAThrowingClassifierDeclinesAndIsReported(): void
     {
         $manager = $this->manager();
-        $api = $this->api($manager, 'boom');
+        $api = $this->api($manager, name: 'boom');
         $api->registerTokenSpans(['php'], static fn (): array => throw new \RuntimeException('classify failed'));
         $manager->commit($api);
 
-        $this->assertNull($manager->commentStringSpans('x', 'php'));
+        $this->assertNull($manager->commentStringSpans('x', language: 'php'));
         $this->assertCount(1, $manager->warnings);
     }
 
@@ -115,13 +115,13 @@ final class PluginTokenSpansTest extends TestCase
 
         $classifier = new TokenClassifier(null, $throwing);
 
-        $this->assertNotSame([], $classifier->commentStringSpans("<?php\n// a comment\n", 'php'));
+        $this->assertNotSame([], $classifier->commentStringSpans("<?php\n// a comment\n", language: 'php'));
     }
 
     public function testRejectsAnEmptyLanguageList(): void
     {
         $manager = $this->manager();
-        $api = $this->api($manager, 'bad');
+        $api = $this->api($manager, name: 'bad');
 
         $this->expectException(PluginException::class);
         $api->registerTokenSpans([], static fn (): array => []);
@@ -130,13 +130,13 @@ final class PluginTokenSpansTest extends TestCase
     public function testDeactivateRemovesTheClassifier(): void
     {
         $manager = $this->manager();
-        $api = $this->api($manager, 'gone');
+        $api = $this->api($manager, name: 'gone');
         $api->registerTokenSpans(['php'], static fn (): array => [['start' => 0, 'end' => 1]]);
         $manager->commit($api);
 
         $manager->deactivate('gone', new CommandRegistry());
 
-        $this->assertNull($manager->commentStringSpans('x', 'php'));
+        $this->assertNull($manager->commentStringSpans('x', language: 'php'));
     }
 
     /** With no plugin source at all the built-in is used directly. */
@@ -144,6 +144,6 @@ final class PluginTokenSpansTest extends TestCase
     {
         $classifier = new TokenClassifier();
 
-        $this->assertNotSame([], $classifier->commentStringSpans("<?php\n// a comment\n", 'php'));
+        $this->assertNotSame([], $classifier->commentStringSpans("<?php\n// a comment\n", language: 'php'));
     }
 }

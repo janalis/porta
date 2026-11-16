@@ -190,7 +190,7 @@ final class StoreCatalogTest extends TestCase
 
     public function testACacheThatIsNotOursIsReadAsFarAsItGoes(): void
     {
-        $this->home->write('cache/catalog.json', '{"fetchedAt": "yesterday", "entries": [{"package": "a/b", "name": "b", "version": "1"}, "junk", {"package": "x"}]}');
+        $this->home->write('cache/catalog.json', content: '{"fetchedAt": "yesterday", "entries": [{"package": "a/b", "name": "b", "version": "1"}, "junk", {"package": "x"}]}');
 
         $catalog = $this->catalog();
         $this->assertSame(['a/b'], self::packages($catalog));
@@ -203,7 +203,7 @@ final class StoreCatalogTest extends TestCase
         \putenv('PORTA_HOME='.$this->home->dir);
         try {
             $catalog = StoreCatalog::create(HttpFetch::create(new RunningProcesses()));
-            $this->home->write('.porta/cache/store/catalog.json', '{"fetchedAt": 7, "entries": []}');
+            $this->home->write('.porta/cache/store/catalog.json', content: '{"fetchedAt": 7, "entries": []}');
             $this->assertSame(7, $catalog->fetchedAt());
         } finally {
             \putenv(false === $previous ? 'PORTA_HOME' : 'PORTA_HOME='.$previous);

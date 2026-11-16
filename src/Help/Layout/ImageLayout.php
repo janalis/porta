@@ -102,7 +102,7 @@ final class ImageLayout
         $this->used[$id] = true;
         $lines = [];
         for ($row = 0; $row < $rows; ++$row) {
-            $lines[] = new PageLine(KittyPlaceholders::row($id, $row, 0, $columns), $columns, 0, $links);
+            $lines[] = new PageLine(KittyPlaceholders::row($id, $row, firstColumn: 0, count: $columns), $columns, 0, $links);
         }
 
         return $lines;
@@ -115,7 +115,7 @@ final class ImageLayout
         if (null === $size) {
             return null;
         }
-        [$columns, $rows] = $this->cells($size, '', \max(1, $width));
+        [$columns, $rows] = $this->cells($size, asked: '', pageWidth: \max(1, $width));
         $key = \hash('sha256', $bytes).'@'.$columns.'x'.$rows;
         $graphics = $this->graphics;
 

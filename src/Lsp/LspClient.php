@@ -203,8 +203,8 @@ final class LspClient implements LspClientInterface
         $this->await(
             $id,
             $this->initializeTimeout,
-            'initialize',
-            function (mixed $result, ?array $error) use ($onReady): void {
+            method: 'initialize',
+            onResult: function (mixed $result, ?array $error) use ($onReady): void {
                 if (null !== $error) {
                     // @noinspection JsonEncodingApiUsageInspection -- a log line: what cannot be encoded is no reason to throw
                     $this->log('initialize failed: '.(string) \json_encode($error));
@@ -402,6 +402,7 @@ final class LspClient implements LspClientInterface
     public function request(string $method, mixed $params, callable $onResult): void
     {
         if ($this->stopped) {
+            // @mago-expect lint:literal-named-argument -- a variadic, which cannot take a named argument: mago#2741
             EventLoop::queue($onResult(...), null, self::stoppedError());
 
             return;
@@ -480,6 +481,7 @@ final class LspClient implements LspClientInterface
         // inside stop(), whose caller is mid-teardown: a request fails, and
         // an action that was waiting for ready runs and fails in turn.
         foreach ($this->pending->drain() as $callback) {
+            // @mago-expect lint:literal-named-argument -- a variadic, which cannot take a named argument: mago#2741
             EventLoop::queue($callback(...), null, self::stoppedError());
         }
         $ready = $this->whenReady;

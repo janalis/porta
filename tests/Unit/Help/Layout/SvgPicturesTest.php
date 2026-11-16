@@ -20,7 +20,7 @@ final class SvgPicturesTest extends TestCase
         $handed = [];
         $svgs = new SvgPictures(static function (): void {}, new RasterImage(static function (string $svg, int $width, \Closure $onPng) use (&$handed): void {
             $handed[] = \strlen($svg);
-            $onPng(PngFixture::bytes(2, 2));
+            $onPng(PngFixture::bytes(2, height: 2));
         }));
 
         $this->assertSame([2, 2], PngDimensions::read((string) $svgs->png($project->path('a.svg'))));
@@ -46,7 +46,7 @@ final class SvgPicturesTest extends TestCase
                 ++$relaid;
             },
             new RasterImage(static function (string $svg, int $width, \Closure $onPng): void {
-                $onPng(PngFixture::bytes(2, 2));
+                $onPng(PngFixture::bytes(2, height: 2));
             }),
         );
 

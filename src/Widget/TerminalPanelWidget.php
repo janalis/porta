@@ -109,7 +109,7 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
     public function scroll(int $lines): void
     {
         $max = \max(0, $this->buffer->lineCount() - $this->visibleRows);
-        $this->scrollBack = IntMath::clamp($this->scrollBack + $lines, 0, $max);
+        $this->scrollBack = IntMath::clamp($this->scrollBack + $lines, lo: 0, hi: $max);
         $this->invalidate();
     }
 
@@ -137,12 +137,12 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
         $kb = $this->getKeybindings();
 
         match (true) {
-            $kb->matches($data, 'hide_terminal') => $this->dismiss(),
-            $kb->matches($data, 'scroll_up') => $this->scroll(3),
-            $kb->matches($data, 'scroll_down') => $this->scroll(-3),
-            $kb->matches($data, 'terminal_next_session') => $this->cycle(1),
-            $kb->matches($data, 'terminal_prev_session') => $this->cycle(-1),
-            $kb->matches($data, 'terminal_close_session') => $this->events?->dispatch(new TerminalSessionCloseRequested(-1)), // -1 = the active session
+            $kb->matches($data, action: 'hide_terminal') => $this->dismiss(),
+            $kb->matches($data, action: 'scroll_up') => $this->scroll(3),
+            $kb->matches($data, action: 'scroll_down') => $this->scroll(-3),
+            $kb->matches($data, action: 'terminal_next_session') => $this->cycle(1),
+            $kb->matches($data, action: 'terminal_prev_session') => $this->cycle(-1),
+            $kb->matches($data, action: 'terminal_close_session') => $this->events?->dispatch(new TerminalSessionCloseRequested(-1)), // -1 = the active session
             // Everything else is forwarded verbatim to the process.
             null !== $this->onInputForward => ($this->onInputForward)($data),
             default => null,
@@ -157,7 +157,7 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
         }
 
         $columns = $context->getColumns();
-        $rows = IntMath::clamp($this->visibleRows, 2, $context->getRows() > 0 ? $context->getRows() : $this->visibleRows);
+        $rows = IntMath::clamp($this->visibleRows, lo: 2, hi: $context->getRows() > 0 ? $context->getRows() : $this->visibleRows);
 
         $lines = [];
         $all = $this->buffer->lines;
@@ -180,7 +180,7 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
         if ($this->focused && 0 === $this->scrollBack && [] !== $window) {
             $row = \count($window) - 1; // the last body line's index
             $col = \min($this->buffer->cursorColumn(), \max(0, $columns - 1));
-            $byte = \strlen(AnsiUtils::sliceByColumn($lines[$row], 0, $col));
+            $byte = \strlen(AnsiUtils::sliceByColumn($lines[$row], startCol: 0, length: $col));
             $lines[$row] = \substr($lines[$row], offset: 0, length: $byte).$this->cursorStyle->marker().\substr($lines[$row], $byte);
         }
 

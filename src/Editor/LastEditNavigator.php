@@ -56,7 +56,7 @@ final readonly class LastEditNavigator
         // Column 0: the line is what a person remembers about where they were
         // typing, and a stale column on a line since re-typed is a worse guess
         // than the start of it.
-        $this->editor->getDocument()->setCursor($site['line'], 0);
+        $this->editor->getDocument()->setCursor($site['line'], col: 0);
         $this->editor->invalidate(); // the render pass scrolls it into view
         $this->tui->requestRender();
     }

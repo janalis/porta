@@ -28,14 +28,14 @@ final class MarkdownFencePreviewTest extends TestCase
             'languages' => ['mermaid'],
             'render' => static function (string $language, string $source, string $path, int $width, \Closure $success): \Closure {
                 // A valid header with an incomplete bitmap cannot be decoded by GD.
-                $success(FenceResult::png(\substr(PngFixture::bytes(16, 16), offset: 0, length: 24)));
+                $success(FenceResult::png(\substr(PngFixture::bytes(16, height: 16), offset: 0, length: 24)));
 
                 return static function (): void {};
             },
         ]]);
         $translator = new Translator('fr');
         $pane = new MarkdownPreviewWidget(translator: $translator, fences: $registry, fenceQueue: new FenceRenderQueue($scheduler), scheduler: $scheduler);
-        $pane->show('/doc.md', "```mermaid\nsource\n```\n");
+        $pane->show('/doc.md', payload: "```mermaid\nsource\n```\n");
         $context = new RenderContext(70, 15);
         $pane->render($context);
         $scheduler->fire();

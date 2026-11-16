@@ -15,7 +15,7 @@ final class JumpHistoryPathListenerTest extends TestCase
     public function testNavigateBackFollowsARenamedFile(): void
     {
         $history = new JumpHistory();
-        $history->push('/p/moved.php', 4, 2);
+        $history->push('/p/moved.php', line: 4, col: 2);
         $listener = new JumpHistoryPathListener($history);
 
         $listener->onFileRenamed(new FileRenamed('/p/moved.php', '/p/new.php'));
@@ -26,8 +26,8 @@ final class JumpHistoryPathListenerTest extends TestCase
     public function testNavigateBackNeverLandsInADeletedFile(): void
     {
         $history = new JumpHistory();
-        $history->push('/p/kept.php', 1, 0);
-        $history->push('/p/gone.php', 2, 0);
+        $history->push('/p/kept.php', line: 1, col: 0);
+        $history->push('/p/gone.php', line: 2, col: 0);
 
         new JumpHistoryPathListener($history)->onFileDeleted(new FileDeleted('/p/gone.php'));
 

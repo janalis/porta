@@ -30,9 +30,9 @@ final class ShownTextIsInertTest extends TestCase
 
         $this->runIde($project, $project->path('src/A.php'), [
             100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($evil): void {
-                $this->awaitPainted($tui, $terminal, 'a]52;c;FILENAMEb.php');
+                $this->awaitPainted($tui, $terminal, needle: 'a]52;c;FILENAMEb.php');
                 Services::resolve($ide, Notifier::class)->flash($evil('TOAST')."\x1b[2J");
-                $this->awaitPainted($tui, $terminal, 'a]52;c;TOASTb[2J');
+                $this->awaitPainted($tui, $terminal, needle: 'a]52;c;TOASTb[2J');
                 foreach (['FILENAME', 'TOAST'] as $mark) {
                     $this->assertStringNotContainsString("\x1b]52;c;".$mark, $terminal->getOutput(), $mark.' was shown, not obeyed');
                 }

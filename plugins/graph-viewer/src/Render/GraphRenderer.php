@@ -123,10 +123,10 @@ final class GraphRenderer
             return; // too small to frame at this zoom
         }
         $key = $grid->colorKey($cluster->color, Role::Dim);
-        $grid->put($x0, $y0, '┌', $key);
-        $grid->put($x1, $y0, '┐', $key);
-        $grid->put($x0, $y1, '└', $key);
-        $grid->put($x1, $y1, '┘', $key);
+        $grid->put($x0, $y0, char: '┌', key: $key);
+        $grid->put($x1, $y0, char: '┐', key: $key);
+        $grid->put($x0, $y1, char: '└', key: $key);
+        $grid->put($x1, $y1, char: '┘', key: $key);
         for ($x = $x0 + 1; $x < $x1; ++$x) {
             $grid->put($x, $y0, $cluster->dashed ? '┄' : '─', $key);
             $grid->put($x, $y1, $cluster->dashed ? '┄' : '─', $key);
@@ -188,7 +188,7 @@ final class GraphRenderer
             return;
         }
         $col = $grid->colOf($edge->labelPos[0]) - \intdiv(AnsiUtils::visibleWidth($label), num2: 2);
-        $grid->text($col, $grid->rowOf($edge->labelPos[1]), $label, $grid->colorKey($edge->textColor ?? $edge->color, Role::Muted), null);
+        $grid->text($col, $grid->rowOf($edge->labelPos[1]), $label, $grid->colorKey($edge->textColor ?? $edge->color, Role::Muted), maxCol: null);
     }
 
     private static function drawNode(GraphCellGrid $grid, GraphNode $node, ?int $selected): void
@@ -199,14 +199,14 @@ final class GraphRenderer
         [$x0, $y0, $x1, $y1] = $grid->nodeBox($node);
         $key = $node->id === $selected ? $grid->roleKey(Role::SelectedRow) : $grid->colorKey($node->color, Role::Bright);
         if (($x1 - $x0) < 2 || ($y1 - $y0) < 1) {
-            $grid->put(\intdiv($x0 + $x1, num2: 2), \intdiv($y0 + $y1, num2: 2), '▪', $key);
+            $grid->put(\intdiv($x0 + $x1, num2: 2), \intdiv($y0 + $y1, num2: 2), char: '▪', key: $key);
 
             return;
         }
-        $grid->put($x0, $y0, '┌', $key);
-        $grid->put($x1, $y0, '┐', $key);
-        $grid->put($x0, $y1, '└', $key);
-        $grid->put($x1, $y1, '┘', $key);
+        $grid->put($x0, $y0, char: '┌', key: $key);
+        $grid->put($x1, $y0, char: '┐', key: $key);
+        $grid->put($x0, $y1, char: '└', key: $key);
+        $grid->put($x1, $y1, char: '┘', key: $key);
         $horizontal = $node->dashed ? '╌' : '─';
         $vertical = $node->dashed ? '╎' : '│';
         for ($x = $x0 + 1; $x < $x1; ++$x) {
@@ -217,7 +217,7 @@ final class GraphRenderer
             $grid->put($x0, $y, $vertical, $key);
             $grid->put($x1, $y, $vertical, $key);
             for ($x = $x0 + 1; $x < $x1; ++$x) {
-                $grid->put($x, $y, ' ', $key); // blank the interior so edges never show through a node
+                $grid->put($x, $y, char: ' ', key: $key); // blank the interior so edges never show through a node
             }
         }
         $labelLines = \explode("\n", $node->label);

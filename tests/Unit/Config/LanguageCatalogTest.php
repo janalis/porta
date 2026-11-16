@@ -41,7 +41,7 @@ final class LanguageCatalogTest extends TestCase
     public function testCatalogCoversExactlyTheResolvableLanguageIds(): void
     {
         $catalog = LanguageCatalog::ids();
-        $resolvable = \array_values(\array_unique(\array_filter(\array_map(static fn (array $entry): ?string => $entry[1], Probe::getStatic(LanguageMap::class, 'EXTENSIONS')))));
+        $resolvable = \array_values(\array_unique(\array_filter(\array_map(static fn (array $entry): ?string => $entry[1], Probe::getStatic(LanguageMap::class, member: 'EXTENSIONS')))));
 
         \sort($catalog);
         \sort($resolvable);

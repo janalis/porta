@@ -151,7 +151,7 @@ final class WorkbenchCommandsTest extends TestCase
             $commands = Services::resolve($ide, CommandRegistry::class);
             $findBar = Services::resolve($ide, FindBarWidget::class);
 
-            Probe::set($findBar, 'open', true);
+            Probe::set($findBar, property: 'open', value: true);
 
             $this->assertFalse($commands->isEnabled('focus_next'), 'find bar open must disable focus_next');
             $this->assertFalse($commands->isEnabled('focus_previous'), 'find bar open must disable focus_previous');
@@ -171,9 +171,9 @@ final class WorkbenchCommandsTest extends TestCase
             $this->assertTrue($commands->isEnabled('show_context_menu'));
 
             // The find bar being open must NOT gate show_context_menu — only the menu bar does.
-            Probe::set($findBar, 'open', true);
+            Probe::set($findBar, property: 'open', value: true);
             $this->assertTrue($commands->isEnabled('show_context_menu'), 'show_context_menu ignores the find bar');
-            Probe::set($findBar, 'open', false);
+            Probe::set($findBar, property: 'open', value: false);
 
             $menuBar->open();
             $this->assertFalse($commands->isEnabled('show_context_menu'), 'menu bar open must disable show_context_menu');
@@ -194,19 +194,19 @@ final class WorkbenchCommandsTest extends TestCase
             $tui->setFocus($tree);
             $root = Probe::object($tui, 'root');
             $this->assertInstanceOf(ContainerWidget::class, $root);
-            $renderer->renderFrame($root, 100, 30);
+            $renderer->renderFrame($root, columns: 100, rows: 30);
             $before = $renderer->getWidgetRect($tree)?->columns;
             $this->assertNotNull($before, 'the tree must have a rendered rect to measure against');
 
             $this->assertTrue($commands->isEnabled('resize_pane_grow'));
             $commands->run('resize_pane_grow');
-            $renderer->renderFrame($root, 100, 30);
+            $renderer->renderFrame($root, columns: 100, rows: 30);
             $afterGrow = $renderer->getWidgetRect($tree)?->columns;
 
             $this->assertSame($before + 2, $afterGrow, 'resize_pane_grow must widen the tree by exactly 2 columns (nudgeSidebar(2*direction) with direction=1)');
 
             $commands->run('resize_pane_shrink');
-            $renderer->renderFrame($root, 100, 30);
+            $renderer->renderFrame($root, columns: 100, rows: 30);
             $afterShrink = $renderer->getWidgetRect($tree)?->columns;
 
             $this->assertSame($before, $afterShrink, 'resize_pane_shrink must exactly undo the grow (direction=-1)');

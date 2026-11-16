@@ -46,7 +46,7 @@ final class ProcessReaper
      */
     public static function closeWhenDead($process, ?\Closure $onReaped = null): void
     {
-        self::reap($process, $onReaped, null, null);
+        self::reap($process, $onReaped, term: null, kill: null);
     }
 
     /**

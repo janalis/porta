@@ -44,7 +44,7 @@ final readonly class ProjectLocation
     public static function prepare(RemoteSpec $spec, string $home, Filesystem $fs = new Filesystem()): string
     {
         $root = $home.'/.porta/remote/'.$spec->id().'/'.$spec->name();
-        $fs->mkdir($root.'/.porta', 0o700);
+        $fs->mkdir($root.'/.porta', mode: 0o700);
         JsonFile::writeEditable($fs, $root.'/'.self::MARKER, ['url' => $spec->url()]);
 
         return (string) \realpath($root);

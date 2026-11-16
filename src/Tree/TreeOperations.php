@@ -263,7 +263,7 @@ final class TreeOperations
     private function treeNewFile(FileTreeNode $node): void
     {
         $this->createIn($node, $this->translator->trans('New File'), function (string $path): void {
-            $this->fs->dumpFile($path, '');
+            $this->fs->dumpFile($path, content: '');
             $this->tree->refresh();
             $this->bufferService->openFile($path, focus: OpenFocus::Editor);
         });
@@ -288,7 +288,7 @@ final class TreeOperations
     private function createIn(FileTreeNode $node, string $title, \Closure $make): void
     {
         $dir = $node->folder();
-        $this->promptName($title, '', function (string $name) use ($dir, $make): void {
+        $this->promptName($title, initial: '', onSubmit: function (string $name) use ($dir, $make): void {
             if ('' === ($name = \trim($name)) || !$this->usable($name, EntryName::isBelow($name))) {
                 return;
             }
@@ -462,7 +462,7 @@ final class TreeOperations
         $question = 1 === \count($paths)
             ? $this->translator->trans('Delete %name%? (y/N)', ['%name%' => \basename($paths[0])])
             : $this->translator->trans('Delete %count% files? (y/N)', ['%count%' => \count($paths)]);
-        $this->promptName($question, '', tone: PromptTone::Danger, onSubmit: function (string $answer) use ($paths): void {
+        $this->promptName($question, initial: '', tone: PromptTone::Danger, onSubmit: function (string $answer) use ($paths): void {
             if (!\in_array(\strtolower(\trim($answer)), ['y', 'yes'], strict: true)) {
                 $this->tui->setFocus($this->tree);
 

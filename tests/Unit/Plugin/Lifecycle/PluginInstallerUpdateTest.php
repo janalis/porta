@@ -54,9 +54,9 @@ final class PluginInstallerUpdateTest extends TestCase
 
     public function testPackagesListsWhatComposerInstalledAndWhereFrom(): void
     {
-        $this->store->installed('acme/porta-one', 'v1.0.0');
-        $this->store->installed('acme/porta-two', 'v2.0.0', InstallScope::Project, fromPackagist: false);
-        $this->store->project->write('.porta/plugins/hand/porta.php', "<?php\n");
+        $this->store->installed('acme/porta-one', version: 'v1.0.0');
+        $this->store->installed('acme/porta-two', version: 'v2.0.0', scope: InstallScope::Project, fromPackagist: false);
+        $this->store->project->write('.porta/plugins/hand/porta.php', content: "<?php\n");
         $this->store->bundled('git');
 
         $packages = $this->store->installer->packages();
@@ -73,11 +73,11 @@ final class PluginInstallerUpdateTest extends TestCase
 
     public function testAVersionComposerDidNotRecordIsUnknown(): void
     {
-        $this->store->installed('acme/porta-one', 'v1.0.0');
-        $this->store->home->write('.porta/vendor/composer/installed.json', '{"packages": [{"name": "acme/porta-one"}, "junk"]}');
+        $this->store->installed('acme/porta-one', version: 'v1.0.0');
+        $this->store->home->write('.porta/vendor/composer/installed.json', content: '{"packages": [{"name": "acme/porta-one"}, "junk"]}');
         $this->assertSame('', $this->store->installer->packages()[0]['version']);
 
-        $this->store->home->write('.porta/vendor/composer/installed.json', '{"packages": ["junk", {"name": "acme/porta-one", "version": "v1.0.1"}]}');
+        $this->store->home->write('.porta/vendor/composer/installed.json', content: '{"packages": ["junk", {"name": "acme/porta-one", "version": "v1.0.1"}]}');
         $this->assertSame('v1.0.1', $this->store->installer->packages()[0]['version'], 'an unreadable entry is skipped, not the end of the list');
     }
 
@@ -90,7 +90,7 @@ final class PluginInstallerUpdateTest extends TestCase
             static function (?string $error, ?string $installed) use (&$file): void {
                 $file = $installed ?? $error;
             },
-            'v1.3.0',
+            version: 'v1.3.0',
         );
         $this->await(static function () use (&$file): bool {
             return null !== $file;
@@ -102,53 +102,53 @@ final class PluginInstallerUpdateTest extends TestCase
 
     public function testUpdateWithNoVersionKeepsToTheConstraint(): void
     {
-        $this->store->installed('acme/porta-one', 'v1.0.0');
+        $this->store->installed('acme/porta-one', version: 'v1.0.0');
 
-        $this->assertNull($this->update($this->store->installer, 'one', version: null));
+        $this->assertNull($this->update($this->store->installer, name: 'one', version: null));
         $composer = \json_decode((string) \file_get_contents($this->store->home->path('.porta/composer.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame('^1.0.0', $composer['require']['acme/porta-one']);
     }
 
     public function testAnotherWriterAndAnAlreadyAppliedTargetDoNotRewriteThePackage(): void
     {
-        $this->store->installed('acme/porta-one', 'v2.0.0');
-        $file = $this->store->home->write('.porta/vendor/acme/porta-one/porta.php', '<?php // preserved');
+        $this->store->installed('acme/porta-one', version: 'v2.0.0');
+        $file = $this->store->home->write('.porta/vendor/acme/porta-one/porta.php', content: '<?php // preserved');
         $lock = new FileLock($this->store->home->path('.porta/.porta-update.lock'));
         $this->assertTrue($lock->acquire());
         try {
-            $this->assertSame('Cannot update "one"', $this->update($this->store->installer, 'one', mode: PluginUpdateMode::Automatic));
+            $this->assertSame('Cannot update "one"', $this->update($this->store->installer, name: 'one', mode: PluginUpdateMode::Automatic));
         } finally {
             $lock->release();
         }
-        $this->assertNull($this->update($this->store->installer, 'one', mode: PluginUpdateMode::Automatic));
+        $this->assertNull($this->update($this->store->installer, name: 'one', mode: PluginUpdateMode::Automatic));
         $this->assertSame('<?php // preserved', \file_get_contents($file));
     }
 
     public function testUpdateRefusesWhatItCannotUpdate(): void
     {
-        $this->store->installed('acme/porta-one', 'v1.0.0', InstallScope::Project);
-        $this->store->project->write('.porta/plugins/hand/porta.php', "<?php\n");
+        $this->store->installed('acme/porta-one', version: 'v1.0.0', scope: InstallScope::Project);
+        $this->store->project->write('.porta/plugins/hand/porta.php', content: "<?php\n");
         $installer = $this->store->installer;
 
-        $this->assertSame('Built-in plugins update with Porta', $this->update($installer, 'git', InstallScope::Embedded));
-        $this->assertSame('"hand" was not installed from a package, so Porta cannot update it', $this->update($installer, 'hand', InstallScope::Project));
-        $this->assertSame('"nope" was not installed from a package, so Porta cannot update it', $this->update($installer, 'nope'));
+        $this->assertSame('Built-in plugins update with Porta', $this->update($installer, name: 'git', scope: InstallScope::Embedded));
+        $this->assertSame('"hand" was not installed from a package, so Porta cannot update it', $this->update($installer, name: 'hand', scope: InstallScope::Project));
+        $this->assertSame('"nope" was not installed from a package, so Porta cannot update it', $this->update($installer, name: 'nope'));
 
         $this->store->trusted = false;
-        $this->assertStringContainsString('trust the project', (string) $this->update($installer, 'one', InstallScope::Project));
+        $this->assertStringContainsString('trust the project', (string) $this->update($installer, name: 'one', scope: InstallScope::Project));
     }
 
     public function testUpdateRefusesWhileAnotherRuns(): void
     {
-        $this->store->installed('acme/porta-one', 'v1.0.0');
-        $this->store->installed('acme/porta-two', 'v1.0.0', InstallScope::Project);
+        $this->store->installed('acme/porta-one', version: 'v1.0.0');
+        $this->store->installed('acme/porta-two', version: 'v1.0.0', scope: InstallScope::Project);
         $installer = $this->store->installer;
         $second = null;
         $first = false;
-        $installer->update('one', InstallScope::Global, 'v1.1.0', static function () use (&$first): void {
+        $installer->update('one', InstallScope::Global, version: 'v1.1.0', onDone: static function () use (&$first): void {
             $first = true;
         });
-        $installer->update('two', InstallScope::Project, 'v1.1.0', static function (?string $error) use (&$second): void {
+        $installer->update('two', InstallScope::Project, version: 'v1.1.0', onDone: static function (?string $error) use (&$second): void {
             $second = $error;
         });
 
@@ -161,34 +161,34 @@ final class PluginInstallerUpdateTest extends TestCase
     public function testAFailingOrMissingComposerIsSaid(): void
     {
         $failing = new StoreFixture(composerExit: 1);
-        $failing->installed('acme/porta-one', 'v1.0.0');
-        $this->assertSame('Cannot update "one"', $this->update($failing->installer, 'one'));
+        $failing->installed('acme/porta-one', version: 'v1.0.0');
+        $this->assertSame('Cannot update "one"', $this->update($failing->installer, name: 'one'));
 
-        $this->store->installed('acme/porta-one', 'v1.0.0');
+        $this->store->installed('acme/porta-one', version: 'v1.0.0');
         $noComposer = new PluginInstaller($this->store->project->dir, $this->store->home->dir, new Translator('en'), null);
-        $this->assertSame('composer is not available', $this->update($noComposer, 'one'));
+        $this->assertSame('composer is not available', $this->update($noComposer, name: 'one'));
     }
 
     public function testAScopeWhoseComposerProjectCannotBeWrittenIsSaid(): void
     {
-        $this->store->installed('acme/porta-one', 'v1.0.0');
+        $this->store->installed('acme/porta-one', version: 'v1.0.0');
         // The scaffold is only written when missing: a directory in its place cannot be.
         \unlink($this->store->home->path('.porta/composer.json'));
         \mkdir($this->store->home->path('.porta/composer.json'));
 
-        $this->assertSame('Cannot update "one"', $this->update($this->store->installer, 'one'));
+        $this->assertSame('Cannot update "one"', $this->update($this->store->installer, name: 'one'));
     }
 
     public function testMalformedComposerConstraintsAreNeverInvented(): void
     {
-        $this->store->installed('acme/porta-one', 'v1.0.0');
-        $this->store->home->write('.porta/composer.json', '{"require":{"acme/porta-one":true,"0":"junk"}}');
+        $this->store->installed('acme/porta-one', version: 'v1.0.0');
+        $this->store->home->write('.porta/composer.json', content: '{"require":{"acme/porta-one":true,"0":"junk"}}');
         $this->assertSame('', $this->store->installer->packages()[0]['constraint']);
     }
 
     public function testTheScopeLeaseRemainsHeldThroughDependencyInstallation(): void
     {
-        $this->store->installed('acme/porta-one', 'v1.0.0');
+        $this->store->installed('acme/porta-one', version: 'v1.0.0');
         $this->store->home->write('bin/composer-recipe.json', \json_encode(
             ['acme/porta-one' => ['composerJson' => \json_encode(
                 [
@@ -212,7 +212,7 @@ final class PluginInstallerUpdateTest extends TestCase
         $error = null;
         $lease = new FileLock($this->store->home->path('.porta/.porta-update.lock'));
         try {
-            $this->store->installer->update('one', InstallScope::Global, 'v1.1.0', static function (?string $failure) use (&$finished, &$error): void {
+            $this->store->installer->update('one', InstallScope::Global, version: 'v1.1.0', onDone: static function (?string $failure) use (&$finished, &$error): void {
                 $error = $failure;
                 $finished = true;
             });
@@ -223,7 +223,7 @@ final class PluginInstallerUpdateTest extends TestCase
             $this->assertFalse($lease->acquire(), 'another writer cannot enter between package and dependency installation');
             $this->assertTrue($this->store->installer->busy());
         } finally {
-            $this->store->home->write('bin/release', '1');
+            $this->store->home->write('bin/release', content: '1');
             $this->await(static function () use (&$finished): bool {
                 return $finished;
             }, what: 'the dependency install to finish');
@@ -237,7 +237,7 @@ final class PluginInstallerUpdateTest extends TestCase
 
     public function testAnOwnedComposerCommandReportsAContendingWriter(): void
     {
-        $this->store->installed('acme/porta-one', 'v1.0.0');
+        $this->store->installed('acme/porta-one', version: 'v1.0.0');
         $lock = new FileLock($this->store->home->path('.porta/.porta-update.lock'));
         $this->assertTrue($lock->acquire());
         $code = null;
@@ -254,7 +254,7 @@ final class PluginInstallerUpdateTest extends TestCase
 
     public function testAnAlreadyAppliedCommandReleasesAnOwnedLease(): void
     {
-        $this->store->installed('acme/porta-one', 'v2.0.0');
+        $this->store->installed('acme/porta-one', version: 'v2.0.0');
         $code = null;
         $this->assertTrue(Probe::invoke($this->store->installer, 'startComposer', $this->store->home->path('.porta'), ['update', 'acme/porta-one:1.1.0'], static function (int $status) use (
             &$code,

@@ -12,7 +12,7 @@ final class DisplayRowTest extends TestCase
 {
     public function testFileHeaderCarriesNoMatchIndexAndIsNotADirectory(): void
     {
-        $row = DisplayRow::fileHeader('a.php', 3, HeaderState::Expanded);
+        $row = DisplayRow::fileHeader('a.php', count: 3, state: HeaderState::Expanded);
 
         $this->assertSame('a.php', $row->filePath);
         $this->assertSame(3, $row->count);
@@ -23,7 +23,7 @@ final class DisplayRowTest extends TestCase
 
     public function testDirHeaderIsMarkedAsADirectory(): void
     {
-        $row = DisplayRow::dirHeader('src', 5, HeaderState::Collapsed);
+        $row = DisplayRow::dirHeader('src', count: 5, state: HeaderState::Collapsed);
 
         $this->assertTrue($row->collapsed);
         $this->assertTrue($row->isDirectory);
@@ -44,7 +44,7 @@ final class DisplayRowTest extends TestCase
 
     public function testContextRowCarriesItsLineAndText(): void
     {
-        $row = DisplayRow::context(42, 'the surrounding source line');
+        $row = DisplayRow::context(42, text: 'the surrounding source line');
 
         $this->assertNull($row->filePath);
         $this->assertSame(-1, $row->matchIndex, 'a context row is never a match');

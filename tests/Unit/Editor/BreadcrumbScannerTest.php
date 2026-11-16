@@ -26,7 +26,7 @@ final class BreadcrumbScannerTest extends TestCase
         $scopes = BreadcrumbScanner::scan($src);
 
         // Caret on the `$x` line (0-based line 6) is inside all three scopes.
-        $trail = BreadcrumbScanner::select($scopes, 6);
+        $trail = BreadcrumbScanner::select($scopes, caretLine: 6);
         $this->assertSame(['A\\B', 'C', 'd'], $this->labels($trail));
         // Jump lines are the 0-based declaration lines: namespace@1, class@2, method@4.
         $this->assertSame([1, 2, 4], \array_map(static fn (array $c): int => $c['line'], $trail));
@@ -36,7 +36,7 @@ final class BreadcrumbScannerTest extends TestCase
     {
         $src = "<?php\n\$x = 1;\nnamespace A;\nclass C {}\n";
         // Line 1 (the `$x` assignment) precedes the namespace → no crumbs.
-        $this->assertSame([], BreadcrumbScanner::select(BreadcrumbScanner::scan($src), 1));
+        $this->assertSame([], BreadcrumbScanner::select(BreadcrumbScanner::scan($src), caretLine: 1));
     }
 
     public function testAnonymousFunctionsAndArrowFnsDoNotAddCrumbs(): void
@@ -45,33 +45,33 @@ final class BreadcrumbScannerTest extends TestCase
         $scopes = BreadcrumbScanner::scan($src);
 
         // The `echo` line is still just N › C › m — closures/fn did not nest or leak.
-        $this->assertSame(['N', 'C', 'm'], $this->labels(BreadcrumbScanner::select($scopes, 8)));
+        $this->assertSame(['N', 'C', 'm'], $this->labels(BreadcrumbScanner::select($scopes, caretLine: 8)));
     }
 
     public function testTraitInterfaceEnumRecognised(): void
     {
         $trait = BreadcrumbScanner::scan("<?php\ntrait T\n{\n    public function a() {}\n}\n");
-        $this->assertSame(['T', 'a'], $this->labels(BreadcrumbScanner::select($trait, 3)));
+        $this->assertSame(['T', 'a'], $this->labels(BreadcrumbScanner::select($trait, caretLine: 3)));
 
         $iface = BreadcrumbScanner::scan("<?php\ninterface I\n{\n    public function a(): int;\n}\n");
         // An interface method has no body, so the caret on its line is inside the interface only.
-        $this->assertSame(['I'], $this->labels(BreadcrumbScanner::select($iface, 3)));
+        $this->assertSame(['I'], $this->labels(BreadcrumbScanner::select($iface, caretLine: 3)));
 
         $enum = BreadcrumbScanner::scan("<?php\nenum E: string\n{\n    case A = 'a';\n}\n");
-        $this->assertSame(['E'], $this->labels(BreadcrumbScanner::select($enum, 3)));
+        $this->assertSame(['E'], $this->labels(BreadcrumbScanner::select($enum, caretLine: 3)));
     }
 
     public function testBracedNamespaceForm(): void
     {
         $src = "<?php\nnamespace A {\n    class C {\n        function m() {\n            \$x;\n        }\n    }\n}\n";
-        $this->assertSame(['A', 'C', 'm'], $this->labels(BreadcrumbScanner::select(BreadcrumbScanner::scan($src), 4)));
+        $this->assertSame(['A', 'C', 'm'], $this->labels(BreadcrumbScanner::select(BreadcrumbScanner::scan($src), caretLine: 4)));
     }
 
     public function testUnclosedScopeMidEditClosesAtEof(): void
     {
         // Missing the final braces (as while typing) — scopes still cover to EOF.
         $src = "<?php\nnamespace N;\nclass C\n{\n    public function m()\n    {\n        \$x;\n";
-        $this->assertSame(['N', 'C', 'm'], $this->labels(BreadcrumbScanner::select(BreadcrumbScanner::scan($src), 6)));
+        $this->assertSame(['N', 'C', 'm'], $this->labels(BreadcrumbScanner::select(BreadcrumbScanner::scan($src), caretLine: 6)));
     }
 
     public function testFooClassAndNewClassDoNotCreateCrumbs(): void
@@ -80,14 +80,14 @@ final class BreadcrumbScannerTest extends TestCase
         $src = "<?php\nnamespace N;\nfunction top(): void\n{\n    \$k = Foo::class;\n    \$o = new class {\n        public \$x = 1;\n    };\n    echo 1;\n}\n";
         $scopes = BreadcrumbScanner::scan($src);
         // The `echo` line is inside N › top only (the anonymous class adds no crumb).
-        $this->assertSame(['N', 'top'], $this->labels(BreadcrumbScanner::select($scopes, 8)));
+        $this->assertSame(['N', 'top'], $this->labels(BreadcrumbScanner::select($scopes, caretLine: 8)));
     }
 
     public function testUseFunctionImportIsNotAScope(): void
     {
         $src = "<?php\nnamespace N;\nuse function strlen;\nclass C\n{\n    public function m() { \$x; }\n}\n";
         // The imported `strlen` must not become a function crumb.
-        $this->assertSame(['N', 'C', 'm'], $this->labels(BreadcrumbScanner::select(BreadcrumbScanner::scan($src), 5)));
+        $this->assertSame(['N', 'C', 'm'], $this->labels(BreadcrumbScanner::select(BreadcrumbScanner::scan($src), caretLine: 5)));
     }
 
     public function testScanCarriesKind(): void
@@ -109,13 +109,13 @@ final class BreadcrumbScannerTest extends TestCase
 
         // Viewport top at line 6 (inside handle): the class + method headers (lines
         // 2 and 4) have scrolled off; the namespace is excluded.
-        $sticky = BreadcrumbScanner::stickyHeaders($scopes, 6, 5);
+        $sticky = BreadcrumbScanner::stickyHeaders($scopes, topLine: 6, max: 5);
         $this->assertSame([['label' => 'Service', 'line' => 2], ['label' => 'handle', 'line' => 4]], $sticky);
 
         // Top at line 0: every header is still visible → nothing pinned.
-        $this->assertSame([], BreadcrumbScanner::stickyHeaders($scopes, 0, 5));
+        $this->assertSame([], BreadcrumbScanner::stickyHeaders($scopes, topLine: 0, max: 5));
         // A header exactly at the top line is not "scrolled off".
-        $this->assertSame([], BreadcrumbScanner::stickyHeaders($scopes, 2, 5));
+        $this->assertSame([], BreadcrumbScanner::stickyHeaders($scopes, topLine: 2, max: 5));
     }
 
     public function testStickyHeadersRespectTheCap(): void
@@ -123,8 +123,8 @@ final class BreadcrumbScannerTest extends TestCase
         $src = "<?php\nnamespace App;\nclass Service\n{\n    public function handle(): void\n    {\n        \$x = 1;\n    }\n}\n";
         $scopes = BreadcrumbScanner::scan($src);
 
-        $this->assertSame([['label' => 'Service', 'line' => 2]], BreadcrumbScanner::stickyHeaders($scopes, 6, 1), 'capped to the outermost');
-        $this->assertSame([], BreadcrumbScanner::stickyHeaders($scopes, 6, 0));
+        $this->assertSame([['label' => 'Service', 'line' => 2]], BreadcrumbScanner::stickyHeaders($scopes, topLine: 6, max: 1), 'capped to the outermost');
+        $this->assertSame([], BreadcrumbScanner::stickyHeaders($scopes, topLine: 6, max: 0));
     }
 
     public function testDanglingNamespaceSeparatorMidEditKeepsAccumulatingIntoTheLabel(): void
@@ -154,7 +154,7 @@ final class BreadcrumbScannerTest extends TestCase
         $src = "<?php\nclass /* c */ Foo\n{\n    \$x = 1;\n}\n";
         $scopes = BreadcrumbScanner::scan($src);
 
-        $this->assertSame(['Foo'], $this->labels(BreadcrumbScanner::select($scopes, 3)));
+        $this->assertSame(['Foo'], $this->labels(BreadcrumbScanner::select($scopes, caretLine: 3)));
     }
 
     public function testDoubleColonClassConstantNeverArmsADeclarationAcrossTokens(): void
@@ -232,7 +232,7 @@ final class BreadcrumbScannerTest extends TestCase
         // skipped, not cause the whole scan of scopes to stop early.
         $src = "<?php\nfunction a() {\n}\nfunction b() {\n    \$x = 1;\n}\n";
         $scopes = BreadcrumbScanner::scan($src);
-        $this->assertSame(['b'], $this->labels(BreadcrumbScanner::select($scopes, 4)));
+        $this->assertSame(['b'], $this->labels(BreadcrumbScanner::select($scopes, caretLine: 4)));
     }
 
     public function testStickyHeadersLineConversionOffByOneBoundary(): void
@@ -241,8 +241,8 @@ final class BreadcrumbScannerTest extends TestCase
         // real line 8 (still inside, inclusive), top of 8 is real line 9 (past it).
         $src = "<?php\nnamespace App;\nclass Service\n{\n    public function handle(): void\n    {\n        \$x = 1;\n    }\n}\n";
         $scopes = BreadcrumbScanner::scan($src);
-        $this->assertSame(['Service', 'handle'], \array_column(BreadcrumbScanner::stickyHeaders($scopes, 7, 5), 'label'));
-        $this->assertSame(['Service'], \array_column(BreadcrumbScanner::stickyHeaders($scopes, 8, 5), 'label'));
+        $this->assertSame(['Service', 'handle'], \array_column(BreadcrumbScanner::stickyHeaders($scopes, topLine: 7, max: 5), 'label'));
+        $this->assertSame(['Service'], \array_column(BreadcrumbScanner::stickyHeaders($scopes, topLine: 8, max: 5), 'label'));
     }
 
     public function testStickyHeadersRejectsNegativeCapWithoutSlicingFromTheEnd(): void
@@ -251,7 +251,7 @@ final class BreadcrumbScannerTest extends TestCase
         // length (which would count from the end and return leftover headers).
         $src = "<?php\nnamespace App;\nclass Service\n{\n    public function handle(): void\n    {\n        \$x = 1;\n    }\n}\n";
         $scopes = BreadcrumbScanner::scan($src);
-        $this->assertSame([], BreadcrumbScanner::stickyHeaders($scopes, 6, -1));
+        $this->assertSame([], BreadcrumbScanner::stickyHeaders($scopes, topLine: 6, max: -1));
     }
 
     public function testPlainTextYieldsNoScopes(): void

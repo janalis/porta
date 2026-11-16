@@ -27,9 +27,9 @@ final class ReadOnlyInputTest extends TestCase
     public function testAReadOnlyDocumentRefusesTheKeyWhole(): void
     {
         $document = new Document("abc\ndef\n");
-        $document->setCursor(1, 3);
+        $document->setCursor(1, col: 3);
         $document->beginSelect();
-        $document->setCursor(1, 1, SelectionMode::Keep); // "ef", made backwards
+        $document->setCursor(1, col: 1, selection: SelectionMode::Keep); // "ef", made backwards
         $document->readOnly = true;
 
         $this->assertTrue(ReadOnlyInput::refuse($document, static function () use ($document): void {
@@ -47,9 +47,9 @@ final class ReadOnlyInputTest extends TestCase
     public function testASelectionMadeForwardsComesBackTheSameWay(): void
     {
         $document = new Document("abcdef\n");
-        $document->setCursor(0, 1);
+        $document->setCursor(0, col: 1);
         $document->beginSelect();
-        $document->setCursor(0, 4, SelectionMode::Keep);
+        $document->setCursor(0, col: 4, selection: SelectionMode::Keep);
         $document->readOnly = true;
 
         $this->assertTrue(ReadOnlyInput::refuse($document, static fn () => $document->insert('Q')));
@@ -63,9 +63,9 @@ final class ReadOnlyInputTest extends TestCase
         $document->readOnly = true;
 
         $this->assertFalse(ReadOnlyInput::refuse($document, static function () use ($document): void {
-            $document->setCursor(1, 0);
+            $document->setCursor(1, col: 0);
             $document->beginSelect();
-            $document->setCursor(1, 2, SelectionMode::Keep);
+            $document->setCursor(1, col: 2, selection: SelectionMode::Keep);
         }));
         $this->assertSame('de', $document->getSelectedText(), 'a selection is not an edit');
     }

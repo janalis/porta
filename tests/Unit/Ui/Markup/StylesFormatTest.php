@@ -73,15 +73,15 @@ final class StylesFormatTest extends TestCase
 
         $this->assertSame(
             ['a '.$info->apply('bb'), $info->apply('cc').' d'],
-            $styles->formatLines('a <info>bb cc</> d', 5),
+            $styles->formatLines('a <info>bb cc</> d', width: 5),
             'the span a break falls inside is closed on one line and reopened on the next',
         );
         $this->assertSame(
             [$info->apply('abcd'), $info->apply('ef')],
-            $styles->formatLines('<info>abcdef</>', 4),
+            $styles->formatLines('<info>abcdef</>', width: 4),
             'a hard break inside a word consumes no character',
         );
-        $this->assertSame([''], $styles->formatLines('', 4));
+        $this->assertSame([''], $styles->formatLines('', width: 4));
     }
 
     public function testAnInnerLinkWinsAndALinkedRunKeepsItsStyle(): void
@@ -150,7 +150,7 @@ final class StylesFormatTest extends TestCase
 
         $this->assertSame("see \x1b]8;;https://example.com/a?b=1\x1b\\docs\x1b]8;;\x1b\\ here", $linked);
         $this->assertSame(13, AnsiUtils::visibleWidth($linked));
-        $this->assertSame('see docs…', AnsiUtils::stripAnsiCodes(AnsiText::truncate($linked, 9)));
+        $this->assertSame('see docs…', AnsiUtils::stripAnsiCodes(AnsiText::truncate($linked, width: 9)));
     }
 
     public function testAnEscapedAngleInAnHrefIsTheAngle(): void

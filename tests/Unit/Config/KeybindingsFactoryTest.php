@@ -169,23 +169,23 @@ final class KeybindingsFactoryTest extends TestCase
 
     public function testThePlatformIsTheSettingsElseTheDetectedOne(): void
     {
-        [$mac] = $this->factory(new TempProject([]), 'macos');
+        [$mac] = $this->factory(new TempProject([]), hostKeymap: 'macos');
         $this->assertSame(KeymapPlatform::MacOs, $mac->platform());
         $this->assertSame(['backspace', 'delete'], $mac->create()->getBindings('reset_binding'), 'the Mac keymap is laid over the defaults');
 
-        [$overSsh] = $this->factory(new TempProject(['.porta.json' => \json_encode(['settings' => ['keymapPlatform' => 'macos']], \JSON_THROW_ON_ERROR)]), 'linux');
+        [$overSsh] = $this->factory(new TempProject(['.porta.json' => \json_encode(['settings' => ['keymapPlatform' => 'macos']], \JSON_THROW_ON_ERROR)]), hostKeymap: 'linux');
         $this->assertSame(KeymapPlatform::MacOs, $overSsh->platform(), 'the setting beats detection');
         $this->assertSame(KeymapPlatform::Windows, $overSsh->platform('windows'), 'a fresher setting beats the boot one');
         $this->assertSame([], $overSsh->create(platform: 'linux')->getBindings('reset_binding'));
 
-        [$odd] = $this->factory(new TempProject([]), 'beos');
+        [$odd] = $this->factory(new TempProject([]), hostKeymap: 'beos');
         $this->assertSame(KeymapPlatform::Linux, $odd->platform(), 'an unknown detection is Linux');
     }
 
     #[RequiresMethod(Key::class, 'super')]
     public function testTheUsersKeymapWinsOverThePlatforms(): void
     {
-        [$factory] = $this->factory(new TempProject(['.porta.json' => \json_encode(['keymap' => ['copy' => 'cmd+k']], \JSON_THROW_ON_ERROR)]), 'macos');
+        [$factory] = $this->factory(new TempProject(['.porta.json' => \json_encode(['keymap' => ['copy' => 'cmd+k']], \JSON_THROW_ON_ERROR)]), hostKeymap: 'macos');
 
         $keys = $factory->create();
 

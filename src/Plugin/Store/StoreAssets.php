@@ -203,7 +203,7 @@ final class StoreAssets
                 foreach ($fetch as $url) {
                     $body = $bodies[$url] ?? null;
                     if (null === $body) {
-                        $this->settle($url, null);
+                        $this->settle($url, body: null);
 
                         continue;
                     }

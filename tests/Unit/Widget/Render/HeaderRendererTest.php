@@ -14,7 +14,7 @@ final class HeaderRendererTest extends TestCase
 {
     public function testDefaultBackgroundBoldAndPaddedToWidth(): void
     {
-        $line = HeaderRenderer::render('Title', 10, new Style(background: 237, bold: true));
+        $line = HeaderRenderer::render('Title', width: 10, style: new Style(background: 237, bold: true));
 
         $this->assertStringStartsWith("\x1b[48;5;237m\x1b[1m", $line);
         $this->assertStringEndsWith("\x1b[22m\x1b[49m", $line, 'closes with targeted resets');
@@ -30,10 +30,10 @@ final class HeaderRendererTest extends TestCase
      */
     public function testATitleSitsOneColumnIn(): void
     {
-        $line = HeaderRenderer::title('Files', 10, Styles::dark());
+        $line = HeaderRenderer::title('Files', width: 10, styles: Styles::dark());
 
         $this->assertSame(' Files    ', AnsiUtils::stripAnsiCodes($line));
-        $this->assertSame(' Files   Esc ', AnsiUtils::stripAnsiCodes(HeaderRenderer::title('Files', 13, Styles::dark(), suffix: 'Esc')));
+        $this->assertSame(' Files   Esc ', AnsiUtils::stripAnsiCodes(HeaderRenderer::title('Files', width: 13, styles: Styles::dark(), suffix: 'Esc')));
     }
 
     /**
@@ -43,7 +43,7 @@ final class HeaderRendererTest extends TestCase
      */
     public function testATitleIsBoldOnThePaneNotABar(): void
     {
-        $line = HeaderRenderer::title('Files', 10, Styles::dark());
+        $line = HeaderRenderer::title('Files', width: 10, styles: Styles::dark());
 
         $this->assertStringNotContainsString("\x1b[48;", $line, 'no background of its own');
         $this->assertStringStartsWith("\x1b[38;5;255m\x1b[1m", $line, 'emphasis, bold');
@@ -51,21 +51,21 @@ final class HeaderRendererTest extends TestCase
 
     public function testCustomBackground(): void
     {
-        $line = HeaderRenderer::render('X', 5, new Style(background: 235, bold: true));
+        $line = HeaderRenderer::render('X', width: 5, style: new Style(background: 235, bold: true));
 
         $this->assertStringStartsWith("\x1b[48;5;235m\x1b[1m", $line);
     }
 
     public function testForegroundIsEmittedBeforeBackground(): void
     {
-        $line = HeaderRenderer::render('X', 5, new Style(background: 237, color: 231, bold: true));
+        $line = HeaderRenderer::render('X', width: 5, style: new Style(background: 237, color: 231, bold: true));
 
         $this->assertStringStartsWith("\x1b[38;5;231m\x1b[48;5;237m\x1b[1m", $line);
     }
 
     public function testSuffixRendersFaintAndRightAligned(): void
     {
-        $line = HeaderRenderer::render('Title', 20, new Style(background: 237, bold: true), suffix: 'Esc');
+        $line = HeaderRenderer::render('Title', width: 20, style: new Style(background: 237, bold: true), suffix: 'Esc');
 
         $this->assertSame(20, AnsiUtils::visibleWidth($line), 'the suffix stays inside the bar width');
         $this->assertSame('Title           Esc ', AnsiUtils::stripAnsiCodes($line), 'right-aligned with a one-cell margin');
@@ -74,7 +74,7 @@ final class HeaderRendererTest extends TestCase
 
     public function testSuffixClipsTheTitleNotTheHint(): void
     {
-        $line = HeaderRenderer::render('A very long header', 12, new Style(background: 237, bold: true), suffix: 'Esc');
+        $line = HeaderRenderer::render('A very long header', width: 12, style: new Style(background: 237, bold: true), suffix: 'Esc');
 
         $this->assertSame(12, AnsiUtils::visibleWidth($line));
         $this->assertStringEndsWith('Esc ', AnsiUtils::stripAnsiCodes($line), 'the hint survives; the title clips');
@@ -82,7 +82,7 @@ final class HeaderRendererTest extends TestCase
 
     public function testTruncatesWithEllipsis(): void
     {
-        $line = HeaderRenderer::render('A very long header', 6, new Style(background: 237, bold: true));
+        $line = HeaderRenderer::render('A very long header', width: 6, style: new Style(background: 237, bold: true));
 
         $this->assertSame(6, AnsiUtils::visibleWidth($line));
         $this->assertStringContainsString('…', AnsiUtils::stripAnsiCodes($line));

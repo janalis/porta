@@ -68,7 +68,7 @@ final class GraphSelectionOverlay
             $lines[$row] = match ($row) {
                 $y0 => self::splice($lines[$row], $x0, $span, $edge(Glyphs::MODAL_TOP_LEFT, Glyphs::MODAL_TOP_RIGHT), $cols),
                 $y1 => self::splice($lines[$row], $x0, $span, $edge(Glyphs::MODAL_BOTTOM_LEFT, Glyphs::MODAL_BOTTOM_RIGHT), $cols),
-                default => self::splice(self::splice($lines[$row], $x0, 1, $rail, $cols), $x1, 1, $rail, $cols),
+                default => self::splice(self::splice($lines[$row], $x0, width: 1, patch: $rail, cols: $cols), $x1, width: 1, patch: $rail, cols: $cols),
             };
         }
 
@@ -82,6 +82,6 @@ final class GraphSelectionOverlay
      */
     private static function splice(string $line, int $col, int $width, string $patch, int $cols): string
     {
-        return AnsiText::padRight(AnsiUtils::sliceByColumn($line, 0, $col), $col).$patch.AnsiUtils::sliceToWidth($line, $col + $width, $cols - $col - $width);
+        return AnsiText::padRight(AnsiUtils::sliceByColumn($line, startCol: 0, length: $col), $col).$patch.AnsiUtils::sliceToWidth($line, $col + $width, $cols - $col - $width);
     }
 }

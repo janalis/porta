@@ -147,11 +147,11 @@ final class CloseTabsToTheSideTest extends TestCase
         // until something else happened to redraw.
         $buffers = $this->withFourTabs();
         $tui = Services::resolve($this->ide, Tui::class);
-        Probe::set($tui, 'renderRequested', false);
+        Probe::set($tui, property: 'renderRequested', value: false);
 
         $buffers->togglePinned($this->openedPath('b.php'));
 
-        $this->assertTrue((bool) Probe::get($tui, 'renderRequested'));
+        $this->assertTrue((bool) Probe::get($tui, property: 'renderRequested'));
     }
 
     public function testPinningIsAToggleAndReportsItsState(): void

@@ -52,7 +52,7 @@ final class InlineValuesTest extends TestCase
 
         $pool = FakeLspPool::create('/p', $active = new FixedActiveFile(), fn (): FakeLspClient => $this->client = new FakeLspClient(['inlineValueProvider' => true]));
         $active->set('/p/a.php');
-        $pool->notifyDidOpen('/p/a.php', "<?php\n", 'php', 1);
+        $pool->notifyDidOpen('/p/a.php', text: "<?php\n", languageId: 'php', version: 1);
 
         return new InlineValues(
             new InlineValueRequest($pool),
@@ -65,7 +65,7 @@ final class InlineValuesTest extends TestCase
     /** Stop, and let the server answer with {@see $lookups}. */
     private function serverAnswered(InlineValues $values): void
     {
-        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->stoppedAt('/p/a.php', line: 1, frameId: 1);
         $this->client->requests[0]['respond'](\array_map(static fn (array $l): array => [
             'range' => ['start' => ['line' => $l['line'], 'character' => 0], 'end' => ['line' => $l['line'], 'character' => $l['endCol']]],
             'variableName' => $l['name'],
@@ -165,7 +165,7 @@ final class InlineValuesTest extends TestCase
         // lookups yet must not paint an empty map over a previous frame's
         // values, nor throw.
         $values = $this->values();
-        $values->stoppedAt('/p/a.php', 1, frameId: 1); // asked, not yet answered
+        $values->stoppedAt('/p/a.php', line: 1, frameId: 1); // asked, not yet answered
 
         $values->addVariables([['name' => '$count', 'value' => '41', 'variablesReference' => 0]]);
 
@@ -180,7 +180,7 @@ final class InlineValuesTest extends TestCase
         // whenever the server was the slower of the two.
         $this->lookups = [['line' => 1, 'endCol' => 6, 'name' => '$count']];
         $values = $this->values();
-        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->stoppedAt('/p/a.php', line: 1, frameId: 1);
         $values->addVariables([['name' => '$count', 'value' => '41', 'variablesReference' => 0]]);
 
         $this->client->requests[0]['respond']([[
@@ -219,7 +219,7 @@ final class InlineValuesTest extends TestCase
         $values->addVariables([['name' => '$count', 'value' => '41', 'variablesReference' => 0]]);
         $this->assertSame([1 => '$count = 41'], $this->painted());
 
-        $values->stoppedAt('/p/a.php', 2, frameId: 2);
+        $values->stoppedAt('/p/a.php', line: 2, frameId: 2);
 
         $this->assertSame([], $this->painted(), 'cleared on the way in, not when the answer lands');
     }
@@ -232,11 +232,11 @@ final class InlineValuesTest extends TestCase
         $this->lookups = [['line' => 1, 'endCol' => 6, 'name' => '$count']];
         $values = $this->values();
         $this->serverAnswered($values);
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
 
         $values->addVariables([['name' => '$count', 'value' => '41', 'variablesReference' => 0]]);
 
-        $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'));
+        $this->assertTrue((bool) Probe::get($this->tui, property: 'renderRequested'));
     }
 
     /**
@@ -273,7 +273,7 @@ final class InlineValuesTest extends TestCase
                 1 => [['col' => 0, 'endCol' => 6, 'type' => 'variable', 'modifiers' => []]],
             ]);
 
-        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->stoppedAt('/p/a.php', line: 1, frameId: 1);
         $values->addVariables([['name' => '$count', 'value' => '41', 'variablesReference' => 0]]);
 
         $this->assertSame([1 => '$count = 41'], $this->painted(), 'the name came from the token text, with its $');
@@ -288,7 +288,7 @@ final class InlineValuesTest extends TestCase
                 1 => [['col' => 6, 'endCol' => 12, 'type' => 'variable', 'modifiers' => []]],
             ]);
 
-        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->stoppedAt('/p/a.php', line: 1, frameId: 1);
         $values->addVariables([['name' => '$count', 'value' => '41', 'variablesReference' => 0]]);
 
         $this->assertStringContainsString('41', $this->painted()[1] ?? '', 'found under $count, not `count `');
@@ -308,7 +308,7 @@ final class InlineValuesTest extends TestCase
                 ],
             ]);
 
-        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->stoppedAt('/p/a.php', line: 1, frameId: 1);
         $values->addVariables([
             ['name' => '$this', 'value' => 'Thing', 'variablesReference' => 1],
             ['name' => 'name', 'value' => "'x'", 'variablesReference' => 0],
@@ -325,7 +325,7 @@ final class InlineValuesTest extends TestCase
                 1 => [['col' => 15, 'endCol' => 21, 'type' => 'parameter', 'modifiers' => []]],
             ]);
 
-        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->stoppedAt('/p/a.php', line: 1, frameId: 1);
         $values->addVariables([['name' => '$times', 'value' => '3', 'variablesReference' => 0]]);
 
         $this->assertSame([1 => '$times = 3'], $this->painted());
@@ -337,7 +337,7 @@ final class InlineValuesTest extends TestCase
         // inline values — and an empty paint is what says so.
         $values = $this->withoutInlineValueSupport("<?php\n\$count = 41;\n");
 
-        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->stoppedAt('/p/a.php', line: 1, frameId: 1);
         $values->addVariables([['name' => '$count', 'value' => '41', 'variablesReference' => 0]]);
 
         $this->assertSame([], $this->painted());
@@ -355,7 +355,7 @@ final class InlineValuesTest extends TestCase
                 1 => [['col' => 40, 'endCol' => 46, 'type' => 'variable', 'modifiers' => []]],
             ]);
 
-        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->stoppedAt('/p/a.php', line: 1, frameId: 1);
         $values->addVariables([['name' => '$count', 'value' => '41', 'variablesReference' => 0]]);
 
         $this->assertSame([], $this->painted());
@@ -376,7 +376,7 @@ final class InlineValuesTest extends TestCase
                 ],
             ]);
 
-        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->stoppedAt('/p/a.php', line: 1, frameId: 1);
         $values->addVariables([['name' => '$c', 'value' => '7', 'variablesReference' => 0]]);
 
         $this->assertSame([1 => '$c = 7'], $this->painted());
@@ -396,7 +396,7 @@ final class InlineValuesTest extends TestCase
                 1 => [['col' => $at, 'endCol' => $at + 6, 'type' => 'variable', 'modifiers' => []]],
             ]);
 
-        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->stoppedAt('/p/a.php', line: 1, frameId: 1);
         $values->addVariables([['name' => '$count', 'value' => '41', 'variablesReference' => 0]]);
 
         $this->assertSame([1 => '$count = 41'], $this->painted());
@@ -413,7 +413,7 @@ final class InlineValuesTest extends TestCase
                 ],
             ]);
 
-        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->stoppedAt('/p/a.php', line: 1, frameId: 1);
         $values->addVariables([
             ['name' => '$a', 'value' => '1', 'variablesReference' => 0],
             ['name' => '$b', 'value' => '2', 'variablesReference' => 0],

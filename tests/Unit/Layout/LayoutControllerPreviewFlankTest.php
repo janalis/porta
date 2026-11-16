@@ -85,8 +85,8 @@ final class LayoutControllerPreviewFlankTest extends TestCase
         $this->assertFalse($layout->armPreviewResize(self::press($this->dividerCol(PreviewSplit::FLANK) - 1)), 'the flank\'s last column');
         $this->assertTrue($layout->armPreviewResize(self::press($this->dividerCol(PreviewSplit::FLANK))));
 
-        $layout->continueResizeDrag(self::mouse("\x1b[<32;21;3M"), null);
-        $layout->continueResizeDrag(self::mouse("\x1b[<0;21;3m"), null);
+        $layout->continueResizeDrag(self::mouse("\x1b[<32;21;3M"), treeRect: null);
+        $layout->continueResizeDrag(self::mouse("\x1b[<0;21;3m"), treeRect: null);
         $this->frame($this->tui);
 
         $this->assertAbout(20, $this->columnsOf($this->flank));
@@ -98,8 +98,8 @@ final class LayoutControllerPreviewFlankTest extends TestCase
         $layout = $this->onScreen();
         $this->assertTrue($layout->armPreviewResize(self::press($this->dividerCol(PreviewSplit::FLANKED))));
 
-        $layout->continueResizeDrag(self::mouse("\x1b[<32;71;3M"), null);
-        $layout->continueResizeDrag(self::mouse("\x1b[<0;71;3m"), null);
+        $layout->continueResizeDrag(self::mouse("\x1b[<32;71;3M"), treeRect: null);
+        $layout->continueResizeDrag(self::mouse("\x1b[<0;71;3m"), treeRect: null);
         $this->frame($this->tui);
 
         $this->assertAbout(21, $this->columnsOf($this->pane));
@@ -115,13 +115,13 @@ final class LayoutControllerPreviewFlankTest extends TestCase
         $this->tui->setFocus($this->flank);
         $layout->nudgePreviewSplit(4);
         $this->frame($this->tui);
-        $this->assertAbout($flank + 4, $this->columnsOf($this->flank), 'from the flank, the flank\'s divider');
+        $this->assertAbout($flank + 4, $this->columnsOf($this->flank), message: 'from the flank, the flank\'s divider');
         $this->assertSame($pane, $this->columnsOf($this->pane));
 
         $this->tui->setFocus($this->pane);
         $layout->nudgePreviewSplit(4);
         $this->frame($this->tui);
-        $this->assertAbout($pane - 4, $this->columnsOf($this->pane), 'from the pane, the pane\'s');
+        $this->assertAbout($pane - 4, $this->columnsOf($this->pane), message: 'from the pane, the pane\'s');
         $this->assertSame(['flankedSplitPercent', 'flankSplitPercent'], \array_keys($this->layoutFile()), 'each under its own key');
     }
 

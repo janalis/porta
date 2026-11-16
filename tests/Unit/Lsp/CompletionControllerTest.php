@@ -88,7 +88,7 @@ final class CompletionControllerTest extends TestCase
         $controller = new CompletionController($pool, $this->editor, $this->tui, new Notifier(new StatusBarWidget(), $this->tui), new Translator('en'));
         $this->editor->showDocument('/p/a.php', new Document("<?php\n\$a->fo\n"));
         $this->activeFile->set('/p/a.php');
-        $pool->notifyDidOpen('/p/a.php', "<?php\n", 'php', 1);
+        $pool->notifyDidOpen('/p/a.php', text: "<?php\n", languageId: 'php', version: 1);
 
         return [$controller, $built];
     }
@@ -97,7 +97,7 @@ final class CompletionControllerTest extends TestCase
     {
         $this->editor->showDocument($path, new Document($text));
         $this->activeFile->set($path);
-        Probe::get($controller, 'lsp')->notifyDidOpen($path, $text, 'php', 1);
+        Probe::get($controller, property: 'lsp')->notifyDidOpen($path, $text, languageId: 'php', version: 1);
     }
 
     public function testRequestInlayHintsCoversASmallDocumentEntirelyAndAppliesTheResult(): void
@@ -105,7 +105,7 @@ final class CompletionControllerTest extends TestCase
         // A document inside the viewport margin: the ranged request degrades
         // to the whole document, exactly as before the range existed.
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$a=1;\n\$b=2;\n"); // 4 lines (trailing blank line)
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$a=1;\n\$b=2;\n"); // 4 lines (trailing blank line)
 
         $controller->requestInlayHints();
 
@@ -145,7 +145,7 @@ final class CompletionControllerTest extends TestCase
     public function testRequestInlayHintsOnASingleLineDocumentClampsTheRangeToZero(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', '<?php');
+        $this->readyOn($controller, path: '/p/a.php', text: '<?php');
 
         $controller->requestInlayHints();
 
@@ -159,7 +159,7 @@ final class CompletionControllerTest extends TestCase
     public function testRequestInlayHintsIgnoresAResponseAfterTheFileSwitchedAway(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$a=1;\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$a=1;\n");
 
         $controller->requestInlayHints();
         $respond = $this->client->requests[0]['respond'];
@@ -175,7 +175,7 @@ final class CompletionControllerTest extends TestCase
     public function testRequestInlayHintsIgnoresANonArrayResult(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n");
 
         $controller->requestInlayHints();
         $requested = $this->requestedRenderSince(function (): void {
@@ -188,7 +188,7 @@ final class CompletionControllerTest extends TestCase
     public function testRequestInlayHintsSkipsAServerWithoutTheProvider(): void
     {
         $controller = $this->controller(capabilities: []);
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$a=1;\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$a=1;\n");
 
         $controller->requestInlayHints();
 
@@ -198,7 +198,7 @@ final class CompletionControllerTest extends TestCase
     public function testHintsSetToNoneAreNotAskedFor(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$a=1;\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$a=1;\n");
         $this->editor->display->setInlayHints(InlayHintMode::None);
 
         $controller->requestInlayHints();
@@ -209,7 +209,7 @@ final class CompletionControllerTest extends TestCase
     public function testSwitchingHintsOffDropsThemAndBackOnAsksAtOnce(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$a=1;\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$a=1;\n");
         $this->editor->decorations->setInlayHints([1 => [new InlayHint(2, ': int')]]);
 
         $controller->applyInlayHintMode(InlayHintMode::None);
@@ -228,7 +228,7 @@ final class CompletionControllerTest extends TestCase
     public function testRequestInlayHintsClampsToTheViewportPlusMargin(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', \str_repeat("\$x = 1;\n", times: 2_000));
+        $this->readyOn($controller, path: '/p/a.php', text: \str_repeat("\$x = 1;\n", times: 2_000));
         $this->editor->scrollBy(600);
 
         $controller->requestInlayHints();
@@ -241,7 +241,7 @@ final class CompletionControllerTest extends TestCase
     public function testASettledScrollOutsideTheHintedWindowRefetches(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', \str_repeat("\$x = 1;\n", times: 2_000));
+        $this->readyOn($controller, path: '/p/a.php', text: \str_repeat("\$x = 1;\n", times: 2_000));
         $controller->requestInlayHints(); // hinted window: lines 0..524
 
         $this->editor->scrollBy(600); // visible 600..624 — outside the window
@@ -258,7 +258,7 @@ final class CompletionControllerTest extends TestCase
     {
         $scheduler = new FakeScheduler();
         $controller = $this->controller(scheduler: $scheduler);
-        $this->readyOn($controller, '/p/a.php', \str_repeat("\$x = 1;\n", times: 2_000));
+        $this->readyOn($controller, path: '/p/a.php', text: \str_repeat("\$x = 1;\n", times: 2_000));
         $controller->requestInlayHints();
 
         $this->editor->scrollBy(600);
@@ -289,9 +289,9 @@ final class CompletionControllerTest extends TestCase
         // completion are asked, so that a second server on the language which
         // does not is not sent a request it can only answer with an error.
         $controller = $this->controller(['completionProvider' => ['resolveProvider' => true]]);
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$a->fo\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$a->fo\n");
 
-        $controller->requestCompletion(1, 6);
+        $controller->requestCompletion(1, utf16Col: 6);
         $this->assertSame('textDocument/completion', $this->client->requests[0]['method']);
         $this->client->requests[0]['respond'](['items' => [['label' => 'foo'], ['label' => 'bar']]], error: null);
 
@@ -304,8 +304,8 @@ final class CompletionControllerTest extends TestCase
     public function testCompletionsAnsweredAfterATabSwitchAreDropped(): void
     {
         $controller = $this->controller(['completionProvider' => ['resolveProvider' => true]]);
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$a->fo\n");
-        $controller->requestCompletion(1, 6);
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$a->fo\n");
+        $controller->requestCompletion(1, utf16Col: 6);
 
         $this->editor->showDocument('/p/b.php', new Document("<?php\n"));
         $this->client->requests[0]['respond'](['items' => [['label' => 'foo']]], error: null);
@@ -317,19 +317,19 @@ final class CompletionControllerTest extends TestCase
     {
         $controller = $this->controller(); // no file open: ready() is null
 
-        $this->assertFalse($controller->requestCompletion(0, 0), 'no session to ask: says so, and does not throw');
+        $this->assertFalse($controller->requestCompletion(0, utf16Col: 0), 'no session to ask: says so, and does not throw');
     }
 
     /** Asked means a server was asked: none advertising completion is none asked. */
     public function testRequestCompletionReportsWhetherAnyServerWasAsked(): void
     {
         $controller = $this->controller(['completionProvider' => true]);
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$a->fo\n");
-        $this->assertTrue($controller->requestCompletion(1, 6));
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$a->fo\n");
+        $this->assertTrue($controller->requestCompletion(1, utf16Col: 6));
 
         $silent = $this->controller(['inlayHintProvider' => true]);
-        $this->readyOn($silent, '/p/a.php', "<?php\n\$a->fo\n");
-        $this->assertFalse($silent->requestCompletion(1, 6));
+        $this->readyOn($silent, path: '/p/a.php', text: "<?php\n\$a->fo\n");
+        $this->assertFalse($silent->requestCompletion(1, utf16Col: 6));
     }
 
     /**
@@ -339,10 +339,10 @@ final class CompletionControllerTest extends TestCase
     public function testAnErrorAnswersALoadingPopup(): void
     {
         $controller = $this->controller(['completionProvider' => true]);
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$a->fo\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$a->fo\n");
         $this->editor->setCallbacks(new EditorCallbacks(completion: $controller));
 
-        $this->editor->getDocument()->setCursor(1, 6);
+        $this->editor->getDocument()->setCursor(1, col: 6);
         $this->editor->handleInput("\x00"); // ctrl+space
         $this->assertStringContainsString('Loading…', $this->screen());
         $this->client->requests[0]['respond'](null, error: ['code' => -32_603, 'message' => 'boom']);
@@ -353,7 +353,7 @@ final class CompletionControllerTest extends TestCase
     public function testEscapeDismissesTheNote(): void
     {
         $this->controller();
-        $this->editor->openFile('/p/a.php', "<?php\n");
+        $this->editor->openFile('/p/a.php', content: "<?php\n");
         $this->editor->setCallbacks(new EditorCallbacks());
         $this->editor->handleInput("\x00"); // ctrl+space, nobody to ask
         $this->assertStringContainsString('No language server', $this->screen());
@@ -365,9 +365,9 @@ final class CompletionControllerTest extends TestCase
     public function testRequestSignatureHelpShowsTheActiveSignatureLabel(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\nstrlen(\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\nstrlen(\n");
 
-        $controller->requestSignatureHelp(1, 7);
+        $controller->requestSignatureHelp(1, col: 7);
         $this->client->requests[0]['respond']([
             'signatures' => [
                 ['label' => 'strlen(string $string): int'],
@@ -388,8 +388,8 @@ final class CompletionControllerTest extends TestCase
     public function testAltArrowsWalkTheOverloads(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\nf(1, \n");
-        $controller->requestSignatureHelp(1, 5);
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\nf(1, \n");
+        $controller->requestSignatureHelp(1, col: 5);
         $this->client->requests[0]['respond'](
             [
                 'signatures' => [
@@ -425,7 +425,7 @@ final class CompletionControllerTest extends TestCase
     public function testResolveCompletionAppliesDeferredAutoImportEdits(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$x = new Foo();\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$x = new Foo();\n");
 
         $controller->resolveCompletion(['label' => 'Foo']);
         $this->client->requests[0]['respond']([
@@ -445,18 +445,18 @@ final class CompletionControllerTest extends TestCase
     public function testADeferredImportUndoesWithTheAcceptItFinishes(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$x = new ;\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$x = new ;\n");
         $document = $this->editor->getDocument();
         $import = ['additionalTextEdits' => [['range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 0]], 'newText' => "use App\\Foo;\n"]]];
 
-        $document->setCursor(1, 9);
+        $document->setCursor(1, col: 9);
         $document->insert('Foo'); // the accept
         $controller->resolveCompletion(['label' => 'Foo']);
         $this->client->requests[0]['respond']($import);
         $document->undo();
         $this->assertSame("<?php\n\$x = new ;\n", $document->getText(), 'the import and the accept, in one step');
 
-        $document->setCursor(1, 9);
+        $document->setCursor(1, col: 9);
         $document->insert('Foo');
         $controller->resolveCompletion(['label' => 'Foo']);
         $document->insert('(');
@@ -471,7 +471,7 @@ final class CompletionControllerTest extends TestCase
         // detail at all, and this is where the type for the popup's column
         // comes from.
         $controller = $this->controller(capabilities: ['completionProvider' => ['resolveProvider' => true]]);
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$t->\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$t->\n");
         $seen = [];
 
         $controller->resolveCompletionDetail(['label' => 'greet'], static function (string $detail) use (&$seen): void {
@@ -493,7 +493,7 @@ final class CompletionControllerTest extends TestCase
         // the docblock for the resolve. A guard that needed BOTH would drop the
         // half that only ever arrives here.
         $controller = $this->controller(capabilities: ['completionProvider' => ['resolveProvider' => true]]);
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$t->\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$t->\n");
         $seen = [];
 
         $controller->resolveCompletionDetail(['label' => 'name'], static function (string $detail, string $documentation) use (&$seen): void {
@@ -507,7 +507,7 @@ final class CompletionControllerTest extends TestCase
     public function testAResolveThatAnswersNEITHERHalfDoesNotCallBack(): void
     {
         $controller = $this->controller(capabilities: ['completionProvider' => ['resolveProvider' => true]]);
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$t->\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$t->\n");
         $called = false;
 
         $controller->resolveCompletionDetail(['label' => 'greet'], static function (string $detail, string $documentation) use (&$called): void {
@@ -523,7 +523,7 @@ final class CompletionControllerTest extends TestCase
         // Wire data: a server that sends `detail: 42` would otherwise put "42"
         // in the type column, which is worse than an empty one.
         $controller = $this->controller(capabilities: ['completionProvider' => ['resolveProvider' => true]]);
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$t->\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$t->\n");
         $seen = [];
 
         $controller->resolveCompletionDetail(['label' => 'greet'], static function (string $detail, string $documentation) use (&$seen): void {
@@ -540,7 +540,7 @@ final class CompletionControllerTest extends TestCase
         // with an error. A server that can tell you nothing should cost
         // nothing.
         $controller = $this->controller(capabilities: ['completionProvider' => ['triggerCharacters' => ['>']]]);
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$t->\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$t->\n");
 
         $controller->resolveCompletionDetail(['label' => 'greet'], static function (string $detail): never {
             self::fail('nothing should answer: '.$detail);
@@ -555,7 +555,7 @@ final class CompletionControllerTest extends TestCase
         // said — an empty detail must leave the row as it was rather than
         // overwrite a type the first response did give.
         $controller = $this->controller(capabilities: ['completionProvider' => ['resolveProvider' => true]]);
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$t->\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$t->\n");
         $called = false;
 
         $controller->resolveCompletionDetail(['label' => 'greet'], static function (string $detail) use (&$called): void {
@@ -569,7 +569,7 @@ final class CompletionControllerTest extends TestCase
     public function testResolveCompletionWithNoEditsIsANoOp(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$x = 1;\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$x = 1;\n");
         $textBefore = $this->editor->getDocument()->getText();
 
         $controller->resolveCompletion(['label' => 'nothing']);
@@ -581,19 +581,19 @@ final class CompletionControllerTest extends TestCase
     /** Clears the flag first: a caller checks whether ITS action requested a render, not a stale one. */
     private function requestedRenderSince(callable $action): bool
     {
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
         $action();
 
-        return (bool) Probe::get($this->tui, 'renderRequested');
+        return (bool) Probe::get($this->tui, property: 'renderRequested');
     }
 
     /** A server that never claimed completion is not asked for it. */
     public function testAServerThatDoesNotAdvertiseCompletionIsNotAsked(): void
     {
         $controller = $this->controller(['inlayHintProvider' => true]);
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$a->fo\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$a->fo\n");
 
-        $controller->requestCompletion(1, 6);
+        $controller->requestCompletion(1, utf16Col: 6);
 
         $this->assertSame([], \array_column($this->client->requests, 'method'));
     }
@@ -608,11 +608,11 @@ final class CompletionControllerTest extends TestCase
     public function testALateAnswerToASupersededRequestIsDropped(): void
     {
         $controller = $this->controller(['completionProvider' => true]);
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$a->fo\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$a->fo\n");
 
-        $controller->requestCompletion(1, 6);
+        $controller->requestCompletion(1, utf16Col: 6);
         $stale = $this->client->requests[0]['respond'];
-        $controller->requestCompletion(1, 7); // the user typed on
+        $controller->requestCompletion(1, utf16Col: 7); // the user typed on
         $this->client->requests[1]['respond'](['items' => [['label' => 'fresh']]], error: null);
 
         $stale(['items' => [['label' => 'stale']]], error: null);
@@ -633,7 +633,7 @@ final class CompletionControllerTest extends TestCase
     {
         [$controller, $clients] = $this->twoServerController();
 
-        $controller->requestCompletion(1, 6);
+        $controller->requestCompletion(1, utf16Col: 6);
         $clients[0]->requests[0]['respond'](['items' => [['label' => 'formatMessage']]], error: null);
 
         $this->assertStringContainsString('formatMessage', $this->screen(), 'the first answer shows without waiting for the second');
@@ -650,7 +650,7 @@ final class CompletionControllerTest extends TestCase
     {
         [$controller, $clients] = $this->twoServerController();
 
-        $controller->requestCompletion(1, 6);
+        $controller->requestCompletion(1, utf16Col: 6);
         $clients[0]->requests[0]['respond'](['items' => [['label' => 'survivor']]], error: null);
         $clients[1]->requests[0]['respond'](null, error: ['code' => -32_603, 'message' => 'boom']);
 
@@ -662,7 +662,7 @@ final class CompletionControllerTest extends TestCase
     {
         [$controller, $clients] = $this->twoServerController();
 
-        $controller->requestCompletion(1, 6);
+        $controller->requestCompletion(1, utf16Col: 6);
         $clients[0]->requests[0]['respond'](['items' => [['label' => 'shared', 'detail' => 'from the first']]], error: null);
         $clients[1]->requests[0]['respond'](['items' => [['label' => 'shared', 'detail' => 'from the second']]], error: null);
 
@@ -681,7 +681,7 @@ final class CompletionControllerTest extends TestCase
     {
         [$controller, $clients] = $this->twoServerController();
 
-        $controller->requestCompletion(1, 6);
+        $controller->requestCompletion(1, utf16Col: 6);
         $clients[0]->requests[0]['respond'](['items' => [['label' => 'mine']]], error: null);
         $clients[1]->requests[0]['respond'](['items' => [['label' => 'theirs']]], error: null);
         $theirs = $this->itemNamed('theirs');
@@ -699,7 +699,7 @@ final class CompletionControllerTest extends TestCase
     {
         [$controller, $clients] = $this->twoServerController(['completionProvider' => ['resolveProvider' => false]]);
 
-        $controller->requestCompletion(1, 6);
+        $controller->requestCompletion(1, utf16Col: 6);
         $clients[0]->requests[0]['respond'](['items' => [['label' => 'no-resolve']]], error: null);
         $clients[1]->requests[0]['respond'](['items' => [['label' => 'resolves']]], error: null);
 
@@ -718,7 +718,7 @@ final class CompletionControllerTest extends TestCase
     /** The shown completion item with $label, for the raw payload behind it. */
     private function itemNamed(string $label): CompletionItem
     {
-        foreach (Probe::get(Probe::object($this->editor, 'completion'), 'items') as $item) {
+        foreach (Probe::get(Probe::object($this->editor, 'completion'), property: 'items') as $item) {
             if ($label === $item->label) {
                 return $item;
             }

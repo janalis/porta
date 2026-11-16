@@ -73,7 +73,7 @@ final class PackagistMetadataTest extends TestCase
 
     public function testAnEntryReadsTheReleaseAndWhatThePackageSaysOfItself(): void
     {
-        $entry = PackagistMetadata::entry(self::PACKAGE, self::p2([self::FULL]), 40);
+        $entry = PackagistMetadata::entry(self::PACKAGE, self::p2([self::FULL]), downloads: 40);
 
         $this->assertInstanceOf(StoreEntry::class, $entry);
         $this->assertSame('rector', $entry->name, 'the name it installs as, less porta-');
@@ -165,7 +165,7 @@ final class PackagistMetadataTest extends TestCase
             'source' => ['url' => 'https://gitlab.com/acme/porta-rector.git', 'reference' => 'abc'],
             'extra' => ['porta' => ['store' => ['title' => '  ', 'category' => 'cooking', 'changelog' => '../etc/passwd']]],
         ];
-        $entry = PackagistMetadata::entry('acme/porta-graph-tools', self::p2([$bare], 'acme/porta-graph-tools'));
+        $entry = PackagistMetadata::entry('acme/porta-graph-tools', self::p2([$bare], package: 'acme/porta-graph-tools'));
 
         $this->assertInstanceOf(StoreEntry::class, $entry);
         $this->assertSame('Graph Tools', $entry->title);
@@ -206,8 +206,8 @@ final class PackagistMetadataTest extends TestCase
         $this->assertSame('acme/porta-rector', PackagistMetadata::repository(self::PACKAGE, self::p2([self::FULL])));
         $this->assertNull(PackagistMetadata::repository(self::PACKAGE, self::p2([['source' => ['url' => 'https://gitlab.com/a/b.git']]])));
         $this->assertNull(PackagistMetadata::repository(self::PACKAGE, self::p2([['version' => '1.0']])));
-        $this->assertNull(PackagistMetadata::repository(self::PACKAGE, self::p2([], 'other/package')));
-        $this->assertNull(PackagistMetadata::repository(self::PACKAGE, 'not json'));
+        $this->assertNull(PackagistMetadata::repository(self::PACKAGE, self::p2([], package: 'other/package')));
+        $this->assertNull(PackagistMetadata::repository(self::PACKAGE, json: 'not json'));
     }
 
     public function testAChangelogPathOutsideTheRepositoryIsRefused(): void
@@ -226,9 +226,9 @@ final class PackagistMetadataTest extends TestCase
     public function testWhatIsNoPluginIsNotListed(): void
     {
         $this->assertNull(PackagistMetadata::entry(self::PACKAGE, self::p2([['type' => 'library'] + self::FULL])));
-        $this->assertNull(PackagistMetadata::entry(self::PACKAGE, 'not json'));
-        $this->assertNull(PackagistMetadata::entry(self::PACKAGE, self::p2([self::FULL], 'other/package')));
-        $this->assertNull(PackagistMetadata::entry('acme/porta-Bad.Name', self::p2([self::FULL], 'acme/porta-Bad.Name')), 'a name no plugin may take');
+        $this->assertNull(PackagistMetadata::entry(self::PACKAGE, json: 'not json'));
+        $this->assertNull(PackagistMetadata::entry(self::PACKAGE, self::p2([self::FULL], package: 'other/package')));
+        $this->assertNull(PackagistMetadata::entry('acme/porta-Bad.Name', self::p2([self::FULL], package: 'acme/porta-Bad.Name')), 'a name no plugin may take');
     }
 
     public function testNameOfDropsPortaAndRefusesWhatNoPluginMayBeCalled(): void

@@ -223,7 +223,7 @@ final class NonBlockingTerminalTest extends TestCase
             static function () use ($terminal): bool {
                 $terminal->write(\str_repeat('x', times: 65_536));
 
-                return null === Probe::get($terminal, 'writer');
+                return null === Probe::get($terminal, property: 'writer');
             },
             what: 'the broken pipe to kill the queueing layer',
         );

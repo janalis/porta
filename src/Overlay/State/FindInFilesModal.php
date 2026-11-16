@@ -251,7 +251,7 @@ final class FindInFilesModal
     public function setPreview(array $results): void
     {
         $this->results = $results;
-        $this->displayRows = ResultsView::build($results, [], ResultLayout::Grouped, '', ResultGrouping::File);
+        $this->displayRows = ResultsView::build($results, [], ResultLayout::Grouped, filter: '', grouping: ResultGrouping::File);
         $this->excluded = [];
         $this->searching = false;
         $this->hoveredRow = null; // the rows move under a pointer that has not
@@ -286,8 +286,8 @@ final class FindInFilesModal
         $handlers = self::keyHandlers();
 
         match (true) {
-            $inQuery && $kb->matches($data, 'history_prev') => $this->recallHistory(1),
-            $inQuery && $kb->matches($data, 'history_next') => $this->recallHistory(-1),
+            $inQuery && $kb->matches($data, action: 'history_prev') => $this->recallHistory(1),
+            $inQuery && $kb->matches($data, action: 'history_next') => $this->recallHistory(-1),
             null !== ($action = \array_find(\array_keys($handlers), static fn (string $action): bool => $kb->matches($data, $action))) => $handlers[$action]($this),
             $this->activeTextField()->editKey($data, $kb) || $this->activeTextField()->insert($data) => $this->notifyField(),
             default => null,

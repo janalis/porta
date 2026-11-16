@@ -110,8 +110,8 @@ final class ParticipantsTest extends TestCase
         $participants->outOfTouch('presence');
         $this->assertCount(1, $this->scheduler->scheduled, 'one timer, however often it is said');
         $this->assertSame([Participants::GRACE], \array_values($this->scheduler->delays));
-        $this->assertArrayHasKey('presence', Probe::array($participants, 'lost'));
-        $this->assertArrayNotHasKey('plugin:assist', Probe::array($participants, 'lost'));
+        $this->assertArrayHasKey('presence', Probe::array($participants, property: 'lost'));
+        $this->assertArrayNotHasKey('plugin:assist', Probe::array($participants, property: 'lost'));
         $cell = $participants->statusCells()[0];
         $this->assertSame(Glyphs::PARTICIPANTS.' 2 '.Glyphs::OUT_OF_TOUCH, $cell->text, 'still counted, marked');
         $this->assertSame(StatusTone::Accent, $cell->tone);
@@ -121,7 +121,7 @@ final class ParticipantsTest extends TestCase
 
         // Back in time: the timer is called off, and they are as they are now.
         $participants->set('presence', [new Participant('a', 'Ada', 'ssh')]);
-        $this->assertArrayNotHasKey('presence', Probe::array($participants, 'lost'));
+        $this->assertArrayNotHasKey('presence', Probe::array($participants, property: 'lost'));
         $this->assertSame([], $this->scheduler->scheduled);
         $this->assertSame(Glyphs::PARTICIPANTS.' 2', $participants->statusCells()[0]->text);
 
@@ -130,7 +130,7 @@ final class ParticipantsTest extends TestCase
         $this->events->dispatched = [];
         $this->scheduler->fire();
         $this->assertSame(['-presence/a Ada ssh'], $this->facts());
-        $this->assertArrayNotHasKey('presence', Probe::array($participants, 'lost'));
+        $this->assertArrayNotHasKey('presence', Probe::array($participants, property: 'lost'));
         $this->assertSame(['Cy'], \array_map(static fn (Participant $p): string => $p->name, $participants->all()));
     }
 
@@ -151,8 +151,8 @@ final class ParticipantsTest extends TestCase
         $this->assertTrue($ada->enabled());
         $this->assertFalse($cy->enabled(), 'no file open: nowhere to go');
         \assert(!\in_array(null, [$ada->run, $bo->run, $cy->run], strict: true), description: 'every row runs something');
-        $this->editor->openFile($project->path('src/A.php'), "<?php\n\n\n\nx\n");
-        $this->editor->getDocument()->setCursor(4, 1);
+        $this->editor->openFile($project->path('src/A.php'), content: "<?php\n\n\n\nx\n");
+        $this->editor->getDocument()->setCursor(4, col: 1);
         ($ada->run)();
         $this->assertSame([['path' => $project->path('src/A.php'), 'focus' => true]], $this->opener->opened);
         $this->assertSame([4, 0], [$this->editor->getDocument()->cursorLine, $this->editor->getDocument()->cursorCol], 'their line, from its start');

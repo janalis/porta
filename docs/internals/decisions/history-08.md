@@ -535,3 +535,55 @@ One flake surfaced on the way, in the uncached `coverage` leg of run 2:
 line in three writes. It awaits the whole line now. A mutant awaiting the wrong
 directory times out at that step.
 
+
+## symfony 8.2 betas, four tool bumps and mago 1.60, one commit each (2026-11-16)
+
+Same order as 2026-11-03: the lock first, verified on the old tools, then one
+tool per commit, so a vendor change could never pass for a tool's.
+
+**`prefer-stable` now resolves symfony 8.2 to its tagged betas.** Each tag is
+strictly ahead of the dev commit locked before, checked per package. Two
+upstream changes reached the suites. `Style::apply()` re-opens an inherited
+attribute after a nested span closes, which is what
+`PanelRowStyle::withForeground()` did by hand for the selection's colour, so
+the workaround went and the row bytes are the old ones again. And
+`ConfigCache` now dates a build by its `.meta` file, backdated to the build's
+start, so the stale-cache test ages that file too.
+
+**A `zend_mm_heap corrupted` abort predates the round.** One paratest worker in
+`coverage:src` died that way on 3 of 7 runs with the new lock and on 1 of 2
+with the old one, always while a settings screen rendered, never with that
+test alone (30 repeats in one process were clean). That is evidence against
+the lock, not an explanation. It is still open.
+
+**mago 1.60 extended `literal-named-argument` from function calls to method
+calls** — 30,200 new findings. A throwaway Rector rule, fed mago's exact
+offsets and PHPStan's parameter names, named 25,800 of them and every argument
+after each (PHP allows no positional argument after a named one); about 70
+more were done by hand. The rest cannot be named, and the reason is upstream:
+the rule does not skip a `@no-named-arguments` method (all of PHPUnit's
+Assert API), which the analyzer then refuses named, nor a literal in or before
+a variadic (carthage-software/mago#2741). So the rule excludes `tests/` and
+each plugin's tests until #2741 ships, and the 30 production sites, all on a
+variadic, carry an inline `@mago-expect`. src/ and plugin src/ stay enforced.
+
+A baseline was generated and dropped. mago keys an entry on the literal's
+text, so every new assertion message would have needed a regenerated
+2.8 MB file.
+
+**The analyzer's 35 new findings split three ways.** Mago getting better:
+redundant casts and `@var`s on test constants and filtered lists, two `?->` on
+readonly properties narrowed earlier, and a closure type that said
+`ToolCaller=` (callable WITHOUT a caller), where every caller passes one and a
+one-argument handler still fits `ToolCaller`. Mago being wrong: its stub says
+a `SimpleXMLElement` attribute offset is never null, and PHP gives null for a
+missing one (checked), so two sites carry the suppression. And one real
+mismatch: `PortaCommand` typed the closure it hands `SelfUpdate` with a
+required second argument, while `SelfUpdate` calls it with one.
+
+**Eight of nine thresholds held.** Cyclomatic fell from 143 to 141
+(`LspMapper` and `MouseRouter`), and 1.59 measures this tree the same way:
+`Document`, at 143 two weeks ago, is at 130–134 after the editor fixes since.
+
+*Re-opens on:* mago#2741 shipping — drop the rule's test excludes and the
+`@mago-expect`s, and convert the rest.

@@ -106,10 +106,10 @@ final class IdeSymfonyLspPluginTest extends TestCase
 
         $this->runIde($project, $project->path('t.twig'), [
             300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                $this->awaitPainted($tui, $terminal, 'LSP:off — project not trusted');
+                $this->awaitPainted($tui, $terminal, needle: 'LSP:off — project not trusted');
                 $pool = Services::resolve($ide, LspSessionPool::class);
-                $this->assertSame([], Probe::get($pool, 'servers'), 'no server to launch: not the plugin\'s, not the global one');
-                $this->assertSame([], Probe::get($pool, 'sessions'), 'and the twig buffer opened launched none');
+                $this->assertSame([], Probe::get($pool, property: 'servers'), 'no server to launch: not the plugin\'s, not the global one');
+                $this->assertSame([], Probe::get($pool, property: 'sessions'), 'and the twig buffer opened launched none');
             },
         ]);
     }
@@ -132,16 +132,16 @@ final class IdeSymfonyLspPluginTest extends TestCase
                         LspWireLog::initializeOptions($log)[0],
                         'the defaults travel as initializationOptions, workspaceTrust explicit',
                     );
-                    $this->awaitPainted($tui, $terminal, 'LSP:symfony-lsp');
+                    $this->awaitPainted($tui, $terminal, needle: 'LSP:symfony-lsp');
                     $this->assertStringContainsString('LSP:symfony-lsp', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the status bar names the plugin server');
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
-                    $this->selectSettingsSection($this->settingsNav($tui), 'plugin:symfony-lsp');
+                    $this->selectSettingsSection($this->settingsNav($tui), id: 'plugin:symfony-lsp');
                     // The version is asked when the page first shows, and the
                     // page re-reads itself once it is in.
-                    $this->awaitPainted($tui, $terminal, '┆ · 1.2.3 · ');
+                    $this->awaitPainted($tui, $terminal, needle: '┆ · 1.2.3 · ');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('symfony-lsp binary', $screen);
                     $this->assertStringContainsString('Runtime indexing', $screen);
@@ -262,7 +262,7 @@ final class IdeSymfonyLspPluginTest extends TestCase
             $project->path('t.twig'),
             [
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'LSP:no server');
+                    $this->awaitPainted($tui, $terminal, needle: 'LSP:no server');
                     $this->assertStringContainsString('LSP:no server', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'twig is out of the claim, so nothing serves it');
                 },
             ],
@@ -283,7 +283,7 @@ final class IdeSymfonyLspPluginTest extends TestCase
             $project->path('a.php'),
             [
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'LSP:symfony-lsp not found');
+                    $this->awaitPainted($tui, $terminal, needle: 'LSP:symfony-lsp not found');
                     $this->assertStringContainsString('LSP:symfony-lsp not found', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -314,8 +314,8 @@ final class IdeSymfonyLspPluginTest extends TestCase
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($installed): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
-                    $this->selectSettingsSection($this->settingsNav($tui), 'plugin:symfony-lsp');
-                    $this->awaitPainted($tui, $terminal, 'symfony-lsp — the Symfony language'); // the label's first line: it wraps in a forty-column column
+                    $this->selectSettingsSection($this->settingsNav($tui), id: 'plugin:symfony-lsp');
+                    $this->awaitPainted($tui, $terminal, needle: 'symfony-lsp — the Symfony language'); // the label's first line: it wraps in a forty-column column
                     $this->assertFileDoesNotExist($installed);
 
                     // Down to the tool's row (the last but the plugin's
@@ -327,13 +327,13 @@ final class IdeSymfonyLspPluginTest extends TestCase
                     $tui->handleInput("\x1b[A");
                     $tui->handleInput("\r");
 
-                    $this->awaitPainted($tui, $terminal, 'Installed symfony-lsp 9.9.9');
+                    $this->awaitPainted($tui, $terminal, needle: 'Installed symfony-lsp 9.9.9');
                     $this->assertFileExists($installed, 'the button downloaded the release the manifest declares');
                 },
                 900 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // The rows re-derive, and the same row is now the UPDATE
                     // affordance, carrying what is installed and where.
-                    $this->awaitPainted($tui, $terminal, '9.9.9 · ~/.porta/bin/symfony-lsp');
+                    $this->awaitPainted($tui, $terminal, needle: '9.9.9 · ~/.porta/bin/symfony-lsp');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Update', $screen);
                     $this->assertStringContainsString('9.9.9 · ~/.porta/bin/symfony-lsp', $screen, 'the row says what is installed, and where');

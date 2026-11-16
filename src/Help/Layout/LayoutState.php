@@ -84,7 +84,7 @@ final class LayoutState
      */
     public function lineEndCells(int $line, string $raw, int $col): array
     {
-        $lineStart = $this->source->offsetOf($line, 0);
+        $lineStart = $this->source->offsetOf($line, byteCol: 0);
         $text = $this->source->text;
         $lineEnd = $lineStart + \strcspn($text, characters: "\r\n", offset: $lineStart);
         $start = $lineEnd - \strlen($raw);

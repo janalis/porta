@@ -68,7 +68,7 @@ final class IdeDebugTest extends TestCase
             $project->path('prog.php'),
             [
                 200 => function (Tui $tui, $terminal): void {
-                    Widgets::editor($tui)->getDocument()->setCursor(2, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(2, col: 0);
                     $tui->handleInput("\x1b[19;5~"); // ctrl+f8 → set
                     $this->frame($tui);
                     $this->assertStringContainsString('●', $terminal->getOutput(), 'gutter dot rendered');
@@ -110,7 +110,7 @@ final class IdeDebugTest extends TestCase
             $project->path('prog.php'),
             [
                 100 => static function (Tui $tui): void {
-                    Widgets::editor($tui)->getDocument()->setCursor(4, 0); // 0-based line 4 → wire line 5
+                    Widgets::editor($tui)->getDocument()->setCursor(4, col: 0); // 0-based line 4 → wire line 5
                     $tui->handleInput("\x1b[19;5~"); // ctrl+f8 breakpoint
                     $tui->handleInput("\x1b[20;2~"); // shift+f9 debug
                 },
@@ -118,7 +118,7 @@ final class IdeDebugTest extends TestCase
                     // Locals are their own DAP round trip behind the stop event
                     // and the stack — await the LAST of the three to land, not
                     // just "paused", or the panel can still be mid-populate.
-                    $this->awaitPainted($tui, $terminal, '$x = 42');
+                    $this->awaitPainted($tui, $terminal, needle: '$x = 42');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Debug: prog.php', $screen, 'the debug panel opened');
                     $this->assertStringContainsString('paused at prog.php:5', $screen, 'stopped at the breakpoint');
@@ -129,21 +129,21 @@ final class IdeDebugTest extends TestCase
                     $this->assertStringNotContainsString('hello from debuggee', $screen, 'the debuggee output sits behind the Terminal tab, not stacked');
                     // The output is one dock tab away: alt+page_down cycles Debug → Terminal → Debug.
                     $tui->handleInput("\x1b[6;3~"); // alt+page_down → the Terminal tab
-                    $this->awaitPainted($tui, $terminal, 'hello from debuggee');
+                    $this->awaitPainted($tui, $terminal, needle: 'hello from debuggee');
                     $this->assertStringContainsString('hello from debuggee', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'debuggee output reached the debug terminal session');
                     $tui->handleInput("\x1b[6;3~"); // alt+page_down wraps back to the Debug tab
-                    $this->awaitPainted($tui, $terminal, '#0 {main}  prog.php:5');
+                    $this->awaitPainted($tui, $terminal, needle: '#0 {main}  prog.php:5');
                     $this->assertStringContainsString('#0 {main}  prog.php:5', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the debug panel is back');
                     $tui->handleInput("\x1b[19~"); // f8 step over → line 6
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'paused at prog.php:6');
+                    $this->awaitPainted($tui, $terminal, needle: 'paused at prog.php:6');
                     $this->assertStringContainsString('paused at prog.php:6', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the step advanced one line');
                     // Park the dock on the Terminal tab: the next stop must
                     // auto-reveal the Debug tab.
                     $tui->handleInput("\x1b[6;3~"); // alt+page_down → Terminal
                     $tui->tick();
-                    $this->assertFalse(Widgets::byId($tui, 'debug', DebugPanelWidget::class)->isVisible());
+                    $this->assertFalse(Widgets::byId($tui, id: 'debug', class: DebugPanelWidget::class)->isVisible());
                     $tui->handleInput("\x1b[19~"); // f8 step over → line 7 → stop
                 },
                 400 => function (Tui $tui, VirtualTerminal $terminal): void {
@@ -151,12 +151,12 @@ final class IdeDebugTest extends TestCase
                     // the stop had already come back. Await the stop, THEN ask
                     // whether it revealed the tab — the reveal is the claim
                     // under test and cannot be read before the stop lands.
-                    $this->awaitPainted($tui, $terminal, 'paused at prog.php:7');
-                    $this->assertTrue(Widgets::byId($tui, 'debug', DebugPanelWidget::class)->isVisible(), 'the stop auto-revealed the Debug tab');
+                    $this->awaitPainted($tui, $terminal, needle: 'paused at prog.php:7');
+                    $this->assertTrue(Widgets::byId($tui, id: 'debug', class: DebugPanelWidget::class)->isVisible(), 'the stop auto-revealed the Debug tab');
                     $tui->handleInput("\x1b[20~"); // f9 resume → no more breakpoints → terminated
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'terminated');
+                    $this->awaitPainted($tui, $terminal, needle: 'terminated');
                     $this->assertStringContainsString('terminated', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $editorScreen = \implode("\n", Paint::lines($tui->getById('editor'), new RenderContext(120, 20)));
                     $this->assertStringNotContainsString("\x1b[48;5;52m", $editorScreen, 'the band cleared');
@@ -191,7 +191,7 @@ final class IdeDebugTest extends TestCase
     private static function breakAtLineThreeAndDebug(): \Closure
     {
         return static function (Tui $tui): void {
-            Widgets::editor($tui)->getDocument()->setCursor(2, 0);
+            Widgets::editor($tui)->getDocument()->setCursor(2, col: 0);
             $tui->handleInput("\x1b[19;5~"); // ctrl+f8
             $tui->handleInput("\x1b[20;2~"); // shift+f9 debug
         };
@@ -208,7 +208,7 @@ final class IdeDebugTest extends TestCase
             [
                 100 => self::breakAtLineThreeAndDebug(),
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, 'paused at prog.php:3');
+                    $this->awaitPainted($tui, $terminal, needle: 'paused at prog.php:3');
                     $this->assertStringContainsString('paused at prog.php:3', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // Drag the debug panel's top edge up: all three bottom panels resize.
                     $renderer = Services::resolve($ide, Renderer::class);
@@ -219,9 +219,9 @@ final class IdeDebugTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<32;60;%dM", $top - 2));
                     $tui->handleInput(\sprintf("\x1b[<0;60;%dm", $top - 2));
                     $tui->tick();
-                    $expected = Probe::get($tui->getById('debug'), 'visibleRows');
-                    $this->assertSame($expected, Probe::get($tui->getById('terminal'), 'visibleRows'), 'bottom panels stay in sync');
-                    $this->assertSame($expected, Probe::get($tui->getById('results'), 'visibleRows'));
+                    $expected = Probe::get($tui->getById('debug'), property: 'visibleRows');
+                    $this->assertSame($expected, Probe::get($tui->getById('terminal'), property: 'visibleRows'), 'bottom panels stay in sync');
+                    $this->assertSame($expected, Probe::get($tui->getById('results'), property: 'visibleRows'));
                     // Click the second frame row: Frames header +2 = frame #1 at line 1.
                     $rect = $renderer->getWidgetRect($tui->getById('debug'));
                     $tui->handleInput(\sprintf("\x1b[<0;5;%dM", $rect->row + 3)); // Frames,#0,#1 → rel 2 (no header row)
@@ -250,7 +250,7 @@ final class IdeDebugTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;4;%dM", $stripRow())); // the debug session's tab
                     $tui->handleInput(\sprintf("\x1b[<0;4;%dm", $stripRow()));
                     $this->frame($tui);
-                    $this->assertTrue(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isVisible(), 'clicking the session tab revealed the debug session output');
+                    $this->assertTrue(Widgets::byId($tui, id: 'terminal', class: TerminalPanelWidget::class)->isVisible(), 'clicking the session tab revealed the debug session output');
                     $debugCol = static function () use ($tui, $renderer): int {
                         $rect = Widgets::rect($renderer, $tui->getById('dock-tabs'));
                         $strip = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('dock-tabs'), new RenderContext($rect->columns, 1))[0]);
@@ -262,11 +262,11 @@ final class IdeDebugTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $debugCol(), $stripRow())); // the Debug tab
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $debugCol(), $stripRow()));
                     $tui->tick();
-                    $this->assertTrue(Widgets::byId($tui, 'debug', DebugPanelWidget::class)->isVisible(), 'clicking the Debug tab brought the frames back');
+                    $this->assertTrue(Widgets::byId($tui, id: 'debug', class: DebugPanelWidget::class)->isVisible(), 'clicking the Debug tab brought the frames back');
                     $tui->handleInput("\x1b"); // Escape → the dock hides, focus back to the editor area
                     $tui->tick();
-                    $this->assertFalse(Widgets::byId($tui, 'debug', DebugPanelWidget::class)->isVisible());
-                    $this->assertTrue(Widgets::byId($tui, 'debug', DebugPanelWidget::class)->isOpen(), 'the debug tab stays alive behind the hidden dock');
+                    $this->assertFalse(Widgets::byId($tui, id: 'debug', class: DebugPanelWidget::class)->isVisible());
+                    $this->assertTrue(Widgets::byId($tui, id: 'debug', class: DebugPanelWidget::class)->isOpen(), 'the debug tab stays alive behind the hidden dock');
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'hiding the dock restored editor focus');
                     $tui->handleInput("\x1b[12;5~"); // ctrl+f2 stop mid-pause
                 },
@@ -292,7 +292,7 @@ final class IdeDebugTest extends TestCase
             $project->path('prog.php'),
             [
                 100 => function (Tui $tui): void {
-                    Widgets::editor($tui)->getDocument()->setCursor(4, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(4, col: 0);
                     $tui->handleInput("\x1b[19;6~"); // ctrl+shift+f8: edit → creates the breakpoint too
                     foreach (\str_split('$x > 1') as $ch) {
                         $tui->handleInput($ch);
@@ -306,10 +306,10 @@ final class IdeDebugTest extends TestCase
                     $tui->handleInput("\x1b[20;2~"); // shift+f9 debug
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'paused at prog.php:5');
+                    $this->awaitPainted($tui, $terminal, needle: 'paused at prog.php:5');
                     $this->assertStringContainsString('paused at prog.php:5', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'stopped at the conditional breakpoint');
                     $tui->handleInput("\x1b[6;3~"); // alt+page_down → the adapter echo lives in the debug terminal session
-                    $this->awaitPainted($tui, $terminal, 'cond@5: $x > 1');
+                    $this->awaitPainted($tui, $terminal, needle: 'cond@5: $x > 1');
                     $this->assertStringContainsString('cond@5: $x > 1', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the condition reached the adapter and echoed back');
                     $tui->handleInput("\x1b[6;3~"); // alt+page_down wraps back to the Debug tab
                     $tui->tick();
@@ -320,14 +320,14 @@ final class IdeDebugTest extends TestCase
                     $tui->handleInput("\r");
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, '$x = 42#1');
+                    $this->awaitPainted($tui, $terminal, needle: '$x = 42#1');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Watches', $screen);
                     $this->assertStringContainsString('$x = 42#1', $screen, 'the watch evaluated against the paused frame');
                     $tui->handleInput("\x1b[19~"); // f8 step over → stop again → watches re-evaluate
                 },
                 400 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, '$x = 42#2');
+                    $this->awaitPainted($tui, $terminal, needle: '$x = 42#2');
                     $this->assertStringContainsString('$x = 42#2', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the step re-evaluated the watch');
                 },
             ],
@@ -345,18 +345,18 @@ final class IdeDebugTest extends TestCase
             [
                 100 => self::breakAtLineThreeAndDebug(),
                 200 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'paused at prog.php:3');
+                    $this->awaitPainted($tui, $terminal, needle: 'paused at prog.php:3');
                     $this->assertStringContainsString('paused at prog.php:3', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    Widgets::editor($tui)->getDocument()->setCursor(6, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(6, col: 0);
                     $tui->handleInput("\x1b[20;3~"); // alt+f9 run to cursor
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'paused at prog.php:7');
+                    $this->awaitPainted($tui, $terminal, needle: 'paused at prog.php:7');
                     $this->assertStringContainsString('paused at prog.php:7', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'stopped at the one-shot');
                     $tui->handleInput("\x1b[20~"); // f9 resume: the one-shot is gone → termination
                 },
                 400 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'terminated');
+                    $this->awaitPainted($tui, $terminal, needle: 'terminated');
                     $this->assertStringContainsString('terminated', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'no ghost breakpoint stopped the resume');
                 },
             ],
@@ -382,7 +382,7 @@ final class IdeDebugTest extends TestCase
             [
                 200 => self::breakAtLineThreeAndDebug(),
                 600 => function (Tui $tui, VirtualTerminal $terminal) use ($palette): void {
-                    $this->awaitPainted($tui, $terminal, 'paused at prog.php:3'); // the debug session exists
+                    $this->awaitPainted($tui, $terminal, needle: 'paused at prog.php:3'); // the debug session exists
                     $tui->handleInput("\x1b[96;5u"); // ctrl+` → the adapter echo lives in the debug terminal session
                     // The defaults go out during the adapter handshake — a
                     // whole php subprocess spawn; await, never a fixed gap.
@@ -411,7 +411,7 @@ final class IdeDebugTest extends TestCase
             $project->path('prog.php'),
             [
                 200 => static function (Tui $tui): void {
-                    Widgets::editor($tui)->getDocument()->setCursor(4, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(4, col: 0);
                     $tui->handleInput("\x1b[19;6~"); // ctrl+shift+f8: conditional breakpoint
                     foreach (\str_split('$x > 1') as $ch) {
                         $tui->handleInput($ch);
@@ -447,12 +447,12 @@ final class IdeDebugTest extends TestCase
                 800 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // The restored watch's evaluation is its own DAP round trip
                     // behind the stop event — await it, not just "paused".
-                    $this->awaitPainted($tui, $terminal, '$x = 42#1');
+                    $this->awaitPainted($tui, $terminal, needle: '$x = 42#1');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('paused at prog.php:5', $screen, 'the restored breakpoint stopped the program');
                     $this->assertStringContainsString('$x = 42#1', $screen, 'the restored watch evaluated');
                     $tui->handleInput("\x1b[96;5u"); // ctrl+` → the adapter echo lives in the debug terminal session
-                    $this->awaitPainted($tui, $terminal, 'cond@5: $x > 1');
+                    $this->awaitPainted($tui, $terminal, needle: 'cond@5: $x > 1');
                     $this->assertStringContainsString('cond@5: $x > 1', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'its condition reached the adapter');
                 },
             ],

@@ -82,12 +82,12 @@ final class SessionRestorerTrustTest extends TestCase
     {
         $this->bootIde(['composer.json' => '{}', 'src/A.php' => "<?php\n", 'src/B.php' => "<?php\n"]);
         $store = new SessionStore($this->project->dir);
-        $store->save([['path' => $this->own(), 'line' => 0, 'col' => 0]], null);
+        $store->save([['path' => $this->own(), 'line' => 0, 'col' => 0]], activePath: null);
         $restorer = Services::resolve($this->ide, SessionRestorer::class);
         $restorer->restore();
 
         $other = [['path' => (string) \realpath($this->project->path('src/B.php')), 'line' => 0, 'col' => 0, 'pinned' => false]];
-        $store->save($other, null); // the other window quit first
+        $store->save($other, activePath: null); // the other window quit first
         $restorer->save();
 
         $this->assertSame([(string) \realpath($this->project->path('src/B.php'))], \array_column($store->load()['buffers'] ?? [], 'path'));
@@ -110,7 +110,7 @@ final class SessionRestorerTrustTest extends TestCase
         new SessionStore($this->project->dir)->save([
             ['path' => $this->own(), 'line' => 0, 'col' => 0],
             ['path' => $named($root, (string) \realpath($this->elsewhere->path('id_rsa'))), 'line' => 0, 'col' => 0],
-        ], null);
+        ], activePath: null);
 
         $this->assertTrue(Services::resolve($this->ide, SessionRestorer::class)->restore());
 

@@ -36,7 +36,7 @@ final class TestDebugController
 {
     public static function create(string $root = '/p', ?LocalOnly $localOnly = null): DebugController
     {
-        $tui = TestTui::create(100, 24);
+        $tui = TestTui::create(100, rows: 24);
         $editor = new CodeEditorWidget();
         $dispatcher = new EventDispatcher();
         $panel = new DebugPanelWidget(events: $dispatcher);

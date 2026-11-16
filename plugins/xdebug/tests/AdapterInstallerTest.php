@@ -64,7 +64,7 @@ final class AdapterInstallerTest extends TestCase
 
     public function testTheReleaseLandsWithOnlyItsExtension(): void
     {
-        $this->home->write('tools/php-debug/1.40.2/stale.txt', 'from before');
+        $this->home->write('tools/php-debug/1.40.2/stale.txt', content: 'from before');
 
         $this->assertNull($this->install(self::FIXTURES.'/php-debug.vsix'));
 
@@ -76,7 +76,7 @@ final class AdapterInstallerTest extends TestCase
 
     public function testWhatIsNotTheReleaseIsThrownAway(): void
     {
-        $this->home->write('tools/php-debug/1.40.2/extension/out/phpDebug.js', 'the good one');
+        $this->home->write('tools/php-debug/1.40.2/extension/out/phpDebug.js', content: 'the good one');
 
         $this->assertSame('the download is not the release it should be (its SHA-256 differs)', $this->install(self::FIXTURES.'/php-debug.vsix', \str_repeat('0', times: 64)));
         $this->assertSame('the release holds no extension/out/phpDebug.js', $this->install(self::FIXTURES.'/no-adapter.vsix', (string) \hash_file('sha256', self::FIXTURES.'/no-adapter.vsix')));
@@ -89,14 +89,14 @@ final class AdapterInstallerTest extends TestCase
 
     public function testADirectoryThatCannotBeMadeIsSaidNotThrown(): void
     {
-        $this->home->write('tools/php-debug', 'a file where the folder goes');
+        $this->home->write('tools/php-debug', content: 'a file where the folder goes');
 
         $this->assertStringContainsString('Failed to create', (string) $this->install(self::FIXTURES.'/php-debug.vsix'));
     }
 
     public function testAnOldCopyThatCannotGoIsSaidAndTheScratchRemoved(): void
     {
-        $this->home->write('tools/php-debug/1.40.2/locked/held.js', 'in use');
+        $this->home->write('tools/php-debug/1.40.2/locked/held.js', content: 'in use');
         \chmod($this->home->path('tools/php-debug/1.40.2/locked'), permissions: 0o555);
         try {
             $failure = $this->install(self::FIXTURES.'/php-debug.vsix');

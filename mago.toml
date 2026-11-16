@@ -139,13 +139,18 @@ integrations = ["symfony", "phpunit"]
 # train everyone to ignore the log. What sets each floor (re-bisected after
 # the round-5 tree, July 2026 — for the first time EVERY pin is production
 # code; the round-5 test split retired the E2e monolith that pinned two rules;
-# all nine re-bisected again under mago 1.45, where exactly one moved, and
-# under 1.59, where none did):
+# all nine re-bisected again under mago 1.45, where exactly one moved, under
+# 1.59, where none did, and under 1.60, where none did either — cyclomatic
+# fell on 2026-11-16 because the code moved):
 #
-#   cyclomatic-complexity   143  Editor/Document alone (re-probed 2026-11-03,
-#                                under 1.47 and 1.59 alike: Lsp/LspMapper 141,
-#                                the graph viewer's GraphViewerWidget 139 —
-#                                the code moved, not the metric). The two were tied
+#   cyclomatic-complexity   141  Lsp/LspMapper and Input/MouseRouter, tied
+#                                (re-probed 2026-11-16 under 1.59 and 1.60
+#                                alike: Editor/Document, 143 alone on
+#                                2026-11-03, fell to 130–134 with the editor
+#                                fixes since — the code moved, not the metric).
+#                                Earlier: Lsp/LspMapper 141 and the graph
+#                                viewer's GraphViewerWidget 139 under 1.47 and
+#                                1.59 on 2026-11-03. Document and LspMapper were tied
 #                                on 2026-10-23, both measured and left alone in
 #                                decisions.md — one state component each,
 #                                complexity spread thin. MouseRouter, which
@@ -419,7 +424,7 @@ integrations = ["symfony", "phpunit"]
 # real maximum is not a gate. Verified failing: injecting 60 dummy
 # properties into Ui/Notifier trips too-many-properties and lint exits 1.
 [linter.rules]
-cyclomatic-complexity = { threshold = 143 }
+cyclomatic-complexity = { threshold = 141 }
 too-many-methods = { threshold = 90 }
 too-many-properties = { threshold = 31 }
 too-many-enum-cases = { threshold = 78 }
@@ -432,5 +437,15 @@ halstead = { effort-threshold = 18673, difficulty-threshold = 26, volume-thresho
 # so each is raised to `warning` explicitly, or it would be advice, not a gate.
 assertion-style = { style = "this" }
 yoda-conditions = { enabled = true, level = "warning", mode = "require" }
+# mago 1.60 extended literal-named-argument from function calls to method
+# calls, without the exemptions functions have: it flags literals passed to a
+# `@no-named-arguments` method (all of PHPUnit's Assert API), which the
+# analyzer then refuses named (named-argument-not-allowed), and literals in
+# or before a variadic, which cannot be named at all. Upstream:
+# carthage-software/mago#2741. Every call site that CAN be named was converted
+# (2026-11-16); tests are excluded from this one rule until #2741 ships, when
+# this entry goes and the rule runs on tests again. src/ and every plugin's
+# src/ stay enforced. One literal path per plugin, as for [analyzer].
+literal-named-argument = { exclude = ["tests/", "plugins/assist/tests/", "plugins/composer/tests/", "plugins/custos/tests/", "plugins/diff/tests/", "plugins/ftp/tests/", "plugins/git/tests/", "plugins/graph-viewer/tests/", "plugins/image-viewer/tests/", "plugins/local-history/tests/", "plugins/mcp/tests/", "plugins/phpunit/tests/", "plugins/review/tests/", "plugins/ssh/tests/", "plugins/symfony-lsp/tests/", "plugins/todo/tests/", "plugins/xdebug/tests/"] }
 ambiguous-function-call = { enabled = true, level = "warning" }
 ambiguous-constant-access = { enabled = true, level = "warning" }

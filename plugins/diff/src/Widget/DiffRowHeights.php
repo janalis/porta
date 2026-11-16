@@ -46,7 +46,7 @@ final readonly class DiffRowHeights
         foreach ($rows as $row) {
             $heights[] = match ($row['kind']) {
                 DiffRowKind::Hunk => 1,
-                DiffRowKind::Line => self::lineRows($document, $row, null, $width),
+                DiffRowKind::Line => self::lineRows($document, $row, column: null, width: $width),
                 DiffRowKind::Pair => \max(self::lineRows($document, $row, DiffColumn::Old, $width), self::lineRows($document, $row, DiffColumn::New, $width)),
             };
         }

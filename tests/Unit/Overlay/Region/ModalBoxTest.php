@@ -26,28 +26,28 @@ final class ModalBoxTest extends TestCase
     {
         $box = $this->box();
 
-        $this->assertTrue($box->contains(4, 10), 'top-left corner');
-        $this->assertTrue($box->contains(9, 29), 'bottom-right corner');
-        $this->assertFalse($box->contains(3, 10), 'above');
-        $this->assertFalse($box->contains(10, 10), 'below');
-        $this->assertFalse($box->contains(4, 9), 'left of');
-        $this->assertFalse($box->contains(4, 30), 'right of');
+        $this->assertTrue($box->contains(4, col: 10), 'top-left corner');
+        $this->assertTrue($box->contains(9, col: 29), 'bottom-right corner');
+        $this->assertFalse($box->contains(3, col: 10), 'above');
+        $this->assertFalse($box->contains(10, col: 10), 'below');
+        $this->assertFalse($box->contains(4, col: 9), 'left of');
+        $this->assertFalse($box->contains(4, col: 30), 'right of');
     }
 
     public function testItemAtMapsWindowRowsToAbsoluteIndices(): void
     {
         $box = $this->box();
 
-        $this->assertSame(5, $box->itemAt(6, 15), 'first window row → windowStart');
-        $this->assertSame(7, $box->itemAt(8, 15), 'last window row');
-        $this->assertNull($box->itemAt(5, 15), 'the header rows are not items');
-        $this->assertNull($box->itemAt(9, 15), 'the bottom border is not an item');
-        $this->assertNull($box->itemAt(6, 9), 'outside the box columns');
-        $this->assertNull($box->itemAt(6, 30), 'outside on the right');
-        $this->assertNull($box->itemAt(6, 10), 'the left rail is a resize handle, not the row');
-        $this->assertNull($box->itemAt(6, 29), 'the right rail neither');
-        $this->assertSame(5, $box->itemAt(6, 11), 'the first column inside the rail is the row');
-        $this->assertSame(5, $box->itemAt(6, 28), 'and the last');
+        $this->assertSame(5, $box->itemAt(6, col: 15), 'first window row → windowStart');
+        $this->assertSame(7, $box->itemAt(8, col: 15), 'last window row');
+        $this->assertNull($box->itemAt(5, col: 15), 'the header rows are not items');
+        $this->assertNull($box->itemAt(9, col: 15), 'the bottom border is not an item');
+        $this->assertNull($box->itemAt(6, col: 9), 'outside the box columns');
+        $this->assertNull($box->itemAt(6, col: 30), 'outside on the right');
+        $this->assertNull($box->itemAt(6, col: 10), 'the left rail is a resize handle, not the row');
+        $this->assertNull($box->itemAt(6, col: 29), 'the right rail neither');
+        $this->assertSame(5, $box->itemAt(6, col: 11), 'the first column inside the rail is the row');
+        $this->assertSame(5, $box->itemAt(6, col: 28), 'and the last');
     }
 
     /**
@@ -95,12 +95,12 @@ final class ModalBoxTest extends TestCase
     {
         $box = $this->box();
 
-        $this->assertTrue($box->closeHit(4, 28), 'the ] (width − 2)');
-        $this->assertTrue($box->closeHit(4, 27), 'the ✖');
-        $this->assertTrue($box->closeHit(4, 26), 'the [ (width − 4)');
-        $this->assertFalse($box->closeHit(4, 29), 'the corner glyph');
-        $this->assertFalse($box->closeHit(4, 25), 'the rule before it');
-        $this->assertFalse($box->closeHit(5, 28), 'not on the title row');
+        $this->assertTrue($box->closeHit(4, col: 28), 'the ] (width − 2)');
+        $this->assertTrue($box->closeHit(4, col: 27), 'the ✖');
+        $this->assertTrue($box->closeHit(4, col: 26), 'the [ (width − 4)');
+        $this->assertFalse($box->closeHit(4, col: 29), 'the corner glyph');
+        $this->assertFalse($box->closeHit(4, col: 25), 'the rule before it');
+        $this->assertFalse($box->closeHit(5, col: 28), 'not on the title row');
     }
 
     public function testRegionMirrorsTheFullBox(): void

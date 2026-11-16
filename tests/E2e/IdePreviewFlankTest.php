@@ -92,7 +92,7 @@ final class IdePreviewFlankTest extends TestCase
             $project->path('doc.flank'),
             [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, 'showing doc.flank');
+                    $this->awaitPainted($tui, $terminal, needle: 'showing doc.flank');
                     $editor = Services::resolve($ide, CodeEditorWidget::class);
                     $flank = self::flank($ide);
                     $pane = self::pane($ide);
@@ -122,7 +122,7 @@ final class IdePreviewFlankTest extends TestCase
                     // Too narrow for three: the flank steps aside, and the
                     // pointer no longer finds it where it was.
                     $flank->calls = [];
-                    $terminal->simulateResize(84, 24);
+                    $terminal->simulateResize(84, rows: 24);
                     $this->await(static fn (): bool => null === $flank->getContext(), what: 'the flank stepping aside');
                     $tui->handleInput(\sprintf("\x1b[<65;%d;%dM", $col, $row));
                     $this->assertSame([], $flank->calls, 'nothing reaches a flank off screen');
@@ -142,7 +142,7 @@ final class IdePreviewFlankTest extends TestCase
             $project->path('doc.flank'),
             [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
-                    $this->awaitPainted($tui, $terminal, 'showing doc.flank');
+                    $this->awaitPainted($tui, $terminal, needle: 'showing doc.flank');
                     $tui->setFocus(self::flank($ide));
 
                     Services::resolve($ide, BufferService::class)->openFile($project->path('a.php'), OpenFocus::Keep);

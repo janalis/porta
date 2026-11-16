@@ -65,7 +65,7 @@ final class IdeAppMenuTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;1M", $view + 2));
                 },
                 360 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'menu', MenuBarWidget::class)->isOpen());
+                    $this->assertTrue(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isOpen());
                     $row = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('breadcrumbs'), new RenderContext(120, 1))[0]);
                     $this->assertStringContainsString('Show Problems', $row, 'the dropdown composites over the breadcrumb row (breadcrumb no longer in front)');
                     // Switch to File (left edge): with the full-width menu row its
@@ -73,7 +73,7 @@ final class IdeAppMenuTest extends TestCase
                     $tui->handleInput("\x1b[<0;3;1M");
                 },
                 440 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'menu', MenuBarWidget::class)->isOpen());
+                    $this->assertTrue(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isOpen());
                     // Tree row 0 carries the frame's top border; the first item
                     // row sits one below it.
                     $treeTop = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('tree'), new RenderContext(30, 20))[1]);
@@ -105,14 +105,14 @@ final class IdeAppMenuTest extends TestCase
             [
                 200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $tui->handleInput("\x06"); // ctrl+f
-                    $this->awaitPainted($tui, $terminal, '[0/0]');
+                    $this->awaitPainted($tui, $terminal, needle: '[0/0]');
                     $bar = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('menu'), new RenderContext(120, 1))[0]);
                     $edit = \mb_strpos($bar, needle: 'Edit');
                     $this->assertIsInt($edit, 'the Edit menu is on the bar');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;1M", $edit + 2));
                 },
                 300 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'menu', MenuBarWidget::class)->isOpen());
+                    $this->assertTrue(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isOpen());
                     // The compact (24-row) bar is one row; Edit's first item,
                     // Undo, lands on the navigation bar under it, and the
                     // next one on the find bar.
@@ -144,7 +144,7 @@ final class IdeAppMenuTest extends TestCase
                     $tui->handleInput("\r"); // and drops File
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'Open Project');
+                    $this->awaitPainted($tui, $terminal, needle: 'Open Project');
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertStringStartsWith('┃File┃', $grid[0]);
                     $this->assertStringStartsWith('┃    ┗━', $grid[1], 'open under the title, closed past it');
@@ -174,7 +174,7 @@ final class IdeAppMenuTest extends TestCase
                     $tui->handleInput("\r"); // dropped
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal) use ($border): void {
-                    $this->awaitPainted($tui, $terminal, '▼');
+                    $this->awaitPainted($tui, $terminal, needle: '▼');
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertLessThan(\count($grid) - 1, $border($grid), 'the box closes above the status bar');
                     $this->assertStringContainsString('▼', $grid[$border($grid)], 'saying more runs on below');
@@ -182,7 +182,7 @@ final class IdeAppMenuTest extends TestCase
                     for ($i = 0; $i < 20; ++$i) {
                         $tui->handleInput("\x1b[B");
                     }
-                    $this->awaitPainted($tui, $terminal, '▲');
+                    $this->awaitPainted($tui, $terminal, needle: '▲');
                 },
             ],
             columns: 80,
@@ -211,10 +211,10 @@ final class IdeAppMenuTest extends TestCase
                     $tui->handleInput("\r"); // and drops File
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal) use ($border): void {
-                    $this->awaitPainted($tui, $terminal, 'Quit');
+                    $this->awaitPainted($tui, $terminal, needle: 'Quit');
                     $this->assertStringNotContainsString('▼', \implode("\n", $this->screenGrid($tui, $terminal)), 'the whole menu fits at 30 rows');
 
-                    $terminal->simulateResize(60, 12);
+                    $terminal->simulateResize(60, rows: 12);
                     $tui->requestRender(force: true);
                     $this->await(function () use ($tui, $terminal, $border): bool {
                         $grid = $this->screenGrid($tui, $terminal);
@@ -223,9 +223,9 @@ final class IdeAppMenuTest extends TestCase
                         return 12 === \count($grid) && null !== $at && $at < 11 && \str_contains($grid[$at], '▼');
                     }, what: 'the shrunk screen\'s dropdown closing above its status bar, more below');
 
-                    $terminal->simulateResize(100, 30);
+                    $terminal->simulateResize(100, rows: 30);
                     $tui->requestRender(force: true);
-                    $this->awaitPainted($tui, $terminal, 'Quit');
+                    $this->awaitPainted($tui, $terminal, needle: 'Quit');
                     $this->assertStringNotContainsString('▼', \implode("\n", $this->screenGrid($tui, $terminal)), 'grown back, the whole menu again');
                 },
             ],
@@ -241,13 +241,13 @@ final class IdeAppMenuTest extends TestCase
 
         $this->runIde(
             $project,
-            null, // start with no file
-            [
+            file: null, // start with no file
+            steps: [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[<0;9;1M"); // open the Edit menu (title cols 7-12)
                 },
                 280 => function (Tui $tui): void {
-                    $menu = Widgets::byId($tui, 'menu', MenuBarWidget::class);
+                    $menu = Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class);
                     $this->assertTrue($menu->isOpen());
                     // Undo is item 0; with no file open it renders faint and struck through, not highlighted.
                     $undo = $menu->dropdownSegments($menu->panelWidth())[0]['segment'];
@@ -258,11 +258,11 @@ final class IdeAppMenuTest extends TestCase
                 },
                 360 => static function (Tui $tui) use ($project): void {
                     // Open a file so the document actions re-enable, then reopen Edit.
-                    Widgets::editor($tui)->openFile($project->path('a.php'), "<?php\necho 1;\n");
+                    Widgets::editor($tui)->openFile($project->path('a.php'), content: "<?php\necho 1;\n");
                     $tui->handleInput("\x1b[<0;9;1M");
                 },
                 440 => function (Tui $tui): void {
-                    $menu = Widgets::byId($tui, 'menu', MenuBarWidget::class);
+                    $menu = Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class);
                     $undo = $menu->dropdownSegments($menu->panelWidth())[0]['segment'];
                     $this->assertStringNotContainsString("\x1b[38;5;242m", $undo, 'Undo enabled once a file is open');
                 },
@@ -282,14 +282,14 @@ final class IdeAppMenuTest extends TestCase
                 200 => static function (Tui $tui): void {
                     $tui->tick();
                     $editor = Widgets::editor($tui);
-                    $editor->getDocument()->setCursor(0, 0);
+                    $editor->getDocument()->setCursor(0, col: 0);
                     $editor->handleInput('X'); // dirty: "X<?php"
                     $tui->handleInput("\x1b[21~"); // F10 opens the menu
                 },
                 300 => function (Tui $tui): void {
                     $this->assertSame('menu', $tui->getFocus()?->getId(), 'F10 focused the menu');
-                    $this->assertTrue(Widgets::byId($tui, 'menu', MenuBarWidget::class)->isOpen());
-                    $this->assertFalse(Widgets::byId($tui, 'menu', MenuBarWidget::class)->isDropdownShown(), 'armed: F10 drops nothing');
+                    $this->assertTrue(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isOpen());
+                    $this->assertFalse(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isDropdownShown(), 'armed: F10 drops nothing');
                     $tui->handleInput("\x1b[C"); // right -> Edit, still armed
                     $tui->handleInput("\r"); // enter drops Edit
                     $tui->handleInput("\r"); // enter -> Edit's first item (Undo)
@@ -301,14 +301,14 @@ final class IdeAppMenuTest extends TestCase
                     $tui->handleInput("\x1b[21~"); // F10 again
                 },
                 500 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'menu', MenuBarWidget::class)->isOpen());
+                    $this->assertTrue(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isOpen());
                     $tui->handleInput("\x1b[21~"); // F10 on an armed bar lets it go
-                    $this->assertFalse(Widgets::byId($tui, 'menu', MenuBarWidget::class)->isOpen(), 'F10 toggles');
+                    $this->assertFalse(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isOpen(), 'F10 toggles');
                     $tui->handleInput("\x1b[21~");
                     $tui->handleInput("\x1b"); // Esc closes
                 },
                 600 => function (Tui $tui): void {
-                    $this->assertFalse(Widgets::byId($tui, 'menu', MenuBarWidget::class)->isOpen(), 'Esc closed the menu');
+                    $this->assertFalse(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isOpen(), 'Esc closed the menu');
                     $this->assertSame('editor', $tui->getFocus()?->getId());
                 },
             ],
@@ -327,39 +327,39 @@ final class IdeAppMenuTest extends TestCase
                 200 => static function (Tui $tui): void {
                     $tui->tick();
                     $editor = Widgets::editor($tui);
-                    $editor->getDocument()->setCursor(0, 0);
+                    $editor->getDocument()->setCursor(0, col: 0);
                     $editor->handleInput('X'); // dirty: "X<?php"
                     // The menu bar is the full-width top row: File title at
                     // cols 1-6, Edit at 7-12. Click "Edit" (SGR row 1).
                     $tui->handleInput("\x1b[<0;9;1M");
                 },
                 300 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'menu', MenuBarWidget::class)->isOpen(), 'title click opened the menu');
+                    $this->assertTrue(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isOpen(), 'title click opened the menu');
                     $this->assertSame('menu', $tui->getFocus()?->getId());
                     // The dropdown anchors under Edit (col 7); its frame's top
                     // border sits at screen row 1, Undo (item 0) below it → SGR row 3.
                     $tui->handleInput("\x1b[<0;9;3M"); // click Undo -> runs it + closes
                 },
                 400 => function (Tui $tui): void {
-                    $this->assertFalse(Widgets::byId($tui, 'menu', MenuBarWidget::class)->isOpen(), 'item click ran and closed');
+                    $this->assertFalse(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isOpen(), 'item click ran and closed');
                     $editor = Widgets::editor($tui);
                     $this->assertSame('<?php', $editor->getDocument()->getLine(0), 'clicking Undo undid the edit');
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;3;1M"); // reopen File (title cols 1-6)
                 },
                 500 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'menu', MenuBarWidget::class)->isOpen(), 'File reopened');
+                    $this->assertTrue(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isOpen(), 'File reopened');
                     // Clicking the SAME (open) title again toggles the dropdown closed.
                     $tui->handleInput("\x1b[<0;3;1M"); // File title cols 1-6
                 },
                 600 => function (Tui $tui): void {
-                    $this->assertFalse(Widgets::byId($tui, 'menu', MenuBarWidget::class)->isOpen(), 're-clicking the open title closed it');
+                    $this->assertFalse(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isOpen(), 're-clicking the open title closed it');
                     // Open File, then click a DIFFERENT title (Edit) → switches, stays open.
                     $tui->handleInput("\x1b[<0;3;1M"); // open File (index 0)
                     $tui->handleInput("\x1b[<0;9;1M"); // click Edit (index 1)
                 },
                 700 => function (Tui $tui): void {
-                    $menu = Widgets::byId($tui, 'menu', MenuBarWidget::class);
+                    $menu = Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class);
                     $this->assertTrue($menu->isOpen(), 'clicking another title kept a menu open');
                     $this->assertSame(1, $menu->openIndex(), 'switched to Edit (index 1)');
                     // A click on the frame's border ring (the top border row) is
@@ -369,7 +369,7 @@ final class IdeAppMenuTest extends TestCase
                     $tui->handleInput("\x1b[<0;100;18M"); // click far below the dropdown -> dismiss
                 },
                 800 => function (Tui $tui): void {
-                    $this->assertFalse(Widgets::byId($tui, 'menu', MenuBarWidget::class)->isOpen(), 'outside click dismissed the menu');
+                    $this->assertFalse(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isOpen(), 'outside click dismissed the menu');
                 },
             ],
         );
@@ -390,20 +390,20 @@ final class IdeAppMenuTest extends TestCase
                     $tui->handleInput("\x1b[<35;3;1M");
                 },
                 280 => function (Tui $tui): void {
-                    $menu = Widgets::byId($tui, 'menu', MenuBarWidget::class);
+                    $menu = Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class);
                     $row = Paint::lines($menu, new RenderContext(120, 1))[0];
                     $this->assertStringContainsString("\x1b[48;5;240m", $row, 'closed title highlights on hover');
                     // Move off the bar (into the editor body) → the highlight clears.
                     $tui->handleInput("\x1b[<35;60;10M");
                 },
                 360 => function (Tui $tui): void {
-                    $menu = Widgets::byId($tui, 'menu', MenuBarWidget::class);
+                    $menu = Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class);
                     $row = Paint::lines($menu, new RenderContext(120, 1))[0];
                     $this->assertStringNotContainsString("\x1b[48;5;240m", $row, 'moving off the bar cleared the highlight');
                     $tui->handleInput("\x1b[<0;9;1M"); // click the Edit title (cols 7-12) to open it
                 },
                 440 => function (Tui $tui): void {
-                    $menu = Widgets::byId($tui, 'menu', MenuBarWidget::class);
+                    $menu = Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class);
                     $this->assertTrue($menu->isOpen());
                     $this->assertSame(1, $menu->openIndex(), 'Edit is open');
                     // Hover Redo (item 1) in the dropdown: bar row 0, the frame's
@@ -411,7 +411,7 @@ final class IdeAppMenuTest extends TestCase
                     $tui->handleInput("\x1b[<35;9;4M");
                 },
                 520 => function (Tui $tui): void {
-                    $menu = Widgets::byId($tui, 'menu', MenuBarWidget::class);
+                    $menu = Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class);
                     $segments = $menu->dropdownSegments($menu->panelWidth());
                     $this->assertStringContainsString("\x1b[48;5;31m", $segments[1]['segment'], 'hovering Redo highlighted it');
                     $this->assertStringNotContainsString("\x1b[48;5;31m", $segments[0]['segment'], 'Undo is no longer highlighted');
@@ -419,14 +419,14 @@ final class IdeAppMenuTest extends TestCase
                     $tui->handleInput("\x1b[<35;3;1M");
                 },
                 600 => function (Tui $tui): void {
-                    $menu = Widgets::byId($tui, 'menu', MenuBarWidget::class);
+                    $menu = Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class);
                     $this->assertTrue($menu->isOpen());
                     $this->assertSame(0, $menu->openIndex(), 'hovering the sibling title switched to File');
                     // Hover the editor body while open (off both dropdown and bar) → menu stays open.
                     $tui->handleInput("\x1b[<35;60;12M");
                 },
                 680 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'menu', MenuBarWidget::class)->isOpen(), 'hovering away from the menu kept it open');
+                    $this->assertTrue(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isOpen(), 'hovering away from the menu kept it open');
                 },
             ],
         );
@@ -456,25 +456,25 @@ final class IdeAppMenuTest extends TestCase
                     $tui->tick();
 
                     $before = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($before, 'zmarker'), 'tree lists zmarker.php before the menu opens');
+                    $this->assertNotNull($this->rowOf($before, needle: 'zmarker'), 'tree lists zmarker.php before the menu opens');
                     // The File dropdown floats over the TREE columns now, so the
                     // row-stability marker must live outside its footprint: use
                     // the editor's text (col ~62, untouched by the dropdown).
-                    $markerRow = $this->rowOf($before, 'echo 1;');
+                    $markerRow = $this->rowOf($before, needle: 'echo 1;');
                     $this->assertNotNull($markerRow, 'editor content visible before the menu opens');
 
                     $tui->handleInput("\x1b[21~"); // F10 arms the menu
                     $tui->handleInput("\x1b[B"); // ↓ drops File
 
                     $after = $this->screenGrid($tui, $terminal);
-                    $this->assertTrue(Widgets::byId($tui, 'menu', MenuBarWidget::class)->isOpen(), 'F10 opened the menu');
+                    $this->assertTrue(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isOpen(), 'F10 opened the menu');
                     // Regression: the editor line stays on the SAME screen row (before
                     // the fix it was reflowed downward) and no rows were inserted.
-                    $this->assertSame($markerRow, $this->rowOf($after, 'echo 1;'), 'content did not shift down');
+                    $this->assertSame($markerRow, $this->rowOf($after, needle: 'echo 1;'), 'content did not shift down');
                     $this->assertSameSize($before, $after, 'no extra rows inserted');
 
                     // ...and the dropdown really is drawn, floating over the pane.
-                    $menu = Widgets::byId($tui, 'menu', MenuBarWidget::class);
+                    $menu = Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class);
                     $segment = $menu->dropdownSegments($menu->panelWidth())[0]['segment'];
                     $label = \explode(' ', \trim(AnsiUtils::stripAnsiCodes($segment)))[0];
                     $this->assertNotSame('', $label);
@@ -498,7 +498,7 @@ final class IdeAppMenuTest extends TestCase
         $tui->handleInput("\x1b[21~"); // F10
         $tui->handleInput("\x1b[B"); // ↓ drops File
 
-        $this->assertTrue(Widgets::byId($tui, 'menu', MenuBarWidget::class)->isDropdownShown(), 'menu opened without a prior render');
+        $this->assertTrue(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isDropdownShown(), 'menu opened without a prior render');
         $this->assertSame('', $terminal->consumeOutput(), 'nothing was drawn');
     }
 
@@ -521,7 +521,7 @@ final class IdeAppMenuTest extends TestCase
                 450 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // 'Save All' is a filtered ROW inside the palette, so it
                     // paints after the palette chrome that carries 'Find Action'.
-                    $this->awaitPainted($tui, $terminal, 'Save All');
+                    $this->awaitPainted($tui, $terminal, needle: 'Save All');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Find Action', $screen);
                     // Dirty the buffer, then run "Save All" by name.
@@ -529,7 +529,7 @@ final class IdeAppMenuTest extends TestCase
                     $tui->handleInput("\r");
                 },
                 600 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
-                    $this->awaitPainted($tui, $terminal, 'Saved');
+                    $this->awaitPainted($tui, $terminal, needle: 'Saved');
                     $this->assertStringContainsString('X', (string) \file_get_contents($project->path('A.php')));
                 },
             ],
@@ -555,8 +555,8 @@ final class IdeAppMenuTest extends TestCase
                     }
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'Save File');
-                    $card = $this->card($this->screenGrid($tui, $terminal), 'Find Action');
+                    $this->awaitPainted($tui, $terminal, needle: 'Save File');
+                    $card = $this->card($this->screenGrid($tui, $terminal), title: 'Find Action');
 
                     $this->assertMatchesRegularExpression('/Save File\s+Ctrl\+S/', $card, 'the key rides beside its action');
                 },
@@ -582,12 +582,12 @@ final class IdeAppMenuTest extends TestCase
                     }
                 },
                 450 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'Cycle Line Numbers');
+                    $this->awaitPainted($tui, $terminal, needle: 'Cycle Line Numbers');
                     $this->assertStringContainsString('Cycle Line Numbers', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\r"); // run the cycle: absolute → relative
                 },
                 600 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
-                    $this->awaitPainted($tui, $terminal, 'Line numbers relative');
+                    $this->awaitPainted($tui, $terminal, needle: 'Line numbers relative');
                     $this->assertSame(LineNumberMode::Relative, Widgets::editor($tui)->display->lineNumbers);
                     // Persisted into .porta.json.
                     $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
@@ -613,8 +613,8 @@ final class IdeAppMenuTest extends TestCase
                 200 => function (Tui $tui, $terminal, Ide $ide): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $row = static function (string $label) use ($tui): string {
-                        $bar = Widgets::byId($tui, 'menu', MenuBarWidget::class);
-                        $bar->open(\array_search('View', \array_map(static fn ($m): string => $m->title, Probe::get($bar, 'menus')), strict: true));
+                        $bar = Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class);
+                        $bar->open(\array_search('View', \array_map(static fn ($m): string => $m->title, Probe::get($bar, property: 'menus')), strict: true));
                         $found = \array_find($bar->dropdownSegments($bar->panelWidth()), static fn (array $r): bool => \str_contains(AnsiUtils::stripAnsiCodes($r['segment']), $label));
                         $bar->close();
 

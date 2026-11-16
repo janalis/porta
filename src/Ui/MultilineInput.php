@@ -79,12 +79,12 @@ final class MultilineInput
         $bindings = new Keybindings(self::KEYS, $kb->getParser());
 
         return match (true) {
-            $bindings->matches($keys, 'split') => $this->splitLineAtCaret(),
-            $bindings->matches($keys, 'backspace') => $this->deleteBackward(),
-            $bindings->matches($keys, 'up') => $this->moveUp(),
-            $bindings->matches($keys, 'down') => $this->moveDown(),
-            $bindings->matches($keys, 'left') => $this->moveLeft(),
-            $bindings->matches($keys, 'right') => $this->moveRight(),
+            $bindings->matches($keys, action: 'split') => $this->splitLineAtCaret(),
+            $bindings->matches($keys, action: 'backspace') => $this->deleteBackward(),
+            $bindings->matches($keys, action: 'up') => $this->moveUp(),
+            $bindings->matches($keys, action: 'down') => $this->moveDown(),
+            $bindings->matches($keys, action: 'left') => $this->moveLeft(),
+            $bindings->matches($keys, action: 'right') => $this->moveRight(),
             default => $this->insertPaste($keys) || (TextInput::isPrintable($keys) && $this->insertPrintable($keys)),
         };
     }

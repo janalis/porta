@@ -308,7 +308,7 @@ final class DapSessionTest extends TestCase
         $client = new FakeDapClient();
         $session = $this->session($client);
         $session->start([]);
-        $client->respond('initialize', [], 'nope');
+        $client->respond('initialize', [], error: 'nope');
         $this->assertSame(['error:initialize failed: nope'], $this->events);
         $this->assertTrue($client->stopped);
         $this->assertNotContains('launch', $client->commands(), 'a failed handshake never proceeds to launch');
@@ -317,7 +317,7 @@ final class DapSessionTest extends TestCase
         $session = $this->session($client);
         $session->start([]);
         $client->respond('initialize', []);
-        $client->respond('launch', [], 'bad program');
+        $client->respond('launch', [], error: 'bad program');
         $this->assertSame(['error:launch failed: bad program'], $this->events);
         $this->assertSame(DebugState::Terminated, $session->state());
         $client->close(); // a straggler close after an already-reported failure must not double-report
@@ -332,7 +332,7 @@ final class DapSessionTest extends TestCase
         $client->respond('initialize', ['supportsConditionalBreakpoints' => true]); // hit conditions unsupported
         $client->respond('launch');
 
-        $session->setBreakpoints('/p/a.php', [self::bp(2, '$x > 1', '3'), self::bp(6)]);
+        $session->setBreakpoints('/p/a.php', [self::bp(2, condition: '$x > 1', hitCondition: '3'), self::bp(6)]);
         $this->assertSame(
             [['line' => 3, 'condition' => '$x > 1'], ['line' => 7]],
             $client->argumentsOf('setBreakpoints')['breakpoints'],
@@ -371,7 +371,7 @@ final class DapSessionTest extends TestCase
 
         $client->responses['setVariable'] = [['value' => '99'], null];
         $delivered = null;
-        $session->setVariable(1000, '$x', '99', static function (string $value, ?string $error) use (&$delivered): void {
+        $session->setVariable(1000, name: '$x', value: '99', deliver: static function (string $value, ?string $error) use (&$delivered): void {
             $delivered = [$value, $error];
         });
         $this->assertSame(['variablesReference' => 1000, 'name' => '$x', 'value' => '99'], $client->argumentsOf('setVariable'));
@@ -404,7 +404,7 @@ final class DapSessionTest extends TestCase
         $client = new FakeDapClient();
         $session = $this->session($client); // never started → not active
         $called = false;
-        $session->setVariable(1000, '$x', '1', static function () use (&$called): void {
+        $session->setVariable(1000, name: '$x', value: '1', deliver: static function () use (&$called): void {
             $called = true;
         });
         $this->assertSame([], $client->argumentsOf('setVariable'), 'no request while inactive');
@@ -421,7 +421,7 @@ final class DapSessionTest extends TestCase
         $this->assertFalse($session->supportsSetVariable());
 
         $delivered = null;
-        $session->setVariable(1000, '$x', '99', static function (string $value, ?string $error) use (&$delivered): void {
+        $session->setVariable(1000, name: '$x', value: '99', deliver: static function (string $value, ?string $error) use (&$delivered): void {
             $delivered = [$value, $error];
         });
         $this->assertSame([], $client->argumentsOf('setVariable'), 'no request is sent');
@@ -448,7 +448,7 @@ final class DapSessionTest extends TestCase
         $session = $this->session($client);
 
         $delivered = null;
-        $session->evaluate('$x', 7, 'watch', static function (array $r) use (&$delivered): void {
+        $session->evaluate('$x', frameId: 7, context: 'watch', deliver: static function (array $r) use (&$delivered): void {
             $delivered = $r;
         });
         $this->assertNotContains('evaluate', $client->commands(), 'an inactive session evaluates nothing');
@@ -458,14 +458,14 @@ final class DapSessionTest extends TestCase
         $client->respond('launch');
 
         $client->responses['evaluate'] = [['result' => '42', 'variablesReference' => 9], null];
-        $session->evaluate('$x', 7, 'watch', static function (array $r) use (&$delivered): void {
+        $session->evaluate('$x', frameId: 7, context: 'watch', deliver: static function (array $r) use (&$delivered): void {
             $delivered = $r;
         });
         $this->assertSame(['expression' => '$x', 'context' => 'watch', 'frameId' => 7], $client->argumentsOf('evaluate'));
         $this->assertSame(['result' => '42', 'variablesReference' => 9, 'error' => null], $delivered);
 
         $client->responses['evaluate'] = [[], 'cannot evaluate'];
-        $session->evaluate('$bad', null, 'repl', static function (array $r) use (&$delivered): void {
+        $session->evaluate('$bad', frameId: null, context: 'repl', deliver: static function (array $r) use (&$delivered): void {
             $delivered = $r;
         });
         $this->assertArrayNotHasKey('frameId', $client->argumentsOf('evaluate'), 'no frame → no frameId key');
@@ -533,16 +533,16 @@ final class DapSessionTest extends TestCase
     public function testRunToMergesATempBreakpointAndRetiresItOnTheNextStop(): void
     {
         $client = new FakeDapClient();
-        $session = $this->session($client, ['/p/a.php' => [self::bp(2, '$x > 1')]]);
+        $session = $this->session($client, ['/p/a.php' => [self::bp(2, condition: '$x > 1')]]);
         $session->start([]);
         $client->respond('initialize', ['supportsConditionalBreakpoints' => true]);
         $client->respond('launch');
 
-        $session->runTo('/p/a.php', 8); // while running: a no-op
+        $session->runTo('/p/a.php', line: 8); // while running: a no-op
         $this->assertNotContains('setBreakpoints', $client->commands());
 
         $client->emit('stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
-        $session->runTo('/p/a.php', 8);
+        $session->runTo('/p/a.php', line: 8);
         $this->assertSame(
             [['line' => 3, 'condition' => '$x > 1'], ['line' => 9]],
             $client->argumentsOf('setBreakpoints')['breakpoints'],
@@ -551,7 +551,7 @@ final class DapSessionTest extends TestCase
         $this->assertContains('continue', $client->commands());
 
         // A user toggle in the same file mid-run keeps the temp merged.
-        $session->setBreakpoints('/p/a.php', [self::bp(2, '$x > 1'), self::bp(5)]);
+        $session->setBreakpoints('/p/a.php', [self::bp(2, condition: '$x > 1'), self::bp(5)]);
         $this->assertSame([3, 6, 9], \array_column($client->argumentsOf('setBreakpoints')['breakpoints'], 'line'));
 
         // The next stop (any reason) retires the temp and re-sends without it.
@@ -568,7 +568,7 @@ final class DapSessionTest extends TestCase
         $client->respond('launch');
         $client->emit('stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
 
-        $session->runTo('/p/a.php', 4);
+        $session->runTo('/p/a.php', line: 4);
         $this->assertNotContains('setBreakpoints', $client->commands(), 'no wire churn — the real breakpoint (and its condition) stands');
         $this->assertContains('continue', $client->commands());
 
@@ -586,7 +586,7 @@ final class DapSessionTest extends TestCase
         $client->respond('launch');
         $client->emit('stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
 
-        $session->runTo('/p/a.php', 8); // sets the one-shot temp at 0-based line 8 (wire line 9)
+        $session->runTo('/p/a.php', line: 8); // sets the one-shot temp at 0-based line 8 (wire line 9)
 
         // A real breakpoint toggle now lands on that exact same wire line.
         $session->setBreakpoints('/p/a.php', [self::bp(2), self::bp(8)]);

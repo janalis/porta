@@ -105,7 +105,7 @@ abstract class AbstractAnalyzerPlugin extends AbstractToolPlugin
      */
     protected function registerAnalysis(PluginApi $api, string $display, array $keys): void
     {
-        $api->registerSetting('autoLint', 'Analyse on save', 'bool', false);
+        $api->registerSetting('autoLint', label: 'Analyse on save', kind: 'bool', default: false);
 
         $api->registerCommand(
             'analyse',
@@ -118,7 +118,7 @@ abstract class AbstractAnalyzerPlugin extends AbstractToolPlugin
             },
             $keys,
         );
-        $this->registerToggle($api, 'toggle-on-save', $display.': Toggle Analyse on Save', 'autoLint', $this->name().' on save');
+        $this->registerToggle($api, id: 'toggle-on-save', label: $display.': Toggle Analyse on Save', settingKey: 'autoLint', phrase: $this->name().' on save');
 
         $api->addMenuItem('analyse', $this->binaryAvailable($api));
         $api->addMenuItem('toggle-on-save');

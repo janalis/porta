@@ -106,7 +106,7 @@ final class EditorMouse
     public function selectLineAt(int $relRow, int $relCol, EditorViewport $vp): void
     {
         $line = $this->pointAt($relRow, $relCol, $vp)->line;
-        $this->document->setSelectionRange($line, 0, $line, \strlen($this->document->getLine($line)));
+        $this->document->setSelectionRange($line, startCol: 0, endLine: $line, endCol: \strlen($this->document->getLine($line)));
         ($this->closeCompletion)();
         ($this->invalidate)();
     }
@@ -300,8 +300,8 @@ final class EditorMouse
     {
         $lineCount = $this->document->getLineCount();
         $line = (int) ((($relRow + 0.5) * $lineCount) / \max(1, $vp->renderRows));
-        $line = IntMath::clamp($line, 0, $lineCount - 1);
-        $this->document->setCursor($line, 0);
+        $line = IntMath::clamp($line, lo: 0, hi: $lineCount - 1);
+        $this->document->setCursor($line, col: 0);
         ($this->centerOnLine)($line);
         ($this->closeCompletion)();
         ($this->invalidate)();

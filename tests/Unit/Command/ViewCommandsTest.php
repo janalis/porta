@@ -78,7 +78,7 @@ final class ViewCommandsTest extends TestCase
             $tree = Services::resolve($ide, FileTreeWidget::class);
             $tui = Services::resolve($ide, Tui::class);
 
-            $buffers->open($project->dir.'/sub/deep/nested.php', "<?php\n");
+            $buffers->open($project->dir.'/sub/deep/nested.php', content: "<?php\n");
             $this->assertNotSame('nested.php', $tree->selectedNode()?->name, 'the collapsed tree cannot already be on it');
 
             $commands->run('tree_select_opened_file');
@@ -120,9 +120,9 @@ final class ViewCommandsTest extends TestCase
             $b = 'b.php';
             $c = 'c.php';
 
-            $buffers->open($a, "<?php\n");
-            $buffers->open($b, "<?php\n");
-            $buffers->open($c, "<?php\n");
+            $buffers->open($a, content: "<?php\n");
+            $buffers->open($b, content: "<?php\n");
+            $buffers->open($c, content: "<?php\n");
             $buffers->setActive($b); // land in the middle, not an edge
 
             $order = static fn (): array => \array_map(static fn (Buffer $buf): string => $buf->path, $buffers->all());
@@ -182,7 +182,7 @@ final class ViewCommandsTest extends TestCase
             $activeAfterPrev = \array_first(\array_filter($tabsAfterPrev, static fn (array $t): bool => $t['active']))['key'];
             $this->assertNotSame($activeBefore, $activeAfterPrev, 'dock_prev_panel must move to the OTHER tab (direction -1, not -0)');
         } finally {
-            $sessions = Probe::get($dock, 'sessions');
+            $sessions = Probe::get($dock, property: 'sessions');
             $this->assertInstanceOf(TerminalSessions::class, $sessions, 'BottomDock holds its TerminalSessions collaborator under that property');
             $sessions->stopAll();
             $this->closeIde($ide);
@@ -231,11 +231,11 @@ final class ViewCommandsTest extends TestCase
 
             $this->assertFalse($display->softWrap, 'both are off by default');
             $this->assertFalse($display->codeLenses);
-            $this->assertFalse(self::ticked($commands, 'toggle_soft_wrap'));
+            $this->assertFalse(self::ticked($commands, id: 'toggle_soft_wrap'));
 
             $commands->run('toggle_soft_wrap');
             $this->assertTrue($display->softWrap);
-            $this->assertTrue(self::ticked($commands, 'toggle_soft_wrap'));
+            $this->assertTrue(self::ticked($commands, id: 'toggle_soft_wrap'));
             $this->assertTrue(self::savedSettings($project)['softWrap'] ?? null, 'the key persists it, so the next launch wraps too');
             $commands->run('toggle_soft_wrap');
             $this->assertFalse($display->softWrap, 'and the same key turns it back off');
@@ -268,10 +268,10 @@ final class ViewCommandsTest extends TestCase
             $commands = Services::resolve($ide, CommandRegistry::class);
             $display = Services::resolve($ide, CodeEditorWidget::class)->display;
 
-            $this->assertTrue(self::ticked($commands, 'toggle_parameter_hints_literals'), 'literals by default, so the item is ticked');
+            $this->assertTrue(self::ticked($commands, id: 'toggle_parameter_hints_literals'), 'literals by default, so the item is ticked');
             $commands->run('toggle_parameter_hints_literals');
             $this->assertSame(InlayParameterHints::All, $display->inlayParameterHints, 'unticking it shows them all');
-            $this->assertFalse(self::ticked($commands, 'toggle_parameter_hints_literals'));
+            $this->assertFalse(self::ticked($commands, id: 'toggle_parameter_hints_literals'));
             $commands->run('toggle_parameter_hints_literals');
             $this->assertSame(InlayParameterHints::Literals, $display->inlayParameterHints, 'and ticking it back, only before literals');
 
@@ -280,7 +280,7 @@ final class ViewCommandsTest extends TestCase
             $commands->run('hide_parameter_hints');
             $this->assertSame(InlayParameterHints::None, $display->inlayParameterHints);
 
-            $this->assertTrue(self::ticked($commands, 'toggle_type_hints'));
+            $this->assertTrue(self::ticked($commands, id: 'toggle_type_hints'));
             $commands->run('hide_type_hints');
             $this->assertFalse($display->inlayTypeHints);
             $commands->run('toggle_type_hints');

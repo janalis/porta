@@ -139,8 +139,8 @@ final class IdeGraphViewerTest extends TestCase
                     // Point it at the working stub through the Settings path.
                     $lifecycle = Services::resolve($ide, PluginLifecycle::class);
                     $settings = Services::resolve($ide, PluginHost::class)->settings;
-                    $settings->change('graph-viewer', 'dotPath', self::fakeDot());
-                    $lifecycle->onPluginSettingChanged('graph-viewer', 'dotPath', self::fakeDot());
+                    $settings->change('graph-viewer', key: 'dotPath', value: self::fakeDot());
+                    $lifecycle->onPluginSettingChanged('graph-viewer', key: 'dotPath', value: self::fakeDot());
 
                     // A DIFFERENT document, so the pane asks the engine again
                     // rather than reusing the layout it cached by hash; the NEW
@@ -153,12 +153,12 @@ final class IdeGraphViewerTest extends TestCase
                     );
 
                     // renderMode reaches the pane already on screen.
-                    $widget = Probe::get(Probe::get(Probe::get($lifecycle, 'plugins'), 'instances')['graph-viewer'], 'widget');
+                    $widget = Probe::get(Probe::get(Probe::get($lifecycle, property: 'plugins'), property: 'instances')['graph-viewer'], property: 'widget');
                     $this->assertInstanceOf(GraphViewerWidget::class, $widget);
-                    $this->assertSame(GraphRenderMode::Bitmap, Probe::get($widget, 'mode'), 'the default, before');
-                    $settings->change('graph-viewer', 'renderMode', 'cells');
-                    $lifecycle->onPluginSettingChanged('graph-viewer', 'renderMode', 'cells');
-                    $this->assertSame(GraphRenderMode::Cells, Probe::get($widget, 'mode'));
+                    $this->assertSame(GraphRenderMode::Bitmap, Probe::get($widget, property: 'mode'), 'the default, before');
+                    $settings->change('graph-viewer', key: 'renderMode', value: 'cells');
+                    $lifecycle->onPluginSettingChanged('graph-viewer', key: 'renderMode', value: 'cells');
+                    $this->assertSame(GraphRenderMode::Cells, Probe::get($widget, property: 'mode'));
                     $this->await(
                         static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '┌'),
                         what: 'the standing pane switching to cell rendering',
@@ -226,7 +226,7 @@ final class IdeGraphViewerTest extends TestCase
                     $tui->handleInput('n'); // select the first node
                 },
                 380 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, '· A');
+                    $this->awaitPainted($tui, $terminal, needle: '· A');
                     $this->assertStringContainsString('· A', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'selection surfaces in the status bar');
 
                     $tui->handleInput("\x1b[<64;40;10M"); // wheel over the graph pane → pans (no crash)
@@ -382,12 +382,12 @@ final class IdeGraphViewerTest extends TestCase
                 $this->await(static fn (): bool => \str_contains($grid(), '▀'), what: 'the Mermaid picture to paint');
                 $this->assertSame('graph-viewer', $tui->getFocus()?->getId());
                 $this->assertStringContainsString('diagram.mmd', $grid());
-                $widget = Widgets::byId($tui, 'graph-viewer', GraphViewerWidget::class);
+                $widget = Widgets::byId($tui, id: 'graph-viewer', class: GraphViewerWidget::class);
                 $this->await(static fn (): bool => [] !== $widget->nodeChoices(), what: 'the CLI source map');
                 $this->assertSame(['A', 'B'], \array_column($widget->nodeChoices(), 'label'));
-                $scene = Probe::get($widget, 'nativeScene');
+                $scene = Probe::get($widget, property: 'nativeScene');
                 $node = $scene->graph->nodes[\array_key_first($scene->elements)];
-                $cells = new GraphCellGrid((int) Probe::get($widget, 'lastCols'), (int) Probe::get($widget, 'lastRows'), Probe::get($widget, 'view'), null);
+                $cells = new GraphCellGrid((int) Probe::get($widget, property: 'lastCols'), (int) Probe::get($widget, property: 'lastRows'), Probe::get($widget, property: 'view'), null);
                 $active = Services::resolve($ide, BufferManager::class)->active();
                 $this->assertInstanceOf(Buffer::class, $active);
                 $widget->selectAt($cells->rowOf($node->y), $cells->colOf($node->x));
@@ -407,9 +407,9 @@ final class IdeGraphViewerTest extends TestCase
         $this->runIde($project, $project->path('doc.md'), [
             200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project, $saved): void {
                 Previews::alone($ide);
-                $pane = Widgets::byId($tui, 'markdown-preview', MarkdownPreviewWidget::class);
+                $pane = Widgets::byId($tui, id: 'markdown-preview', class: MarkdownPreviewWidget::class);
                 $read = static function () use ($pane): ?RenderedDoc {
-                    $doc = Probe::get($pane, 'doc');
+                    $doc = Probe::get($pane, property: 'doc');
 
                     return $doc instanceof RenderedDoc ? $doc : null;
                 };
@@ -426,7 +426,7 @@ final class IdeGraphViewerTest extends TestCase
                 $click = static function (string $id) use ($pane, $read): void {
                     $span = \array_find($read()->links ?? [], static fn (LinkSpan $span): bool => \str_ends_with($span->target, ':'.$id));
                     self::assertNotNull($span);
-                    self::assertTrue($pane->clickAt($span->line + 2 - (int) Probe::get($pane, 'scrollTop'), $span->col + (int) Probe::get($pane, 'marginCols')));
+                    self::assertTrue($pane->clickAt($span->line + 2 - (int) Probe::get($pane, property: 'scrollTop'), $span->col + (int) Probe::get($pane, property: 'marginCols')));
                 };
                 $click('export-svg');
                 $this->await(static fn (): bool => \is_file($project->path('doc-diagram-1.svg')), what: 'the inline SVG export');
@@ -505,7 +505,7 @@ final class IdeGraphViewerTest extends TestCase
         $this->runIde($project, $project->path('native.mmd'), [
             200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project, $syntax, $exportLabel): void {
                 Previews::alone($ide);
-                $widget = Widgets::byId($tui, 'graph-viewer', GraphViewerWidget::class);
+                $widget = Widgets::byId($tui, id: 'graph-viewer', class: GraphViewerWidget::class);
                 $this->await(static fn (): bool => [] !== $widget->nodeChoices(), what: 'the native scene');
                 $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
                 $this->await(static fn (): bool => \str_contains($grid(), '▀'), what: 'the native bitmap');
@@ -558,8 +558,8 @@ final class IdeGraphViewerTest extends TestCase
                     // title has to be read from the grid too.
                     $this->assertStringContainsString('seq.puml', $grid());
                     // No geometry exists for it, so the pane reports zoom only.
-                    $this->assertSame('', Widgets::byId($tui, 'graph-viewer', GraphViewerWidget::class)->statusInfo());
-                    $this->assertStringContainsString('Fit', Widgets::byId($tui, 'graph-viewer', GraphViewerWidget::class)->zoomLabel());
+                    $this->assertSame('', Widgets::byId($tui, id: 'graph-viewer', class: GraphViewerWidget::class)->statusInfo());
+                    $this->assertStringContainsString('Fit', Widgets::byId($tui, id: 'graph-viewer', class: GraphViewerWidget::class)->zoomLabel());
 
                     // The library draws it through the same tool: an export lands beside the document.
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-png');
@@ -581,7 +581,7 @@ final class IdeGraphViewerTest extends TestCase
             $project->path('seq.puml'),
             [
                 200 => function (Tui $tui, $terminal): void {
-                    $this->awaitPainted($tui, $terminal, '▀');
+                    $this->awaitPainted($tui, $terminal, needle: '▀');
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'the source keeps the focus');
                     $this->assertStringContainsString('@startuml', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
@@ -602,7 +602,7 @@ final class IdeGraphViewerTest extends TestCase
             $project->path('g.dot'),
             [
                 200 => function (Tui $tui, $terminal): void {
-                    $this->awaitPainted($tui, $terminal, '▀');
+                    $this->awaitPainted($tui, $terminal, needle: '▀');
                     $this->assertStringNotContainsString('graphviz not found', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -647,7 +647,7 @@ final class IdeGraphViewerTest extends TestCase
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'a text tab swaps the editor back in');
 
                     $service->openFile($dotPath); // back to the graph: cached layout, no re-run
-                    $this->awaitPainted($tui, $terminal, '3 nodes');
+                    $this->awaitPainted($tui, $terminal, needle: '3 nodes');
                     $this->assertStringContainsString('3 nodes', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
                     // The graph is a text buffer now: a change on disk reloads
@@ -665,7 +665,7 @@ final class IdeGraphViewerTest extends TestCase
                     $this->assertCount(2, $buffers->all(), 'a non-UTF-8 DOT is refused');
 
                     $service->openFile($archPath, OpenFocus::Editor);
-                    $this->awaitPainted($tui, $terminal, 'Project Architecture');
+                    $this->awaitPainted($tui, $terminal, needle: 'Project Architecture');
                     $this->assertStringContainsString('Project Architecture', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the artifact path titles its tab');
                     $this->assertSame('graph-viewer', $tui->getFocus()?->getId(), 'the generated graph opens to be looked at: its preview alone, with the keys');
 
@@ -698,8 +698,8 @@ final class IdeGraphViewerTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 200 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the architecture graph');
@@ -747,8 +747,8 @@ final class IdeGraphViewerTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => \is_file($project->path('docs/arch/architecture.dot')), what: 'the artifact in its configured directory');
@@ -779,8 +779,8 @@ final class IdeGraphViewerTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => \is_file($project->path('architecture.dot')), what: 'the generated artifact');
@@ -805,8 +805,8 @@ final class IdeGraphViewerTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'doomed'), what: 'the failure flash');
@@ -831,8 +831,8 @@ final class IdeGraphViewerTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 200 => function ($tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'produced no output'), what: 'the empty-output flash');
@@ -923,7 +923,7 @@ final class IdeGraphViewerTest extends TestCase
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $pane = static fn (): string => \implode("\n", \array_map(
                         AnsiUtils::stripAnsiCodes(...),
-                        Widgets::byId($tui, 'graph-viewer', GraphViewerWidget::class)->render(new RenderContext(60, 12)),
+                        Widgets::byId($tui, id: 'graph-viewer', class: GraphViewerWidget::class)->render(new RenderContext(60, 12)),
                     ));
                     $this->await(static fn (): bool => \str_contains($pane(), '┌'), what: 'the graph beside the text');
                     $editor = Services::resolve($ide, CodeEditorWidget::class);

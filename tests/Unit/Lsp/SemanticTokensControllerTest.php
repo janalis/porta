@@ -53,7 +53,7 @@ final class SemanticTokensControllerTest extends TestCase
     {
         $this->editor->showDocument($path, new Document("<?php\nclass A {}\nfunction b() {}\n"));
         $this->activeFile->set($path);
-        Probe::get($controller, 'lsp')->notifyDidOpen($path, "<?php\n", 'php', 1);
+        Probe::get($controller, property: 'lsp')->notifyDidOpen($path, text: "<?php\n", languageId: 'php', version: 1);
     }
 
     /** phpactor advertises no semanticTokensProvider; asking it earns an error per save. */
@@ -161,11 +161,11 @@ final class SemanticTokensControllerTest extends TestCase
         $controller = $this->controller();
         $this->readyOn($controller);
         $controller->requestSemanticTokens();
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
 
         \end($this->client->requests)['respond'](['data' => [1, 4, 5, 1, 0]]);
 
-        $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'));
+        $this->assertTrue((bool) Probe::get($this->tui, property: 'renderRequested'));
     }
 
     public function testALegendWithAStrayNonStringIsRefusedWholeRatherThanShifted(): void

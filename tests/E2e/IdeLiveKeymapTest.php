@@ -46,7 +46,7 @@ final class IdeLiveKeymapTest extends TestCase
         $duplicates = static function (Ide $ide, string $key): string {
             $editor = Services::resolve($ide, CodeEditorWidget::class);
             $editor->getDocument()->replaceAll("one\n");
-            $editor->getDocument()->setCursor(0, 0);
+            $editor->getDocument()->setCursor(0, col: 0);
             $editor->handleInput($key);
 
             return $editor->getDocument()->getText();
@@ -58,8 +58,8 @@ final class IdeLiveKeymapTest extends TestCase
             [
                 300 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $this->selectSettingsSection($this->settingsNav($tui), 'keybindings');
-                    $list = Widgets::byId($tui, 'settings-keys', KeybindingsListWidget::class);
+                    $this->selectSettingsSection($this->settingsNav($tui), id: 'keybindings');
+                    $list = Widgets::byId($tui, id: 'settings-keys', class: KeybindingsListWidget::class);
                     $tui->setFocus($list);
                     $list->handleInput('/');
                     foreach (\str_split('duplicate line') as $character) {
@@ -73,7 +73,7 @@ final class IdeLiveKeymapTest extends TestCase
                     $this->assertSame("one\none\n", $duplicates($ide, key: "\x1bOS"), 'F4 duplicates now, not after a restart');
                     $this->assertSame("one\n", $duplicates($ide, key: "\x04"), 'and Ctrl+D no longer does');
 
-                    $list = Widgets::byId($tui, 'settings-keys', KeybindingsListWidget::class);
+                    $list = Widgets::byId($tui, id: 'settings-keys', class: KeybindingsListWidget::class);
                     $list->handleInput("\x1b[3~"); // Del, on the row the filter shows
                     $this->assertArrayNotHasKey('duplicate_line', IdeConfig::load($project->dir)->keymap);
                     $this->assertSame("one\none\n", $duplicates($ide, key: "\x04"), 'the default is back at once');
@@ -96,10 +96,10 @@ final class IdeLiveKeymapTest extends TestCase
         \putenv('PORTA_KEYMAP_PLATFORM=macos');
         $project = new TempProject(['A.php' => "<?php\n"]);
         $editMenu = function (Tui $tui, VirtualTerminal $terminal): string {
-            Widgets::byId($tui, 'menu', MenuBarWidget::class)->open(1);
+            Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->open(1);
             $this->frame($tui);
             $screen = \implode("\n", $this->screenGrid($tui, $terminal));
-            Widgets::byId($tui, 'menu', MenuBarWidget::class)->close();
+            Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->close();
 
             return $screen;
         };

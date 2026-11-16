@@ -539,7 +539,7 @@ final class PluginInstaller
             // the plugin works either way, and the next disable leaves the
             // tree standing rather than deleting what it cannot prove is ours.
             if (0 === $code && \is_dir($pluginDir.'/vendor')) {
-                $this->fs->dumpFile($pluginDir.'/'.self::MARKER, "Porta installed this directory; disabling the plugin removes it.\n");
+                $this->fs->dumpFile($pluginDir.'/'.self::MARKER, content: "Porta installed this directory; disabling the plugin removes it.\n");
             }
             $onExit($code);
         });
@@ -690,7 +690,7 @@ final class PluginInstaller
                 continue;
             }
             $isEmbedded = null !== $embeddedReal && \realpath($pluginsDir) === $embeddedReal;
-            foreach (Files::childFiles($pluginsDir, 'porta.php') as $file) {
+            foreach (Files::childFiles($pluginsDir, name: 'porta.php') as $file) {
                 $dir = \dirname($file);
                 $name = \basename($dir);
                 $plugins[] = ['name' => $name, 'scope' => $isEmbedded ? InstallScope::Embedded : $scope, 'dir' => $dir];
@@ -700,7 +700,7 @@ final class PluginInstaller
             }
         }
         if (null !== $this->embeddedDir) {
-            foreach (Files::childFiles($this->embeddedDir, 'porta.php') as $file) {
+            foreach (Files::childFiles($this->embeddedDir, name: 'porta.php') as $file) {
                 $dir = \dirname($file);
                 $name = \basename($dir);
                 if (!\array_key_exists($name, $embeddedSeen)) {

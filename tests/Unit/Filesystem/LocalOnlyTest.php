@@ -61,7 +61,7 @@ final class LocalOnlyTest extends TestCase
         $sessions = new TerminalSessions();
         $editor = new CodeEditorWidget();
         $run = TestRunController::create($project->dir, sessions: $sessions, editor: $editor, localOnly: $gate);
-        Probe::set($run, 'lastRun', ['label' => 'test', 'command' => ['true']]);
+        Probe::set($run, property: 'lastRun', value: ['label' => 'test', 'command' => ['true']]);
         $exit = null;
 
         $run->openRunMenu();
@@ -69,7 +69,7 @@ final class LocalOnlyTest extends TestCase
         $run->runLast();
         $run->newTerminalSession();
         $run->toggleTerminal();
-        $run->runInBackground(['true'], 'bg', static function (int $code) use (&$exit): void {
+        $run->runInBackground(['true'], title: 'bg', onExit: static function (int $code) use (&$exit): void {
             $exit = $code;
         });
         $this->assertTrue($sessions->isEmpty(), 'nothing was started');

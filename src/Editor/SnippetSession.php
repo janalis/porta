@@ -66,9 +66,9 @@ final class SnippetSession
     public function handleInput(string $keys, Keybindings $kb, \Closure $isInsertable): bool
     {
         $act = match (true) {
-            $kb->matches($keys, 'indent') => fn () => $this->moveStop(1),
-            $kb->matches($keys, 'prev_tab_stop') => fn () => $this->moveStop(-1),
-            $kb->matches($keys, 'select_cancel') => function (): void {
+            $kb->matches($keys, action: 'indent') => fn () => $this->moveStop(1),
+            $kb->matches($keys, action: 'prev_tab_stop') => fn () => $this->moveStop(-1),
+            $kb->matches($keys, action: 'select_cancel') => function (): void {
                 // Collapse any placeholder selection and leave the caret in place.
                 $this->document->setCursor($this->document->cursorLine, $this->document->cursorCol);
                 $this->session = null;
@@ -83,7 +83,7 @@ final class SnippetSession
         }
 
         $printable = $isInsertable($keys);
-        $isBackspace = $kb->matches($keys, 'delete_char_backward');
+        $isBackspace = $kb->matches($keys, action: 'delete_char_backward');
         $edited = false;
         if (($printable || $isBackspace) && !\str_contains($keys, "\n")) {
             $line = $this->document->cursorLine;

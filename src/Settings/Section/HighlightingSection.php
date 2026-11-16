@@ -59,6 +59,6 @@ final readonly class HighlightingSection implements SettingsSection
     #[\Override]
     public function reset(string $section, string $key): void
     {
-        $this->highlighting->change($key, '');
+        $this->highlighting->change($key, value: '');
     }
 }

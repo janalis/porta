@@ -22,7 +22,7 @@ final class ReferenceDefinitions
      */
     public static function take(string $text, array &$references): int
     {
-        $label = LinkSyntax::label($text, 0);
+        $label = LinkSyntax::label($text, at: 0);
         if (null === $label || ':' !== ($text[$label[1]] ?? '')) {
             return 0;
         }

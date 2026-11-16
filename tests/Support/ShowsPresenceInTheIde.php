@@ -42,7 +42,7 @@ trait ShowsPresenceInTheIde
     {
         $home = new TempProject();
         \putenv('PORTA_HOME='.$home->dir);
-        $ada->at('src/A.php', 1);
+        $ada->at('src/A.php', line: 1);
         $this->look($ada);
         $cache = new TempProject([
             ProjectLocation::MARKER => \json_encode(['url' => $url], \JSON_THROW_ON_ERROR),
@@ -51,15 +51,15 @@ trait ShowsPresenceInTheIde
         $board = $server->root.'/'.PresenceBoard::DIR;
         $look = function (Ide $ide): void {
             $sync = Services::resolve($ide, PresenceSync::class);
-            $this->await(static fn (): bool => true !== Probe::get($sync, 'busy'), what: 'the IDE\'s last look');
+            $this->await(static fn (): bool => true !== Probe::get($sync, property: 'busy'), what: 'the IDE\'s last look');
             $sync->tick();
         };
 
-        $this->runIde($cache, null, [
+        $this->runIde($cache, file: null, steps: [
             100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($cache, $board, $ada, $look): void {
                 $this->await(static fn (): bool => \is_file($cache->path('src/A.php')), timeout: 20.0, what: 'the server\'s tree in the cache');
                 Services::resolve($ide, BufferService::class)->openFile($cache->path('src/A.php'), focus: OpenFocus::Editor);
-                $this->awaitPainted($tui, $terminal, Glyphs::AGENT.' Ada', 20.0);
+                $this->awaitPainted($tui, $terminal, Glyphs::AGENT.' Ada', timeout: 20.0);
                 $this->awaitPainted($tui, $terminal, Glyphs::PARTICIPANTS.' 1');
                 $look($ide); // the file just opened is news: said at this look, not at the next timer's
 
@@ -87,8 +87,8 @@ trait ShowsPresenceInTheIde
             200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($server, $look): void {
                 $server->stop();
                 $look($ide);
-                $this->awaitPainted($tui, $terminal, Glyphs::PARTICIPANTS.' 1 '.Glyphs::OUT_OF_TOUCH, 20.0);
-                Assert::assertArrayHasKey(PresenceSync::SOURCE, Probe::array(Services::resolve($ide, Participants::class), 'lost'), 'Ada kept, as last seen');
+                $this->awaitPainted($tui, $terminal, Glyphs::PARTICIPANTS.' 1 '.Glyphs::OUT_OF_TOUCH, timeout: 20.0);
+                Assert::assertArrayHasKey(PresenceSync::SOURCE, Probe::array(Services::resolve($ide, Participants::class), property: 'lost'), 'Ada kept, as last seen');
             },
             300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($server, $look): void {
                 $server->start();
@@ -103,7 +103,7 @@ trait ShowsPresenceInTheIde
                     timeout: 20.0,
                     what: 'Ada back, in touch, her caret drawn again',
                 );
-                Assert::assertArrayNotHasKey(PresenceSync::SOURCE, Probe::array(Services::resolve($ide, Participants::class), 'lost'));
+                Assert::assertArrayNotHasKey(PresenceSync::SOURCE, Probe::array(Services::resolve($ide, Participants::class), property: 'lost'));
             },
             // Ada closes her file — her caret goes — and then quits, so that
             // nothing else changes on screen: the status bar repaints only

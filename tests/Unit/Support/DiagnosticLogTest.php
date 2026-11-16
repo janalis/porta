@@ -21,7 +21,7 @@ final class DiagnosticLogTest extends TestCase
 
     public function testForRootBuildsThePortaChannelPath(): void
     {
-        $log = DiagnosticLog::forRoot('/tmp/proj', 'error');
+        $log = DiagnosticLog::forRoot('/tmp/proj', channel: 'error');
 
         $this->assertSame('/tmp/proj/.porta/error.log', $log->path());
     }

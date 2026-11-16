@@ -91,8 +91,8 @@ final class IdeContextMenusTest extends TestCase
 
         $this->runIde(
             $project,
-            null, // no file open → the blank editor pane the box bled across
-            [
+            file: null, // no file open → the blank editor pane the box bled across
+            steps: [
                 200 => function (Tui $tui, $terminal, Ide $ide): void {
                     // Right-press col 25, row 1: the 22-wide menu spills past the
                     // sidebar (tree cols 0–29) into the editor (col 31+). Force
@@ -101,7 +101,7 @@ final class IdeContextMenusTest extends TestCase
                     // there is nothing else to have caused a paint yet.
                     $this->frame($tui);
                     $tui->handleInput("\x1b[<2;26;3M");
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'context menu opened');
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'context menu opened');
 
                     $renderer = Services::resolve($ide, Renderer::class);
                     $editor = Widgets::editor($tui);
@@ -124,14 +124,14 @@ final class IdeContextMenusTest extends TestCase
 
         $this->runIde(
             $project,
-            null, // no initial file → the tree is focused
-            [
+            file: null, // no initial file → the tree is focused
+            steps: [
                 200 => static function ($tui): void {
                     // Right-click a tree entry; the menu is wide enough to spill past the sidebar.
                     $tui->handleInput("\x1b[<2;21;3M"); // right-press col 20, row 1 (first entry)
                 },
                 280 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'tree context menu opened');
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'tree context menu opened');
                     $lines = Paint::lines($tui->getById('separator'), new RenderContext(1, 24));
                     $painted = \array_filter($lines, static fn (string $l): bool => ' ' !== $l);
                     $this->assertNotEmpty($painted, 'the context menu paints over the separator column (no hole)');
@@ -147,27 +147,27 @@ final class IdeContextMenusTest extends TestCase
 
         $this->runIde(
             $project,
-            null, // no file open → the tree is focused
-            [
+            file: null, // no file open → the tree is focused
+            steps: [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[<2;21;3M"); // right-click a tree entry → context menu
                 },
                 280 => function (Tui $tui, $terminal, Ide $ide): void {
-                    $menu = Widgets::byId($tui, 'context-menu', ContextMenu::class);
+                    $menu = Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class);
                     $this->assertTrue($menu->isOpen(), 'the context menu is open');
 
                     $overlay = Services::resolve($ide, MenuOverlayController::class);
                     $region = $overlay->contextMenuDropdown();
                     $this->assertInstanceOf(DropdownRegion::class, $region, 'the menu overlay was placed');
 
-                    $before = Probe::get($menu, 'selected');
+                    $before = Probe::get($menu, property: 'selected');
 
                     // Hover up from the bottom row until the highlight lands on a
                     // selectable item other than the initially-selected first one.
                     $moved = false;
                     for ($row = $region->count - 1; $row >= 0 && !$moved; --$row) {
                         $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $region->col + 3, $region->top + $row + 1));
-                        $moved = Probe::get($menu, 'selected') !== $before;
+                        $moved = Probe::get($menu, property: 'selected') !== $before;
                     }
                     $this->assertTrue($moved, 'hovering a menu item moves the highlight to it');
                 },
@@ -190,12 +190,12 @@ final class IdeContextMenusTest extends TestCase
 
         $this->runIde(
             $project,
-            null, // no initial file → the tree is focused
-            [
+            file: null, // no initial file → the tree is focused
+            steps: [
                 200 => $rightClickFolder,
                 280 => function (Tui $tui, $terminal) use ($screen): void {
                     $tui->tick();
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'folder context menu opened');
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'folder context menu opened');
                     $this->assertStringContainsString('Find in Files', $screen($tui, $terminal), 'folder menu offers Find in Files');
                     // New File → New Folder → (skip separator) → Find in Files.
                     $tui->handleInput("\x1b[B");
@@ -219,7 +219,11 @@ final class IdeContextMenusTest extends TestCase
                     // Assert on the results panel itself (the tree sidebar also lists
                     // Outside.php, so the whole screen is the wrong surface).
                     $panel = AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('results'), new RenderContext(160, 14))));
-                    $this->assertStringContainsString('1 result', Widgets::byId($tui, 'results', ResultsPanelWidget::class)->statusText(), 'only the in-folder match counts (root is out of scope)');
+                    $this->assertStringContainsString(
+                        '1 result',
+                        Widgets::byId($tui, id: 'results', class: ResultsPanelWidget::class)->statusText(),
+                        'only the in-folder match counts (root is out of scope)',
+                    );
                     $this->assertStringContainsString('sub/Inside.php', $panel, 'the in-folder match is listed');
                     $this->assertStringNotContainsString('Outside.php', $panel, 'the root match is excluded');
                     $tui->handleInput("\r"); // jump to the match
@@ -227,7 +231,7 @@ final class IdeContextMenusTest extends TestCase
                 760 => function (Tui $tui): void {
                     $this->assertStringEndsWith('sub/Inside.php', (string) Widgets::editor($tui)->getFilePath());
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'editor refocused after the jump');
-                    $this->assertTrue(Widgets::byId($tui, 'results', ResultsPanelWidget::class)->isOpen(), 'the pane stays open after the jump');
+                    $this->assertTrue(Widgets::byId($tui, id: 'results', class: ResultsPanelWidget::class)->isOpen(), 'the pane stays open after the jump');
                 },
             ],
         );
@@ -247,8 +251,8 @@ final class IdeContextMenusTest extends TestCase
 
         $this->runIde(
             $project,
-            null, // no initial file → the tree is focused
-            [
+            file: null, // no initial file → the tree is focused
+            steps: [
                 200 => $rightClickFolder,
                 280 => function ($tui, $terminal) use ($screen): void {
                     $tui->tick();
@@ -303,13 +307,13 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[<2;46;4M"); // right-click in the editor
                 },
                 300 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'right-click opened the editor menu');
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'right-click opened the editor menu');
                     // The selection is kept (caret not moved), so Cut acts on it.
                     $this->assertSame('hello', Widgets::editor($tui)->getDocument()->getSelectedText());
                     $tui->handleInput("\r"); // Enter → Cut (first item)
                 },
                 400 => function (Tui $tui): void {
-                    $this->assertFalse(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'menu closed after running');
+                    $this->assertFalse(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'menu closed after running');
                     $this->assertSame(' world', Widgets::editor($tui)->getDocument()->getLine(0), 'Cut removed the selection');
                 },
             ],
@@ -327,18 +331,18 @@ final class IdeContextMenusTest extends TestCase
             [
                 200 => static function (Tui $tui): void {
                     $tui->tick();
-                    Widgets::editor($tui)->getDocument()->setCursor(0, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(0, col: 0);
                     $tui->handleInput("\x1b[<2;40;5M"); // right-click on line 1, no selection
                 },
                 300 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen());
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen());
                     $this->assertSame(1, Widgets::editor($tui)->getDocument()->cursorLine, 'caret moved to the clicked line');
                     $tui->handleInput('z'); // an unbound key is swallowed while the menu is open
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'stray keys neither run nor close');
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'stray keys neither run nor close');
                     $tui->handleInput("\x1b"); // Esc closes (modal routing)
                 },
                 400 => function (Tui $tui): void {
-                    $this->assertFalse(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'Esc closed the menu');
+                    $this->assertFalse(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'Esc closed the menu');
                 },
             ],
         );
@@ -358,12 +362,12 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[21~"); // F10 opens the application menu
                 },
                 300 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'menu', MenuBarWidget::class)->isOpen());
+                    $this->assertTrue(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isOpen());
                     $tui->handleInput("\x1b[<2;45;4M"); // right-click the editor
                 },
                 400 => function (Tui $tui): void {
-                    $this->assertFalse(Widgets::byId($tui, 'menu', MenuBarWidget::class)->isOpen(), 'right-click closed the application menu');
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'and opened the context menu');
+                    $this->assertFalse(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isOpen(), 'right-click closed the application menu');
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'and opened the context menu');
                 },
             ],
         );
@@ -384,11 +388,11 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[<2;3;10M");
                 },
                 250 => function (Tui $tui): void {
-                    $this->assertFalse(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'the empty tree under its entries targets no node');
+                    $this->assertFalse(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'the empty tree under its entries targets no node');
                     $tui->handleInput("\x1b[<2;150;2M"); // tab bar past the last tab → no index
                 },
                 300 => function (Tui $tui): void {
-                    $this->assertFalse(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'empty tab-strip space targets no tab');
+                    $this->assertFalse(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'empty tab-strip space targets no tab');
                 },
             ],
         );
@@ -416,7 +420,7 @@ final class IdeContextMenusTest extends TestCase
                     $this->assertInstanceOf(WidgetRect::class, $rect, 'the editor is laid out');
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 5, $rect->row + 2)); // SGR is 1-based
 
-                    $this->assertFalse(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'no menu opened under the picker');
+                    $this->assertFalse(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'no menu opened under the picker');
                     $this->assertTrue(Widgets::editor($tui)->isAnyPickerOpen(), 'and the picker survived the click');
                 },
             ],
@@ -446,7 +450,7 @@ final class IdeContextMenusTest extends TestCase
                     $this->frame($tui);
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('tree'));
                     $this->assertInstanceOf(WidgetRect::class, $rect, 'the tree is laid out');
-                    $tree = Widgets::byId($tui, 'tree', FileTreeWidget::class);
+                    $tree = Widgets::byId($tui, id: 'tree', class: FileTreeWidget::class);
                     $dirRow = null;
                     $fileRow = null;
                     for ($r = 0; $r < 10; ++$r) {
@@ -462,14 +466,14 @@ final class IdeContextMenusTest extends TestCase
 
                     $terminal->clearOutput();
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + $dirRow + 1)); // SGR is 1-based
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'the directory has a menu');
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'the directory has a menu');
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'New File'), what: 'the folder menu to paint');
                     $this->assertStringNotContainsString('Touch This File', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'a folder gets no file-surface item');
                     $tui->handleInput("\x1b"); // close
 
                     $terminal->clearOutput();
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + $fileRow + 1));
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'the file has a menu');
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'the file has a menu');
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Touch This File'), what: 'the file-surface item to paint');
                 },
             ],
@@ -518,7 +522,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[<2;34;2M"); // right-click the first tab (A)
                 },
                 400 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'right-click on a tab opened the menu');
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'right-click on a tab opened the menu');
                     $tui->handleInput("\r"); // Close (first item) → closes A
                 },
                 500 => function (Tui $tui): void {
@@ -542,11 +546,11 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click src/ (a directory)
                 },
                 300 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen());
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen());
                     $tui->handleInput("\r"); // New File (first item) → opens the name prompt
                 },
                 360 => function (Tui $tui): void {
-                    $this->typeString($tui, 'new.php');
+                    $this->typeString($tui, text: 'new.php');
                     $tui->handleInput("\r"); // submit
                 },
                 460 => static function ($tui): void {
@@ -557,7 +561,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\r");
                 },
                 600 => function (Tui $tui): void {
-                    $this->typeString($tui, 'pkg');
+                    $this->typeString($tui, text: 'pkg');
                     $tui->handleInput("\r");
                 },
             ],
@@ -634,7 +638,7 @@ final class IdeContextMenusTest extends TestCase
                     $this->assertFileExists($project->path('A.php'), 'renaming to the same name changed nothing');
                     // Mark a line before the real rename, so the assertion below
                     // is about the mark SURVIVING it.
-                    Widgets::editor($tui)->getDocument()->setCursor(0, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(0, col: 0);
                     Services::resolve($ide, BookmarkActions::class)->toggle();
                     // …and make an EDIT, so the two path-keyed stores added in
                     // the parity round have something to lose too.
@@ -655,7 +659,7 @@ final class IdeContextMenusTest extends TestCase
                     foreach (\range(1, end: 10) as $_) {
                         $tui->handleInput("\x7f"); // backspace out the prefill
                     }
-                    $this->typeString($tui, 'renamed.php');
+                    $this->typeString($tui, text: 'renamed.php');
                     $tui->handleInput("\r");
                 },
                 640 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
@@ -721,7 +725,7 @@ final class IdeContextMenusTest extends TestCase
                 250 => static function ($tui, $terminal, Ide $ide) use ($inside): void {
                     // Marked through the store rather than the editor: the file
                     // inside the folder is deliberately NOT the active tab.
-                    Services::resolve($ide, Bookmarks::class)->toggle($inside, 0);
+                    Services::resolve($ide, Bookmarks::class)->toggle($inside, line: 0);
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click the src/ row
                 },
                 330 => static function ($tui): void {
@@ -737,7 +741,7 @@ final class IdeContextMenusTest extends TestCase
                     foreach (\range(1, end: 10) as $_) {
                         $tui->handleInput("\x7f"); // backspace out the prefilled name
                     }
-                    $this->typeString($tui, 'lib');
+                    $this->typeString($tui, text: 'lib');
                     $tui->handleInput("\r");
                 },
                 520 => function ($tui, $terminal, Ide $ide) use ($project, $inside): void {
@@ -781,7 +785,7 @@ final class IdeContextMenusTest extends TestCase
                         $kept[] = [$event->path, $event->previousText];
                     });
                     $tui->tick();
-                    Widgets::editor($tui)->getDocument()->setCursor(0, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(0, col: 0);
                     Services::resolve($ide, BookmarkActions::class)->toggle();
                     $tui->handleInput('X'); // an edit, so the history has a site to lose
 
@@ -798,7 +802,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\r");
                 },
                 430 => function (Tui $tui): void {
-                    $this->typeString($tui, 'y');
+                    $this->typeString($tui, text: 'y');
                     $tui->handleInput("\r");
                 },
                 520 => function (Tui $tui, $terminal, Ide $ide) use ($a): void {
@@ -831,7 +835,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->tick();
                 },
                 300 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'menu opened and placed above the click without error');
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'menu opened and placed above the click without error');
                 },
             ],
         );
@@ -854,7 +858,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->tick();
                 },
                 300 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'a straddling panel renders across both panes without error');
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'a straddling panel renders across both panes without error');
                 },
             ],
         );
@@ -887,7 +891,7 @@ final class IdeContextMenusTest extends TestCase
                     foreach (\range(1, end: 10) as $_) {
                         $tui->handleInput("\x7f");
                     }
-                    $this->typeString($tui, 'B.php'); // clashes with an existing file
+                    $this->typeString($tui, text: 'B.php'); // clashes with an existing file
                     $tui->handleInput("\r");
                 },
             ],
@@ -965,7 +969,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\r"); // Delete… → confirm prompt
                 },
                 430 => function (Tui $tui): void {
-                    $this->typeString($tui, 'y');
+                    $this->typeString($tui, text: 'y');
                     $tui->handleInput("\r"); // confirmed
                 },
                 520 => function (Tui $tui): void {
@@ -980,7 +984,7 @@ final class IdeContextMenusTest extends TestCase
     public function testTreeContextMenuDeleteLastBufferEmptiesTheEditor(): void
     {
         $project = $this->deletingFromTheTreeMenu(function (Tui $tui): void {
-            $this->typeString($tui, 'yes'); // 'yes' is also accepted
+            $this->typeString($tui, text: 'yes'); // 'yes' is also accepted
             $tui->handleInput("\r");
         });
 
@@ -1062,7 +1066,7 @@ final class IdeContextMenusTest extends TestCase
                 400 => function (Tui $tui) use ($project): void {
                     $this->assertStringEndsWith('A.php', (string) Widgets::editor($tui)->getFilePath(), 'Open reopened the file');
                     // A file created on disk appears in the tree only after Refresh.
-                    $project->write('late.php', "<?php\n");
+                    $project->write('late.php', content: "<?php\n");
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php again
                 },
                 500 => static function ($tui): void {
@@ -1072,7 +1076,7 @@ final class IdeContextMenusTest extends TestCase
                 },
                 600 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'late.php'), 'Refresh picked up the new file');
+                    $this->assertNotNull($this->rowOf($grid, needle: 'late.php'), 'Refresh picked up the new file');
                 },
             ],
         );
@@ -1092,11 +1096,11 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[<2;45;4M"); // open the editor menu
                 },
                 300 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen());
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen());
                     $tui->handleInput("\x1b[<0;31;10M"); // left-click the gap → dismiss
                 },
                 400 => function (Tui $tui): void {
-                    $this->assertFalse(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'a click outside the panel dismissed it');
+                    $this->assertFalse(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'a click outside the panel dismissed it');
                 },
             ],
         );
@@ -1116,7 +1120,7 @@ final class IdeContextMenusTest extends TestCase
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 in the editor
-                    $this->awaitPainted($tui, $terminal, 'Go to Declaration or Usages');
+                    $this->awaitPainted($tui, $terminal, needle: 'Go to Declaration or Usages');
                     $context = Services::resolve($ide, ContextMenu::class);
                     $this->assertTrue($context->isOpen(), 'the editor context menu opened at the caret');
                     $tui->handleInput("\x1b"); // Esc closes it
@@ -1126,7 +1130,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->setFocus($tui->getById('tree'));
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 on the tree's selected node
-                    $this->awaitPainted($tui, $terminal, 'New File');
+                    $this->awaitPainted($tui, $terminal, needle: 'New File');
                     $this->assertStringContainsString('New File', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'tree file operations under the selection');
                     $tui->handleInput("\x1b");
                 },
@@ -1135,7 +1139,7 @@ final class IdeContextMenusTest extends TestCase
                     $this->frame($tui);
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 on the help viewer: the tab menu
-                    $this->awaitPainted($tui, $terminal, 'Close Others');
+                    $this->awaitPainted($tui, $terminal, needle: 'Close Others');
                     $this->assertStringContainsString('Close Others', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'viewer tabs get the tab context menu');
                     $tui->handleInput("\x1b");
                 },
@@ -1147,11 +1151,11 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x1b[21;5~"); // ctrl+f10
                     $tui->tick();
                     $this->assertTrue(EditorState::searchOpen(Widgets::editor($tui)), 'go-to-file opened the centered picker');
-                    $this->assertFalse(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'no context menu over the picker');
+                    $this->assertFalse(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'no context menu over the picker');
                     // A right-click inside the modal picker also opens no menu.
                     $tui->handleInput("\x1b[<2;10;10M"); // right-press
                     $tui->tick();
-                    $this->assertFalse(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'right-click over the picker opens no menu');
+                    $this->assertFalse(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'right-click over the picker opens no menu');
                 },
             ],
         );
@@ -1178,20 +1182,20 @@ final class IdeContextMenusTest extends TestCase
         // of folders on a developer's machine, every one of them a menu row.
         $project = new TempProject(['alpha.php' => "<?php\n"], name: 'alpha');
         $other = \dirname($project->dir).'/beta';
-        $project->write('../beta/b.php', "<?php\n");
+        $project->write('../beta/b.php', content: "<?php\n");
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 200 => static function ($tui): void {
                     $tui->handleInput("\x1b[<2;6;2M"); // right-press the project name (tree row 0)
                 },
                 280 => function (Tui $tui, $terminal, Ide $ide) use ($project, $other): void {
-                    $menu = Widgets::byId($tui, 'context-menu', ContextMenu::class);
+                    $menu = Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class);
                     $this->assertTrue($menu->isOpen(), 'the project name has a menu');
                     /** @var list<MenuItem> $items */
-                    $items = Probe::get($menu, 'items');
+                    $items = Probe::get($menu, property: 'items');
                     $labels = \array_map(static fn (MenuItem $item): string => $item->label, $items);
                     $this->assertContains(\basename($project->dir), $labels, 'this project, among them');
                     $this->assertSame('Open Project…', \end($labels), 'and the switcher last');

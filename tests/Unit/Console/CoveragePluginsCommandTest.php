@@ -97,7 +97,7 @@ final class CoveragePluginsCommandTest extends TestCase
     public function testAReportLeftByAnEarlierRunIsRemovedFirst(): void
     {
         $project = $this->project();
-        $project->write('out/gone.xml', '<coverage/>');
+        $project->write('out/gone.xml', content: '<coverage/>');
         $seen = [];
 
         $this->tester($project, $this->spawning($seen))->execute(['--output-dir' => $project->path('out')]);
@@ -185,7 +185,7 @@ final class CoveragePluginsCommandTest extends TestCase
         $tester = $this->tester($project, $this->spawning($seen));
 
         // A file where the directory should be: mkdir cannot win this.
-        $project->write('blocked', '');
+        $project->write('blocked', content: '');
         $status = $tester->execute(['--output-dir' => $project->path('blocked/out')]);
 
         $this->assertSame(Command::INVALID, $status);
@@ -216,7 +216,7 @@ final class CoveragePluginsCommandTest extends TestCase
         // would drop files no plugin's own tests load), and the container cache
         // stays on because a shard neither merges nor grades src.
         $command = new CoveragePluginsCommand();
-        $spawn = Probe::get($command, 'spawn');
+        $spawn = Probe::get($command, property: 'spawn');
         $this->assertInstanceOf(\Closure::class, $spawn);
         $clover = 'coverage/plugins/git.xml';
         $process = $spawn(['plugins/git/tests'], $clover);
@@ -249,7 +249,7 @@ final class CoveragePluginsCommandTest extends TestCase
     public function testEveryRunLeavesItsShardTimingsForTheNext(): void
     {
         $project = $this->project();
-        $project->write('out/'.CoveragePluginsCommand::TIMINGS, 'not json');
+        $project->write('out/'.CoveragePluginsCommand::TIMINGS, content: 'not json');
         $seen = [];
 
         $status = $this->tester($project, $this->spawning($seen))->execute(['--output-dir' => $project->path('out')]);

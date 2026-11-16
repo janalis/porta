@@ -17,7 +17,7 @@ final class MindmapTest extends TestCase
     #[DataProvider('upstreamFixtures')]
     public function testPinnedUpstreamExamplesRenderWithoutCli(string $file): void
     {
-        $result = NativeFixtureRows::render((string) \file_get_contents($file), 24);
+        $result = NativeFixtureRows::render((string) \file_get_contents($file), width: 24);
         $this->assertNotEmpty($result->rows);
         $this->assertCount(\count($result->rows), $result->origins);
     }

@@ -81,7 +81,7 @@ final class ToolJobsTest extends TestCase
      */
     private function plugin(array $tools, string $name = 'p'): void
     {
-        $this->project->write('.porta/plugins/'.$name.'/porta.php', "<?php\n");
+        $this->project->write('.porta/plugins/'.$name.'/porta.php', content: "<?php\n");
         $this->project->write('.porta/plugins/'.$name.'/composer.json', (string) \json_encode(['extra' => ['porta' => ['tools' => $tools]]], \JSON_THROW_ON_ERROR));
         $this->lifecycle->names[] = $name;
     }
@@ -95,7 +95,7 @@ final class ToolJobsTest extends TestCase
             $this->project->dir,
             new PluginInstaller($this->project->dir, null, new Translator('en'), null),
             new PluginManager(new EventDispatcher(), $settings),
-            new Notifier($this->status, TestTui::create(160, 24)),
+            new Notifier($this->status, TestTui::create(160, rows: 24)),
             $this->lifecycle,
             $executables,
             path: $this->path,
@@ -119,7 +119,7 @@ final class ToolJobsTest extends TestCase
 
     private function toast(): string
     {
-        return $this->statusRow($this->status, 160);
+        return $this->statusRow($this->status, columns: 160);
     }
 
     /** Let the oldest held run exit with $code. */
@@ -147,8 +147,8 @@ final class ToolJobsTest extends TestCase
     {
         $this->plugin([self::brewTool('dot'), self::brewTool('rsvg')]);
         $tools = $this->tools();
-        $dot = self::tool($tools, 'dot');
-        $rsvg = self::tool($tools, 'rsvg');
+        $dot = self::tool($tools, name: 'dot');
+        $rsvg = self::tool($tools, name: 'rsvg');
 
         $tools->jobs->install($dot);
         $this->assertStringContainsString('Installing dot…', $this->toast());
@@ -175,8 +175,8 @@ final class ToolJobsTest extends TestCase
         $this->plugin([self::brewTool('dot')]);
         $tools = $this->tools();
 
-        $tools->jobs->install(self::tool($tools, 'dot'));
-        $this->release(1, "Error: no formula\n");
+        $tools->jobs->install(self::tool($tools, name: 'dot'));
+        $this->release(1, output: "Error: no formula\n");
 
         $this->assertStringContainsString('Could not install dot: Error: no formula', $this->toast());
         $this->assertSame([], $this->lifecycle->serverBinaryReplaced);
@@ -191,11 +191,11 @@ final class ToolJobsTest extends TestCase
         ]);
         $tools = $this->tools([]);
 
-        $this->assertFalse($tools->jobs->installable(self::tool($tools, 'a')));
-        $tools->jobs->install(self::tool($tools, 'a'));
+        $this->assertFalse($tools->jobs->installable(self::tool($tools, name: 'a')));
+        $tools->jobs->install(self::tool($tools, name: 'a'));
         $this->assertStringContainsString('No way to install a here (needs brew, GitHub)', $this->toast(), 'a cask is brew; each manager once');
 
-        $tools->jobs->install(self::tool($tools, 'b'));
+        $tools->jobs->install(self::tool($tools, name: 'b'));
         $this->assertStringContainsString('Porta cannot install b', $this->toast());
         $this->assertSame([], $this->ran);
     }
@@ -205,27 +205,27 @@ final class ToolJobsTest extends TestCase
         $this->plugin([['name' => 'x', 'sources' => [['self', 'install']]]]);
         $tools = $this->tools();
 
-        $tools->jobs->install(self::tool($tools, 'x'));
+        $tools->jobs->install(self::tool($tools, name: 'x'));
 
         $this->assertSame(['p:install'], $this->commandsRun);
-        $this->assertFalse($tools->jobs->pending(self::tool($tools, 'x')));
+        $this->assertFalse($tools->jobs->pending(self::tool($tools, name: 'x')));
     }
 
     public function testUpdateGoesThroughWhatManagesTheCopy(): void
     {
         $this->plugin([['name' => 'x', 'sources' => [['brew', 'x']]]]);
-        $cellar = $this->project->write('Cellar/x/1.0/bin/x', "#!/bin/sh\n");
+        $cellar = $this->project->write('Cellar/x/1.0/bin/x', content: "#!/bin/sh\n");
         \chmod($cellar, permissions: 0o755);
         $this->path['x'] = $cellar;
         $tools = $this->tools();
 
-        $tools->jobs->update(self::tool($tools, 'x'));
+        $tools->jobs->update(self::tool($tools, name: 'x'));
         $this->assertStringContainsString('Updating x…', $this->toast());
         $this->assertSame(['/bin/brew upgrade x'], $this->ran);
         $this->release();
         $this->assertStringContainsString('Updating x…', $this->toast(), 'brew names no version: the binary is asked first');
         $this->assertSame([$cellar.' --version'], \array_slice($this->ran, offset: 1));
-        $this->release(0, "x 2.0.0\n");
+        $this->release(0, output: "x 2.0.0\n");
         $this->assertStringContainsString('Updated x to 2.0.0', $this->toast());
         $this->assertSame(['p'], $this->lifecycle->serverBinaryReplaced);
     }
@@ -234,15 +234,15 @@ final class ToolJobsTest extends TestCase
     public function testAnUpdateThatMovedNothingSaysItIsUpToDate(): void
     {
         $this->plugin([['name' => 'x', 'sources' => [['brew', 'x']]]]);
-        $cellar = $this->project->write('Cellar/x/1.0/bin/x', "#!/bin/sh\n");
+        $cellar = $this->project->write('Cellar/x/1.0/bin/x', content: "#!/bin/sh\n");
         \chmod($cellar, permissions: 0o755);
         $this->path['x'] = $cellar;
         $tools = $this->tools();
-        $tools->versions->remember($cellar, '1.0.0');
+        $tools->versions->remember($cellar, version: '1.0.0');
 
-        $tools->jobs->update(self::tool($tools, 'x'));
+        $tools->jobs->update(self::tool($tools, name: 'x'));
         $this->release();
-        $this->release(0, "x 1.0.0\n");
+        $this->release(0, output: "x 1.0.0\n");
 
         $this->assertStringContainsString('x is already up to date (1.0.0)', $this->toast());
         $this->assertSame([], $this->lifecycle->serverBinaryReplaced, 'nothing was replaced, nothing relaunches');
@@ -255,7 +255,7 @@ final class ToolJobsTest extends TestCase
         $this->path['x'] = '/usr/bin/x';
         $tools = $this->tools();
 
-        $tools->jobs->update(self::tool($tools, 'x'));
+        $tools->jobs->update(self::tool($tools, name: 'x'));
 
         $this->assertStringContainsString('x is managed outside Porta', $this->toast());
         $this->assertSame([], $this->ran);
@@ -266,14 +266,14 @@ final class ToolJobsTest extends TestCase
         $this->plugin([self::brewTool('dot')]);
         $tools = $this->tools();
 
-        $tools->jobs->update(self::tool($tools, 'dot'));
+        $tools->jobs->update(self::tool($tools, name: 'dot'));
 
         $this->assertSame(['/bin/brew install dot'], $this->ran);
     }
 
     public function testInstallMissingTakesRequiredToolsOnly(): void
     {
-        $this->plugin([self::brewTool('dot'), self::brewTool('extra', 'suggested'), ['name' => 'lint', 'sources' => [['composer', 'a/lint']]], ['name' => 'nowhere']]);
+        $this->plugin([self::brewTool('dot'), self::brewTool('extra', role: 'suggested'), ['name' => 'lint', 'sources' => [['composer', 'a/lint']]], ['name' => 'nowhere']]);
         $tools = $this->tools();
 
         $this->assertSame(1, $tools->jobs->installMissing(['p'], ToolManager::Composer), 'composer excluded, suggested left alone, nowhere cannot');
@@ -285,7 +285,7 @@ final class ToolJobsTest extends TestCase
     public function testUpdateAllTakesWhatPortaManages(): void
     {
         $this->plugin([['name' => 'x', 'sources' => [['brew', 'x']]], ['name' => 'y', 'sources' => [['brew', 'y']]], self::brewTool('missing')]);
-        $cellar = $this->project->write('Cellar/x/1.0/bin/x', "#!/bin/sh\n");
+        $cellar = $this->project->write('Cellar/x/1.0/bin/x', content: "#!/bin/sh\n");
         \chmod($cellar, permissions: 0o755);
         $this->path['x'] = $cellar;
         $this->path['y'] = '/usr/bin/y';
@@ -300,9 +300,9 @@ final class ToolJobsTest extends TestCase
         $this->plugin([['name' => 'x', 'sources' => [['github', 'o/x', ['asset' => 'x_{os}_{arch}', 'os' => ['Darwin' => 'darwin'], 'arch' => ['arm64' => 'arm64']]]]]]);
         $tools = $this->tools();
 
-        $tools->jobs->install(self::tool($tools, 'x'));
+        $tools->jobs->install(self::tool($tools, name: 'x'));
         $this->assertStringContainsString('x: resolving…', $this->toast());
-        $this->release(0, "location: https://github.com/o/x/releases/tag/v1.0.0\r\n\r\n");
+        $this->release(0, output: "location: https://github.com/o/x/releases/tag/v1.0.0\r\n\r\n");
         $this->assertStringContainsString('x: downloading…', $this->toast());
         $this->release(22);
         $this->assertStringContainsString('Could not install x: download failed: x_darwin_arm64', $this->toast());
@@ -314,8 +314,8 @@ final class ToolJobsTest extends TestCase
         $this->plugin([['name' => 'x', 'sources' => [['github', 'o/x', ['asset' => 'x_{os}_{arch}.tar.gz', 'member' => 'x', 'os' => ['Darwin' => 'darwin'], 'arch' => ['arm64' => 'arm64']]]]]]);
         $tools = $this->tools();
 
-        $tools->jobs->install(self::tool($tools, 'x'));
-        $this->release(0, "location: https://github.com/o/x/releases/tag/v1.0.0\r\n\r\n");
+        $tools->jobs->install(self::tool($tools, name: 'x'));
+        $this->release(0, output: "location: https://github.com/o/x/releases/tag/v1.0.0\r\n\r\n");
         $this->assertInstanceOf(\Closure::class, $this->chunks, 'the download streams its meter');
         ($this->chunks)("\r#####   41.7%");
         $this->assertStringContainsString('x: downloading 41%', $this->toast());

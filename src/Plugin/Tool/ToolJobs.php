@@ -62,8 +62,8 @@ final class ToolJobs
         $source = $this->installer->installSource($tool);
         match (true) {
             $this->pending($tool) => $this->notifier->flash($this->translator->trans('%tool% is already queued', ['%tool%' => $tool->name])),
-            null === $source => $this->notifier->error($this->noSource($tool), 6.0),
-            default => $this->queue($tool, $source, null),
+            null === $source => $this->notifier->error($this->noSource($tool), seconds: 6.0),
+            default => $this->queue($tool, $source, path: null),
         };
     }
 
@@ -159,9 +159,9 @@ final class ToolJobs
         $tool = $job['tool'];
         $this->running = $tool;
         $path = $job['path'];
-        $this->notifier->flash($this->translator->trans(null === $path ? 'Installing %tool%…' : 'Updating %tool%…', ['%tool%' => $tool->name]), 600.0, self::SLOT);
+        $this->notifier->flash($this->translator->trans(null === $path ? 'Installing %tool%…' : 'Updating %tool%…', ['%tool%' => $tool->name]), seconds: 600.0, slot: self::SLOT);
         $onProgress = function (InstallStep $step, int $percent) use ($tool): void {
-            $this->notifier->flash($this->progress($tool, $step, $percent), 600.0, self::SLOT);
+            $this->notifier->flash($this->progress($tool, $step, $percent), seconds: 600.0, slot: self::SLOT);
         };
         $onDone = function (ToolResult $result) use ($tool, $path): void {
             $this->finish($tool, $path, $result);
@@ -205,10 +205,22 @@ final class ToolJobs
         $this->running = null;
         $name = ['%tool%' => $tool->name, '%version%' => $result->version, '%why%' => $result->why];
         match ($result->outcome) {
-            ToolOutcome::Installed => $this->notifier->success($this->translator->trans('' === $result->version ? 'Installed %tool%' : 'Installed %tool% %version%', $name), 5.0, self::SLOT),
-            ToolOutcome::Updated => $this->notifier->success($this->translator->trans('' === $result->version ? 'Updated %tool%' : 'Updated %tool% to %version%', $name), 5.0, self::SLOT),
-            ToolOutcome::UpToDate => $this->notifier->flash($this->translator->trans('%tool% is already up to date (%version%)', $name), 4.0, self::SLOT),
-            ToolOutcome::Failed => $this->notifier->error($this->translator->trans(null === $path ? 'Could not install %tool%: %why%' : 'Could not update %tool%: %why%', $name), 6.0, self::SLOT),
+            ToolOutcome::Installed => $this->notifier->success(
+                $this->translator->trans('' === $result->version ? 'Installed %tool%' : 'Installed %tool% %version%', $name),
+                seconds: 5.0,
+                slot: self::SLOT,
+            ),
+            ToolOutcome::Updated => $this->notifier->success(
+                $this->translator->trans('' === $result->version ? 'Updated %tool%' : 'Updated %tool% to %version%', $name),
+                seconds: 5.0,
+                slot: self::SLOT,
+            ),
+            ToolOutcome::UpToDate => $this->notifier->flash($this->translator->trans('%tool% is already up to date (%version%)', $name), seconds: 4.0, slot: self::SLOT),
+            ToolOutcome::Failed => $this->notifier->error(
+                $this->translator->trans(null === $path ? 'Could not install %tool%: %why%' : 'Could not update %tool%: %why%', $name),
+                seconds: 6.0,
+                slot: self::SLOT,
+            ),
         };
         // Whatever the outcome, the open Settings page re-reads itself: its
         // button read "Working…" until now.

@@ -275,21 +275,21 @@ final class DecorationStoreTest extends TestCase
     public function testLineAnnotationsAreKeptPerOwnerAndJoined(): void
     {
         $store = new DecorationStore(static function (): void {});
-        $store->setLineAnnotations([0 => 'alice, 3 days ago', 1 => 'bob, today'], 'git');
-        $store->setLineAnnotations([1 => '✎ 2 · carol: rename this'], 'review');
+        $store->setLineAnnotations([0 => 'alice, 3 days ago', 1 => 'bob, today'], owner: 'git');
+        $store->setLineAnnotations([1 => '✎ 2 · carol: rename this'], owner: 'review');
 
         $this->assertSame([0 => 'alice, 3 days ago', 1 => 'bob, today  · ✎ 2 · carol: rename this'], $store->lineAnnotations);
 
-        $store->setLineAnnotations([0 => 'dave, now'], 'git');
+        $store->setLineAnnotations([0 => 'dave, now'], owner: 'git');
         $this->assertSame([0 => 'dave, now', 1 => '✎ 2 · carol: rename this'], $store->lineAnnotations, 'a republish replaces only that owner');
 
-        $store->setLineAnnotations([], 'review');
+        $store->setLineAnnotations([], owner: 'review');
         $this->assertSame([0 => 'dave, now'], $store->lineAnnotations, 'an empty map clears only that owner');
 
         $store->setCommentMarks([2 => 'carol: rename this']);
         $store->resetForBuffer([]);
         $this->assertSame([], $store->lineAnnotations, 'a buffer switch drops every owner');
-        $store->setLineAnnotations([4 => 'x'], 'review');
+        $store->setLineAnnotations([4 => 'x'], owner: 'review');
         $this->assertSame([4 => 'x'], $store->lineAnnotations, 'and none comes back with the next publish');
         $this->assertSame([], $store->commentMarks, 'comment marks go with the buffer too');
     }
@@ -300,13 +300,13 @@ final class DecorationStoreTest extends TestCase
         $store = new DecorationStore(static function (): void {});
         $this->assertFalse($store->hasExtraRows());
 
-        $store->setLineBlocks([2 => ['alice: a']], 'review');
-        $store->setLineBlocks([2 => ['agent: b'], 4 => ['agent: c']], 'agent');
+        $store->setLineBlocks([2 => ['alice: a']], owner: 'review');
+        $store->setLineBlocks([2 => ['agent: b'], 4 => ['agent: c']], owner: 'agent');
         $this->assertSame(['alice: a', 'agent: b'], $store->lineBlocksAt(2));
         $this->assertSame(['agent: c'], $store->lineBlocksAt(4));
         $this->assertTrue($store->hasExtraRows());
 
-        $store->setLineBlocks([], 'agent');
+        $store->setLineBlocks([], owner: 'agent');
         $this->assertSame(['alice: a'], $store->lineBlocksAt(2), 'an owner clears only its own');
         $this->assertSame([], $store->lineBlocksAt(4));
 
@@ -323,10 +323,10 @@ final class DecorationStoreTest extends TestCase
         $store = new DecorationStore(static function (): void {});
         $store->resetForBuffer([], lineCount: 10);
         $caret = static fn (int $line): array => ['line' => $line, 'col' => 3, 'label' => 'x', 'slot' => 0];
-        $store->setRemoteCaret('/p/a.php', 'above', $caret(1));
-        $store->setRemoteCaret('/p/a.php', 'below', $caret(5));
-        $store->setRemoteCaret('/p/a.php', 'further', $caret(8));
-        $store->setRemoteCaret('/p/b.php', 'elsewhere', $caret(5));
+        $store->setRemoteCaret('/p/a.php', owner: 'above', caret: $caret(1));
+        $store->setRemoteCaret('/p/a.php', owner: 'below', caret: $caret(5));
+        $store->setRemoteCaret('/p/a.php', owner: 'further', caret: $caret(8));
+        $store->setRemoteCaret('/p/b.php', owner: 'elsewhere', caret: $caret(5));
         $lines = static fn (string $path): array => \array_keys($store->remoteCaretsIn($path));
 
         $store->remapForEdit(cursorLine: 4, lineCount: 12, path: '/p/a.php'); // two lines typed below line 2
@@ -340,7 +340,7 @@ final class DecorationStoreTest extends TestCase
         $store->remapForEdit(cursorLine: 3, lineCount: 10);
         $this->assertSame([1, 5, 7], $lines('/p/a.php'), 'no line added, or no file named: nothing moves');
 
-        $store->setRemoteCaret('/p/a.php', 'above', null);
+        $store->setRemoteCaret('/p/a.php', owner: 'above', caret: null);
         $this->assertSame([5, 7], $lines('/p/a.php'));
     }
 
@@ -349,57 +349,57 @@ final class DecorationStoreTest extends TestCase
         $store = new DecorationStore(static function (): void {});
         $doc = new Document('abcdef');
         $store->resetForBuffer([], lineCount: 1);
-        $store->setRemoteCaret('/p/a.php', 'agent', ['line' => 0, 'col' => 4, 'label' => 'x', 'slot' => 0]);
+        $store->setRemoteCaret('/p/a.php', owner: 'agent', caret: ['line' => 0, 'col' => 4, 'label' => 'x', 'slot' => 0]);
         $col = static fn (): int => $store->remoteCaretsIn('/p/a.php')[0][0]['col'];
         $edit = static function (\Closure $change) use ($store, $doc): void {
             $change();
-            $store->remapForEdit($doc->cursorLine, $doc->getLineCount(), '/p/a.php', $doc);
+            $store->remapForEdit($doc->cursorLine, $doc->getLineCount(), path: '/p/a.php', document: $doc);
         };
         $store->remoteCaretsIn('/p/a.php', $doc); // the frame that shows it measures its line
         $store->remoteCaretsIn('/p/a.php', $doc); // and the next frame leaves it measured
 
         $edit(static function () use ($doc): void {
-            $doc->setCursor(0, 1);
+            $doc->setCursor(0, col: 1);
             $doc->insert('XY'); // aXY|bcdef
         });
         $this->assertSame(6, $col(), 'typed before it: moved along');
 
         $edit(static function () use ($doc): void {
-            $doc->setCursor(0, 7);
+            $doc->setCursor(0, col: 7);
             $doc->insert('Z'); // after it
         });
         $this->assertSame(6, $col(), 'typed after it: stays');
 
         $edit(static function () use ($doc): void {
-            $doc->setCursor(0, 1);
+            $doc->setCursor(0, col: 1);
             $doc->beginSelect();
-            $doc->setCursor(0, 3, SelectionMode::Keep);
+            $doc->setCursor(0, col: 3, selection: SelectionMode::Keep);
             $doc->deleteSelection(); // XY gone
         });
         $this->assertSame(4, $col(), 'deleted before it: moved back');
 
         $edit(static function () use ($doc): void {
-            $doc->setCursor(0, 3);
+            $doc->setCursor(0, col: 3);
             $doc->beginSelect();
-            $doc->setCursor(0, 5, SelectionMode::Keep);
+            $doc->setCursor(0, col: 5, selection: SelectionMode::Keep);
             $doc->deleteSelection(); // the text under it
         });
         $this->assertSame(3, $col(), 'deleted across it: to where the deletion began');
 
         $edit(static function () use ($doc): void {
-            $doc->setCursor(0, 3);
+            $doc->setCursor(0, col: 3);
             $doc->insert('Q'); // right at it
         });
         $this->assertSame(4, $col(), 'typed AT it: pushed along, as text typed at a caret is');
 
-        $store->setRemoteCaret('/p/a.php', 'agent', ['line' => 0, 'col' => 4, 'label' => 'x', 'slot' => 0]);
+        $store->setRemoteCaret('/p/a.php', owner: 'agent', caret: ['line' => 0, 'col' => 4, 'label' => 'x', 'slot' => 0]);
         $edit(static function () use ($doc): void {
-            $doc->setCursor(0, 0);
+            $doc->setCursor(0, col: 0);
             $doc->insert('!');
         });
         $this->assertSame(4, $col(), 'never measured, never moved — the edit measures it instead');
         $edit(static function () use ($doc): void {
-            $doc->setCursor(0, 0);
+            $doc->setCursor(0, col: 0);
             $doc->insert('!');
         });
         $this->assertSame(5, $col(), 'and the next one moves it');

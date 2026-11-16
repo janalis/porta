@@ -91,7 +91,7 @@ final class IdePreviewSplitTest extends TestCase
                     // Type at the end of the file: the preview follows once the
                     // typing pauses — and the file on disk is untouched.
                     $editor = Services::resolve($ide, CodeEditorWidget::class);
-                    $editor->jumpTo(6, 0);
+                    $editor->jumpTo(6, utf16Col: 0);
                     foreach (\str_split('## Added') as $key) {
                         $tui->handleInput($key);
                     }
@@ -115,7 +115,7 @@ final class IdePreviewSplitTest extends TestCase
                     $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
                     $this->await(static fn (): bool => \str_contains($grid(), '│ Porta'), what: 'the split');
 
-                    $this->clickToggle($tui, $ide, 'Preview');
+                    $this->clickToggle($tui, $ide, caption: 'Preview');
                     $this->await(static fn (): bool => \str_contains($grid(), '[Preview]'), what: 'the preview alone');
                     $this->assertSame(PreviewMode::Preview, self::mode($ide));
                     $this->assertStringNotContainsString('# Porta', $grid(), 'the text stepped aside');
@@ -128,7 +128,7 @@ final class IdePreviewSplitTest extends TestCase
                     $this->assertStringNotContainsString('│ Porta', $grid(), 'no preview beside it');
                     $this->assertSame('editor', $tui->getFocus()?->getId());
 
-                    $this->clickToggle($tui, $ide, 'Split');
+                    $this->clickToggle($tui, $ide, caption: 'Split');
                     $this->await(static fn (): bool => \str_contains($grid(), '│ Porta') && \str_contains($grid(), '# Porta'), what: 'both again');
 
                     // The menu's items are checked by the arrangement on screen, and
@@ -176,7 +176,7 @@ final class IdePreviewSplitTest extends TestCase
                     // Under the pointer the divider says it is a grab.
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $divider->col + 1, $divider->row + 3));
                     $this->await(static fn (): bool => \str_contains($grid(), '┃'), what: 'the hovered divider');
-                    $this->awaitPainted($tui, $terminal, 'Drag to resize'); // and, resting there, says so
+                    $this->awaitPainted($tui, $terminal, needle: 'Drag to resize'); // and, resting there, says so
 
                     // Press on it, drag twelve columns left, let go.
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $divider->col + 1, $divider->row + 3));
@@ -278,7 +278,7 @@ final class IdePreviewSplitTest extends TestCase
                     $this->assertInstanceOf(Buffer::class, $active);
                     $active->document->insert('x');
                     Services::resolve($ide, BufferService::class)->closeActiveBuffer();
-                    $this->awaitPainted($tui, $terminal, 'Unsaved changes in README.md');
+                    $this->awaitPainted($tui, $terminal, needle: 'Unsaved changes in README.md');
                     $this->assertSame(PreviewMode::Split, self::mode($ide));
                 },
             ],
@@ -336,19 +336,19 @@ final class IdePreviewSplitTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $service = Services::resolve($ide, BufferService::class);
                     $buffers = Services::resolve($ide, BufferManager::class);
 
                     $service->openFile($project->path('big.md'));
-                    $this->awaitPainted($tui, $terminal, 'Read-only');
+                    $this->awaitPainted($tui, $terminal, needle: 'Read-only');
                     $this->assertTrue($buffers->active()?->isViewer(), 'too large to edit: the read-only look, as for any file');
                     $this->assertNull($buffers->active()?->previewArrangement());
 
                     $service->openFile($project->path('notes.ghost'));
-                    $this->awaitPainted($tui, $terminal, 'just text');
+                    $this->awaitPainted($tui, $terminal, needle: 'just text');
                     $this->assertNull($buffers->active()?->previewId, 'no pane answers the claim: plain text');
 
                     // The read-only look hands tab verbs to the IDE too: it had no handler, so
@@ -432,7 +432,7 @@ final class IdePreviewSplitTest extends TestCase
                         $tui->handleInput("\x1b[C"); // → View (no Plugins menu without plugins)
                     }
                     $tui->handleInput("\r");
-                    $this->awaitPainted($tui, $terminal, 'Preview Only');
+                    $this->awaitPainted($tui, $terminal, needle: 'Preview Only');
 
                     $crossed = 0;
                     foreach ($this->screenGrid($tui, $terminal) as $row) {
@@ -502,7 +502,7 @@ final class IdePreviewSplitTest extends TestCase
                     $tui->handleInput("\x7f");
                     $this->assertSame('README.md', \basename((string) $buffers->active()?->path));
                     $tui->handleInput("\x7f");
-                    $this->awaitPainted($tui, $terminal, 'Nowhere to go back to');
+                    $this->awaitPainted($tui, $terminal, needle: 'Nowhere to go back to');
 
                     // Anything else opens in the editor; a dangling link says so.
                     $follow('Code');
@@ -510,7 +510,7 @@ final class IdePreviewSplitTest extends TestCase
                     $this->assertSame('editor', $tui->getFocus()?->getId());
                     $service->openFile($project->path('README.md'));
                     $follow('Gone');
-                    $this->awaitPainted($tui, $terminal, 'Cannot read missing.md');
+                    $this->awaitPainted($tui, $terminal, needle: 'Cannot read missing.md');
 
                     // Ctrl+F finds in the rendered page.
                     $tui->setFocus($preview);
@@ -522,7 +522,7 @@ final class IdePreviewSplitTest extends TestCase
                     // floats over the page's top rows is dismissed).
                     $tui->handleInput("\x1bd");
                     $follow('Site');
-                    $this->awaitPainted($tui, $terminal, 'Opened https://example.com/x');
+                    $this->awaitPainted($tui, $terminal, needle: 'Opened https://example.com/x');
 
                     // The tab verbs reach the IDE from the page, as from any pane.
                     $before = $buffers->active()?->path;
@@ -647,7 +647,7 @@ final class IdePreviewSplitTest extends TestCase
             $this->assertSame($column('w47'), $clickWord('w47'), 'after the drag');
 
             // And after the terminal itself is resized.
-            $terminal->simulateResize(90, 24);
+            $terminal->simulateResize(90, rows: 24);
             $this->frame($tui);
             $this->assertSame($column('w25'), $clickWord('w25'), 'after a terminal resize');
         });
@@ -698,8 +698,8 @@ final class IdePreviewSplitTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->await(static fn (): bool => PreviewMode::Preview === self::mode($ide), what: 'the restored tab, still showing its preview alone');
                     $this->assertSame('markdown-preview', $tui->getFocus()?->getId(), 'and the keys with it');

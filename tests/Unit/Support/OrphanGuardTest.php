@@ -85,7 +85,7 @@ final class OrphanGuardTest extends TestCase
 
         unset($guard); // the pipe closes, as it does when the IDE ends
 
-        $this->awaitEnded($child, 'the child to end once the guard went');
+        $this->awaitEnded($child, what: 'the child to end once the guard went');
     }
 
     public function testAForgottenChildIsLeftAlone(): void
@@ -102,7 +102,7 @@ final class OrphanGuardTest extends TestCase
 
         unset($guard);
 
-        $this->awaitEnded($other, 'the one still watched to end');
+        $this->awaitEnded($other, what: 'the one still watched to end');
         $this->assertTrue(\proc_get_status($child)['running'], 'the forgotten one runs on: its pid may be another process\'s now');
     }
 
@@ -124,7 +124,7 @@ final class OrphanGuardTest extends TestCase
         // The watcher kills ~3s after the pipe closes on paper — 30 polls of
         // 0.1s — but each poll forks a sleep and a kill -0, which a loaded
         // machine stretches. A generous ceiling: it returns at the kill.
-        $this->awaitEnded($child, 'the kill to end it', timeout: 15.0);
+        $this->awaitEnded($child, what: 'the kill to end it', timeout: 15.0);
     }
 
     public function testForgettingBeforeAnyWatchStartsNothing(): void
@@ -132,7 +132,7 @@ final class OrphanGuardTest extends TestCase
         $guard = new OrphanGuard();
         $guard->forget(1);
 
-        $this->assertNull(Probe::get($guard, 'pipe'), 'no watcher for nothing to guard');
+        $this->assertNull(Probe::get($guard, property: 'pipe'), 'no watcher for nothing to guard');
     }
 
     /** @return array{int, int} the guarded process's exit, and the pid of the child it left behind */
@@ -207,7 +207,7 @@ final class OrphanGuardTest extends TestCase
         $guard = new OrphanGuard();
         $guard->guardGroup(new VirtualTerminal());
 
-        $this->assertNull(Probe::get($guard, 'pipe'), 'no watcher started for it');
+        $this->assertNull(Probe::get($guard, property: 'pipe'), 'no watcher started for it');
     }
 
     /** A watcher that died leaves a broken pipe: the write that finds it drops the guard, and the next watch starts a new one. */
@@ -216,18 +216,18 @@ final class OrphanGuardTest extends TestCase
         [$child, $pid] = $this->child();
         $guard = new OrphanGuard();
         $guard->watch($pid);
-        $watcher = Probe::get($guard, 'watcher');
+        $watcher = Probe::get($guard, property: 'watcher');
         $this->assertIsResource($watcher);
         \proc_terminate($watcher, signal: 9);
         $this->await(static fn (): bool => !\proc_get_status($watcher)['running'], timeout: 3.0, what: 'the watcher to die');
 
         $guard->watch($pid); // finds the pipe broken
-        $this->assertNull(Probe::get($guard, 'pipe'), 'the dead watcher dropped');
+        $this->assertNull(Probe::get($guard, property: 'pipe'), 'the dead watcher dropped');
         $guard->watch($pid); // and starts another
-        $this->assertNotSame($watcher, Probe::get($guard, 'watcher'));
+        $this->assertNotSame($watcher, Probe::get($guard, property: 'watcher'));
 
         unset($guard);
-        $this->awaitEnded($child, 'the child to end, guarded as the first watcher guarded it');
+        $this->awaitEnded($child, what: 'the child to end, guarded as the first watcher guarded it');
     }
 
     /**
@@ -247,7 +247,7 @@ final class OrphanGuardTest extends TestCase
 
         $guard->guardGroup(new Terminal());
 
-        $this->assertIsResource(Probe::get($guard, 'pipe'), 'the watcher holds the group');
+        $this->assertIsResource(Probe::get($guard, property: 'pipe'), 'the watcher holds the group');
     }
 
     /** No process can be started — no /bin/sh, no room for one: nothing is guarded, and nothing breaks. */
@@ -261,6 +261,6 @@ final class OrphanGuardTest extends TestCase
         $guard->watch(1);
         $guard->watch(1);
 
-        $this->assertNull(Probe::get($guard, 'pipe'), 'no watcher, tried again and still none');
+        $this->assertNull(Probe::get($guard, property: 'pipe'), 'no watcher, tried again and still none');
     }
 }

@@ -364,23 +364,23 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
     private function shelfInput(string $data, Keybindings $kb): void
     {
         match (true) {
-            $kb->matches($data, 'exit_view') => null === $this->category ? $this->fire($this->onExit) : $this->back(),
-            $kb->matches($data, 'back') => $this->back(),
-            $kb->matches($data, 'focus_next_pane') => $this->fire($this->onFocusNext),
-            $kb->matches($data, 'show_settings') => $this->events?->dispatch(new SettingsSectionRequested('general')),
-            $kb->matches($data, 'filter') => $this->startFilter(),
-            $kb->matches($data, 'open') => $this->activate(),
-            $kb->matches($data, 'press') => $this->press(),
-            $kb->matches($data, 'next_tab') => $this->stepTab(1),
-            $kb->matches($data, 'previous_tab') => $this->stepTab(-1),
-            $kb->matches($data, 'show_updates') => $this->showTab(StoreTab::Updates),
-            $kb->matches($data, 'update_all') => $this->fire($this->onUpdateAll),
-            $kb->matches($data, 'move_up') => $this->move(-1, 0),
-            $kb->matches($data, 'move_down') => $this->move(1, 0),
-            $kb->matches($data, 'move_left') => $this->move(0, -1),
-            $kb->matches($data, 'move_right') => $this->move(0, 1),
-            $kb->matches($data, 'page_up') => $this->move(-$this->bodyRows(), 0),
-            $kb->matches($data, 'page_down') => $this->move($this->bodyRows(), 0),
+            $kb->matches($data, action: 'exit_view') => null === $this->category ? $this->fire($this->onExit) : $this->back(),
+            $kb->matches($data, action: 'back') => $this->back(),
+            $kb->matches($data, action: 'focus_next_pane') => $this->fire($this->onFocusNext),
+            $kb->matches($data, action: 'show_settings') => $this->events?->dispatch(new SettingsSectionRequested('general')),
+            $kb->matches($data, action: 'filter') => $this->startFilter(),
+            $kb->matches($data, action: 'open') => $this->activate(),
+            $kb->matches($data, action: 'press') => $this->press(),
+            $kb->matches($data, action: 'next_tab') => $this->stepTab(1),
+            $kb->matches($data, action: 'previous_tab') => $this->stepTab(-1),
+            $kb->matches($data, action: 'show_updates') => $this->showTab(StoreTab::Updates),
+            $kb->matches($data, action: 'update_all') => $this->fire($this->onUpdateAll),
+            $kb->matches($data, action: 'move_up') => $this->move(-1, columns: 0),
+            $kb->matches($data, action: 'move_down') => $this->move(1, columns: 0),
+            $kb->matches($data, action: 'move_left') => $this->move(0, -1),
+            $kb->matches($data, action: 'move_right') => $this->move(0, columns: 1),
+            $kb->matches($data, action: 'page_up') => $this->move(-$this->bodyRows(), columns: 0),
+            $kb->matches($data, action: 'page_down') => $this->move($this->bodyRows(), columns: 0),
             default => null,
         };
     }
@@ -390,17 +390,17 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
         $shots = \count($this->shots($this->detailRow()?->entry));
         $page = \max(1, $this->lastRows - 2);
         match (true) {
-            $kb->matches($data, 'exit_view'), $kb->matches($data, 'back') => $this->closeDetail(),
+            $kb->matches($data, action: 'exit_view'), $kb->matches($data, action: 'back') => $this->closeDetail(),
             // Tab goes through the page's links: it always has one, its package.
-            $kb->matches($data, 'next_link') => $this->cycleLink(1),
-            $kb->matches($data, 'previous_link') => $this->cycleLink(-1),
-            $kb->matches($data, 'open'), $kb->matches($data, 'press') => $this->followOrPress(),
-            $kb->matches($data, 'move_up') => $this->scrollDetail(-1),
-            $kb->matches($data, 'move_down') => $this->scrollDetail(1),
-            $kb->matches($data, 'page_up') => $this->scrollDetail(-$page),
-            $kb->matches($data, 'page_down') => $this->scrollDetail($page),
-            $shots > 1 && $kb->matches($data, 'move_right') => $this->showShot(\min($shots - 1, $this->page->shot() + 1)),
-            $shots > 1 && $kb->matches($data, 'move_left') => $this->showShot(\max(0, $this->page->shot() - 1)),
+            $kb->matches($data, action: 'next_link') => $this->cycleLink(1),
+            $kb->matches($data, action: 'previous_link') => $this->cycleLink(-1),
+            $kb->matches($data, action: 'open'), $kb->matches($data, action: 'press') => $this->followOrPress(),
+            $kb->matches($data, action: 'move_up') => $this->scrollDetail(-1),
+            $kb->matches($data, action: 'move_down') => $this->scrollDetail(1),
+            $kb->matches($data, action: 'page_up') => $this->scrollDetail(-$page),
+            $kb->matches($data, action: 'page_down') => $this->scrollDetail($page),
+            $shots > 1 && $kb->matches($data, action: 'move_right') => $this->showShot(\min($shots - 1, $this->page->shot() + 1)),
+            $shots > 1 && $kb->matches($data, action: 'move_left') => $this->showShot(\max(0, $this->page->shot() - 1)),
             default => null,
         };
     }
@@ -937,9 +937,9 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
     private function editSource(string $data, Keybindings $kb): bool
     {
         $handled = match (true) {
-            $kb->matches($data, 'open') => $this->submitSource(),
-            $kb->matches($data, 'exit_view') => $this->stopEditing(),
-            $kb->matches($data, 'delete_char_backward') => $this->eraseSource(),
+            $kb->matches($data, action: 'open') => $this->submitSource(),
+            $kb->matches($data, action: 'exit_view') => $this->stopEditing(),
+            $kb->matches($data, action: 'delete_char_backward') => $this->eraseSource(),
             default => $this->source->insert($data),
         };
         if (!$handled) {

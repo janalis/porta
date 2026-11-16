@@ -162,7 +162,7 @@ final class SettingsLanguageController
     private function changeRunCommand(string $language, string $command): void
     {
         $this->runCommand[$language] = $command;
-        $persisted = $this->writer->persistLanguageSetting($this->scope->current(), $language, 'runCommand', $command);
+        $persisted = $this->writer->persistLanguageSetting($this->scope->current(), $language, key: 'runCommand', value: $command);
         $note = ' · '.$this->translator->trans('applies on restart');
         $saved = SettingsFlash::savedSuffix($this->translator, $persisted);
         $shown = '' === $command ? $this->translator->trans('bundled php') : $command;

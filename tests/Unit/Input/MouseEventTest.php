@@ -241,12 +241,12 @@ final class MouseEventTest extends TestCase
         $pixels = MouseEvent::parse("\x1b[<0;25;48M"); // pixel 24, 47 once 0-based
         $this->assertInstanceOf(MouseEvent::class, $pixels);
 
-        $cell = $pixels->inCells(10, 20);
+        $cell = $pixels->inCells(10, height: 20);
         $this->assertSame([2, 2, false], [$cell->col, $cell->row, $cell->lowerHalf], 'pixel row 47 is row 2 (40-59), 7 pixels in: the upper half');
-        $this->assertTrue($pixels->withRow(50)->inCells(10, 20)->lowerHalf, '10 pixels into a 20-pixel cell: the middle starts the lower half');
-        $this->assertFalse($pixels->withRow(49)->inCells(10, 20)->lowerHalf, 'one pixel above it is still the upper');
-        $this->assertSame(5, $pixels->withRow(5)->inCells(10, 0)->row, 'a cell of no height counts as one pixel, never a division by zero');
-        $this->assertSame(24, $pixels->inCells(0, 20)->col);
+        $this->assertTrue($pixels->withRow(50)->inCells(10, height: 20)->lowerHalf, '10 pixels into a 20-pixel cell: the middle starts the lower half');
+        $this->assertFalse($pixels->withRow(49)->inCells(10, height: 20)->lowerHalf, 'one pixel above it is still the upper');
+        $this->assertSame(5, $pixels->withRow(5)->inCells(10, height: 0)->row, 'a cell of no height counts as one pixel, never a division by zero');
+        $this->assertSame(24, $pixels->inCells(0, height: 20)->col);
         $this->assertTrue($pixels->isLeftPress(), 'the rest of the report is as it came');
     }
 

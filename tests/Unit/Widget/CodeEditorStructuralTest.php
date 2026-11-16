@@ -24,7 +24,7 @@ final class CodeEditorStructuralTest extends TestCase
     {
         $editor = $this->editor("foo(bar)\nbaz");
         $doc = $editor->getDocument();
-        $doc->setCursor(0, 5); // inside "bar"
+        $doc->setCursor(0, col: 5); // inside "bar"
 
         $editor->handleInput("\x17"); // ctrl+w: caret -> word
         $this->assertSame('bar', $doc->getSelectedText());
@@ -54,7 +54,7 @@ final class CodeEditorStructuralTest extends TestCase
     {
         $editor = $this->editor("foo(bar)\nbaz");
         $doc = $editor->getDocument();
-        $doc->setCursor(0, 5); // inside "bar"
+        $doc->setCursor(0, col: 5); // inside "bar"
 
         $revision = $editor->getRenderRevision();
         $editor->handleInput("\x17"); // ctrl+w: expand
@@ -69,13 +69,13 @@ final class CodeEditorStructuralTest extends TestCase
     {
         $editor = $this->editor('alpha beta');
         $doc = $editor->getDocument();
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
 
         $editor->handleInput("\x17");
         $this->assertSame('alpha', $doc->getSelectedText());
 
         // A manual caret move desyncs the expand anchor.
-        $doc->setCursor(0, 8); // inside "beta"
+        $doc->setCursor(0, col: 8); // inside "beta"
         $editor->handleInput("\x1b[119;6u"); // shrink is now a no-op
         $this->assertFalse($doc->hasSelection());
 
@@ -87,7 +87,7 @@ final class CodeEditorStructuralTest extends TestCase
     public function testMoveStatementUpAndDown(): void
     {
         $editor = $this->editor("a\nb\nc\n");
-        $editor->getDocument()->setCursor(1, 0);
+        $editor->getDocument()->setCursor(1, col: 0);
 
         $editor->handleInput("\x1b[1;6A"); // ctrl+shift+up
         $this->assertSame("b\na\nc\n", $editor->getDocument()->getText());
@@ -99,7 +99,7 @@ final class CodeEditorStructuralTest extends TestCase
     public function testMoveStatementAtEdgeIsNoop(): void
     {
         $editor = $this->editor("x\ny");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
 
         $editor->handleInput("\x1b[1;6A"); // ctrl+shift+up at top line: no change
         $this->assertSame("x\ny", $editor->getDocument()->getText());
@@ -109,9 +109,9 @@ final class CodeEditorStructuralTest extends TestCase
     {
         $editor = $this->editor('hello world');
         $doc = $editor->getDocument();
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $doc->beginSelect();
-        $doc->setCursor(0, 5, selection: SelectionMode::Keep); // select "hello"
+        $doc->setCursor(0, col: 5, selection: SelectionMode::Keep); // select "hello"
 
         $editor->handleInput("\x1b\x14"); // ctrl+alt+t opens the surround menu
         $editor->handleInput("\r"); // accept the first item (parentheses)
@@ -167,7 +167,7 @@ final class CodeEditorStructuralTest extends TestCase
         $editor = $this->editor('hello world');
         $doc = $editor->getDocument();
         $doc->beginSelect();
-        $doc->setCursor(0, 5, selection: SelectionMode::Keep);
+        $doc->setCursor(0, col: 5, selection: SelectionMode::Keep);
 
         $editor->handleInput("\x1b\x14"); // open the surround menu
 

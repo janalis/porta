@@ -41,7 +41,7 @@ final class DockLiveRefreshListenerTest extends TestCase
 
     private function listener(): DockLiveRefreshListener
     {
-        $this->tui = TestTui::create(100, 24);
+        $this->tui = TestTui::create(100, rows: 24);
         $this->results = new ResultsPanelWidget();
         $this->buffers = new BufferManager();
         $this->tools = new DockToolTabs();
@@ -60,10 +60,10 @@ final class DockLiveRefreshListenerTest extends TestCase
     public function testRefreshesAnOpenProblemsTabInPlace(): void
     {
         $listener = $this->listener();
-        $this->dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $this->dock->showList(ResultsPanelMode::Problems, title: 'Problems', rows: []);
         $this->assertStringContainsString('0 results', $this->results->statusText());
 
-        $buffer = $this->buffers->open('/p/src/A.php', "<?php\n");
+        $buffer = $this->buffers->open('/p/src/A.php', content: "<?php\n");
         $buffer->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0, 'endCol' => 1]]];
         $listener->onDiagnosticsChanged(new DiagnosticsChanged());
 
@@ -74,10 +74,10 @@ final class DockLiveRefreshListenerTest extends TestCase
     public function testAConcealedProblemsTabStillRefreshes(): void
     {
         $listener = $this->listener();
-        $this->dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $this->dock->showList(ResultsPanelMode::Problems, title: 'Problems', rows: []);
         $this->dock->hide(); // concealed, still alive
 
-        $buffer = $this->buffers->open('/p/src/A.php', "<?php\n");
+        $buffer = $this->buffers->open('/p/src/A.php', content: "<?php\n");
         $buffer->diagnostics = [0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'warn', 'col' => 0, 'endCol' => 1]]];
         $listener->onDiagnosticsChanged(new DiagnosticsChanged());
 
@@ -88,7 +88,7 @@ final class DockLiveRefreshListenerTest extends TestCase
     public function testRefreshesAnOpenLspLogTab(): void
     {
         $listener = $this->listener();
-        $this->dock->showList(ResultsPanelMode::LspLog, 'LSP Server Log', []);
+        $this->dock->showList(ResultsPanelMode::LspLog, title: 'LSP Server Log', rows: []);
 
         $this->lspLog->append('indexing…');
         $listener->onLspLogAppended(new LspLogAppended());
@@ -99,7 +99,7 @@ final class DockLiveRefreshListenerTest extends TestCase
     public function testRefreshesAnOpenNotificationsTab(): void
     {
         $listener = $this->listener();
-        $this->dock->showList(ResultsPanelMode::Notifications, 'Notifications', []);
+        $this->dock->showList(ResultsPanelMode::Notifications, title: 'Notifications', rows: []);
 
         $this->notificationLog->append('saved a.php');
         $listener->onNotificationLogged(new NotificationLogged());
@@ -110,13 +110,13 @@ final class DockLiveRefreshListenerTest extends TestCase
     public function testNoRefreshWhenThePanelServesAnotherToolOrIsClosed(): void
     {
         $listener = $this->listener();
-        $buffer = $this->buffers->open('/p/src/A.php', "<?php\n");
+        $buffer = $this->buffers->open('/p/src/A.php', content: "<?php\n");
         $buffer->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0, 'endCol' => 1]]];
 
         $listener->onDiagnosticsChanged(new DiagnosticsChanged()); // closed panel: a no-op
         $this->assertFalse($this->results->isOpen());
 
-        $this->dock->showList(ResultsPanelMode::Notifications, 'Notifications', [['path' => 'x', 'line' => 0, 'text' => 'entry']]);
+        $this->dock->showList(ResultsPanelMode::Notifications, title: 'Notifications', rows: [['path' => 'x', 'line' => 0, 'text' => 'entry']]);
         $listener->onDiagnosticsChanged(new DiagnosticsChanged()); // foreign mode: a no-op
         $this->assertStringContainsString('entry', $this->plainPanel(), 'the history rows were not clobbered');
         $this->assertStringNotContainsString('boom', $this->plainPanel());
@@ -141,7 +141,7 @@ final class DockLiveRefreshListenerTest extends TestCase
         $this->dock->refreshList(ResultsPanelMode::Problems, $rows);
         $this->assertSame(0, $built, 'no Problems tab: the rows must not be built at all');
 
-        $this->dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $this->dock->showList(ResultsPanelMode::Problems, title: 'Problems', rows: []);
         $this->dock->refreshList(ResultsPanelMode::Problems, $rows);
         $this->assertSame(1, $built, 'with the tab standing the builder runs exactly once');
     }
@@ -149,9 +149,9 @@ final class DockLiveRefreshListenerTest extends TestCase
     public function testProblemsRefreshKeepsTheSelectedDiagnostic(): void
     {
         $listener = $this->listener();
-        $this->dock->showList(ResultsPanelMode::Problems, 'Problems', []);
+        $this->dock->showList(ResultsPanelMode::Problems, title: 'Problems', rows: []);
 
-        $a = $this->buffers->open('/p/src/A.php', "<?php\n\n");
+        $a = $this->buffers->open('/p/src/A.php', content: "<?php\n\n");
         $a->diagnostics = [
             0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'first', 'col' => 0, 'endCol' => 1]],
             1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'second', 'col' => 0, 'endCol' => 1]],
@@ -160,7 +160,7 @@ final class DockLiveRefreshListenerTest extends TestCase
         $this->results->handleInput("\x1b[B"); // select the second diagnostic
 
         // A new buffer's diagnostics land ABOVE ours in the rebuilt rows.
-        $before = $this->buffers->open('/p/src/0Aaa.php', "<?php\n");
+        $before = $this->buffers->open('/p/src/0Aaa.php', content: "<?php\n");
         $before->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'earlier', 'col' => 0, 'endCol' => 1]]];
         $listener->onDiagnosticsChanged(new DiagnosticsChanged());
 
@@ -174,7 +174,7 @@ final class DockLiveRefreshListenerTest extends TestCase
         $listener = $this->listener();
         $this->notificationLog->append('older');
         $listener->onNotificationLogged(new NotificationLogged());
-        $this->dock->showList(ResultsPanelMode::Notifications, 'Notifications', []);
+        $this->dock->showList(ResultsPanelMode::Notifications, title: 'Notifications', rows: []);
         $listener->onNotificationLogged(new NotificationLogged());
 
         $this->notificationLog->append('newest');

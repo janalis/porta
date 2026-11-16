@@ -20,7 +20,7 @@ return new class('phpactor', 'phpactor') extends AbstractToolPlugin {
     public function activate(PluginApi $api): void
     {
         $this->registerBinarySetting($api);
-        $api->registerLanguageServer('php', 'phpactor', function () use ($api): array|ServerNotFound {
+        $api->registerLanguageServer('php', name: 'phpactor', resolveCommand: function () use ($api): array|ServerNotFound {
             $binary = $this->binary($api);
 
             return null === $binary ? new ServerNotFound() : [$binary, 'language-server'];

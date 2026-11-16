@@ -29,7 +29,7 @@ final class LayoutWidgetsTest extends TestCase
 
     public function testSeparatorAppliesTheGivenIdAndAFixedFlexOfZero(): void
     {
-        $separator = LayoutWidgets::separator(Styles::dark(), 'separator');
+        $separator = LayoutWidgets::separator(Styles::dark(), id: 'separator');
 
         $this->assertSame('separator', $separator->getId());
         $this->assertSame(0, $separator->getStyle()?->getFlex(), 'a separator is a fixed-width pane, not a flex share');

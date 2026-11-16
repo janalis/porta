@@ -51,20 +51,20 @@ final class ToastCenterTest extends TestCase
         $this->assertSame(['second', 'first'], \array_map(static fn (Toast $t): string => $t->message->plain(), $center->toasts()));
         $this->assertFalse($center->isEmpty());
 
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
         $this->scheduler->fire(); // the FIRST toast's expiry
         $this->assertSame(['second'], \array_map(static fn (Toast $t): string => $t->message->plain(), $center->toasts()));
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'the timer expiry itself asks for a frame');
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'), 'the timer expiry itself asks for a frame');
     }
 
     public function testPushRequestsARenderImmediately(): void
     {
         $center = $this->center();
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
 
         $center->push(Markup::literal('a'), ToastSeverity::Info);
 
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'));
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'));
     }
 
     /**
@@ -75,24 +75,24 @@ final class ToastCenterTest extends TestCase
     public function testASlottedPushReplacesItsCardInPlace(): void
     {
         $center = $this->center();
-        $center->push(Markup::literal('Fetching…'), ToastSeverity::Info, 600.0, 'git.remote');
+        $center->push(Markup::literal('Fetching…'), ToastSeverity::Info, seconds: 600.0, slot: 'git.remote');
         $center->push(Markup::literal('other'), ToastSeverity::Info);
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
 
-        $center->push(Markup::literal('Fetched'), ToastSeverity::Success, 3.0, 'git.remote');
+        $center->push(Markup::literal('Fetched'), ToastSeverity::Success, seconds: 3.0, slot: 'git.remote');
 
         $this->assertSame(['other', 'Fetched'], \array_map(static fn (Toast $t): string => $t->message->plain(), $center->toasts()), 'replaced where it stood, not stacked');
         $this->assertSame([2, 1], \array_map(static fn (Toast $t): int => $t->id, $center->toasts()), 'the card keeps its id');
         $this->assertSame(ToastSeverity::Success, $center->toasts()[1]->severity);
         $this->assertSame(['1'], $this->scheduler->cancelled, "the progress card's 600 s timer is gone");
         $this->assertSame([600.0, 2.5, 3.0], \array_values($this->scheduler->delays), 'the outcome runs on its own timer');
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'));
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'));
 
         $this->scheduler->fire('3');
         $this->assertSame(['other'], \array_map(static fn (Toast $t): string => $t->message->plain(), $center->toasts()), 'the outcome expires on its own timer');
 
         // A slot no longer showing is simply a new card; a slot-less push never replaces.
-        $center->push(Markup::literal('Pulling…'), ToastSeverity::Info, 600.0, 'git.remote');
+        $center->push(Markup::literal('Pulling…'), ToastSeverity::Info, seconds: 600.0, slot: 'git.remote');
         $center->push(Markup::literal('plain'), ToastSeverity::Info);
         $center->push(Markup::literal('plain'), ToastSeverity::Info);
         $this->assertCount(4, $center->toasts());
@@ -117,11 +117,11 @@ final class ToastCenterTest extends TestCase
         $id = $center->toasts()[0]->id;
         $center->setBoxes([$this->box($id)]);
 
-        $this->assertFalse($center->clickAt(10, 10), 'a miss falls through to the panes');
-        $this->assertTrue($center->clickAt(2, 65), 'a card-body click is swallowed');
+        $this->assertFalse($center->clickAt(10, col: 10), 'a miss falls through to the panes');
+        $this->assertTrue($center->clickAt(2, col: 65), 'a card-body click is swallowed');
         $this->assertFalse($center->isEmpty(), 'and dismisses nothing');
 
-        $this->assertTrue($center->clickAt(1, 77), 'the ✖ (width − 2) dismisses');
+        $this->assertTrue($center->clickAt(1, col: 77), 'the ✖ (width − 2) dismisses');
         $this->assertTrue($center->isEmpty());
         $this->assertNotSame([], $this->scheduler->cancelled, 'the dismissed toast cancelled its expiry');
     }
@@ -133,13 +133,13 @@ final class ToastCenterTest extends TestCase
         $id = $center->toasts()[0]->id;
         $center->setBoxes([$this->box($id)]);
 
-        $this->assertFalse($center->hoverAt(10, 10), 'off every card');
+        $this->assertFalse($center->hoverAt(10, col: 10), 'off every card');
         $this->assertNull($center->closeHoveredId());
-        Probe::set($this->tui, 'renderRequested', false);
-        $this->assertTrue($center->hoverAt(1, 77), 'over the ✖');
+        Probe::set($this->tui, property: 'renderRequested', value: false);
+        $this->assertTrue($center->hoverAt(1, col: 77), 'over the ✖');
         $this->assertSame($id, $center->closeHoveredId());
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'the ✖ hover changed — a frame is needed to paint the tint');
-        $this->assertTrue($center->hoverAt(2, 65), 'over the body clears the ✖ tint');
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'), 'the ✖ hover changed — a frame is needed to paint the tint');
+        $this->assertTrue($center->hoverAt(2, col: 65), 'over the body clears the ✖ tint');
         $this->assertNull($center->closeHoveredId());
     }
 
@@ -150,14 +150,14 @@ final class ToastCenterTest extends TestCase
         $id = $center->toasts()[0]->id;
         $center->setBoxes([$this->box($id), $this->box($id + 1, top: 5)]);
 
-        $this->assertTrue($center->covers(2, 65), 'a card body');
-        $this->assertTrue($center->covers(6, 65), 'the second card');
-        $this->assertFalse($center->covers(10, 10));
+        $this->assertTrue($center->covers(2, col: 65), 'a card body');
+        $this->assertTrue($center->covers(6, col: 65), 'the second card');
+        $this->assertFalse($center->covers(10, col: 10));
 
-        $close = $center->tooltipAt(1, 77, new Translator('en'));
+        $close = $center->tooltipAt(1, col: 77, translator: new Translator('en'));
         $this->assertSame(['toast:'.$id, 'Dismiss', 1, 77, 78], [$close?->key, $close?->text, $close?->row, $close?->colStart, $close?->colEnd]);
-        $this->assertSame('toast:'.($id + 1), $center->tooltipAt(5, 77, new Translator('en'))?->key, 'each card its own ✖');
-        $this->assertNull($center->tooltipAt(2, 65, new Translator('en')), "a card's words need no tooltip");
+        $this->assertSame('toast:'.($id + 1), $center->tooltipAt(5, col: 77, translator: new Translator('en'))?->key, 'each card its own ✖');
+        $this->assertNull($center->tooltipAt(2, col: 65, translator: new Translator('en')), "a card's words need no tooltip");
     }
 
     public function testDismissAllCancelsEveryTimer(): void
@@ -185,11 +185,11 @@ final class ToastCenterTest extends TestCase
         $center = $this->center();
         $center->push(Markup::literal('a'), ToastSeverity::Info);
         $id = $center->toasts()[0]->id;
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
 
         $center->dismiss($id);
 
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'));
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'));
     }
 
     /** The match may not be the first entry scanned — the loop must keep going past a miss, not stop there. */
@@ -220,27 +220,27 @@ final class ToastCenterTest extends TestCase
         $center = new ToastCenter($this->scheduler, $this->tui, static function () use (&$clock): float {
             return $clock;
         });
-        $center->push(Markup::literal('read me'), ToastSeverity::Error, 5.0);
-        $center->push(Markup::literal('other'), ToastSeverity::Info, 5.0);
+        $center->push(Markup::literal('read me'), ToastSeverity::Error, seconds: 5.0);
+        $center->push(Markup::literal('other'), ToastSeverity::Info, seconds: 5.0);
         [$newer, $older] = $center->toasts();
         $center->setBoxes([$this->box($newer->id), $this->box($older->id, top: 5)]);
 
         $clock = 102.0;
-        $center->hoverAt(6, 65); // on the older card
+        $center->hoverAt(6, col: 65); // on the older card
         $this->assertTrue($older->paused);
         $this->assertFalse($newer->paused, 'only the card being read');
         $this->assertContains($older->timerId, $this->scheduler->cancelled);
-        $center->hoverAt(6, 66);
+        $center->hoverAt(6, col: 66);
         $this->assertCount(1, $this->scheduler->cancelled, 'resting on it again changes nothing');
 
         $clock = 150.0; // however long it is read
-        $center->hoverAt(20, 10); // gone
+        $center->hoverAt(20, col: 10); // gone
         $this->assertFalse($older->paused);
         $this->assertEqualsWithDelta(3.0, $this->scheduler->delays[$older->timerId], 0.001, 'the three seconds it had left');
 
         $clock = 152.5; // half a second left when the pointer comes back
-        $center->hoverAt(6, 65);
-        $center->hoverAt(20, 10);
+        $center->hoverAt(6, col: 65);
+        $center->hoverAt(20, col: 10);
         $this->assertEqualsWithDelta(1.0, $this->scheduler->delays[$older->timerId], 0.001, 'at least a second back');
     }
 
@@ -265,17 +265,17 @@ final class ToastCenterTest extends TestCase
         $center = new ToastCenter($this->scheduler, $this->tui, static function () use (&$clock): float {
             return $clock;
         });
-        $center->push(Markup::literal('Fetching…'), ToastSeverity::Info, 600.0, 'git.remote');
+        $center->push(Markup::literal('Fetching…'), ToastSeverity::Info, seconds: 600.0, slot: 'git.remote');
         $center->setBoxes([$this->box($center->toasts()[0]->id)]);
-        $center->hoverAt(2, 65);
+        $center->hoverAt(2, col: 65);
 
-        $center->push(Markup::literal('Fetched'), ToastSeverity::Success, 3.0, 'git.remote');
+        $center->push(Markup::literal('Fetched'), ToastSeverity::Success, seconds: 3.0, slot: 'git.remote');
         $card = $center->toasts()[0];
         $this->assertTrue($card->paused, 'still being read');
         $this->assertSame([], $this->scheduler->scheduled, 'no timer runs under the pointer');
 
         $clock = 50.0;
-        $center->hoverAt(20, 10);
+        $center->hoverAt(20, col: 10);
         $this->assertEqualsWithDelta(3.0, $this->scheduler->delays[$card->timerId], 0.001, 'its own three seconds, from when the pointer left');
     }
 }

@@ -73,7 +73,7 @@ final readonly class NamespaceGraphScanner
         }
         $edges = \array_map(static fn (array $edge): Edge => new Edge($edge[0], $edge[1]), \array_values($edgeSet));
 
-        return DotGraphWriter::write(new Graph($nodes, $edges, $clusters, Direction::LeftRight), 'architecture');
+        return DotGraphWriter::write(new Graph($nodes, $edges, $clusters, Direction::LeftRight), name: 'architecture');
     }
 
     /**

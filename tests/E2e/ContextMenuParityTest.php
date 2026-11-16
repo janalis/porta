@@ -129,7 +129,7 @@ final class ContextMenuParityTest extends TestCase
                     $anchor = null;
                     $byKeyboard = $this->menuFor($tui, $ide, static function ($tui) use ($overlay, &$anchor): void {
                         $tui->handleInput(self::CTRL_F10);
-                        $anchor = [Probe::get($overlay, 'contextAnchorRow'), Probe::get($overlay, 'contextAnchorCol')];
+                        $anchor = [Probe::get($overlay, property: 'contextAnchorRow'), Probe::get($overlay, property: 'contextAnchorCol')];
                     });
                     $this->assertSame(['Compare with branch'], $byMouse, 'the view answered the right-click');
                     $this->assertSame($byMouse, $byKeyboard, 'and Ctrl+F10 on its focused pane');

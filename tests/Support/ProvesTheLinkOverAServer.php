@@ -34,7 +34,7 @@ trait ProvesTheLinkOverAServer
         $this->await(static fn (): bool => \is_file($cache->path('README.md')), what: 'the first listing');
 
         $this->server()->stop();
-        $files->dumpFile($cache->path('NOTES.md'), "written while away\n");
+        $files->dumpFile($cache->path('NOTES.md'), content: "written while away\n");
         $this->await(static fn (): bool => \str_contains($files->statusCells()[0]->text, Glyphs::OUT_OF_TOUCH), what: 'the link to be seen down');
         Assert::assertSame(1, $files->pending(), 'kept, not dropped');
 

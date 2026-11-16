@@ -113,7 +113,7 @@ final class DockTabsWidgetTest extends TestCase
         ], $events);
         $bar->render(new RenderContext(80, 1));
         /** @var list<array{start: int, width: int, closeStart: int, closeWidth: int}> $layout */
-        $layout = Probe::get($bar, 'lastTabLayout');
+        $layout = Probe::get($bar, property: 'lastTabLayout');
         [$first, $second] = $layout;
         $firstEnd = $first['start'] + $first['width'];
         $this->assertLessThanOrEqual($second['start'], $firstEnd, 'sanity: the zones do not overlap');
@@ -157,11 +157,11 @@ final class DockTabsWidgetTest extends TestCase
         ]);
         $bar->render(new RenderContext(80, 1));
         /** @var list<array{start: int, closeStart: int}> $layout */
-        $layout = Probe::get($bar, 'lastTabLayout');
+        $layout = Probe::get($bar, property: 'lastTabLayout');
 
         $this->assertTrue($bar->handleTabClick($layout[0]['closeStart']), 'a close click still lands');
         $this->assertTrue($bar->handleTabClick($layout[0]['start']), 'an activation click still lands');
-        $bar->moveTab(DockTab::Terminal, 0, 0);
+        $bar->moveTab(DockTab::Terminal, from: 0, to: 0);
     }
 
     /** A stopped session's ○, a status cut to fit, and the grab each say themselves. */
@@ -172,15 +172,15 @@ final class DockTabsWidgetTest extends TestCase
             ['tab' => DockTab::Results, 'label' => 'Problems', 'active' => true, 'key' => '7', 'status' => 'F8 step over · F7 step into · Shift+F8 step out'],
         ]);
         $bar->render(new RenderContext(40, 1));
-        $layout = Probe::get($bar, 'lastTabLayout');
+        $layout = Probe::get($bar, property: 'lastTabLayout');
 
         $stopped = $bar->tooltipAt(0, $layout[0]['start']);
         $this->assertSame(['dock:stopped:s1', 'The process has exited'], [$stopped?->key, $stopped?->text]);
         $this->assertNull($bar->tooltipAt(0, $layout[1]['start']), 'a running tool says nothing more');
-        $this->assertSame('F8 step over · F7 step into · Shift+F8 step out', $bar->tooltipAt(0, 39)?->text, 'the status, whole where it was cut');
+        $this->assertSame('F8 step over · F7 step into · Shift+F8 step out', $bar->tooltipAt(0, col: 39)?->text, 'the status, whole where it was cut');
 
         $bar->render(new RenderContext(120, 1));
-        $this->assertSame('Drag to resize the panel', $bar->tooltipAt(0, 60)?->text, 'a status that fits leaves the grab');
+        $this->assertSame('Drag to resize the panel', $bar->tooltipAt(0, col: 60)?->text, 'a status that fits leaves the grab');
     }
 
     public function testAFolderStripsStatusIsOnItsLabelRow(): void
@@ -189,9 +189,9 @@ final class DockTabsWidgetTest extends TestCase
         $bar->setStripRows(3);
         $bar->render(new RenderContext(40, 3));
 
-        $this->assertSame(\str_repeat('x', times: 60), $bar->tooltipAt(1, 39)?->text);
-        $this->assertSame('Drag to resize the panel', $bar->tooltipAt(0, 39)?->text, 'the top row is the grab');
-        $this->assertNull($bar->tooltipAt(2, 39), 'the baseline');
+        $this->assertSame(\str_repeat('x', times: 60), $bar->tooltipAt(1, col: 39)?->text);
+        $this->assertSame('Drag to resize the panel', $bar->tooltipAt(0, col: 39)?->text, 'the top row is the grab');
+        $this->assertNull($bar->tooltipAt(2, col: 39), 'the baseline');
     }
 
     public function testNoTabsNoTooltips(): void
@@ -199,7 +199,7 @@ final class DockTabsWidgetTest extends TestCase
         $bar = self::strip([]);
         $bar->render(new RenderContext(40, 1));
 
-        $this->assertNull($bar->tooltipAt(0, 10));
+        $this->assertNull($bar->tooltipAt(0, col: 10));
     }
 
     public function testBeforeRenderRepaintsOnlyWhenTheTabsChange(): void
@@ -301,7 +301,7 @@ final class DockTabsWidgetTest extends TestCase
         $events->addListener(DockTabMoveRequested::class, static function (DockTabMoveRequested $event) use (&$moves): void {
             $moves[] = [$event->family, $event->from, $event->to];
         });
-        $bar->moveTab(DockTab::Results, 0, 1);
+        $bar->moveTab(DockTab::Results, from: 0, to: 1);
         $this->assertSame([[DockTab::Results, 0, 1]], $moves, 'the reorder request reaches the wired dock');
     }
 
@@ -318,8 +318,8 @@ final class DockTabsWidgetTest extends TestCase
         $this->assertSame(['tab' => DockTab::Results, 'key' => '1'], $bar->tabAt($problems));
         $this->assertNull($bar->tabAt(79), 'the empty tail has no identity');
 
-        $this->assertSame($problems - 1, $bar->anchorFor(DockTab::Results, '1'), "a tab's anchor is its body start (one cell before the label)");
-        $this->assertNull($bar->anchorFor(DockTab::Results, '99'), 'an unknown tab has no anchor');
+        $this->assertSame($problems - 1, $bar->anchorFor(DockTab::Results, key: '1'), "a tab's anchor is its body start (one cell before the label)");
+        $this->assertNull($bar->anchorFor(DockTab::Results, key: '99'), 'an unknown tab has no anchor');
     }
 
     public function testHoverTintsTheInactiveTabAndClears(): void
@@ -351,14 +351,14 @@ final class DockTabsWidgetTest extends TestCase
         // Active is the head tab → the strip shows the start: a › (more right), no ‹.
         $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(30, 1))[0]);
         $this->assertStringContainsString(Glyphs::SCROLL_NEXT, $plain, 'overflow shows the page-right ›');
-        $this->assertSame(1, $bar->scrollIndicatorAt(0, 29), 'the › cell (last column) pages right');
-        $this->assertNull($bar->scrollIndicatorAt(0, 3), 'a tab-body cell is not an indicator');
+        $this->assertSame(1, $bar->scrollIndicatorAt(0, col: 29), 'the › cell (last column) pages right');
+        $this->assertNull($bar->scrollIndicatorAt(0, col: 3), 'a tab-body cell is not an indicator');
 
         // Scroll right: leading tabs hide, so a ‹ appears at column 0.
         $bar->scrollBy(2);
         $plain2 = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(30, 1))[0]);
         $this->assertStringContainsString(Glyphs::SCROLL_PREV, $plain2, 'after scrolling a ‹ marks hidden leading tabs');
-        $this->assertSame(-1, $bar->scrollIndicatorAt(0, 0), 'the ‹ cell pages left');
+        $this->assertSame(-1, $bar->scrollIndicatorAt(0, col: 0), 'the ‹ cell pages left');
     }
 
     public function testTheEmptyTailHeavyRulesUnderTheGrabHover(): void

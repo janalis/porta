@@ -79,7 +79,7 @@ final class MergeViewE2eTest extends TestCase
             $project->path('m.php'),
             [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, '⇤ topic');
+                    $this->awaitPainted($tui, $terminal, needle: '⇤ topic');
                     $grid = \implode("\n", $this->screenGrid($tui, $terminal));
                     $this->assertStringContainsString('⇥ HEAD', $grid, 'ours, labelled by the opener');
                     $this->assertStringContainsString('<<<<<<< HEAD', $grid, 'the result in the editor, markers and all');
@@ -102,9 +102,9 @@ final class MergeViewE2eTest extends TestCase
             $project->path('m.php'),
             [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, '⇤ topic');
+                    $this->awaitPainted($tui, $terminal, needle: '⇤ topic');
 
-                    self::click($tui, $ide, self::theirs($ide), 1, 2); // the first conflict's label
+                    self::click($tui, $ide, self::theirs($ide), row: 1, col: 2); // the first conflict's label
                     $this->assertSame(
                         "<?php\n\$a = 'theirs';\n\$b = 1;\n<<<<<<< HEAD\n\$c = 'ours';\n=======\n\$c = 'theirs';\n>>>>>>> topic\n",
                         self::text($ide),
@@ -128,7 +128,7 @@ final class MergeViewE2eTest extends TestCase
             $project->path('m.php'),
             [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, '⇥ HEAD');
+                    $this->awaitPainted($tui, $terminal, needle: '⇥ HEAD');
                     $ours = self::ours($ide);
                     $tui->setFocus($ours);
 
@@ -164,7 +164,7 @@ final class MergeViewE2eTest extends TestCase
             $project->path('m.php'),
             [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, '⇥ HEAD');
+                    $this->awaitPainted($tui, $terminal, needle: '⇥ HEAD');
                     $editor = Services::resolve($ide, CodeEditorWidget::class);
                     $ours = Widgets::rectIn($ide, self::ours($ide));
 

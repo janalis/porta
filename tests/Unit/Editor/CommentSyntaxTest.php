@@ -152,7 +152,7 @@ final class CommentSyntaxTest extends TestCase
         // mixed, and the @var on the assignment is what gives the rows a shape;
         // inlined, there is nowhere to hang it.
         /** @var array<string, array{0: string|null, 1: array{string, string}|null}> $constant */
-        $constant = Probe::getStatic(CommentSyntax::class, 'SYNTAX');
+        $constant = Probe::getStatic(CommentSyntax::class, member: 'SYNTAX');
 
         return $constant;
     }

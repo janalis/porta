@@ -40,8 +40,8 @@ trait AwaitsGit
     {
         $this->await(
             static fn (): bool => \array_all($lanes, static fn (ProcessLane $lane): bool => 0 === $lane->inFlight()),
-            $timeout,
-            'git to finish',
+            timeout: $timeout,
+            what: 'git to finish',
         );
     }
 }

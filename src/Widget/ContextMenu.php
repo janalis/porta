@@ -157,10 +157,10 @@ final class ContextMenu extends OverlayWidget
         }
         $kb = $this->getKeybindings();
         match (true) {
-            $kb->matches($data, 'menu_close') => $this->close(),
-            $kb->matches($data, 'menu_up') => $this->stepSelection(-1),
-            $kb->matches($data, 'menu_down') => $this->stepSelection(1),
-            $kb->matches($data, 'menu_select') => $this->runSelected(),
+            $kb->matches($data, action: 'menu_close') => $this->close(),
+            $kb->matches($data, action: 'menu_up') => $this->stepSelection(-1),
+            $kb->matches($data, action: 'menu_down') => $this->stepSelection(1),
+            $kb->matches($data, action: 'menu_select') => $this->runSelected(),
             // A select's list takes letters as type-ahead, as a browser's does; a
             // menu runs the item a letter is the access letter of.
             $this->listbox => $this->typeAhead($data),

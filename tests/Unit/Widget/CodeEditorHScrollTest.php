@@ -46,7 +46,7 @@ final class CodeEditorHScrollTest extends TestCase
         $this->assertSame(20, $this->hScroll($editor));
 
         // Moving the caret snaps the view back to it.
-        $editor->getDocument()->setCursor(0, 1);
+        $editor->getDocument()->setCursor(0, col: 1);
         $this->assertStringNotContainsString('NEEDLE', $this->screen($editor), 'a caret move re-follows');
         $this->assertSame(0, $this->hScroll($editor));
     }

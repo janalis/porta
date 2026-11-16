@@ -85,7 +85,7 @@ final class IdeCustosRealServerTest extends TestCase
     private static function offered(RefactorController $refactor): array
     {
         /** @var list<array<string, mixed>> */
-        return Probe::get($refactor, 'actions');
+        return Probe::get($refactor, property: 'actions');
     }
 
     public function testDiagnosticsQuickFixAndFixAllRoundTripThroughTheRealServer(): void
@@ -120,7 +120,7 @@ final class IdeCustosRealServerTest extends TestCase
                     timeout: 20.0,
                 );
                 $refactor = Services::resolve($ide, RefactorController::class);
-                $refactor->requestCodeActions(0, 11);
+                $refactor->requestCodeActions(0, col: 11);
                 $this->await(
                     // The controller is captured; its actions are re-read each turn.
                     static function () use ($refactor): bool {
@@ -129,8 +129,8 @@ final class IdeCustosRealServerTest extends TestCase
                         }
                         // Index completion precedes the refreshed diagnostics. A
                         // request during that analysis can correctly return empty.
-                        if (Probe::get($refactor, 'answers') === Probe::get($refactor, 'asked')) {
-                            $refactor->requestCodeActions(0, 11);
+                        if (Probe::get($refactor, property: 'answers') === Probe::get($refactor, property: 'asked')) {
+                            $refactor->requestCodeActions(0, col: 11);
                         }
 
                         return false;

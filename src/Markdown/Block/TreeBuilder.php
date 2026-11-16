@@ -155,7 +155,7 @@ final class TreeBuilder
         if (null === $first || BlockKind::Paragraph !== $first->kind || null === $first->content || 1 !== \preg_match('/^\[([ xX])\](?=[ \t\n]|$)/', $first->content->text, $m)) {
             return new ListItem($this->blocks($block), $range, $marker);
         }
-        $checkbox = $first->content->range(0, 3);
+        $checkbox = $first->content->range(0, end: 3);
         $rest = $first->content->from(3);
         self::keepRest($block, $first, $rest);
 

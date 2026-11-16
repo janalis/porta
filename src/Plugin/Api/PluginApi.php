@@ -126,7 +126,7 @@ final class PluginApi
      * manager draining it at commit is the only edge between the two.
      *
      * @param \Closure(): PluginRuntime $runtime the live IDE seams, guarded so an activate()-time call fails as a plugin error
-     * @param \Closure(): list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>, ToolCaller=): (string|array<array-key, mixed>), effect: ?ToolEffect}> $committedTools
+     * @param \Closure(): list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>, ToolCaller): (string|array<array-key, mixed>), effect: ?ToolEffect}> $committedTools
      * @param \Closure(PluginObservable): void $emit puts a plugin's event on the bus
      * @param (\Closure(): EditorDisplayOptions)|null $display the editor's display options, for {@see softWrap()}
      * @param list<ToolRequirement> $declaredTools what the plugin's manifest declares under `extra.porta.tools`
@@ -682,7 +682,7 @@ final class PluginApi
      * the user could undo.
      *
      * @param array<string, mixed>                                              $inputSchema
-     * @param \Closure(array<string, mixed>, ToolCaller=): (string|array<array-key, mixed>) $handler
+     * @param \Closure(array<string, mixed>, ToolCaller): (string|array<array-key, mixed>) $handler
      *
      * @throws PluginException
      */
@@ -1151,6 +1151,8 @@ final class PluginApi
         if ($this->drained) {
             throw new PluginException('Markdown fences must be registered during activate()');
         }
+        // @mago-expect analysis:impossible-condition -- the docblock is the contract; a plugin is not bound by it, so the guard enforces it at run time
+        // @mago-expect analysis:redundant-comparison -- the same guard
         if ([] === $languages) {
             throw new PluginException('Markdown fence languages must not be empty');
         }
@@ -1497,7 +1499,7 @@ final class PluginApi
      * An action method: during `activate()` the set is still half-built, so it
      * throws there.
      *
-     * @return list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>, ToolCaller=): (string|array<array-key, mixed>), effect: ?ToolEffect}>
+     * @return list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>, ToolCaller): (string|array<array-key, mixed>), effect: ?ToolEffect}>
      */
     public function tools(): array
     {

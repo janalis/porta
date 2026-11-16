@@ -14,7 +14,7 @@ final class LineDecoratorTest extends TestCase
 {
     public function testSpanOnPlainText(): void
     {
-        $decorated = LineDecorator::apply('hello world', 6, 11, "\x1b[48;5;24m", "\x1b[49m", "\x1b[48;5;24m");
+        $decorated = LineDecorator::apply('hello world', startCol: 6, endCol: 11, openSgr: "\x1b[48;5;24m", closeSgr: "\x1b[49m", bgReapply: "\x1b[48;5;24m");
 
         $this->assertSame(11, AnsiUtils::visibleWidth($decorated));
         $this->assertStringContainsString("\x1b[48;5;24m".'world', $decorated);
@@ -25,10 +25,10 @@ final class LineDecoratorTest extends TestCase
     {
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('x.php');
-        $line = $highlighter->highlight(["<?php echo 'hello world';"], 1)[0];
+        $line = $highlighter->highlight(["<?php echo 'hello world';"], version: 1)[0];
         $before = AnsiUtils::visibleWidth($line);
 
-        $decorated = LineDecorator::apply($line, 6, 10, "\x1b[48;5;24m", "\x1b[49m", "\x1b[48;5;24m");
+        $decorated = LineDecorator::apply($line, startCol: 6, endCol: 10, openSgr: "\x1b[48;5;24m", closeSgr: "\x1b[49m", bgReapply: "\x1b[48;5;24m");
 
         $this->assertSame($before, AnsiUtils::visibleWidth($decorated));
         $this->assertStringContainsString("\x1b[48;5;24m", $decorated);
@@ -37,20 +37,20 @@ final class LineDecoratorTest extends TestCase
 
     public function testSpanWithWideCharacters(): void
     {
-        $decorated = LineDecorator::apply('日本語 test', 2, 7, "\x1b[48;5;24m", "\x1b[49m");
+        $decorated = LineDecorator::apply('日本語 test', startCol: 2, endCol: 7, openSgr: "\x1b[48;5;24m", closeSgr: "\x1b[49m");
 
         $this->assertSame('日本語 test', AnsiUtils::stripAnsiCodes($decorated));
     }
 
     public function testEmptyAndOutOfRangeSpansAreNoOps(): void
     {
-        $this->assertSame('abc', LineDecorator::apply('abc', 2, 2, "\x1b[4m", "\x1b[24m"));
-        $this->assertSame('abc', LineDecorator::apply('abc', 5, 9, "\x1b[4m", "\x1b[24m"), 'span entirely past the line');
+        $this->assertSame('abc', LineDecorator::apply('abc', startCol: 2, endCol: 2, openSgr: "\x1b[4m", closeSgr: "\x1b[24m"));
+        $this->assertSame('abc', LineDecorator::apply('abc', startCol: 5, endCol: 9, openSgr: "\x1b[4m", closeSgr: "\x1b[24m"), 'span entirely past the line');
     }
 
     public function testSpanClampsToLineWidth(): void
     {
-        $decorated = LineDecorator::apply('abc', 1, 99, LineDecorator::UNDERLINE_SGR, "\x1b[24m");
+        $decorated = LineDecorator::apply('abc', startCol: 1, endCol: 99, openSgr: LineDecorator::UNDERLINE_SGR, closeSgr: "\x1b[24m");
 
         $this->assertSame(3, AnsiUtils::visibleWidth($decorated));
         $this->assertStringContainsString("\x1b[4m", $decorated);
@@ -59,14 +59,14 @@ final class LineDecoratorTest extends TestCase
     /** endCol exactly at the line's width: the tail is empty, not a zero-length slice of it. */
     public function testSpanReachingExactlyTheLineEndHasNoTail(): void
     {
-        $decorated = LineDecorator::apply('abc', 1, 3, "\x1b[4m", "\x1b[24m");
+        $decorated = LineDecorator::apply('abc', startCol: 1, endCol: 3, openSgr: "\x1b[4m", closeSgr: "\x1b[24m");
 
         $this->assertSame("a\x1b[4mbc\x1b[24m", $decorated);
     }
 
     public function testApplyFullWidthPadsAndReappliesBackground(): void
     {
-        $decorated = LineDecorator::applyFullWidth('ab'."\x1b[0m".'cd', 8, new Style(background: 236));
+        $decorated = LineDecorator::applyFullWidth('ab'."\x1b[0m".'cd', width: 8, bg: new Style(background: 236));
 
         $this->assertSame(8, AnsiUtils::visibleWidth($decorated));
         $this->assertStringStartsWith("\x1b[48;5;236m", $decorated);
@@ -77,7 +77,7 @@ final class LineDecoratorTest extends TestCase
     /** The line is exactly $width already: no padding is appended. */
     public function testApplyFullWidthAddsNoPaddingWhenAlreadyExact(): void
     {
-        $decorated = LineDecorator::applyFullWidth('abcd', 4, new Style(background: 236));
+        $decorated = LineDecorator::applyFullWidth('abcd', width: 4, bg: new Style(background: 236));
 
         $this->assertSame(4, AnsiUtils::visibleWidth(AnsiUtils::stripAnsiCodes($decorated)));
         $this->assertSame('abcd', AnsiUtils::stripAnsiCodes($decorated));
@@ -117,15 +117,15 @@ final class LineDecoratorTest extends TestCase
         $spans = [[6, 11, "\x1b[48;5;24m", "\x1b[49m", "\x1b[48;5;24m"]];
 
         $this->assertSame(
-            LineDecorator::apply('hello world', 6, 11, "\x1b[48;5;24m", "\x1b[49m", "\x1b[48;5;24m"),
+            LineDecorator::apply('hello world', startCol: 6, endCol: 11, openSgr: "\x1b[48;5;24m", closeSgr: "\x1b[49m", bgReapply: "\x1b[48;5;24m"),
             LineDecorator::applyAll('hello world', $spans),
         );
 
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('x.php');
-        $line = $highlighter->highlight(["<?php echo 'hello world';"], 1)[0];
+        $line = $highlighter->highlight(["<?php echo 'hello world';"], version: 1)[0];
         $this->assertSame(
-            LineDecorator::apply($line, 3, 12, "\x1b[48;5;24m", "\x1b[49m", "\x1b[48;5;24m"),
+            LineDecorator::apply($line, startCol: 3, endCol: 12, openSgr: "\x1b[48;5;24m", closeSgr: "\x1b[49m", bgReapply: "\x1b[48;5;24m"),
             LineDecorator::applyAll($line, [[3, 12, "\x1b[48;5;24m", "\x1b[49m", "\x1b[48;5;24m"]]),
         );
     }
@@ -135,11 +135,11 @@ final class LineDecoratorTest extends TestCase
         // Negative start, end past width, and a zero-width span — each must
         // behave as the sequential apply() did.
         $this->assertSame(
-            LineDecorator::apply('abcdef', -3, 2, "\x1b[7m", "\x1b[27m"),
+            LineDecorator::apply('abcdef', -3, endCol: 2, openSgr: "\x1b[7m", closeSgr: "\x1b[27m"),
             LineDecorator::applyAll('abcdef', [[-3, 2, "\x1b[7m", "\x1b[27m", null]]),
         );
         $this->assertSame(
-            LineDecorator::apply('abcdef', 4, 99, "\x1b[7m", "\x1b[27m"),
+            LineDecorator::apply('abcdef', startCol: 4, endCol: 99, openSgr: "\x1b[7m", closeSgr: "\x1b[27m"),
             LineDecorator::applyAll('abcdef', [[4, 99, "\x1b[7m", "\x1b[27m", null]]),
         );
         $this->assertSame('abcdef', LineDecorator::applyAll('abcdef', [[3, 3, "\x1b[7m", "\x1b[27m", null]]), 'a zero-width span is dropped');
@@ -247,9 +247,9 @@ final class LineDecoratorTest extends TestCase
             [0, 6, $r2, "\x1b[49m", $r2], // application index 1, opens first
         ]);
 
-        $segment = AnsiUtils::reapplyBackgroundAfterResets(AnsiUtils::sliceByColumn($line, 3, 3), $r1.$r2);
+        $segment = AnsiUtils::reapplyBackgroundAfterResets(AnsiUtils::sliceByColumn($line, startCol: 3, length: 3), $r1.$r2);
         $this->assertSame(
-            $r2.AnsiUtils::sliceByColumn($line, 0, 3).$r1.$segment."\x1b[49m\x1b[49m",
+            $r2.AnsiUtils::sliceByColumn($line, startCol: 0, length: 3).$r1.$segment."\x1b[49m\x1b[49m",
             $out,
         );
     }

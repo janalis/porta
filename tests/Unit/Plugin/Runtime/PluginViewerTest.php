@@ -33,13 +33,13 @@ final class PluginViewerTest extends TestCase
 
     private function api(PluginManager $manager, string $name): PluginApi
     {
-        return $manager->api($name, '/p', new PluginSettings('/p', []));
+        return $manager->api($name, rootDir: '/p', settings: new PluginSettings('/p', []));
     }
 
     public function testExtensionListsClaimCaseInsensitively(): void
     {
         $manager = $this->manager();
-        $api = $this->api($manager, 'image-viewer');
+        $api = $this->api($manager, name: 'image-viewer');
         $api->registerViewer('image', ['png', 'JPG']);
         $manager->commit($api);
 
@@ -53,10 +53,10 @@ final class PluginViewerTest extends TestCase
     public function testClosureClaimsAndLoadOrderFirstWins(): void
     {
         $manager = $this->manager();
-        $one = $this->api($manager, 'one');
+        $one = $this->api($manager, name: 'one');
         $one->registerViewer('hex', static fn (string $path): bool => \str_ends_with($path, '.bin'));
         $manager->commit($one);
-        $two = $this->api($manager, 'two');
+        $two = $this->api($manager, name: 'two');
         $two->registerViewer('image', ['bin']);
         $manager->commit($two);
 
@@ -66,10 +66,10 @@ final class PluginViewerTest extends TestCase
     public function testAThrowingClaimDeclinesAndReportsOnce(): void
     {
         $manager = $this->manager();
-        $broken = $this->api($manager, 'broken');
+        $broken = $this->api($manager, name: 'broken');
         $broken->registerViewer('boom', static fn (string $path): bool => throw new \RuntimeException('claim exploded'));
         $manager->commit($broken);
-        $sane = $this->api($manager, 'sane');
+        $sane = $this->api($manager, name: 'sane');
         $sane->registerViewer('image', ['png']);
         $manager->commit($sane);
 
@@ -83,7 +83,7 @@ final class PluginViewerTest extends TestCase
     public function testDeactivateDropsTheRoutesLive(): void
     {
         $manager = $this->manager();
-        $api = $this->api($manager, 'image-viewer');
+        $api = $this->api($manager, name: 'image-viewer');
         $api->registerViewer('image', ['png']);
         $manager->commit($api);
         $this->assertSame('image', $manager->viewerFor('/p/a.png'));
@@ -98,7 +98,7 @@ final class PluginViewerTest extends TestCase
         // Both must die together when the plugin is disabled, or a disabled
         // viewer still owns the editor slot for its extensions.
         $manager = $this->manager();
-        $api = $this->api($manager, 'image-viewer');
+        $api = $this->api($manager, name: 'image-viewer');
         $api->registerViewer('image', ['png']);
         $api->registerPane('image', static fn (PaneServices $services): EditorPaneWidget => new TestPane('image'), static fn (string $path): string => 'bytes');
         $manager->commit($api);
@@ -113,7 +113,7 @@ final class PluginViewerTest extends TestCase
 
     public function testAPaneIdIsValidatedLikeEveryOtherId(): void
     {
-        $api = $this->api($this->manager(), 'p');
+        $api = $this->api($this->manager(), name: 'p');
 
         $this->expectException(PluginException::class);
         $this->expectExceptionMessageMatches('/Invalid pane id/');
@@ -122,7 +122,7 @@ final class PluginViewerTest extends TestCase
 
     public function testRegistrationValidation(): void
     {
-        $api = $this->api($this->manager(), 'p');
+        $api = $this->api($this->manager(), name: 'p');
         try {
             $api->registerViewer('BAD ID!', ['png']);
             $this->fail('an invalid id must throw');
@@ -140,11 +140,11 @@ final class PluginViewerTest extends TestCase
         // when the plugin loads and disappear when it is removed — a keymap row
         // for a pane that no longer exists is a rebind that binds nothing.
         $manager = $this->manager();
-        $api = $this->api($manager, 'image-viewer');
+        $api = $this->api($manager, name: 'image-viewer');
         $api->registerActions(['image_zoom_in' => 'Image: Zoom In', 'image_pan_up' => 'Image: Pan Up']);
         $manager->commit($api);
 
-        $other = $this->api($manager, 'graph-viewer');
+        $other = $this->api($manager, name: 'graph-viewer');
         $other->registerActions(['graph_zoom_in' => 'Graph: Zoom In']);
         $manager->commit($other);
 
@@ -165,7 +165,7 @@ final class PluginViewerTest extends TestCase
 
     public function testAnActionIdIsValidatedAndMayNotShadowACoreAction(): void
     {
-        $api = $this->api($this->manager(), 'p');
+        $api = $this->api($this->manager(), name: 'p');
         try {
             $api->registerActions(['BAD ID!' => 'Nope']);
             $this->fail('an invalid id must throw');
@@ -184,10 +184,10 @@ final class PluginViewerTest extends TestCase
     public function testAPluginsListToolsReachTheDockGuardedAndLeaveWithThePlugin(): void
     {
         $manager = $this->manager();
-        $api = $this->api($manager, 'demo');
+        $api = $this->api($manager, name: 'demo');
         $api->registerListTool(
             'todo',
-            'TODO',
+            title: 'TODO',
             rerun: static function (): never {
                 throw new \RuntimeException('scan exploded');
             },
@@ -195,7 +195,7 @@ final class PluginViewerTest extends TestCase
                 throw new \RuntimeException('jump exploded');
             },
         );
-        $api->registerListTool('bare', 'Bare');
+        $api->registerListTool('bare', title: 'Bare');
         $manager->commit($api);
 
         $tools = $manager->listTools();
@@ -219,24 +219,24 @@ final class PluginViewerTest extends TestCase
 
     public function testListToolRegistrationIsValidated(): void
     {
-        $api = $this->api($this->manager(), 'p');
+        $api = $this->api($this->manager(), name: 'p');
         try {
-            $api->registerListTool('BAD ID!', 'Nope');
+            $api->registerListTool('BAD ID!', title: 'Nope');
             $this->fail('an invalid id must throw');
         } catch (PluginException $e) {
             $this->assertStringContainsString('Invalid list tool id', $e->getMessage());
         }
         try {
-            $api->registerListTool('ok', '  ');
+            $api->registerListTool('ok', title: '  ');
             $this->fail('a blank title must throw');
         } catch (PluginException $e) {
             $this->assertStringContainsString('needs a title', $e->getMessage(), 'the title is the strip label — there is no fallback');
         }
 
-        $api->registerListTool('ok', 'Ok');
+        $api->registerListTool('ok', title: 'Ok');
         $this->expectException(PluginException::class);
         $this->expectExceptionMessageMatches('/Duplicate list tool id "ok"/');
-        $api->registerListTool('ok', 'Ok again');
+        $api->registerListTool('ok', title: 'Ok again');
     }
 
     public function testAdoptionTakesACoreIdCoreHasVacatedAndRefusesEverythingElse(): void
@@ -246,7 +246,7 @@ final class PluginViewerTest extends TestCase
         // keys of its own — an adoptable id is IDE-scope, so its default key is
         // already in the map ActionCatalog::ideDefaults() builds.
         $manager = $this->manager();
-        $api = $this->api($manager, 'todo');
+        $api = $this->api($manager, name: 'todo');
         $api->adoptCommand('ide_todo', static function (): void {});
         $manager->commit($api);
         $registry = new CommandRegistry();
@@ -259,19 +259,19 @@ final class PluginViewerTest extends TestCase
         // The guarantee: only ids core has marked adoptable can be taken, so a
         // third-party plugin cannot quietly become "save".
         try {
-            $this->api($manager, 'greedy')->adoptCommand('save', static function (): void {});
+            $this->api($manager, name: 'greedy')->adoptCommand('save', static function (): void {});
             $this->fail('a core-implemented id must not be adoptable');
         } catch (PluginException $e) {
             $this->assertStringContainsString('not adoptable', $e->getMessage());
         }
         try {
-            $this->api($manager, 'greedy')->adoptCommand('no_such_action', static function (): void {});
+            $this->api($manager, name: 'greedy')->adoptCommand('no_such_action', static function (): void {});
             $this->fail('an id no catalog entry names must throw');
         } catch (PluginException $e) {
             $this->assertStringContainsString('not adoptable', $e->getMessage());
         }
 
-        $twice = $this->api($manager, 'twice');
+        $twice = $this->api($manager, name: 'twice');
         $twice->adoptCommand('ide_todo', static function (): void {});
         $this->expectException(PluginException::class);
         $this->expectExceptionMessageMatches('/Duplicate command id "ide_todo"/');
@@ -284,7 +284,7 @@ final class PluginViewerTest extends TestCase
         // throwing closure must not kill the loop and must not flash on every
         // frame, and an empty segment must not reserve space in the bar.
         $manager = $this->manager();
-        $api = $this->api($manager, 'demo');
+        $api = $this->api($manager, name: 'demo');
         $state = 'building';
         $api->registerStatusSegment(static function () use (&$state): ?string {
             return $state;
@@ -312,7 +312,7 @@ final class PluginViewerTest extends TestCase
     public function testOnePluginBrokenInTwoChannelsIsReportedOncePerChannel(): void
     {
         $manager = $this->manager();
-        $api = $this->api($manager, 'broken');
+        $api = $this->api($manager, name: 'broken');
         $api->registerViewer('boom', static fn (string $path): bool => throw new \RuntimeException('claim exploded'));
         $api->registerStatusSegment(static fn (): string => throw new \RuntimeException('segment exploded'));
         $manager->commit($api);
@@ -333,8 +333,8 @@ final class PluginViewerTest extends TestCase
         // are one call because a menu without its view-safe list greys out its
         // own items the moment its view opens.
         $manager = $this->manager();
-        $api = $this->api($manager, 'vcs');
-        $api->registerMenu('Git', 'Run', ['i:git_commit'], viewId: 'git', viewSafe: ['ide_quit']);
+        $api = $this->api($manager, name: 'vcs');
+        $api->registerMenu('Git', after: 'Run', items: ['i:git_commit'], viewId: 'git', viewSafe: ['ide_quit']);
         $manager->commit($api);
 
         $menus = $manager->contributedMenus();
@@ -358,18 +358,18 @@ final class PluginViewerTest extends TestCase
         $manager = $this->manager();
         $mine = [];
         $theirs = [];
-        $vcs = $this->api($manager, 'vcs');
+        $vcs = $this->api($manager, name: 'vcs');
         $vcs->onSettingChanged(static function (string $key, bool|int|string $value) use (&$mine): void {
             $mine[] = [$key, $value];
         });
         $manager->commit($vcs);
-        $todo = $this->api($manager, 'todo');
+        $todo = $this->api($manager, name: 'todo');
         $todo->onSettingChanged(static function (string $key, bool|int|string $value) use (&$theirs): void {
             $theirs[] = [$key, $value];
         });
         $manager->commit($todo);
 
-        $manager->notifySettingChanged('vcs', 'gutterMarks', false);
+        $manager->notifySettingChanged('vcs', key: 'gutterMarks', value: false);
 
         $this->assertSame([['gutterMarks', false]], $mine);
         $this->assertSame([], $theirs, 'the other plugin saw nothing');
@@ -381,14 +381,14 @@ final class PluginViewerTest extends TestCase
         // take the keystroke that changed the row down with it.
         $manager = $this->manager();
         $seen = 0;
-        $api = $this->api($manager, 'vcs');
+        $api = $this->api($manager, name: 'vcs');
         $api->onSettingChanged(static fn (string $key, bool|int|string $value): never => throw new \RuntimeException('listener exploded'));
         $api->onSettingChanged(static function () use (&$seen): void {
             ++$seen;
         });
         $manager->commit($api);
 
-        $manager->notifySettingChanged('vcs', 'gutterMarks', false);
+        $manager->notifySettingChanged('vcs', key: 'gutterMarks', value: false);
 
         $this->assertSame(1, $seen, 'the second listener still ran');
         $this->assertCount(1, $manager->warnings, 'and the fault was reported');
@@ -398,14 +398,14 @@ final class PluginViewerTest extends TestCase
     {
         $manager = $this->manager();
         $seen = 0;
-        $api = $this->api($manager, 'vcs');
+        $api = $this->api($manager, name: 'vcs');
         $api->onSettingChanged(static function () use (&$seen): void {
             ++$seen;
         });
         $manager->commit($api);
 
         $manager->deactivate('vcs', new CommandRegistry());
-        $manager->notifySettingChanged('vcs', 'gutterMarks', false);
+        $manager->notifySettingChanged('vcs', key: 'gutterMarks', value: false);
 
         $this->assertSame(0, $seen);
     }
@@ -415,11 +415,11 @@ final class PluginViewerTest extends TestCase
         // The menu bar renders a title; an empty one is a group nothing can
         // open, sitting in the bar as a gap. Refused where it is declared
         // rather than skipped at render, so the plugin's own barrier reports it.
-        $api = $this->api($this->manager(), 'vcs');
+        $api = $this->api($this->manager(), name: 'vcs');
 
         $this->expectException(PluginException::class);
         $this->expectExceptionMessageMatches('/needs a title/');
-        $api->registerMenu('', 'Run', ['i:git_commit']);
+        $api->registerMenu('', after: 'Run', items: ['i:git_commit']);
     }
 
     public function testASegmentMayBeAWholeCellAndIsGuardedTheSameWay(): void
@@ -429,7 +429,7 @@ final class PluginViewerTest extends TestCase
         // that git contributes it from outside src/. The text guard still
         // applies: a cell with nothing in it reserves no space either.
         $manager = $this->manager();
-        $api = $this->api($manager, 'vcs');
+        $api = $this->api($manager, name: 'vcs');
         $api->registerStatusSegment(static fn (): StatusCell => new StatusCell('⎇ main', StatusTone::Accent));
         $api->registerStatusSegment(static fn (): StatusCell => new StatusCell(''));
         $manager->commit($api);
@@ -444,14 +444,14 @@ final class PluginViewerTest extends TestCase
     public function testDebugAdaptersResolveLikeLanguageServersDo(): void
     {
         $manager = $this->manager();
-        $api = $this->api($manager, 'php-debug');
+        $api = $this->api($manager, name: 'php-debug');
         $api->registerDebugAdapter('php', static fn (): array => ['php', '-dxdebug.mode=debug', 'adapter']);
         $api->registerDebugAdapter('rust', static fn (): ?array => null); // binary not installed
         $api->registerDebugAdapter('go', static fn (): array => []); // likewise, spelled the other way
         $api->registerDebugAdapter('ruby', static fn (): array => throw new \RuntimeException('resolver exploded'));
         $manager->commit($api);
 
-        $second = $this->api($manager, 'other-debug');
+        $second = $this->api($manager, name: 'other-debug');
         $second->registerDebugAdapter('php', static fn (): array => ['mine', 'instead']);
         $manager->commit($second);
 
@@ -464,7 +464,7 @@ final class PluginViewerTest extends TestCase
 
     public function testADebugAdaptersLanguageIdIsValidated(): void
     {
-        $api = $this->api($this->manager(), 'p');
+        $api = $this->api($this->manager(), name: 'p');
 
         $this->expectException(PluginException::class);
         $this->expectExceptionMessageMatches('/Invalid language id/');
@@ -477,8 +477,8 @@ final class PluginViewerTest extends TestCase
         // id is registered bare (it is core's), so prefixing its spec would
         // name a command nothing answers to.
         $manager = $this->manager();
-        $api = $this->api($manager, 'demo');
-        $api->registerCommand('own', 'Own', static function (): void {});
+        $api = $this->api($manager, name: 'demo');
+        $api->registerCommand('own', label: 'Own', handler: static function (): void {});
         $api->addMenuItem('own');
         $api->adoptCommand('ide_todo', static function (): void {});
         $api->addMenuItem('ide_todo', surface: MenuSurface::EditorContext);
@@ -494,11 +494,11 @@ final class PluginViewerTest extends TestCase
     public function testAPreviewClaimIsItsOwnRouteAskedInLoadOrderAndGoesWithItsPlugin(): void
     {
         $manager = $this->manager();
-        $graphs = $this->api($manager, 'graph-viewer');
+        $graphs = $this->api($manager, name: 'graph-viewer');
         $graphs->registerViewer('graph', ['dot']);
         $graphs->registerPreview('graph', ['DOT', 'gv']);
         $manager->commit($graphs);
-        $later = $this->api($manager, 'later');
+        $later = $this->api($manager, name: 'later');
         $later->registerPreview('other', static fn (string $path): bool => true);
         $manager->commit($later);
 
@@ -515,7 +515,7 @@ final class PluginViewerTest extends TestCase
     public function testAThrowingPreviewClaimDeclinesAndReportsOnce(): void
     {
         $manager = $this->manager();
-        $broken = $this->api($manager, 'broken');
+        $broken = $this->api($manager, name: 'broken');
         $broken->registerPreview('boom', static fn (string $path): bool => throw new \RuntimeException('claim exploded'));
         $manager->commit($broken);
 
@@ -526,7 +526,7 @@ final class PluginViewerTest extends TestCase
 
     public function testAPreviewIdIsValidatedLikeAViewers(): void
     {
-        $api = $this->api($this->manager(), 'p');
+        $api = $this->api($this->manager(), name: 'p');
 
         $this->expectException(PluginException::class);
         $this->expectExceptionMessageIsOrContains('Invalid preview id "bad id"');
@@ -535,7 +535,7 @@ final class PluginViewerTest extends TestCase
 
     public function testAPreviewMustClaimSomething(): void
     {
-        $api = $this->api($this->manager(), 'p');
+        $api = $this->api($this->manager(), name: 'p');
 
         $this->expectException(PluginException::class);
         $this->expectExceptionMessageIsOrContains('A preview must claim at least one file extension');

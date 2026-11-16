@@ -168,7 +168,7 @@ final class HighlightRegistryTest extends TestCase
         $highlighter = new CodeHighlighterFactory()->forFile('/x/a.php');
         $highlighter->setFile('/x/a.php');
 
-        $this->assertSame(['<?php', "echo 'x';"], $highlighter->highlight(['<?php', "echo 'x';"], 1));
+        $this->assertSame(['<?php', "echo 'x';"], $highlighter->highlight(['<?php', "echo 'x';"], version: 1));
     }
 
     public function testNoHighlightPluginsIsEmpty(): void

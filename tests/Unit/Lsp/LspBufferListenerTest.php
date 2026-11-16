@@ -44,8 +44,8 @@ final class LspBufferListenerTest extends TestCase
     {
         [$listener, $pool] = $this->listener();
         $buffers = new BufferManager();
-        $text = $buffers->open('/p/a.php', "<?php\n");
-        $pool->notifyDidOpen('/p/a.php', "<?php\n", 'php', 1);
+        $text = $buffers->open('/p/a.php', content: "<?php\n");
+        $pool->notifyDidOpen('/p/a.php', text: "<?php\n", languageId: 'php', version: 1);
 
         $listener->onBufferSaved(new BufferSaved($text));
 
@@ -59,7 +59,7 @@ final class LspBufferListenerTest extends TestCase
     {
         [$listener, $pool] = $this->listener();
         $buffers = new BufferManager();
-        $text = $buffers->open('/p/a.php', "<?php\n"); // never opened with the LSP pool: no session exists
+        $text = $buffers->open('/p/a.php', content: "<?php\n"); // never opened with the LSP pool: no session exists
 
         $listener->onBufferSaved(new BufferSaved($text));
 
@@ -71,9 +71,9 @@ final class LspBufferListenerTest extends TestCase
         [$listener, $pool] = $this->listener();
         $this->editor->showDocument('/p/a.php', new Document("<?php\n\$x = 1;\n"));
         $this->activeFile->set('/p/a.php');
-        $pool->notifyDidOpen('/p/a.php', "<?php\n\$x = 1;\n", 'php', 1);
+        $pool->notifyDidOpen('/p/a.php', text: "<?php\n\$x = 1;\n", languageId: 'php', version: 1);
         $buffers = new BufferManager();
-        $text = $buffers->open('/p/a.php', "<?php\n\$x = 1;\n");
+        $text = $buffers->open('/p/a.php', content: "<?php\n\$x = 1;\n");
 
         $listener->onBufferSwitched(new BufferSwitched($text));
 
@@ -85,12 +85,12 @@ final class LspBufferListenerTest extends TestCase
         [$listener, $pool] = $this->listener();
         $this->editor->showDocument('/p/a.php', new Document("<?php\n"));
         $this->activeFile->set('/p/a.php');
-        $pool->notifyDidOpen('/p/a.php', "<?php\n", 'php', 1);
+        $pool->notifyDidOpen('/p/a.php', text: "<?php\n", languageId: 'php', version: 1);
 
         $gd = \imagecreatetruecolor(2, height: 2);
         \assert(false !== $gd, description: 'the truecolor image was created');
         $buffers = new BufferManager();
-        $image = $buffers->openPane('/p/i.png', 'image', new ImageData($gd, 2, 2, 5));
+        $image = $buffers->openPane('/p/i.png', paneId: 'image', payload: new ImageData($gd, 2, 2, 5));
 
         $listener->onBufferSwitched(new BufferSwitched($image));
 

@@ -119,7 +119,7 @@ final class NavigationControllerTest extends TestCase
         $this->editor->showDocument($path, new Document($text));
         $this->buffers->open($path, $text);
         $this->activeFile->set($path);
-        Probe::get($controller, 'lsp')->notifyDidOpen($path, $text, 'php', 1);
+        Probe::get($controller, property: 'lsp')->notifyDidOpen($path, $text, languageId: 'php', version: 1);
     }
 
     public function testPushCurrentLocationRecordsOnlyWhenAFileIsOpen(): void
@@ -135,7 +135,7 @@ final class NavigationControllerTest extends TestCase
         $this->assertStringContainsString('Nowhere to go back to', $this->statusRow($this->statusBar), 'both pushes with no file were no-ops');
 
         $this->editor->showDocument('/p/a.php', new Document("<?php\n\$a = 1;\n\$b = 2;\n"));
-        $this->editor->getDocument()->setCursor(1, 2);
+        $this->editor->getDocument()->setCursor(1, col: 2);
         $controller->pushCurrentLocation();
 
         $this->editor->showDocument('/p/b.php', new Document("<?php\n"));
@@ -158,9 +158,9 @@ final class NavigationControllerTest extends TestCase
     {
         $controller = $this->controller();
         $this->editor->showDocument('/p/a.php', new Document("<?php\n\$a = 1;\n\$b = 2;\n"));
-        $this->editor->getDocument()->setCursor(2, 0);
+        $this->editor->getDocument()->setCursor(2, col: 0);
         $controller->pushCurrentLocation();
-        $this->editor->getDocument()->setCursor(0, 0); // still the same file, just moved
+        $this->editor->getDocument()->setCursor(0, col: 0); // still the same file, just moved
 
         $controller->navigateBack();
 
@@ -172,7 +172,7 @@ final class NavigationControllerTest extends TestCase
     {
         $controller = $this->controller();
         // No file open at all: ready() returns null before any LSP traffic.
-        $controller->requestHover(0, 0);
+        $controller->requestHover(0, col: 0);
 
         $this->assertSame([], $this->opened);
     }
@@ -197,11 +197,11 @@ final class NavigationControllerTest extends TestCase
     public function testDocumentationOpensAtTheCaretAndScrollsToItsEnd(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$x = 1;\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$x = 1;\n");
         $doc = "**Greets** the `name`.\n".\implode("\n", \array_map(static fn (int $n): string => "line{$n}", \range(start: 1, end: 30)));
 
         $caret = $this->editor->getDocument()->cursorLine;
-        $controller->requestHover(1, 0);
+        $controller->requestHover(1, col: 0);
         $this->client->requests[0]['respond'](['contents' => ['kind' => 'markdown', 'value' => $doc]], error: null);
 
         $screen = $this->screen();
@@ -231,9 +231,9 @@ final class NavigationControllerTest extends TestCase
     {
         $controller = $this->controller();
         $this->editor->showDocument('/p/a.php', new Document("<?php\n\$x = 1;\n"));
-        $this->problemOn(1, 0, 2);
+        $this->problemOn(1, col: 0, endCol: 2);
 
-        $controller->requestErrorDescription(1, 2);
+        $controller->requestErrorDescription(1, col: 2);
         $this->assertSame([], $this->scheduler->scheduled, 'no server to ask for a fix');
 
         $screen = $this->screen();
@@ -245,9 +245,9 @@ final class NavigationControllerTest extends TestCase
     {
         $controller = $this->controller();
         $this->editor->showDocument('/p/a.php', new Document("<?php\n\$x = 1;\n"));
-        $this->problemOn(1, 0, 2);
+        $this->problemOn(1, col: 0, endCol: 2);
 
-        $controller->requestErrorDescription(1, 5);
+        $controller->requestErrorDescription(1, col: 5);
 
         $this->assertStringContainsString('No problem at the caret', $this->statusRow($this->statusBar));
     }
@@ -256,10 +256,10 @@ final class NavigationControllerTest extends TestCase
     public function testDocumentationOnAProblemIsHeadedByIt(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$x = 1;\n");
-        $this->problemOn(1, 0, 2);
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$x = 1;\n");
+        $this->problemOn(1, col: 0, endCol: 2);
 
-        $controller->requestHover(1, 1);
+        $controller->requestHover(1, col: 1);
         \array_last($this->client->requests)['respond'](['contents' => 'An integer.'], error: null);
         // The fix question gets its turn; this server offers no code actions,
         // so the popup's problems are said again as they were.
@@ -276,18 +276,18 @@ final class NavigationControllerTest extends TestCase
     public function testOnAProblemWithoutDocumentationOrAServerTheProblemIsTheAnswer(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$x = 1;\n");
-        $this->problemOn(1, 0, 2);
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$x = 1;\n");
+        $this->problemOn(1, col: 0, endCol: 2);
 
-        $controller->requestHover(1, 1);
+        $controller->requestHover(1, col: 1);
         \array_last($this->client->requests)['respond'](null, error: null);
         $this->assertStringContainsString('Undefined variable', $this->screen(), 'no documentation: the problem alone');
         $this->assertStringNotContainsString('No documentation found', $this->statusRow($this->statusBar));
 
         $offline = $this->controller();
         $this->editor->showDocument('/p/a.php', new Document("<?php\n\$x = 1;\n"));
-        $this->problemOn(1, 0, 2, message: 'Offline problem');
-        $offline->requestHover(1, 1);
+        $this->problemOn(1, col: 0, endCol: 2, message: 'Offline problem');
+        $offline->requestHover(1, col: 1);
         $this->assertStringContainsString('Offline problem', $this->screen(), 'no server: the problem alone, and nothing to explain');
         $this->assertSame('', \trim($this->statusRow($this->statusBar)));
     }
@@ -296,19 +296,19 @@ final class NavigationControllerTest extends TestCase
     public function testTheDocPopupClosesOnAnyOtherKeyOrAClickAway(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$x = 1;\n");
-        $controller->requestHover(1, 0);
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$x = 1;\n");
+        $controller->requestHover(1, col: 0);
         $this->client->requests[0]['respond'](['contents' => 'Greets.'], error: null);
         $this->screen();
-        [$top, $col] = Probe::get($this->editor, 'caretPopups')->doc->drawn['rect'];
+        [$top, $col] = Probe::get($this->editor, property: 'caretPopups')->doc->drawn['rect'];
 
         $this->assertTrue($this->editor->handlePopupClick($top + 1, $col + 2), 'on the popup: kept');
         $this->assertStringContainsString('Greets.', $this->screen());
-        $this->assertFalse($this->editor->handlePopupClick(15, 60), 'away from it: closed, and the click goes on');
+        $this->assertFalse($this->editor->handlePopupClick(15, relCol: 60), 'away from it: closed, and the click goes on');
         $this->assertStringNotContainsString('Greets.', $this->screen());
 
         // Esc is spent on the popup alone: a signature hint under it stays.
-        $controller->requestHover(1, 0);
+        $controller->requestHover(1, col: 0);
         $this->client->requests[1]['respond'](['contents' => 'Greets.'], error: null);
         $this->editor->setSignatureHint('greet(string $who)');
         $this->editor->handleInput("\x1b");
@@ -320,11 +320,11 @@ final class NavigationControllerTest extends TestCase
         $this->editor->showCompletions([new CompletionItem('greeting', 'greeting', 'var', '')]);
         $this->editor->showDocPopup('Greets.');
         $this->assertFalse($this->editor->isCompletionOpen());
-        $this->editor->openFile('/p/b.php', "<?php\n");
+        $this->editor->openFile('/p/b.php', content: "<?php\n");
         $this->assertStringNotContainsString('Greets.', $this->screen());
-        $this->editor->openFile('/p/a.php', "<?php\n\$x = 1;\n");
+        $this->editor->openFile('/p/a.php', content: "<?php\n\$x = 1;\n");
 
-        $controller->requestHover(1, 0);
+        $controller->requestHover(1, col: 0);
         \end($this->client->requests)['respond'](['contents' => 'Greets.'], error: null);
         $this->editor->handleInput('z');
         $this->assertStringNotContainsString('Greets.', $this->screen());
@@ -334,9 +334,9 @@ final class NavigationControllerTest extends TestCase
     public function testRequestPeekOpensAContextOverlayAtTheDefinition(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\nfunction f() {}\n\$x = f();\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\nfunction f() {}\n\$x = f();\n");
 
-        $controller->requestPeek(2, 5);
+        $controller->requestPeek(2, col: 5);
         $this->assertCount(1, $this->client->requests);
         $this->assertSame('textDocument/definition', $this->client->requests[0]['method']);
 
@@ -356,9 +356,9 @@ final class NavigationControllerTest extends TestCase
         // twelve at a time and can scroll the rest.
         $body = "<?php\nfunction f(): void\n{\n".\implode("\n", \array_map(static fn (int $n): string => "    \$s{$n} = {$n};", \range(start: 1, end: 12)))."\n}\n";
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', $body);
+        $this->readyOn($controller, path: '/p/a.php', text: $body);
 
-        $controller->requestPeek(0, 0);
+        $controller->requestPeek(0, col: 0);
         $this->client->requests[0]['respond']([
             'uri' => 'file:///p/a.php',
             'range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 8]],
@@ -373,7 +373,7 @@ final class NavigationControllerTest extends TestCase
     private function overlayItems(): array
     {
         /** @var array{items: list<array{label: string, hint: string, value: string}>}|null $overlay */
-        $overlay = Probe::get(Probe::object($this->editor, 'overlayHost'), 'overlay');
+        $overlay = Probe::get(Probe::object($this->editor, 'overlayHost'), property: 'overlay');
         $this->assertNotNull($overlay);
 
         return $overlay['items'];
@@ -382,8 +382,8 @@ final class NavigationControllerTest extends TestCase
     private function peekAt(int $line, string $source): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', $source);
-        $controller->requestPeek($line, 0);
+        $this->readyOn($controller, path: '/p/a.php', text: $source);
+        $controller->requestPeek($line, col: 0);
         $this->client->requests[0]['respond']([
             'uri' => 'file:///p/a.php',
             'range' => ['start' => ['line' => $line, 'character' => 0], 'end' => ['line' => $line, 'character' => 1]],
@@ -418,7 +418,7 @@ final class NavigationControllerTest extends TestCase
     {
         // `max(0, …)` is the guard; without it the window starts at -1 and the
         // preview leads with a blank row for a line that does not exist.
-        $this->peekAt(0, "<?php\n\$x = 1;\n\$y = 2;\n");
+        $this->peekAt(0, source: "<?php\n\$x = 1;\n\$y = 2;\n");
 
         $this->assertSame('1', $this->overlayItems()[0]['hint']);
     }
@@ -428,7 +428,7 @@ final class NavigationControllerTest extends TestCase
         // What stops the trailing-blank walk from emptying the list: the target
         // row carries the marker, so it is never blank however empty the file
         // around it is. An empty list would open no overlay at all.
-        $this->peekAt(2, "\n\n\n\n");
+        $this->peekAt(2, source: "\n\n\n\n");
 
         $items = $this->overlayItems();
         $this->assertSame(Glyphs::NAV_CURRENT, \trim(\array_last($items)['label']));
@@ -437,7 +437,7 @@ final class NavigationControllerTest extends TestCase
 
     public function testTheTargetLineIsTheOneMarked(): void
     {
-        $this->peekAt(1, "<?php\n\$x = 1;\n\$y = 2;\n");
+        $this->peekAt(1, source: "<?php\n\$x = 1;\n\$y = 2;\n");
 
         $items = $this->overlayItems();
         $this->assertStringStartsWith(Glyphs::NAV_CURRENT, $items[1]['label'], 'the definition line carries the marker');
@@ -447,7 +447,7 @@ final class NavigationControllerTest extends TestCase
     public function testTrailingWhitespaceIsStrippedFromAPreviewRow(): void
     {
         // It would otherwise pad the popup out to the widest invisible line.
-        $this->peekAt(1, "<?php\n\$x = 1;      \n\$y = 2;\n");
+        $this->peekAt(1, source: "<?php\n\$x = 1;      \n\$y = 2;\n");
 
         $this->assertSame(Glyphs::NAV_CURRENT.' $x = 1;', $this->overlayItems()[1]['label']);
     }
@@ -456,7 +456,7 @@ final class NavigationControllerTest extends TestCase
     {
         // Every row in the window is blank, so the trim would empty the list
         // entirely — and an empty list opens nothing at all.
-        $this->peekAt(1, "<?php\n\n\n");
+        $this->peekAt(1, source: "<?php\n\n\n");
 
         $this->assertStringContainsString('Peek: a.php:2', $this->pickerText());
     }
@@ -467,9 +467,9 @@ final class NavigationControllerTest extends TestCase
         // so the trailing run is dropped — otherwise a two-line file would peek
         // thirty rows of nothing.
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$x = 1;\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$x = 1;\n");
 
-        $controller->requestPeek(1, 0);
+        $controller->requestPeek(1, col: 0);
         $this->client->requests[0]['respond']([
             'uri' => 'file:///p/a.php',
             'range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 2]],
@@ -477,7 +477,7 @@ final class NavigationControllerTest extends TestCase
 
         $rows = Probe::object($this->editor, 'overlayHost');
         /** @var array{items: list<array{label: string, hint: string, value: string}>}|null $overlay */
-        $overlay = Probe::get($rows, 'overlay');
+        $overlay = Probe::get($rows, property: 'overlay');
         $this->assertNotNull($overlay);
         $this->assertSame(['<?php', '$x = 1;'], \array_map(static fn (array $i): string => \trim(\mb_substr($i['label'], start: 2)), $overlay['items']));
     }
@@ -485,9 +485,9 @@ final class NavigationControllerTest extends TestCase
     public function testRequestPeekFlashesWhenNothingIsFound(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$x = 1;\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$x = 1;\n");
 
-        $controller->requestPeek(1, 0);
+        $controller->requestPeek(1, col: 0);
         $this->client->requests[0]['respond'](null, error: null);
 
         $this->assertStringContainsString('Nothing to peek', $this->statusRow($this->statusBar));
@@ -496,9 +496,9 @@ final class NavigationControllerTest extends TestCase
     public function testRequestPeekFlashesWhenTheTargetIsOutsideTheFilesystem(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$x = 1;\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$x = 1;\n");
 
-        $controller->requestPeek(1, 0);
+        $controller->requestPeek(1, col: 0);
         $this->client->requests[0]['respond']([
             'uri' => 'untitled:scratch',
             'range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 0]],
@@ -510,7 +510,7 @@ final class NavigationControllerTest extends TestCase
     public function testRequestFileStructureOpensAnOverlayThatJumpsOnPick(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\nclass Foo {\n    public function bar(): void {}\n}\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\nclass Foo {\n    public function bar(): void {}\n}\n");
 
         $controller->requestFileStructure();
         $this->assertCount(1, $this->client->requests);
@@ -536,7 +536,7 @@ final class NavigationControllerTest extends TestCase
     public function testRequestFileStructureFlashesWhenTheFileHasNoSymbols(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n");
 
         $controller->requestFileStructure();
         $this->client->requests[0]['respond']([], error: null);
@@ -553,7 +553,7 @@ final class NavigationControllerTest extends TestCase
             \file_put_contents($path, data: "on-disk line 0\non-disk line 1\n");
 
             $controller = $this->controller();
-            $this->buffers->open($path, "buffer line 0\nbuffer line 1\n");
+            $this->buffers->open($path, content: "buffer line 0\nbuffer line 1\n");
             $this->assertSame('buffer line 1', Probe::invoke($controller, 'lineAt', $path, 1), 'the live (unsaved) buffer wins over the on-disk file');
         } finally {
             if (\is_file($project.'/a.php')) {
@@ -629,7 +629,7 @@ final class NavigationControllerTest extends TestCase
         // fire just because a backslash appears earlier on the line.
         $this->assertSame(
             'https://www.php.net/manual/en/function.count.php',
-            $this->urlAt('x.php', "<?php\nApp\\Foo . count(\$x);\n", 1, 12),
+            $this->urlAt('x.php', content: "<?php\nApp\\Foo . count(\$x);\n", line: 1, col: 12),
             'the backslash earlier on the line does not immediately precede "count"',
         );
     }
@@ -641,7 +641,7 @@ final class NavigationControllerTest extends TestCase
         // fire just because the keyword appears earlier on the line.
         $this->assertSame(
             'https://www.php.net/manual/en/function.strlen.php',
-            $this->urlAt('x.php', "<?php\nfunction foo() { strlen(\$x); }\n", 1, 20),
+            $this->urlAt('x.php', content: "<?php\nfunction foo() { strlen(\$x); }\n", line: 1, col: 20),
             'the earlier "function" keyword does not make "strlen" a declaration site',
         );
     }
@@ -669,7 +669,7 @@ final class NavigationControllerTest extends TestCase
     public function testStructurePanelListsTheSymbolTreeIndentedByNesting(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\n\n\n\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\n\n\n\n");
 
         $controller->requestStructurePanel();
         $this->client->requests[0]['respond']($this->symbolTree(), error: null);
@@ -683,7 +683,7 @@ final class NavigationControllerTest extends TestCase
     public function testStructurePanelFlashesWhenTheServerHasNoSymbols(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n");
 
         $controller->requestStructurePanel();
         $this->client->requests[0]['respond']([], error: null);
@@ -699,7 +699,7 @@ final class NavigationControllerTest extends TestCase
     public function testARefreshWithNoStructureTabOpenSendsNoRequest(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n");
 
         $controller->refreshStructurePanel();
 
@@ -709,7 +709,7 @@ final class NavigationControllerTest extends TestCase
     public function testARefreshReplacesTheRowsOfAStandingTab(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\n\n\n\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\n\n\n\n");
 
         $controller->requestStructurePanel();
         $this->client->requests[0]['respond']($this->symbolTree(), error: null);
@@ -731,7 +731,7 @@ final class NavigationControllerTest extends TestCase
     public function testARefreshOntoASymbolLessFileEmptiesTheStandingTab(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\n\n\n\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\n\n\n\n");
 
         $controller->requestStructurePanel();
         $this->client->requests[0]['respond']($this->symbolTree(), error: null);
@@ -762,7 +762,7 @@ final class NavigationControllerTest extends TestCase
     public function testARefresherFactIsInertWhileNoStructureTabIsOpen(\Closure $fire): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n");
 
         $fire(new StructurePanelRefresher($controller));
 
@@ -774,7 +774,7 @@ final class NavigationControllerTest extends TestCase
     public function testARefresherFactRepublishesIntoAStandingTab(\Closure $fire): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\n\n\n\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\n\n\n\n");
         $controller->requestStructurePanel();
         $this->client->requests[0]['respond']($this->symbolTree(), error: null);
 
@@ -806,7 +806,7 @@ final class NavigationControllerTest extends TestCase
     public function testBothCallDirectionsReadTheirOwnEndOfEachCall(string $method, string $request, string $side): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\nfunction greet() {}\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\nfunction greet() {}\n");
 
         $controller->{$method}(1, 9);
         $this->client->requests[0]['respond']([['name' => 'greet', 'kind' => 12, 'uri' => 'file:///p/a.php']], error: null);
@@ -840,7 +840,7 @@ final class NavigationControllerTest extends TestCase
     {
         $this->capabilities = []; // no callHierarchyProvider
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\nfunction greet() {}\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\nfunction greet() {}\n");
 
         $controller->{$method}(1, 9);
 
@@ -854,9 +854,9 @@ final class NavigationControllerTest extends TestCase
     public function testOutgoingCallsReadingAnIncomingShapedAnswerFlashesNotFound(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\nfunction greet() {}\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\nfunction greet() {}\n");
 
-        $controller->requestOutgoingCalls(1, 9);
+        $controller->requestOutgoingCalls(1, col: 9);
         $this->client->requests[0]['respond']([['name' => 'greet', 'kind' => 12, 'uri' => 'file:///p/a.php']], error: null);
         // `from`, not `to`: the incoming shape.
         $this->client->requests[1]['respond']([['from' => ['name' => 'x', 'uri' => 'file:///p/a.php', 'selectionRange' => []]]], error: null);
@@ -879,7 +879,7 @@ final class NavigationControllerTest extends TestCase
     public function testStructureRowsCarryTheirPathDepthAndHintInOrder(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\n\n\n\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\n\n\n\n");
 
         $controller->requestStructurePanel();
         $this->client->requests[0]['respond']($this->symbolTree(), error: null);
@@ -904,7 +904,7 @@ final class NavigationControllerTest extends TestCase
     public function testTheCallHierarchyTitleNamesTheSymbol(string $method, string $request, string $side): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\nfunction greet() {}\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\nfunction greet() {}\n");
 
         $controller->{$method}(1, 9);
         $this->client->requests[0]['respond']([['name' => 'greet', 'kind' => 12, 'uri' => 'file:///p/a.php']], error: null);

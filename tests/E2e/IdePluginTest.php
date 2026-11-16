@@ -107,7 +107,7 @@ final class IdePluginTest extends TestCase
                     $this->frame($tui);
                     $this->assertSame('yes', (string) \file_get_contents($project->path('a.php.hooked')), 'the onFileSaved hook ran');
                     $tui->handleInput("\x1b\x15"); // ctrl+alt+u → demo:boom (throws)
-                    $this->awaitPainted($tui, $terminal, 'Plugin "demo" failed: kaboom');
+                    $this->awaitPainted($tui, $terminal, needle: 'Plugin "demo" failed: kaboom');
                     $this->assertStringContainsString('Plugin "demo" failed: kaboom', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the throw became a flash');
                     // …and the IDE is still alive: the next keystroke lands in the editor.
                     $tui->handleInput('Z');
@@ -154,13 +154,13 @@ final class IdePluginTest extends TestCase
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $editor = Widgets::editor($tui);
-                    $editor->getDocument()->setCursor(1, 0);
+                    $editor->getDocument()->setCursor(1, col: 0);
                     $tui->handleInput('Z');
                     $this->assertTrue($editor->getDocument()->isDirty());
 
                     Services::resolve($ide, CommandRegistry::class)->run('saver:save');
 
-                    $this->awaitPainted($tui, $terminal, 'saved: ok');
+                    $this->awaitPainted($tui, $terminal, needle: 'saved: ok');
                     $this->assertSame("<?php\nZ", \file_get_contents($project->path('a.php')), 'the edit reached the disk');
                     $this->assertFalse($editor->getDocument()->isDirty(), 'and the modified mark cleared');
                     $this->assertFileExists($project->path('a.php.hooked'), 'onFileSaved heard of it');
@@ -188,7 +188,7 @@ final class IdePluginTest extends TestCase
                     foreach (\str_split('Say') as $char) {
                         $tui->handleInput($char);
                     }
-                    $this->awaitPainted($tui, $terminal, 'Say Hello');
+                    $this->awaitPainted($tui, $terminal, needle: 'Say Hello');
                     $this->assertStringContainsString('Say Hello', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the palette lists the plugin command');
                     $tui->handleInput("\x1b"); // close the palette
                 },
@@ -427,7 +427,7 @@ final class IdePluginTest extends TestCase
                     $renderer = Services::resolve($ide, Renderer::class);
 
                     // The tree row for other.php — a file we are NOT editing.
-                    $tree = Widgets::byId($tui, 'tree', FileTreeWidget::class);
+                    $tree = Widgets::byId($tui, id: 'tree', class: FileTreeWidget::class);
                     $treeRect = Widgets::rect($renderer, $tree);
                     $row = null;
                     foreach (Paint::lines($tree, new RenderContext($treeRect->columns, $treeRect->rows)) as $i => $line) {
@@ -443,7 +443,7 @@ final class IdePluginTest extends TestCase
 
                     $widget = Services::resolve($ide, ContextMenu::class);
                     /** @var list<MenuItem> $items */
-                    $items = Probe::get($widget, 'items');
+                    $items = Probe::get($widget, property: 'items');
                     $index = null;
                     foreach ($items as $i => $item) {
                         if ('Which File' !== $item->label) {
@@ -454,7 +454,7 @@ final class IdePluginTest extends TestCase
                     $this->assertNotNull($index, "the tree row offers the plugin's item");
 
                     $widget->runItem($index);
-                    $this->awaitPainted($tui, $terminal, 'acted on other.php');
+                    $this->awaitPainted($tui, $terminal, needle: 'acted on other.php');
                     $this->assertStringContainsString('acted on other.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the handler saw the CLICKED file, not the active one');
                 },
             ],

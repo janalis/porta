@@ -71,7 +71,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
             public function activate(PluginApi $api): void
             {
                 $this->registerBinarySetting($api, [['brew', 'demo']]);
-                $this->registerSubprocessHighlighter($api, 'Demo', 'rust,go', debounceMs: $this->debounceMs);
+                $this->registerSubprocessHighlighter($api, label: 'Demo', languages: 'rust,go', debounceMs: $this->debounceMs);
             }
 
             protected function lexerArgs(string $language): array
@@ -98,7 +98,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
 
         $settings = new PluginSettings($this->project->dir, [], null, self::projectScope($this->project->dir));
         $this->manager = new PluginManager(new EventDispatcher(), $settings);
-        $tui = TestTui::create(100, 24);
+        $tui = TestTui::create(100, rows: 24);
         $this->manager->wireRuntime(TestPluginRuntime::create(new CodeEditorWidget(), new StatusBarWidget(), $tui));
 
         $api = $this->manager->api('demo', $this->project->dir, $settings);
@@ -140,7 +140,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
     private function awaitRunSettled(): void
     {
         $plugin = $this->plugin;
-        $this->await(static fn (): bool => [] === Probe::get($plugin, 'timers') && 0 === Probe::get($plugin, 'inFlight'), what: 'the run to finish');
+        $this->await(static fn (): bool => [] === Probe::get($plugin, property: 'timers') && 0 === Probe::get($plugin, property: 'inFlight'), what: 'the run to finish');
     }
 
     public function testRegistrationDeclaresTheThreeRowsAndTheBackend(): void
@@ -195,7 +195,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
     public function testAnOversizeDocumentIsSkipped(): void
     {
         $highlight = $this->backend('echo "[]";');
-        $this->api->changeSetting('maxBytes', 4);
+        $this->api->changeSetting('maxBytes', value: 4);
 
         $highlight('way beyond four bytes');
         $this->pump(0.2); // genuine negative: nothing was ever dispatched
@@ -210,7 +210,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
         $highlight('first');
         $highlight('second');
         $this->awaitDelivery();
-        $this->await(fn (): bool => 0 === Probe::get($this->plugin, 'inFlight'), what: 'the run to drain');
+        $this->await(fn (): bool => 0 === Probe::get($this->plugin, property: 'inFlight'), what: 'the run to drain');
 
         $this->assertSame(['second'], $this->delivered, 'the pending run was replaced, not queued');
     }
@@ -226,7 +226,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
         $this->pump(0.05); // let the timer fire, so the first process is really out
         $highlight('second');
         $this->awaitDelivery();
-        $this->await(fn (): bool => 0 === Probe::get($this->plugin, 'inFlight'), what: 'both processes to drain');
+        $this->await(fn (): bool => 0 === Probe::get($this->plugin, property: 'inFlight'), what: 'both processes to drain');
 
         $this->assertSame(['second'], $this->delivered, 'the in-flight answer for an older version is dropped');
     }
@@ -248,14 +248,14 @@ final class AbstractSubprocessHighlighterTest extends TestCase
 
         // One per language, so debouncing cannot collapse them into one.
         $highlight('one', language: 'rust');
-        $this->await(fn (): bool => 1 === Probe::get($this->plugin, 'inFlight'), what: 'the first process to start');
+        $this->await(fn (): bool => 1 === Probe::get($this->plugin, property: 'inFlight'), what: 'the first process to start');
         $highlight('two', language: 'go');
-        $this->await(fn (): bool => 2 === Probe::get($this->plugin, 'inFlight'), what: 'the second process to start');
+        $this->await(fn (): bool => 2 === Probe::get($this->plugin, property: 'inFlight'), what: 'the second process to start');
         $highlight('three', language: 'zig');
 
         $peak = 0;
         $this->await(function () use (&$peak): bool {
-            $running = Probe::get($this->plugin, 'inFlight');
+            $running = Probe::get($this->plugin, property: 'inFlight');
             $peak = \max($peak, \is_int($running) ? $running : 0);
 
             return 3 === \count($this->delivered);
@@ -290,9 +290,9 @@ final class AbstractSubprocessHighlighterTest extends TestCase
         // Three dispatches of the SAME language, each past the one before it:
         // two go out, the third meets the ceiling.
         $highlight('one');
-        $this->await(fn (): bool => 1 === Probe::get($this->plugin, 'inFlight'), what: 'the first process to start');
+        $this->await(fn (): bool => 1 === Probe::get($this->plugin, property: 'inFlight'), what: 'the first process to start');
         $highlight('two');
-        $this->await(fn (): bool => 2 === Probe::get($this->plugin, 'inFlight'), what: 'the second process to start');
+        $this->await(fn (): bool => 2 === Probe::get($this->plugin, property: 'inFlight'), what: 'the second process to start');
         $highlight('three');
 
         $this->awaitDelivery(1);
@@ -327,7 +327,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
         $highlight('one');
         $this->pump(0.1);
 
-        $this->assertSame(0, Probe::get($this->plugin, 'inFlight'), 'the slot was handed back');
+        $this->assertSame(0, Probe::get($this->plugin, property: 'inFlight'), 'the slot was handed back');
         $this->assertSame([], $this->delivered, 'and nothing was painted from a run that never happened');
     }
 
@@ -369,10 +369,10 @@ final class AbstractSubprocessHighlighterTest extends TestCase
         // so asserting "nothing was delivered" passes whether or not the timer
         // was cancelled — while a chroma process still ran for a plugin the
         // user just turned off, which is the whole point of the cancel.
-        $this->assertSame(0, Probe::get($this->plugin, 'inFlight'), 'no subprocess was started for the disabled plugin');
+        $this->assertSame(0, Probe::get($this->plugin, property: 'inFlight'), 'no subprocess was started for the disabled plugin');
         $this->assertSame([], $this->delivered);
-        $this->assertSame([], Probe::get($this->plugin, 'timers'));
-        $this->assertSame([], Probe::get($this->plugin, 'latest'));
+        $this->assertSame([], Probe::get($this->plugin, property: 'timers'));
+        $this->assertSame([], Probe::get($this->plugin, property: 'latest'));
     }
 
     public function testAMissingBinaryDeclines(): void

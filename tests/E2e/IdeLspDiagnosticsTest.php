@@ -58,7 +58,7 @@ final class IdeLspDiagnosticsTest extends TestCase
                     $tui->requestRender(); // what Ide::handleDiagnostics does after mutating
                     // requestRender only ASKS; the post-run assertion below needs
                     // the frame to have happened, and a tick is not one.
-                    $this->awaitPainted($tui, $terminal, '▲ 1');
+                    $this->awaitPainted($tui, $terminal, needle: '▲ 1');
                 },
             ],
         );
@@ -81,7 +81,7 @@ final class IdeLspDiagnosticsTest extends TestCase
                 600 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // Inlay hints are an LSP round trip, so this was a bet on the
                     // response AND on the frame that draws it.
-                    $this->awaitPainted($tui, $terminal, ': int');
+                    $this->awaitPainted($tui, $terminal, needle: ': int');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString(': int', $screen, 'inlay type hint rendered inline');
                 },
@@ -107,7 +107,7 @@ final class IdeLspDiagnosticsTest extends TestCase
             $project->path('src/Problem.php'),
             [
                 600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($then): void {
-                    $this->awaitPainted($tui, $terminal, 'Mock diagnostic');
+                    $this->awaitPainted($tui, $terminal, needle: 'Mock diagnostic');
                     $editor = Widgets::editor($tui);
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
                     $this->assertInstanceOf(WidgetRect::class, $rect);
@@ -129,8 +129,8 @@ final class IdeLspDiagnosticsTest extends TestCase
             $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + $editor->gutterWidth() + 1, $rect->row + 1));
 
             $this->await(static fn (): bool => \str_starts_with(Services::resolve($ide, TooltipCenter::class)->shown()->key ?? '', 'problem:'), what: 'the problem card');
-            $this->awaitPainted($tui, $terminal, 'Fix: Import class');
-            $this->assertNotNull($this->rowOf($this->screenGrid($tui, $terminal), 'More actions…'), 'and the list behind it');
+            $this->awaitPainted($tui, $terminal, needle: 'Fix: Import class');
+            $this->assertNotNull($this->rowOf($this->screenGrid($tui, $terminal), needle: 'More actions…'), 'and the list behind it');
         });
     }
 
@@ -160,12 +160,12 @@ final class IdeLspDiagnosticsTest extends TestCase
             $project->path('src/Problem.php'),
             [
                 600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, 'Mock diagnostic');
-                    [$row, $col] = $this->lastCellOf($tui, $terminal, 'Mock diagnostic');
+                    $this->awaitPainted($tui, $terminal, needle: 'Mock diagnostic');
+                    [$row, $col] = $this->lastCellOf($tui, $terminal, needle: 'Mock diagnostic');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $row + 1));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col + 1, $row + 1));
 
-                    $panel = Widgets::byId($tui, 'results', ResultsPanelWidget::class);
+                    $panel = Widgets::byId($tui, id: 'results', class: ResultsPanelWidget::class);
                     $this->await($panel->isOpen(...), what: 'the Problems panel');
                     $state = $panel->captureViewState();
                     $this->assertStringEndsWith('Problem.php', (string) $state->selectedPath);
@@ -191,21 +191,21 @@ final class IdeLspDiagnosticsTest extends TestCase
             $project->path('src/Problem.php'),
             [
                 600 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'Mock diagnostic');
-                    Widgets::editor($tui)->getDocument()->setCursor(0, 0);
+                    $this->awaitPainted($tui, $terminal, needle: 'Mock diagnostic');
+                    Widgets::editor($tui)->getDocument()->setCursor(0, col: 0);
                     $tui->handleInput("\x1b\r"); // alt+enter
-                    $this->awaitPainted($tui, $terminal, 'Import class');
+                    $this->awaitPainted($tui, $terminal, needle: 'Import class');
                     $grid = $this->screenGrid($tui, $terminal);
-                    $row = $this->rowOf($grid, '✗ Mock diagnostic');
+                    $row = $this->rowOf($grid, needle: '✗ Mock diagnostic');
                     $this->assertNotNull($row, 'the problem heads the list');
                     $col = (int) \mb_strpos($grid[$row], needle: '✗ Mock diagnostic');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 3, $row + 1));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col + 3, $row + 1));
 
-                    $panel = Widgets::byId($tui, 'results', ResultsPanelWidget::class);
+                    $panel = Widgets::byId($tui, id: 'results', class: ResultsPanelWidget::class);
                     $this->await($panel->isOpen(...), what: 'the Problems panel');
                     $this->assertSame(0, $panel->captureViewState()->selectedLine);
-                    $this->assertNull($this->rowOf($this->screenGrid($tui, $terminal), 'Import class'), 'and the list closed');
+                    $this->assertNull($this->rowOf($this->screenGrid($tui, $terminal), needle: 'Import class'), 'and the list closed');
                 },
             ],
         );
@@ -239,18 +239,18 @@ final class IdeLspDiagnosticsTest extends TestCase
             $project->path('src/Problem.php'),
             [
                 600 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'Mock diagnostic');
+                    $this->awaitPainted($tui, $terminal, needle: 'Mock diagnostic');
                     $document = Widgets::editor($tui)->getDocument();
 
-                    $document->setCursor(1, 2);
+                    $document->setCursor(1, col: 2);
                     $tui->handleInput("\x1b[1;5P");
-                    $this->awaitPainted($tui, $terminal, 'No problem at the caret');
+                    $this->awaitPainted($tui, $terminal, needle: 'No problem at the caret');
 
-                    $document->setCursor(0, 0);
+                    $document->setCursor(0, col: 0);
                     $tui->handleInput("\x1b[1;5P");
                     // The popup's row, not the status bar's: it is framed.
-                    $this->awaitPainted($tui, $terminal, '│ ✗ Mock diagnostic');
-                    $this->assertNull($this->rowOf($this->screenGrid($tui, $terminal), 'Says hello'), 'the problem alone: no documentation was asked for');
+                    $this->awaitPainted($tui, $terminal, needle: '│ ✗ Mock diagnostic');
+                    $this->assertNull($this->rowOf($this->screenGrid($tui, $terminal), needle: 'Says hello'), 'the problem alone: no documentation was asked for');
                 },
             ],
         );
@@ -269,15 +269,15 @@ final class IdeLspDiagnosticsTest extends TestCase
             $project->path('src/Problem.php'),
             [
                 600 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'Mock diagnostic');
-                    Widgets::editor($tui)->getDocument()->setCursor(0, 0);
+                    $this->awaitPainted($tui, $terminal, needle: 'Mock diagnostic');
+                    Widgets::editor($tui)->getDocument()->setCursor(0, col: 0);
                     $tui->handleInput("\x1b[1;2P"); // shift+f1
 
-                    $this->awaitPainted($tui, $terminal, 'Says hello');
+                    $this->awaitPainted($tui, $terminal, needle: 'Says hello');
                     $grid = $this->screenGrid($tui, $terminal);
-                    $problem = $this->rowOf($grid, '│ ✗ Mock diagnostic');
+                    $problem = $this->rowOf($grid, needle: '│ ✗ Mock diagnostic');
                     $this->assertNotNull($problem);
-                    $docs = $this->rowOf($grid, 'Says hello');
+                    $docs = $this->rowOf($grid, needle: 'Says hello');
                     $this->assertNotNull($docs, 'the documentation is there too');
                     $this->assertGreaterThan($problem, $docs, 'under the problem');
                 },
@@ -298,14 +298,14 @@ final class IdeLspDiagnosticsTest extends TestCase
             $project->path('src/Problem.php'),
             [
                 600 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'Mock diagnostic');
+                    $this->awaitPainted($tui, $terminal, needle: 'Mock diagnostic');
                     $document = Widgets::editor($tui)->getDocument();
-                    $document->setCursor(0, 0);
+                    $document->setCursor(0, col: 0);
                     $tui->handleInput("\x1b[13;4u");
 
                     $this->await(static fn (): bool => 'use Acme\\Imported;' === $document->getLine(1), what: 'the fix applied');
-                    $this->awaitPainted($tui, $terminal, 'Applied "Import class"');
-                    $this->assertNull($this->rowOf($this->screenGrid($tui, $terminal), 'Generate method'), 'no list was opened');
+                    $this->awaitPainted($tui, $terminal, needle: 'Applied "Import class"');
+                    $this->assertNull($this->rowOf($this->screenGrid($tui, $terminal), needle: 'Generate method'), 'no list was opened');
                 },
             ],
         );
@@ -328,12 +328,12 @@ final class IdeLspDiagnosticsTest extends TestCase
             $project->path('src/Params.php'),
             [
                 600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, 'f(n: 42, $y);');
+                    $this->awaitPainted($tui, $terminal, needle: 'f(n: 42, $y);');
                     $pill = Styles::dark()->of(Role::InlayParameter)->apply('n:');
                     $this->assertStringContainsString($pill, $terminal->getOutput(), 'the name is drawn as a pill');
 
-                    Services::resolve($ide, SettingsController::class)->changeSetting('inlayParameterHints', 'all');
-                    $this->awaitPainted($tui, $terminal, 'f(n: 42, m: $y);');
+                    Services::resolve($ide, SettingsController::class)->changeSetting('inlayParameterHints', value: 'all');
+                    $this->awaitPainted($tui, $terminal, needle: 'f(n: 42, m: $y);');
                 },
             ],
         );
@@ -361,7 +361,7 @@ final class IdeLspDiagnosticsTest extends TestCase
         $codeLineShows = function (Tui $tui, VirtualTerminal $terminal, string $needle): bool {
             $grid = $this->screenGrid($tui, $terminal);
 
-            return \str_contains($grid[$this->rowOf($grid, '<?php') ?? 0] ?? '', $needle);
+            return \str_contains($grid[$this->rowOf($grid, needle: '<?php') ?? 0] ?? '', $needle);
         };
 
         $this->runIde(
@@ -370,8 +370,8 @@ final class IdeLspDiagnosticsTest extends TestCase
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
-                    $this->awaitPainted($tui, $terminal, ': int');
-                    $this->awaitPainted($tui, $terminal, 'Mock diagnostic');
+                    $this->awaitPainted($tui, $terminal, needle: ': int');
+                    $this->awaitPainted($tui, $terminal, needle: 'Mock diagnostic');
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($lineShows, $codeLineShows): void {
                     $commands = Services::resolve($ide, CommandRegistry::class);
@@ -384,12 +384,12 @@ final class IdeLspDiagnosticsTest extends TestCase
                     $this->assertTrue($codeLineShows($tui, $terminal, needle: 'Mock diagnostic'), 'inline: after the code');
                     $commands->run('cycle_diagnostic_messages'); // inline → menu
                     $this->await(static fn (): bool => !$codeLineShows($tui, $terminal, needle: 'Mock diagnostic'), what: 'the message to leave the line');
-                    Widgets::editor($tui)->getDocument()->setCursor(0, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(0, col: 0);
                     $tui->handleInput("\x1b\r"); // alt+enter
                     $this->await(static fn (): bool => $lineShows($tui, $terminal, needle: 'Import class'), what: 'the quick fixes');
                     $grid = $this->screenGrid($tui, $terminal);
                     // The first row naming it, which is above the status bar's.
-                    $this->assertLessThan($this->rowOf($grid, 'Import class'), $this->rowOf($grid, 'Mock diagnostic'), 'the problem heads the fixes');
+                    $this->assertLessThan($this->rowOf($grid, needle: 'Import class'), $this->rowOf($grid, needle: 'Mock diagnostic'), 'the problem heads the fixes');
                     $tui->handleInput("\x1b");
                 },
             ],
@@ -414,9 +414,9 @@ final class IdeLspDiagnosticsTest extends TestCase
                     // dropped in silence, and every barrier after this one then
                     // waits for a request that was never sent. The status bar
                     // naming the server is the signal that it is up.
-                    $this->awaitPainted($tui, $terminal, 'LSP:mock-lsp-server');
+                    $this->awaitPainted($tui, $terminal, needle: 'LSP:mock-lsp-server');
 
-                    Widgets::editor($tui)->getDocument()->setCursor(2, 6);
+                    Widgets::editor($tui)->getDocument()->setCursor(2, col: 6);
                     $tui->handleInput("\x1b\r"); // alt+enter
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal): void {
@@ -428,7 +428,7 @@ final class IdeLspDiagnosticsTest extends TestCase
                         static fn (): bool => EditorState::pickerOpen($editor),
                         what: 'the quick-fix picker to open',
                     );
-                    $this->awaitPainted($tui, $terminal, 'Quick Fixes');
+                    $this->awaitPainted($tui, $terminal, needle: 'Quick Fixes');
                     $this->assertStringContainsString('Import class', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\r"); // pick "Import class"
                 },
@@ -440,7 +440,7 @@ final class IdeLspDiagnosticsTest extends TestCase
                         static fn (): bool => 'use Acme\Imported;' === $editor->getDocument()->getLine(1),
                         what: 'the Import class edit to reach the buffer',
                     );
-                    $this->awaitPainted($tui, $terminal, 'Applied "Import class" to 1 file');
+                    $this->awaitPainted($tui, $terminal, needle: 'Applied "Import class" to 1 file');
                     $this->assertStringContainsString('Applied "Import class" to 1 file', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // Command-based action next
                     $tui->handleInput("\x1b\r");
@@ -466,14 +466,14 @@ final class IdeLspDiagnosticsTest extends TestCase
                         what: 'the server applyEdit to land',
                     );
                     // Empty path: mock convention line >= 90
-                    $editor->getDocument()->setCursor(95, 0);
+                    $editor->getDocument()->setCursor(95, col: 0);
                     $tui->handleInput("\x1b\r");
                 },
                 600 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // The POSITIVE first. "No picker is open" is also true
                     // before the server has answered at all, so asserting it
                     // ahead of the flash proved nothing.
-                    $this->awaitPainted($tui, $terminal, 'No quick fixes here');
+                    $this->awaitPainted($tui, $terminal, needle: 'No quick fixes here');
                     $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')), 'an empty action list opens no picker');
                     $this->assertStringContainsString('No quick fixes here', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
@@ -498,7 +498,7 @@ final class IdeLspDiagnosticsTest extends TestCase
                 100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitLspReady($tui, $terminal);
 
-                    Widgets::editor($tui)->getDocument()->setCursor(0, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(0, col: 0);
                     $tui->handleInput("\x1b\r");
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal): void {
@@ -515,7 +515,7 @@ final class IdeLspDiagnosticsTest extends TestCase
                     // the picker on the next line, and the terminator's forced
                     // frame then renders the closed state — the title never
                     // reaching the output at all.
-                    $this->awaitPainted($tui, $terminal, 'Quick Fixes');
+                    $this->awaitPainted($tui, $terminal, needle: 'Quick Fixes');
                     $tui->handleInput("\x1b"); // close without applying
                 },
             ],
@@ -574,7 +574,7 @@ final class IdeLspDiagnosticsTest extends TestCase
                         what: 'the problems-row jump to open its file',
                     );
                     $this->assertSame('editor', $tui->getFocus()?->getId());
-                    $this->assertTrue(Widgets::byId($tui, 'results', ResultsPanelWidget::class)->isOpen(), 'the pane stays open after the jump');
+                    $this->assertTrue(Widgets::byId($tui, id: 'results', class: ResultsPanelWidget::class)->isOpen(), 'the pane stays open after the jump');
                 },
             ],
         );

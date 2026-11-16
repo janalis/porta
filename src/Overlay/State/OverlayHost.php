@@ -117,7 +117,7 @@ final class OverlayHost
             $this->listFrame->reset(); // a fresh list opens at its own size, where lists open
         }
         $overlay = ['title' => $title, 'items' => $items, 'selected' => 0, 'hovered' => null, 'filter' => $again['filter'] ?? new TextField(style: $this->cursorStyle), 'onPick' => $onPick];
-        $overlay['selected'] = LiveRows::from($this->matching($overlay), 0, 1);
+        $overlay['selected'] = LiveRows::from($this->matching($overlay), at: 0, direction: 1);
         if (null !== $again) {
             $overlay['selected'] = (int) \array_search($again['value'], \array_column($this->matching($overlay), column_key: 'value'), strict: true);
         }
@@ -221,7 +221,7 @@ final class OverlayHost
                 $rows,
                 static fn (SearchRow $row): bool => null !== $row->hit && $row->hit->category === $was->category && $row->hit->label === $was->label && $row->hit->detail === $was->detail,
             );
-        $search->selected = $kept ?? $this->firstHitAtOrAfter($rows, 0);
+        $search->selected = $kept ?? $this->firstHitAtOrAfter($rows, from: 0);
         $search->hovered = null; // the rows moved under a still pointer
         $search->tallest = \max($search->tallest, \count($rows));
         foreach ($rows as $row) {
@@ -255,10 +255,10 @@ final class OverlayHost
         }
         $before = $search->query->value();
         match (true) {
-            $kb->matches($keys, 'select_cancel') => ($search->onClose)(),
-            $kb->matches($keys, 'accept_completion') => $this->pickHit($search, $search->rows[$search->selected]->hit ?? null), // Enter
+            $kb->matches($keys, action: 'select_cancel') => ($search->onClose)(),
+            $kb->matches($keys, action: 'accept_completion') => $this->pickHit($search, $search->rows[$search->selected]->hit ?? null), // Enter
             null !== ($jumped = $this->jumpHit($search, $keys, $kb)) => $this->selectHit($search, $jumped),
-            $kb->matches($keys, 'delete_char_backward') => $search->query->backspace() ? $this->queried($search) : null,
+            $kb->matches($keys, action: 'delete_char_backward') => $search->query->backspace() ? $this->queried($search) : null,
             // A caret move repaints; a Delete or Ctrl+W is a new query.
             $search->query->editKey($keys, $kb) => $before === $search->query->value() ? ($this->invalidate)() : $this->queried($search),
             $search->query->insert($keys) => $this->queried($search),
@@ -355,9 +355,9 @@ final class OverlayHost
     private function handlePromptInput(string $keys, Keybindings $kb, array $prompt): void
     {
         match (true) {
-            $kb->matches($keys, 'select_cancel') => $this->closePrompt(),
-            $kb->matches($keys, 'accept_completion') => $this->submitPrompt($prompt), // Enter
-            $kb->matches($keys, 'delete_char_backward') => $prompt['value']->backspace() ? ($this->invalidate)() : null,
+            $kb->matches($keys, action: 'select_cancel') => $this->closePrompt(),
+            $kb->matches($keys, action: 'accept_completion') => $this->submitPrompt($prompt), // Enter
+            $kb->matches($keys, action: 'delete_char_backward') => $prompt['value']->backspace() ? ($this->invalidate)() : null,
             // The caret moves, so a rename's typo mid-word is fixed where it is.
             $prompt['value']->editKey($keys, $kb) || $prompt['value']->insert($keys) => ($this->invalidate)(),
             default => null,
@@ -387,8 +387,8 @@ final class OverlayHost
             // Esc clears the filter before it closes the list. Typing is how
             // you get around a long list, so a typo in the filter must not
             // also cost you the list you were reading.
-            $kb->matches($keys, 'select_cancel') => '' !== $before ? $this->clearFilter($overlay) : $this->closeOverlay(),
-            $kb->matches($keys, 'delete_char_backward') => $overlay['filter']->backspace() ? $this->refiltered($overlay) : null,
+            $kb->matches($keys, action: 'select_cancel') => '' !== $before ? $this->clearFilter($overlay) : $this->closeOverlay(),
+            $kb->matches($keys, action: 'delete_char_backward') => $overlay['filter']->backspace() ? $this->refiltered($overlay) : null,
             // A caret move repaints; a Delete or Ctrl+W narrows afresh.
             $overlay['filter']->editKey($keys, $kb) => $before === $overlay['filter']->value() ? ($this->invalidate)() : $this->refiltered($overlay),
             // None of the list's own keys can run against an empty list: every
@@ -409,12 +409,12 @@ final class OverlayHost
     private function handleListKey(string $keys, Keybindings $kb, array $overlay, int $count): void
     {
         match (true) {
-            $kb->matches($keys, 'cursor_up') => $this->reselect($overlay, ($overlay['selected'] - 1 + $count) % $count, -1),
-            $kb->matches($keys, 'cursor_down') => $this->reselect($overlay, ($overlay['selected'] + 1) % $count, 1),
-            $kb->matches($keys, 'page_up') || $kb->matches($keys, 'page_down') => $this->pageList($overlay, $count, $kb->matches($keys, 'page_up') ? -1 : 1),
-            $kb->matches($keys, 'accept_completion') => $this->pickSelected($overlay),
+            $kb->matches($keys, action: 'cursor_up') => $this->reselect($overlay, ($overlay['selected'] - 1 + $count) % $count, -1),
+            $kb->matches($keys, action: 'cursor_down') => $this->reselect($overlay, ($overlay['selected'] + 1) % $count, direction: 1),
+            $kb->matches($keys, action: 'page_up') || $kb->matches($keys, action: 'page_down') => $this->pageList($overlay, $count, $kb->matches($keys, action: 'page_up') ? -1 : 1),
+            $kb->matches($keys, action: 'accept_completion') => $this->pickSelected($overlay),
             // Ctrl+E again cycles like PhpStorm
-            $kb->matches($keys, 'recent_files') => $this->reselect($overlay, ($overlay['selected'] + 1) % $count),
+            $kb->matches($keys, action: 'recent_files') => $this->reselect($overlay, ($overlay['selected'] + 1) % $count),
             // A checklist takes Space as its checkbox's key — a browser's — so
             // Space toggles the row rather than typing into the filter, where it
             // matched every label with a space in it.
@@ -490,7 +490,7 @@ final class OverlayHost
     private function refiltered(array $overlay): void
     {
         $overlay['hovered'] = null;
-        $this->reselect($overlay, 0);
+        $this->reselect($overlay, selected: 0);
     }
 
     /**
@@ -742,12 +742,12 @@ final class OverlayHost
     private function jumpHit(SearchModalState $search, string $keys, Keybindings $kb): ?int
     {
         return match (true) {
-            $kb->matches($keys, 'cursor_up') => $this->stepHit($search, -1),
-            $kb->matches($keys, 'cursor_down') => $this->stepHit($search, 1),
+            $kb->matches($keys, action: 'cursor_up') => $this->stepHit($search, -1),
+            $kb->matches($keys, action: 'cursor_down') => $this->stepHit($search, dir: 1),
             [] === $search->rows => null,
-            $kb->matches($keys, 'page_up') => $this->pageHit($search, -1),
-            $kb->matches($keys, 'page_down') => $this->pageHit($search, 1),
-            "\t" === $keys => $this->categoryHit($search, 1),
+            $kb->matches($keys, action: 'page_up') => $this->pageHit($search, -1),
+            $kb->matches($keys, action: 'page_down') => $this->pageHit($search, dir: 1),
+            "\t" === $keys => $this->categoryHit($search, step: 1),
             "\x1b[Z" === $keys => $this->categoryHit($search, -1),
             default => null,
         };

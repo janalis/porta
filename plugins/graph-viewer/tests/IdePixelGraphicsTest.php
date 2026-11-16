@@ -59,7 +59,7 @@ final class IdePixelGraphicsTest extends TestCase
                         $tui->handleInput("\x1b[C"); // → View, which drops down over the middle of the picture
                     }
                     $tui->handleInput("\r");
-                    $this->awaitPainted($tui, $terminal, 'Soft-Wrap');
+                    $this->awaitPainted($tui, $terminal, needle: 'Soft-Wrap');
                     $crossed = \array_values(\array_filter(
                         $this->screenGrid($tui, $terminal),
                         static fn (string $row): bool => \str_contains($row, self::PLACEHOLDER) && \str_contains($row, '┃'),

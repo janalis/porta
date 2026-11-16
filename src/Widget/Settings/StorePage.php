@@ -294,7 +294,7 @@ final readonly class StorePage
         if (\str_starts_with($source[0] ?? '', '# ')) {
             \array_shift($source);
         }
-        [$body, $links] = $this->markdown(\implode("\n", $source), $width, (string) $entry->readme, 2);
+        [$body, $links] = $this->markdown(\implode("\n", $source), $width, (string) $entry->readme, above: 2);
 
         return [['', $this->heading($this->translator->trans('About'), $width), ...$body], $links];
     }

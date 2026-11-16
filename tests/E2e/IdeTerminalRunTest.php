@@ -94,8 +94,8 @@ final class IdeTerminalRunTest extends TestCase
                     // Wait for the PTY to actually deliver seq 30's output. Until
                     // more lines exist than the pane shows, scroll() clamps
                     // scrollBack to 0 and there is nothing to scroll into.
-                    $panel = Widgets::byId($tui, 'terminal', TerminalPanelWidget::class);
-                    $buffer = Probe::get($panel, 'buffer');
+                    $panel = Widgets::byId($tui, id: 'terminal', class: TerminalPanelWidget::class);
+                    $buffer = Probe::get($panel, property: 'buffer');
                     $this->await(static fn (): bool => $buffer->lineCount() >= 30, what: 'seq 30 output to fill the scrollback');
 
                     // Force a full frame so the terminal pane has a live WidgetRect.
@@ -108,7 +108,7 @@ final class IdeTerminalRunTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<64;%d;%dM", $col + 1, $row + 1));
                     $tui->tick();
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'scrolled'), 'the wheel scrolled the terminal back');
+                    $this->assertNotNull($this->rowOf($grid, needle: 'scrolled'), 'the wheel scrolled the terminal back');
                 },
             ],
         );
@@ -166,7 +166,7 @@ final class IdeTerminalRunTest extends TestCase
 
                     $tui->handleInput("\x1b[96;5u"); // ctrl+` toggle terminal
                     $this->assertSame('terminal', $tui->getFocus()?->getId());
-                    $this->assertTrue(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isOpen());
+                    $this->assertTrue(Widgets::byId($tui, id: 'terminal', class: TerminalPanelWidget::class)->isOpen());
                     // Type a command into the shell.
                     foreach (\str_split("echo hello-term\n") as $ch) {
                         $tui->handleInput($ch);
@@ -179,14 +179,14 @@ final class IdeTerminalRunTest extends TestCase
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'hello-term'), what: 'the shell echo');
                     // Hide the dock; the session stays alive and the editor regains focus.
                     $tui->handleInput("\x1b[96;5u");
-                    $this->assertFalse(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isVisible());
-                    $this->assertTrue(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isOpen(), 'the terminal tab survives the hide');
+                    $this->assertFalse(Widgets::byId($tui, id: 'terminal', class: TerminalPanelWidget::class)->isVisible());
+                    $this->assertTrue(Widgets::byId($tui, id: 'terminal', class: TerminalPanelWidget::class)->isOpen(), 'the terminal tab survives the hide');
                     $this->assertSame('editor', $tui->getFocus()?->getId());
                 },
                 250 => function (Tui $tui): void {
                     // Re-open: the still-running shell's panel comes back (no respawn).
                     $tui->handleInput("\x1b[96;5u");
-                    $this->assertTrue(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isVisible());
+                    $this->assertTrue(Widgets::byId($tui, id: 'terminal', class: TerminalPanelWidget::class)->isVisible());
                     // Now exit the shell so onExit updates the title.
                     foreach (\str_split("exit\n") as $ch) {
                         $tui->handleInput($ch);
@@ -198,7 +198,7 @@ final class IdeTerminalRunTest extends TestCase
                     // frame and assert the paint — one indirection fewer than
                     // awaiting the rendered glyph, and a genuinely stuck exit
                     // still throws.
-                    $sessions = Probe::get(Services::resolve($ide, RunController::class), 'sessions');
+                    $sessions = Probe::get(Services::resolve($ide, RunController::class), property: 'sessions');
                     $this->await(static fn (): bool => false === ($sessions->active()?->isRunning() ?? true), timeout: 20.0, what: 'the shell exit to be reaped');
                     // Assert the label on the MODEL, not on the painted strip.
                     // aliveTabs() returns [] whenever no dock panel is visible,
@@ -253,8 +253,8 @@ final class IdeTerminalRunTest extends TestCase
                     $this->assertStringContainsString('scrolled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x1b[6~"); // page down
                     $tui->handleInput("\x1b"); // escape hides the dock; the session stays alive
-                    $this->assertFalse(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isVisible());
-                    $this->assertTrue(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isOpen(), 'the terminal tab survives the hide');
+                    $this->assertFalse(Widgets::byId($tui, id: 'terminal', class: TerminalPanelWidget::class)->isVisible());
+                    $this->assertTrue(Widgets::byId($tui, id: 'terminal', class: TerminalPanelWidget::class)->isOpen(), 'the terminal tab survives the hide');
                 },
             ],
         );
@@ -278,12 +278,12 @@ final class IdeTerminalRunTest extends TestCase
                     }
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'Open Terminal');
+                    $this->awaitPainted($tui, $terminal, needle: 'Open Terminal');
                     $this->assertStringContainsString('Open Terminal', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\r"); // run it
                 },
                 700 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isOpen());
+                    $this->assertTrue(Widgets::byId($tui, id: 'terminal', class: TerminalPanelWidget::class)->isOpen());
                 },
             ],
         );
@@ -305,15 +305,15 @@ final class IdeTerminalRunTest extends TestCase
                     $this->assertTrue(EditorState::pickerOpen($tui->getById('editor')));
                 },
                 400 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'Run current file: hello.php');
+                    $this->awaitPainted($tui, $terminal, needle: 'Run current file: hello.php');
                     $this->assertStringContainsString('Run current file: hello.php', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\r"); // run it -> terminal panel
                 },
                 450 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isOpen());
+                    $this->assertTrue(Widgets::byId($tui, id: 'terminal', class: TerminalPanelWidget::class)->isOpen());
                 },
                 900 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'run-output-ok');
+                    $this->awaitPainted($tui, $terminal, needle: 'run-output-ok');
                     $this->assertStringContainsString('run-output-ok', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -336,11 +336,11 @@ final class IdeTerminalRunTest extends TestCase
                     $this->assertTrue(EditorState::pickerOpen($tui->getById('editor')));
                 },
                 400 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'Run current file: hello.php');
+                    $this->awaitPainted($tui, $terminal, needle: 'Run current file: hello.php');
                     $tui->handleInput("\r");
                 },
                 900 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
-                    $this->awaitPainted($tui, $terminal, 'as-edited');
+                    $this->awaitPainted($tui, $terminal, needle: 'as-edited');
                     $this->assertStringContainsString('as-edited', (string) \file_get_contents($project->path('hello.php')));
                     $this->assertFalse(Widgets::editor($tui)->getDocument()->isDirty());
                 },
@@ -367,7 +367,7 @@ final class IdeTerminalRunTest extends TestCase
                     $this->assertInstanceOf(Buffer::class, $buffer);
                     $buffer->diskChangedUnderEdit = true; // what the reconciler records
 
-                    Services::resolve($ide, RunController::class)->runInBackground(['php', 'hello.php'], 'tests');
+                    Services::resolve($ide, RunController::class)->runInBackground(['php', 'hello.php'], title: 'tests');
 
                     $this->assertSame("<?php\necho \"theirs\\n\";\n", \file_get_contents($project->path('hello.php')), 'their write kept');
                     $this->assertNull(Services::resolve($ide, RunController::class)->runSession('tests'), 'and nothing ran');
@@ -390,7 +390,7 @@ final class IdeTerminalRunTest extends TestCase
                 300 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     Widgets::editor($tui)->getDocument()->insert('// edited ');
 
-                    Services::resolve($ide, RunController::class)->runInBackground(['true'], 'tests');
+                    Services::resolve($ide, RunController::class)->runInBackground(['true'], title: 'tests');
 
                     $this->assertStringContainsString('// edited', (string) \file_get_contents($project->path('hello.php')));
                 },
@@ -409,7 +409,7 @@ final class IdeTerminalRunTest extends TestCase
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // Run Last with no prior run flashes a hint.
                     $tui->handleInput("\x1b[21;2~"); // shift+f10
-                    $this->awaitPainted($tui, $terminal, 'No previous run');
+                    $this->awaitPainted($tui, $terminal, needle: 'No previous run');
                     $this->assertStringContainsString('No previous run', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // Pick a run via the menu.
                     $tui->handleInput("\x1b[114;6u");
@@ -418,11 +418,11 @@ final class IdeTerminalRunTest extends TestCase
                     $tui->handleInput("\r"); // run current file
                 },
                 700 => static function (Tui $tui): void {
-                    Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->close();
+                    Widgets::byId($tui, id: 'terminal', class: TerminalPanelWidget::class)->close();
                     $tui->handleInput("\x1b[21;2~"); // Run Last repeats it
                 },
                 750 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isOpen());
+                    $this->assertTrue(Widgets::byId($tui, id: 'terminal', class: TerminalPanelWidget::class)->isOpen());
                 },
             ],
         );
@@ -441,7 +441,7 @@ final class IdeTerminalRunTest extends TestCase
                     $tui->handleInput("\x1b[114;6u"); // ctrl+shift+r
                     // The POSITIVE first: "no picker" is equally true before the
                     // command has decided there is nothing to run.
-                    $this->awaitPainted($tui, $terminal, 'Nothing to run');
+                    $this->awaitPainted($tui, $terminal, needle: 'Nothing to run');
                     $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')));
                 },
             ],

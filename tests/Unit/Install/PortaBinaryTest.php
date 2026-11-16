@@ -26,9 +26,9 @@ final class PortaBinaryTest extends TestCase
         $this->assertStringEndsWith('/bin/porta', PortaBinary::entry($project->path('bin/porta'), $project->path('Cellar/porta/v1/porta.phar')));
         $this->assertSame(PortaBinary::path(), PortaBinary::entry($project->path('missing'), PortaBinary::path()));
         $this->assertSame($project->path('opt/php/bin/php'), PortaBinary::interpreter($project->path('Cellar/php/v1/bin/php')));
-        $project->write('wrapper.php', '<?php // an unrelated caller');
+        $project->write('wrapper.php', content: '<?php // an unrelated caller');
         $this->assertSame($project->path('Cellar/porta/v1/porta.phar'), PortaBinary::entry($project->path('wrapper.php'), $project->path('Cellar/porta/v1/porta.phar')));
-        $project->write('Cellar/porta/v1/wrapper.php', '<?php // another file in the same keg');
+        $project->write('Cellar/porta/v1/wrapper.php', content: '<?php // another file in the same keg');
         $this->assertSame($project->path('Cellar/porta/v1/porta.phar'), PortaBinary::entry($project->path('Cellar/porta/v1/wrapper.php'), $project->path('Cellar/porta/v1/porta.phar')));
         \unlink($project->path('opt/php'));
         $this->assertSame($project->path('Cellar/php/v1/bin/php'), PortaBinary::interpreter($project->path('Cellar/php/v1/bin/php')));

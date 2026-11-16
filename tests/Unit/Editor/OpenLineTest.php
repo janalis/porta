@@ -25,7 +25,7 @@ final class OpenLineTest extends TestCase
     public function testBelowOpensALineWithoutSplittingThisOne(): void
     {
         $doc = new Document("    return one();\n");
-        $doc->setCursor(0, 8); // inside `return`
+        $doc->setCursor(0, col: 8); // inside `return`
 
         $doc->openLine(LinePlacement::Below);
 
@@ -37,7 +37,7 @@ final class OpenLineTest extends TestCase
     public function testAboveOpensALineWithoutSplittingThisOne(): void
     {
         $doc = new Document("    return one();\n");
-        $doc->setCursor(0, 8);
+        $doc->setCursor(0, col: 8);
 
         $doc->openLine(LinePlacement::Above);
 
@@ -54,7 +54,7 @@ final class OpenLineTest extends TestCase
     public function testBelowAnOpenerTakesOneMoreLevel(): void
     {
         $doc = new Document("    if (x) {\n    }\n");
-        $doc->setCursor(0, 6);
+        $doc->setCursor(0, col: 6);
 
         $doc->openLine(LinePlacement::Below);
 
@@ -71,7 +71,7 @@ final class OpenLineTest extends TestCase
     public function testAboveAnOpenerDoesNotGuessAtALevel(): void
     {
         $doc = new Document("    if (x) {\n");
-        $doc->setCursor(0, 6);
+        $doc->setCursor(0, col: 6);
 
         $doc->openLine(LinePlacement::Above);
 
@@ -86,9 +86,9 @@ final class OpenLineTest extends TestCase
     public function testASelectionIsCollapsedAndNotDeleted(): void
     {
         $doc = new Document("alpha beta\n");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $doc->beginSelect();
-        $doc->setCursor(0, 5, SelectionMode::Keep);
+        $doc->setCursor(0, col: 5, selection: SelectionMode::Keep);
 
         $doc->openLine(LinePlacement::Below);
 
@@ -99,7 +99,7 @@ final class OpenLineTest extends TestCase
     public function testTabIndentedLinesCopyTheirTabs(): void
     {
         $doc = new Document("\t\tvalue();\n");
-        $doc->setCursor(0, 3);
+        $doc->setCursor(0, col: 3);
 
         $doc->openLine(LinePlacement::Below);
 
@@ -109,7 +109,7 @@ final class OpenLineTest extends TestCase
     public function testOneKeypressIsOneUndoStep(): void
     {
         $doc = new Document("  a\n  b\n");
-        $doc->setCursor(1, 3);
+        $doc->setCursor(1, col: 3);
 
         $doc->openLine(LinePlacement::Above);
         $this->assertSame(['  a', '  ', '  b', ''], $doc->lines);
@@ -127,8 +127,8 @@ final class OpenLineTest extends TestCase
     public function testTheChordsReachTheVerbsAndShiftEnterNoLongerSplits(): void
     {
         $editor = new CodeEditorWidget();
-        $editor->openFile('demo.php', "    return one();\n");
-        $editor->getDocument()->setCursor(0, 8);
+        $editor->openFile('demo.php', content: "    return one();\n");
+        $editor->getDocument()->setCursor(0, col: 8);
 
         $editor->handleInput("\x1b[13;2u"); // shift+enter
         $this->assertSame('    return one();', $editor->getDocument()->getLine(0), 'the line is intact, not split at column 8');
@@ -140,7 +140,7 @@ final class OpenLineTest extends TestCase
 
         // The control: plain Enter still splits, so the rebinding took the
         // chord and not the behaviour.
-        $editor->getDocument()->setCursor(0, 8);
+        $editor->getDocument()->setCursor(0, col: 8);
         $editor->handleInput("\r");
         $this->assertSame('    retu', $editor->getDocument()->getLine(0));
     }
@@ -149,7 +149,7 @@ final class OpenLineTest extends TestCase
     public function testTheBufferIsDirtyAfterwards(): void
     {
         $editor = new CodeEditorWidget();
-        $editor->openFile('demo.php', "a\n");
+        $editor->openFile('demo.php', content: "a\n");
         $this->assertFalse($editor->getDocument()->isDirty(), 'clean to start with');
 
         $editor->handleInput("\x1b[13;2u");

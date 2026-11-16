@@ -196,28 +196,28 @@ final class LspMapperTest extends TestCase
         // exactly 0 — both bordering values (-1 and 1) are ruled out by a pair
         // of assertions that only agree with a true zero default.
         $rangeMissingStartLine = ['start' => ['character' => 0], 'end' => ['line' => 10, 'character' => 10]];
-        $this->assertTrue(LspMapper::rangeContains($rangeMissingStartLine, 0, 0), 'missing start line defaults to 0, not 1');
-        $this->assertFalse(LspMapper::rangeContains($rangeMissingStartLine, -1, 0), 'missing start line defaults to 0, not -1');
+        $this->assertTrue(LspMapper::rangeContains($rangeMissingStartLine, line: 0, utf16Col: 0), 'missing start line defaults to 0, not 1');
+        $this->assertFalse(LspMapper::rangeContains($rangeMissingStartLine, -1, utf16Col: 0), 'missing start line defaults to 0, not -1');
 
         $rangeMissingStartCol = ['start' => ['line' => 0], 'end' => ['line' => 10, 'character' => 10]];
-        $this->assertTrue(LspMapper::rangeContains($rangeMissingStartCol, 0, 0), 'missing start col defaults to 0, not 1');
-        $this->assertFalse(LspMapper::rangeContains($rangeMissingStartCol, 0, -1), 'missing start col defaults to 0, not -1');
+        $this->assertTrue(LspMapper::rangeContains($rangeMissingStartCol, line: 0, utf16Col: 0), 'missing start col defaults to 0, not 1');
+        $this->assertFalse(LspMapper::rangeContains($rangeMissingStartCol, line: 0, utf16Col: -1), 'missing start col defaults to 0, not -1');
 
         $rangeMissingEndLine = ['start' => ['line' => 0, 'character' => 0], 'end' => ['character' => 0]];
-        $this->assertTrue(LspMapper::rangeContains($rangeMissingEndLine, 0, 0), 'missing end line defaults to 0, not 1');
-        $this->assertFalse(LspMapper::rangeContains($rangeMissingEndLine, 1, 0), 'missing end line defaults to 0, not -1');
+        $this->assertTrue(LspMapper::rangeContains($rangeMissingEndLine, line: 0, utf16Col: 0), 'missing end line defaults to 0, not 1');
+        $this->assertFalse(LspMapper::rangeContains($rangeMissingEndLine, line: 1, utf16Col: 0), 'missing end line defaults to 0, not -1');
 
         $rangeMissingEndCol = ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0]];
-        $this->assertTrue(LspMapper::rangeContains($rangeMissingEndCol, 0, 0), 'missing end col defaults to 0, not 1');
-        $this->assertFalse(LspMapper::rangeContains($rangeMissingEndCol, 0, 1), 'missing end col defaults to 0, not -1');
+        $this->assertTrue(LspMapper::rangeContains($rangeMissingEndCol, line: 0, utf16Col: 0), 'missing end col defaults to 0, not 1');
+        $this->assertFalse(LspMapper::rangeContains($rangeMissingEndCol, line: 0, utf16Col: 1), 'missing end col defaults to 0, not -1');
     }
 
     public function testRangeContainsCastsNumericStringPositionsAsIntegers(): void
     {
         // @phpstan-ignore-next-line — deliberately feeding wire-shaped (untyped) data
         $range = ['start' => ['line' => '3', 'character' => '6'], 'end' => ['line' => '3', 'character' => '12']];
-        $this->assertTrue(LspMapper::rangeContains($range, 3, 9), 'numeric-string range parts are cast, not compared loosely');
-        $this->assertFalse(LspMapper::rangeContains($range, 3, 13));
+        $this->assertTrue(LspMapper::rangeContains($range, line: 3, utf16Col: 9), 'numeric-string range parts are cast, not compared loosely');
+        $this->assertFalse(LspMapper::rangeContains($range, line: 3, utf16Col: 13));
     }
 
     public function testFlattenSymbolsHandlesTheFullRangeFallbackChainAndRecursion(): void
@@ -262,8 +262,8 @@ final class LspMapperTest extends TestCase
                     'selectionRange' => ['start' => ['line' => 0, 'character' => 0]],
                 ],
             ],
-            0,
-            $items,
+            depth: 0,
+            items: $items,
         );
 
         $this->assertSame(
@@ -287,8 +287,8 @@ final class LspMapperTest extends TestCase
                 ['selectionRange' => ['start' => ['line' => 0, 'character' => 0]]], // no 'name' key at all
                 ['name' => 'kept', 'selectionRange' => ['start' => ['line' => 0, 'character' => 0]]],
             ],
-            0,
-            $items,
+            depth: 0,
+            items: $items,
         );
         $this->assertSame(['kept'], \array_column($items, 'label'));
     }
@@ -298,24 +298,24 @@ final class LspMapperTest extends TestCase
         // Each start is missing exactly one of line/character, so the two `?? 0`
         // defaults inside the "line:character" string are exercised separately.
         $items = [];
-        LspMapper::flattenSymbols([['name' => 'a', 'selectionRange' => ['start' => ['character' => 5]]]], 0, $items);
+        LspMapper::flattenSymbols([['name' => 'a', 'selectionRange' => ['start' => ['character' => 5]]]], depth: 0, items: $items);
         $this->assertSame('0:5', $items[0]['value'], 'missing line defaults to 0');
 
         $items = [];
-        LspMapper::flattenSymbols([['name' => 'b', 'selectionRange' => ['start' => ['line' => 5]]]], 0, $items);
+        LspMapper::flattenSymbols([['name' => 'b', 'selectionRange' => ['start' => ['line' => 5]]]], depth: 0, items: $items);
         $this->assertSame('5:0', $items[0]['value'], 'missing character defaults to 0');
 
         // A float character: casting to int must truncate it, not pass it
         // through raw into the concatenated string.
         $items = [];
-        LspMapper::flattenSymbols([['name' => 'c', 'selectionRange' => ['start' => ['line' => 1, 'character' => 3.7]]]], 0, $items);
+        LspMapper::flattenSymbols([['name' => 'c', 'selectionRange' => ['start' => ['line' => 1, 'character' => 3.7]]]], depth: 0, items: $items);
         $this->assertSame('1:3', $items[0]['value'], 'the character part is cast to int, not concatenated raw');
     }
 
     public function testFlattenSymbolsIndentsByDepthAndClampsNegativeDepth(): void
     {
         $items = [];
-        LspMapper::flattenSymbols([['name' => 'x', 'selectionRange' => ['start' => ['line' => 0, 'character' => 0]]]], 2, $items);
+        LspMapper::flattenSymbols([['name' => 'x', 'selectionRange' => ['start' => ['line' => 0, 'character' => 0]]]], depth: 2, items: $items);
         $this->assertSame('    x', $items[0]['label'], 'two levels of two-space indent');
 
         $items = [];
@@ -347,10 +347,10 @@ final class LspMapperTest extends TestCase
         $doc = new Document("<?php\n\$name = 1;\necho \$name;\n");
 
         $spans = LspMapper::mapDocumentHighlights($doc, [
-            $this->highlight($this->range(1, 0, 5), kind: 3),
-            $this->highlight($this->range(2, 5, 10), kind: 2),
-            $this->highlight($this->range(2, 0, 4), kind: 1),
-            $this->highlight($this->range(1, 0, 5)), // no kind at all
+            $this->highlight($this->range(1, from: 0, to: 5), kind: 3),
+            $this->highlight($this->range(2, from: 5, to: 10), kind: 2),
+            $this->highlight($this->range(2, from: 0, to: 4), kind: 1),
+            $this->highlight($this->range(1, from: 0, to: 5)), // no kind at all
         ]);
 
         $this->assertSame(
@@ -370,7 +370,7 @@ final class LspMapperTest extends TestCase
     {
         $doc = new Document("<?php\n\$name = 1;\necho \$name;\n");
 
-        $spans = LspMapper::mapDocumentHighlights($doc, [$this->highlight($this->range(1, 0, 4, endLine: 2))]);
+        $spans = LspMapper::mapDocumentHighlights($doc, [$this->highlight($this->range(1, from: 0, to: 4, endLine: 2))]);
 
         $this->assertSame([], $spans);
     }
@@ -409,7 +409,7 @@ final class LspMapperTest extends TestCase
     {
         $doc = new Document("<?php\n\$name = 1;\n");
 
-        $spans = LspMapper::mapDocumentHighlights($doc, [...$highlights, $this->highlight($this->range(1, 0, 5), kind: 3)]);
+        $spans = LspMapper::mapDocumentHighlights($doc, [...$highlights, $this->highlight($this->range(1, from: 0, to: 5), kind: 3)]);
 
         $this->assertSame([[1, 0, 5, true]], $spans);
     }

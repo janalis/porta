@@ -73,10 +73,10 @@ final class HtmlOracle
             $block instanceof ThematicBreak => $this->line('<hr />'),
             $block instanceof CodeBlock => $this->code($block),
             $block instanceof HtmlBlock => $this->line($this->filter($block->literal)),
-            $block instanceof BlockQuote => $this->container('<blockquote>', $block->blocks, '</blockquote>'),
+            $block instanceof BlockQuote => $this->container('<blockquote>', $block->blocks, close: '</blockquote>'),
             $block instanceof ListBlock => $this->list($block),
             $block instanceof Table => $this->table($block),
-            $block instanceof FootnoteDefinition => $this->container('<div class="footnote" id="fn-'.self::esc($block->label).'">', $block->blocks, '</div>'),
+            $block instanceof FootnoteDefinition => $this->container('<div class="footnote" id="fn-'.self::esc($block->label).'">', $block->blocks, close: '</div>'),
             default => null,
         };
     }
@@ -159,12 +159,12 @@ final class HtmlOracle
     {
         $this->line('<table>');
         $this->line('<thead>');
-        $this->row($table->header, 'th', $table->alignments);
+        $this->row($table->header, tag: 'th', alignments: $table->alignments);
         $this->line('</thead>');
         if ([] !== $table->rows) {
             $this->line('<tbody>');
             foreach ($table->rows as $row) {
-                $this->row($row, 'td', $table->alignments);
+                $this->row($row, tag: 'td', alignments: $table->alignments);
             }
             $this->line('</tbody>');
         }

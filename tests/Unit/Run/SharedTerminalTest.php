@@ -36,7 +36,7 @@ final class SharedTerminalTest extends TestCase
     protected function setUp(): void
     {
         $this->project = new TempProject([]);
-        $this->runs = TestRunController::create($this->project->dir, TestTui::create(100, 24), $this->sessions = new TerminalSessions(), new TerminalPanelWidget());
+        $this->runs = TestRunController::create($this->project->dir, TestTui::create(100, rows: 24), $this->sessions = new TerminalSessions(), new TerminalPanelWidget());
     }
 
     #[\Override]
@@ -60,46 +60,46 @@ final class SharedTerminalTest extends TestCase
         $this->assertTrue($runs->watch('run:cat', static function (string $chunk) use (&$seen): void {
             $seen .= $chunk;
         }));
-        $this->assertTrue($runs->write('run:cat', "hello\n"));
+        $this->assertTrue($runs->write('run:cat', bytes: "hello\n"));
         $this->await(static function () use (&$seen): bool {
             return \str_contains($seen, 'got hello');
         }, what: 'the typed line, read as it printed');
         $this->assertStringContainsString("\r\ngot hello\r\n", (string) $runs->scrollback('run:cat'), 'the scrollback, lines ended as a terminal ends them');
 
-        $this->assertTrue($runs->watch('run:cat', null));
-        $runs->write('run:cat', "again\n");
+        $this->assertTrue($runs->watch('run:cat', onOutput: null));
+        $runs->write('run:cat', bytes: "again\n");
         $this->await(static fn (): bool => \str_contains((string) $runs->scrollback('run:cat'), 'got again'), what: 'the second line');
         $this->assertStringNotContainsString('again', $seen, 'no longer watched');
 
-        $this->assertFalse($runs->watch('nope', null));
-        $this->assertFalse($runs->write('nope', 'x'));
+        $this->assertFalse($runs->watch('nope', onOutput: null));
+        $this->assertFalse($runs->write('nope', bytes: 'x'));
         $this->assertNull($runs->scrollback('nope'));
     }
 
     public function testAMirroredTabShowsWhatItIsFedAndHandsItsKeysOn(): void
     {
         $runs = TestRuns::create($this->runs);
-        $mine = $this->sessions->create('shell:1', 'zsh 1');
+        $mine = $this->sessions->create('shell:1', title: 'zsh 1');
         $typed = [];
-        $runs->mirror('assist:shell:1', 'Hal\'s zsh', static function (string $bytes) use (&$typed): void {
+        $runs->mirror('assist:shell:1', title: 'Hal\'s zsh', onInput: static function (string $bytes) use (&$typed): void {
             $typed[] = $bytes;
         });
         $this->assertSame($mine, $this->sessions->active(), 'made behind the tab in front');
-        $this->assertFalse($runs->write('assist:shell:1', 'x'), 'no process here to type into');
+        $this->assertFalse($runs->write('assist:shell:1', bytes: 'x'), 'no process here to type into');
 
-        $runs->feed('assist:shell:1', "\x1b[32m\$ ls\x1b[0m\r\nsrc\r\n");
-        $runs->feed('nope', 'ignored');
+        $runs->feed('assist:shell:1', bytes: "\x1b[32m\$ ls\x1b[0m\r\nsrc\r\n");
+        $runs->feed('nope', bytes: 'ignored');
         $this->assertStringContainsString('src', (string) $runs->scrollback('assist:shell:1'));
 
         $mirror = $this->sessions->find('assist:shell:1');
         $this->assertInstanceOf(TerminalSession::class, $mirror);
         $this->sessions->makeActive($mirror);
         $this->runs->forwardInput('l');
-        $this->runs->feed('assist:shell:1', "more\r\n");
+        $this->runs->feed('assist:shell:1', bytes: "more\r\n");
         $this->assertSame(['l'], $typed, 'its keys, for whoever relays them');
 
         // Made again: retitled, and its keys go nowhere now.
-        $runs->mirror('assist:shell:1', 'Hal\'s zsh (ended)', null);
+        $runs->mirror('assist:shell:1', title: 'Hal\'s zsh (ended)', onInput: null);
         $this->assertSame('Hal\'s zsh (ended)', $mirror->title);
         $this->runs->forwardInput('x');
         $this->assertSame(['l'], $typed);

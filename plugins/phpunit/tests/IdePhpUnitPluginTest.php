@@ -169,9 +169,9 @@ final class IdePhpUnitPluginTest extends TestCase
             $project->path('tests/DemoTest.php'),
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->command($ide, $terminal, 'run_file');
-                    $this->awaitPainted($tui, $terminal, '1 of 2 tests failed');
-                    $this->awaitPainted($tui, $terminal, 'App\Tests\DemoTest::testFails: Failed asserting that 2 is identical to 1.');
+                    $this->command($ide, $terminal, id: 'run_file');
+                    $this->awaitPainted($tui, $terminal, needle: '1 of 2 tests failed');
+                    $this->awaitPainted($tui, $terminal, needle: 'App\Tests\DemoTest::testFails: Failed asserting that 2 is identical to 1.');
                     $screen = $this->screen($tui, $terminal);
                     $this->assertStringContainsString('✗ App\Tests\DemoTest::testFails — Failed asserting that 2 is identical to 1.', $screen, 'the failure leads the dock');
                     $this->assertStringContainsString('✓ App\Tests\DemoTest::testPasses', $screen);
@@ -188,34 +188,34 @@ final class IdePhpUnitPluginTest extends TestCase
                         $project->path('tests/OtherTest.php'),
                         static fn () => Services::resolve($ide, CommandRegistry::class)->run('phpunit:run_file'),
                     );
-                    $this->awaitPainted($tui, $terminal, '1 of 1 tests failed');
+                    $this->awaitPainted($tui, $terminal, needle: '1 of 1 tests failed');
                     $this->assertStringContainsString('✗ App\Tests\OtherTest::testBroken', $this->screen($tui, $terminal));
                 },
                 150 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
-                    $this->command($ide, $terminal, 'run_all');
-                    $this->awaitPainted($tui, $terminal, '2 of 3 tests failed');
+                    $this->command($ide, $terminal, id: 'run_all');
+                    $this->awaitPainted($tui, $terminal, needle: '2 of 3 tests failed');
 
                     // A file opened after the run gets its failures then.
                     $terminal->consumeOutput();
                     Services::resolve($ide, BufferService::class)->openFile($project->path('tests/OtherTest.php'));
-                    $this->awaitPainted($tui, $terminal, 'App\Tests\OtherTest::testBroken: Failed asserting that false is true.');
+                    $this->awaitPainted($tui, $terminal, needle: 'App\Tests\OtherTest::testBroken: Failed asserting that false is true.');
 
                     // Back on the first file, its marks are put back.
                     $terminal->consumeOutput();
                     Services::resolve($ide, BufferService::class)->openFile($project->path('tests/DemoTest.php'));
-                    $this->awaitPainted($tui, $terminal, '✓ test passed');
+                    $this->awaitPainted($tui, $terminal, needle: '✓ test passed');
                 },
                 175 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->command($ide, $terminal, 'rerun_failed');
-                    $this->awaitPainted($tui, $terminal, '2 of 2 tests failed');
+                    $this->command($ide, $terminal, id: 'rerun_failed');
+                    $this->awaitPainted($tui, $terminal, needle: '2 of 2 tests failed');
                     $screen = $this->screen($tui, $terminal);
                     $this->assertStringContainsString('✗ App\Tests\OtherTest::testBroken', $screen, 'both files ran again');
                     $this->assertStringNotContainsString('✓ App\Tests\DemoTest::testPasses', $screen, 'only the failures did');
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
-                    Widgets::editor($tui)->jumpTo(8, 0); // inside testPasses
-                    $this->command($ide, $terminal, 'run_at_caret');
-                    $this->awaitPainted($tui, $terminal, '1 test passed');
+                    Widgets::editor($tui)->jumpTo(8, utf16Col: 0); // inside testPasses
+                    $this->command($ide, $terminal, id: 'run_at_caret');
+                    $this->awaitPainted($tui, $terminal, needle: '1 test passed');
                     $screen = $this->screen($tui, $terminal);
                     $this->assertStringNotContainsString('failing', $screen, 'a green run clears the count');
                     $this->assertStringNotContainsString('testFails: Failed asserting', $screen, 'and the failure it no longer ran');
@@ -230,14 +230,14 @@ final class IdePhpUnitPluginTest extends TestCase
                     $tui->setFocus($tui->getById('results'));
                     $terminal->consumeOutput();
                     $tui->handleInput("\x1b[15~");
-                    $this->awaitPainted($tui, $terminal, '✗ App\Tests\DemoTest::testPasses');
+                    $this->awaitPainted($tui, $terminal, needle: '✗ App\Tests\DemoTest::testPasses');
                     $this->assertStringContainsString('1 result', $this->screen($tui, $terminal));
                 },
                 350 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // Above every method, the caret means the whole file.
-                    Widgets::editor($tui)->jumpTo(2, 0);
-                    $this->command($ide, $terminal, 'run_at_caret');
-                    $this->awaitPainted($tui, $terminal, '2 results');
+                    Widgets::editor($tui)->jumpTo(2, utf16Col: 0);
+                    $this->command($ide, $terminal, id: 'run_at_caret');
+                    $this->awaitPainted($tui, $terminal, needle: '2 results');
                     $this->assertStringContainsString('✗ 2 tests failing', $this->screen($tui, $terminal));
                 },
                 400 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
@@ -276,7 +276,7 @@ final class IdePhpUnitPluginTest extends TestCase
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project, $calc, $other): void {
                     $decorations = Widgets::editor($tui)->decorations;
                     $this->assertFalse(self::hideOffered($ide), 'nothing to hide yet');
-                    $this->command($ide, $terminal, 'run_with_coverage');
+                    $this->command($ide, $terminal, id: 'run_with_coverage');
                     $this->await(static fn (): bool => $calc === $decorations->coverage, what: 'the file in front to show its coverage');
                     $this->assertStringContainsString('--coverage-clover', (string) \file_get_contents($project->path('calls')));
                     $this->assertStringEndsWith(" XDEBUG_MODE=debug,coverage\n", (string) \file_get_contents($project->path('calls')), 'Xdebug, if that is the driver, collects — its own mode kept');
@@ -288,13 +288,13 @@ final class IdePhpUnitPluginTest extends TestCase
                 200 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
                     // F5 measures again, as the run it repeats did — and this
                     // time measures Calc only, so Other's bars go.
-                    self::measurer($project, '<coverage><project><file name="{root}/src/Calc.php"><line num="7" type="stmt" count="1"/></file></project></coverage>');
+                    self::measurer($project, clover: '<coverage><project><file name="{root}/src/Calc.php"><line num="7" type="stmt" count="1"/></file></project></coverage>');
                     $results = $tui->getById('results');
                     $tui->setFocus($results);
                     $terminal->consumeOutput();
                     $tui->handleInput("\x1b[15~");
-                    $this->assertTrue(Probe::get($results, 'searching'), 'the rerun is under way');
-                    $this->await(static fn (): bool => !Probe::get($results, 'searching'), what: 'the rerun to finish');
+                    $this->assertTrue(Probe::get($results, property: 'searching'), 'the rerun is under way');
+                    $this->await(static fn (): bool => !Probe::get($results, property: 'searching'), what: 'the rerun to finish');
                     $this->assertSame(2, \substr_count((string) \file_get_contents($project->path('calls')), needle: '--coverage-clover'), 'it measured again');
                     $this->assertSame([], Widgets::editor($tui)->decorations->coverage, 'a file the new run did not measure shows none of the old');
                 },
@@ -322,10 +322,10 @@ final class IdePhpUnitPluginTest extends TestCase
                     // run saves first, so the edit is one the disk it measured
                     // does not have, and its lines are not the buffer's.
                     $buffers->openFile($project->path('src/Calc.php'), OpenFocus::Editor);
-                    $this->command($ide, $terminal, 'run_with_coverage');
+                    $this->command($ide, $terminal, id: 'run_with_coverage');
                     Widgets::editor($tui)->getDocument()->insert("// more\n");
                     $results = $tui->getById('results');
-                    $this->await(static fn (): bool => !Probe::get($results, 'searching'), what: 'the run to finish');
+                    $this->await(static fn (): bool => !Probe::get($results, property: 'searching'), what: 'the run to finish');
                     $this->assertSame([], $decorations->coverage, 'a buffer with unsaved edits gets none');
 
                     // Other changed on disk after the run, before it opened.
@@ -337,7 +337,7 @@ final class IdePhpUnitPluginTest extends TestCase
                     $buffers->openFile($project->path('src/Third.php'), OpenFocus::Editor);
                     $this->assertSame([1 => CoverageMark::Uncovered], $decorations->coverage);
                     $this->assertTrue(self::hideOffered($ide));
-                    $this->command($ide, $terminal, 'hide_coverage');
+                    $this->command($ide, $terminal, id: 'hide_coverage');
                     $this->assertSame([], $decorations->coverage, 'hidden');
                     $this->assertFalse(self::hideOffered($ide));
                     $buffers->closeTab((string) \realpath($project->path('src/Third.php')));
@@ -348,18 +348,18 @@ final class IdePhpUnitPluginTest extends TestCase
                     // Stopped before its tests reported, a run says so — not
                     // that coverage needs a driver.
                     $project->write('vendor/bin/phpunit', '#!'.\PHP_BINARY."\n<?php\nsleep(30);\n");
-                    $this->command($ide, $terminal, 'run_with_coverage');
+                    $this->command($ide, $terminal, id: 'run_with_coverage');
                     $runs = Services::resolve($ide, RunController::class);
-                    $sessions = Probe::get($runs, 'sessions');
+                    $sessions = Probe::get($runs, property: 'sessions');
                     $this->assertInstanceOf(TerminalSessions::class, $sessions);
                     $runs->closeSession((int) \array_search($sessions->find('run:PHPUnit'), $sessions->sessions, strict: true));
-                    $this->awaitPainted($tui, $terminal, 'PHPUnit was stopped');
+                    $this->awaitPainted($tui, $terminal, needle: 'PHPUnit was stopped');
                     $this->assertStringNotContainsString('No coverage', $this->screen($tui, $terminal));
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
-                    self::measurer($project, null); // no driver: PHPUnit writes no Clover report
-                    $this->command($ide, $terminal, 'run_with_coverage');
-                    $this->awaitPainted($tui, $terminal, 'No coverage');
+                    self::measurer($project, clover: null); // no driver: PHPUnit writes no Clover report
+                    $this->command($ide, $terminal, id: 'run_with_coverage');
+                    $this->awaitPainted($tui, $terminal, needle: 'No coverage');
                 },
             ],
         );
@@ -383,12 +383,12 @@ final class IdePhpUnitPluginTest extends TestCase
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $decorations = Widgets::editor($tui)->decorations;
-                    $this->command($ide, $terminal, 'run_with_coverage');
+                    $this->command($ide, $terminal, id: 'run_with_coverage');
                     $this->await(static fn (): bool => [1 => CoverageMark::Covered] === $decorations->coverage, what: 'the coverage to show');
                     $this->assertStringEndsWith(" XDEBUG_MODE=coverage\n", (string) \file_get_contents($project->path('calls')), 'with no mode of its own, coverage alone');
 
                     // Changed outside the editor, the clean buffer reloads.
-                    $project->write('src/Calc.php', "<?php\n\$a = 2000;\n"); // another size: the poller compares size and time
+                    $project->write('src/Calc.php', content: "<?php\n\$a = 2000;\n"); // another size: the poller compares size and time
                     $ide->pollFilesystem();
                     $this->await(static fn (): bool => [] === $decorations->coverage, what: 'the reload to take the coverage away');
 
@@ -441,9 +441,9 @@ final class IdePhpUnitPluginTest extends TestCase
             $project->path('tests/ExampleTest.php'),
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
-                    Widgets::editor($tui)->jumpTo(7, 0); // inside it('fails (on purpose)')
-                    $this->command($ide, $terminal, 'run_at_caret');
-                    $this->awaitPainted($tui, $terminal, '1 of 2 tests failed');
+                    Widgets::editor($tui)->jumpTo(7, utf16Col: 0); // inside it('fails (on purpose)')
+                    $this->command($ide, $terminal, id: 'run_at_caret');
+                    $this->awaitPainted($tui, $terminal, needle: '1 of 2 tests failed');
                     $calls = (string) \file_get_contents($project->path('calls'));
                     $this->assertStringContainsString('--filter /^(?:[^:]*::it fails \(on purpose\))(?: with data set |$)/ ', $calls, 'Pest ran, filtered to the test at the caret');
                     $this->assertStringEndsWith('tests/ExampleTest.php'."\n", $calls);
@@ -464,7 +464,7 @@ final class IdePhpUnitPluginTest extends TestCase
         $project = self::project(['tests/ExampleTest.php' => PestTestsTest::FILE]);
         $project->write('vendor/bin/pest', '#!'.\PHP_BINARY."\n<?php\nfile_put_contents('pest-ran', '');\n");
         \chmod($project->path('vendor/bin/pest'), permissions: 0o755);
-        self::reporter($project, '', 0);
+        self::reporter($project, cases: '', code: 0);
         $project->write('.porta.json', (string) \json_encode(['enabledPlugins' => ['phpunit'], 'plugins' => ['phpunit' => ['binary' => $project->path('vendor/bin/phpunit')]]], \JSON_THROW_ON_ERROR));
 
         $this->runIde(
@@ -472,8 +472,8 @@ final class IdePhpUnitPluginTest extends TestCase
             $project->path('tests/ExampleTest.php'),
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
-                    $this->command($ide, $terminal, 'run_all');
-                    $this->awaitPainted($tui, $terminal, 'PHPUnit ran no tests');
+                    $this->command($ide, $terminal, id: 'run_all');
+                    $this->awaitPainted($tui, $terminal, needle: 'PHPUnit ran no tests');
                     $this->assertFileDoesNotExist($project->path('pest-ran'));
                 },
             ],
@@ -493,62 +493,62 @@ final class IdePhpUnitPluginTest extends TestCase
             $project->path('notes.txt'),
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
-                    $this->command($ide, $terminal, 'run_file');
-                    $this->awaitPainted($tui, $terminal, 'Open a PHPUnit test file first');
+                    $this->command($ide, $terminal, id: 'run_file');
+                    $this->awaitPainted($tui, $terminal, needle: 'Open a PHPUnit test file first');
 
-                    $this->command($ide, $terminal, 'rerun_failed');
-                    $this->awaitPainted($tui, $terminal, 'No failed tests to run again');
+                    $this->command($ide, $terminal, id: 'rerun_failed');
+                    $this->awaitPainted($tui, $terminal, needle: 'No failed tests to run again');
 
                     Services::resolve($ide, BufferService::class)->openFile($project->path('helper.php'));
-                    $this->command($ide, $terminal, 'run_at_caret');
-                    $this->awaitPainted($tui, $terminal, 'helper.php declares no test class');
-                    $this->command($ide, $terminal, 'run_file');
-                    $this->awaitPainted($tui, $terminal, 'helper.php declares no test class');
+                    $this->command($ide, $terminal, id: 'run_at_caret');
+                    $this->awaitPainted($tui, $terminal, needle: 'helper.php declares no test class');
+                    $this->command($ide, $terminal, id: 'run_file');
+                    $this->awaitPainted($tui, $terminal, needle: 'helper.php declares no test class');
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)->openFile($project->path('tests/EmptyTest.php'));
-                    $this->command($ide, $terminal, 'run_file'); // a class of no tests: a report of nothing
-                    $this->awaitPainted($tui, $terminal, 'PHPUnit ran no tests');
+                    $this->command($ide, $terminal, id: 'run_file'); // a class of no tests: a report of nothing
+                    $this->awaitPainted($tui, $terminal, needle: 'PHPUnit ran no tests');
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // No configuration to say where the suite is: PHPUnit prints
                     // its usage and leaves the log empty.
-                    $this->command($ide, $terminal, 'run_all');
-                    $this->awaitPainted($tui, $terminal, 'PHPUnit exited with code 1');
-                    $this->assertFalse(Probe::get($tui->getById('results'), 'searching'), 'the tab says the run is over');
+                    $this->command($ide, $terminal, id: 'run_all');
+                    $this->awaitPainted($tui, $terminal, needle: 'PHPUnit exited with code 1');
+                    $this->assertFalse(Probe::get($tui->getById('results'), property: 'searching'), 'the tab says the run is over');
                 },
                 350 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     // Every test passed and PHPUnit still failed the run (a
                     // failOnWarning, say): the exit code has the last word.
-                    self::reporter($project, '<testcase name="testA" file="/x/ATest.php" line="3" class="ATest"/>', 1);
-                    $this->command($ide, $terminal, 'run_all');
-                    $this->awaitPainted($tui, $terminal, '1 test passed, but');
+                    self::reporter($project, cases: '<testcase name="testA" file="/x/ATest.php" line="3" class="ATest"/>', code: 1);
+                    $this->command($ide, $terminal, id: 'run_all');
+                    $this->awaitPainted($tui, $terminal, needle: '1 test passed, but');
                     $log = (string) \file_get_contents($project->path('log-path'));
                     $this->assertStringStartsWith(\sys_get_temp_dir().'/porta-phpunit-', $log, 'the report goes to a file of its own under the temp dir');
                     $this->assertFileDoesNotExist($log, 'and is removed once read');
 
-                    self::reporter($project, '<testcase name="testA" file="/x/ATest.php" line="3" class="ATest"><failure>ATest::testA'."\n".'No.</failure></testcase>', 1);
-                    $this->command($ide, $terminal, 'run_all');
-                    $this->awaitPainted($tui, $terminal, '✗ 1 test failing');
+                    self::reporter($project, '<testcase name="testA" file="/x/ATest.php" line="3" class="ATest"><failure>ATest::testA'."\n".'No.</failure></testcase>', code: 1);
+                    $this->command($ide, $terminal, id: 'run_all');
+                    $this->awaitPainted($tui, $terminal, needle: '✗ 1 test failing');
                 },
                 400 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     // Its tab closed under it, a run reports no code at all —
                     // and takes the last run's failures off the screen with it.
                     $project->write('vendor/bin/phpunit', '#!'.\PHP_BINARY."\n<?php\nsleep(30);\n");
-                    $this->command($ide, $terminal, 'run_all');
+                    $this->command($ide, $terminal, id: 'run_all');
                     $runs = Services::resolve($ide, RunController::class);
-                    $sessions = Probe::get($runs, 'sessions');
+                    $sessions = Probe::get($runs, property: 'sessions');
                     $this->assertInstanceOf(TerminalSessions::class, $sessions);
                     $index = \array_search($sessions->find('run:PHPUnit'), $sessions->sessions, strict: true);
                     $this->assertIsInt($index, 'the run has a tab of its own');
                     $runs->closeSession($index);
-                    $this->awaitPainted($tui, $terminal, 'PHPUnit was stopped');
+                    $this->awaitPainted($tui, $terminal, needle: 'PHPUnit was stopped');
                     $this->assertStringNotContainsString('test failing', $this->screen($tui, $terminal));
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     \unlink($project->path('vendor/bin/phpunit'));
-                    $this->command($ide, $terminal, 'run_all');
-                    $this->awaitPainted($tui, $terminal, 'phpunit not found');
+                    $this->command($ide, $terminal, id: 'run_all');
+                    $this->awaitPainted($tui, $terminal, needle: 'phpunit not found');
                     $this->assertStringNotContainsString('Plugin "phpunit" failed', $this->screen($tui, $terminal), 'and nothing tried to run without it');
                 },
             ],

@@ -72,7 +72,7 @@ final readonly class PlantUmlEngine implements DiagramEngine
             return;
         }
         // -failfast2 puts syntax errors on stderr rather than in the picture.
-        $this->slot->run(PlantUmlCommand::render($tool, Format::Png, $dpi), $this->rootDir, $source, 'plantuml', $onPng, $onError);
+        $this->slot->run(PlantUmlCommand::render($tool, Format::Png, $dpi), $this->rootDir, $source, label: 'plantuml', onSuccess: $onPng, onFailure: $onError);
     }
 
     /**
@@ -93,8 +93,8 @@ final readonly class PlantUmlEngine implements DiagramEngine
             PlantUmlCommand::render($tool, $format),
             $this->rootDir,
             $source,
-            'plantuml',
-            function (string $bytes) use ($outPath, $onDone): void {
+            label: 'plantuml',
+            onSuccess: function (string $bytes) use ($outPath, $onDone): void {
                 try {
                     $this->files->dumpFile($outPath, $bytes);
                 } catch (IOExceptionInterface $exception) {
@@ -104,7 +104,7 @@ final readonly class PlantUmlEngine implements DiagramEngine
                 }
                 $onDone(null);
             },
-            $onDone,
+            onFailure: $onDone,
         );
     }
 

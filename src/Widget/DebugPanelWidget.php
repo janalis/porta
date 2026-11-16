@@ -133,6 +133,7 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
                 ? ['debug_pause' => '%key% pause', 'debug_stop' => '%key% stop']
                 : ['debug_step_over' => '%key% over', 'debug_step_into' => '%key% into', 'debug_step_out' => '%key% out', 'debug_continue' => '%key% resume', 'debug_stop' => '%key% stop'],
             fn (string $message, string $key): string => $this->translator->trans($message, ['%key%' => $key]),
+            // @mago-expect lint:literal-named-argument -- a variadic, which cannot take a named argument: mago#2741
             ' · ',
             $this->ideKeys,
         );
@@ -221,12 +222,12 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
         }
         $kb = $this->getKeybindings();
         match (true) {
-            $kb->matches($data, 'close') => $this->dismiss(),
+            $kb->matches($data, action: 'close') => $this->dismiss(),
             // A page is the rows the panel shows, so the row landed on was drawn.
             ListNavigation::handleKey($data, $kb, $this->list, \count($this->rows), page: $this->visibleRows) => $this->invalidate(),
-            $kb->matches($data, 'jump') => $this->activateRow($this->list->selected()),
-            $kb->matches($data, 'edit_variable') => $this->editSelectedVariable(),
-            $kb->matches($data, 'remove_watch') => $this->removeSelectedWatch(),
+            $kb->matches($data, action: 'jump') => $this->activateRow($this->list->selected()),
+            $kb->matches($data, action: 'edit_variable') => $this->editSelectedVariable(),
+            $kb->matches($data, action: 'remove_watch') => $this->removeSelectedWatch(),
             default => null,
         };
     }
@@ -362,7 +363,7 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
             foreach ($this->watches as $i => $watch) {
                 $rows[] = new DebugRow(DebugRowKind::Watch, $watch['expr'], ref: $watch['ref'], depth: 1, watchIndex: $i);
                 if ($watch['ref'] > 0 && \array_key_exists($watch['ref'], $this->expanded)) {
-                    $this->appendChildren($rows, $watch['ref'], 2);
+                    $this->appendChildren($rows, $watch['ref'], depth: 2);
                 }
             }
         }
@@ -371,7 +372,7 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
             foreach ($this->scopes as $scope) {
                 $rows[] = new DebugRow(DebugRowKind::Scope, $scope['name'], ref: $scope['variablesReference'], depth: 1);
                 if (\array_key_exists($scope['variablesReference'], $this->expanded)) {
-                    $this->appendChildren($rows, $scope['variablesReference'], 2);
+                    $this->appendChildren($rows, $scope['variablesReference'], depth: 2);
                 }
             }
         }

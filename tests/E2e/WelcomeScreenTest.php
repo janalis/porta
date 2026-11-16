@@ -160,7 +160,7 @@ final class WelcomeScreenTest extends TestCase
                 $tui->handleInput("\x1b[B"); // Symfony tools → fixer
                 $tui->handleInput("\x1b[B"); // fixer → analysis
                 $tui->handleInput("\x1b[B"); // analysis → the guide
-                $this->awaitPainted($tui, $terminal, 'Read the guide');
+                $this->awaitPainted($tui, $terminal, needle: 'Read the guide');
             },
         ]);
     }
@@ -344,7 +344,7 @@ final class WelcomeScreenTest extends TestCase
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
                     'the choice persisted',
                 );
-                $this->awaitPainted($tui, $terminal, 'Plugin "php-cs-fixer" enabled');
+                $this->awaitPainted($tui, $terminal, needle: 'Plugin "php-cs-fixer" enabled');
                 $this->assertStringContainsString(
                     'Plugin "php-cs-fixer" enabled',
                     AnsiUtils::stripAnsiCodes($terminal->getOutput()),
@@ -361,7 +361,7 @@ final class WelcomeScreenTest extends TestCase
     public function testTheToolStepsTargetMagoWhenTheProjectShipsIt(): void
     {
         $project = new TempProject(['a.php' => "<?php\nreturn 1;\n"]);
-        \chmod($project->write('vendor/bin/mago', "#!/bin/sh\nexit 0\n"), permissions: 0o755);
+        \chmod($project->write('vendor/bin/mago', content: "#!/bin/sh\nexit 0\n"), permissions: 0o755);
 
         $this->runIde($project, $project->path('a.php'), [
             120 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
@@ -376,7 +376,7 @@ final class WelcomeScreenTest extends TestCase
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
                     'one enable, one plugin',
                 );
-                $this->awaitPainted($tui, $terminal, 'Plugin "mago" enabled');
+                $this->awaitPainted($tui, $terminal, needle: 'Plugin "mago" enabled');
                 $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                 $this->assertStringContainsString('Plugin "mago" enabled', $screen);
                 $this->assertStringContainsString('2 of 4 done', $screen, 'the analysis step completed with the fixer step');
@@ -447,14 +447,14 @@ final class WelcomeScreenTest extends TestCase
                 // The app menu opens over the modal and its dropdown renders above it.
                 $tui->handleInput("\x1b[<0;2;1M"); // the File title on the menu bar
                 $tui->tick();
-                $this->awaitPainted($tui, $terminal, 'Save File');
+                $this->awaitPainted($tui, $terminal, needle: 'Save File');
                 $this->assertStringContainsString('Save File', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the dropdown rendered above the modal');
                 $tui->handleInput("\x1b"); // close the menu again
                 $tui->tick();
 
                 // The title bar's close button closes the modal for real: at
                 // the box's left on macOS, its right elsewhere — the box knows.
-                $box = Probe::get(Services::resolve($ide, WelcomeModalController::class), 'box');
+                $box = Probe::get(Services::resolve($ide, WelcomeModalController::class), property: 'box');
                 $this->assertInstanceOf(ModalBox::class, $box);
                 $close = $box->closeButton->leads() ? $box->col + 1 : $box->col + $box->width - 2;
                 $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $close + 1, $box->startRow + 1));

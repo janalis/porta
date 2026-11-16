@@ -14,8 +14,8 @@ final class EditHistoryPathListenerTest extends TestCase
     public function testAWalkBackNeverLandsInADeletedFile(): void
     {
         $history = new EditHistory();
-        $history->record('/p/kept.php', 2);
-        $history->record('/p/gone.php', 7);
+        $history->record('/p/kept.php', line: 2);
+        $history->record('/p/gone.php', line: 7);
 
         new EditHistoryPathListener($history)->onFileDeleted(new FileDeleted('/p/gone.php'));
 

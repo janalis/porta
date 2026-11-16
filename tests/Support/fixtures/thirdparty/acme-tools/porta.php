@@ -13,7 +13,7 @@ use Porta\Plugin\Api\PluginApi;
 return new class('acme-tools') extends AbstractPlugin {
     public function activate(PluginApi $api): void
     {
-        $api->registerCommand('greet', 'Acme: Greet', static function () use ($api): void {
+        $api->registerCommand('greet', label: 'Acme: Greet', handler: static function () use ($api): void {
             $api->flash(Greeting::text());
         });
         $api->addMenuItem('greet');

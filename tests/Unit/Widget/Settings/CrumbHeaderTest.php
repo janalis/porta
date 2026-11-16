@@ -25,7 +25,7 @@ final class CrumbHeaderTest extends TestCase
         $header->onCrumb(static function (string $id) use (&$opened): void {
             $opened[] = $id;
         });
-        $header->render(60, Styles::dark(), '1 setting'); // ' Settings › Languages › PHP ' — [0,10) [11,22) [23,28)
+        $header->render(60, Styles::dark(), hint: '1 setting'); // ' Settings › Languages › PHP ' — [0,10) [11,22) [23,28)
 
         $this->assertFalse($header->click(15), 'a heading that is no page');
         $this->assertFalse($header->click(25), 'the page shown');
@@ -38,7 +38,7 @@ final class CrumbHeaderTest extends TestCase
     {
         $header = new CrumbHeader();
         $header->set(self::trail());
-        $header->render(60, Styles::dark(), '');
+        $header->render(60, Styles::dark(), hint: '');
 
         $this->assertTrue($header->click(3));
     }
@@ -47,12 +47,12 @@ final class CrumbHeaderTest extends TestCase
     {
         $header = new CrumbHeader();
         $header->set(self::trail());
-        $header->render(60, Styles::dark(), '');
+        $header->render(60, Styles::dark(), hint: '');
 
         $this->assertFalse($header->hover(15), 'the heading is no link: nothing to light');
-        $this->assertStringNotContainsString("\x1b[48;5;240m", $header->render(60, Styles::dark(), ''));
+        $this->assertStringNotContainsString("\x1b[48;5;240m", $header->render(60, Styles::dark(), hint: ''));
         $this->assertTrue($header->hover(3));
-        $this->assertStringContainsString("\x1b[48;5;240m", $header->render(60, Styles::dark(), ''));
+        $this->assertStringContainsString("\x1b[48;5;240m", $header->render(60, Styles::dark(), hint: ''));
         $this->assertFalse($header->hover(5), 'the same link');
         $this->assertTrue($header->hover(null), 'the pointer left the row');
     }
@@ -71,9 +71,9 @@ final class CrumbHeaderTest extends TestCase
         $header = new CrumbHeader();
         $header->set(self::trail());
 
-        $line = AnsiUtils::stripAnsiCodes($header->render(34, Styles::dark(), '12 settings'));
+        $line = AnsiUtils::stripAnsiCodes($header->render(34, Styles::dark(), hint: '12 settings'));
 
         $this->assertSame(' Settings › Languages › PHP 12 se…', $line);
-        $this->assertSame(' Settings › Languages › PHP ', AnsiUtils::stripAnsiCodes($header->render(28, Styles::dark(), '12 settings')), 'no room: no hint at all');
+        $this->assertSame(' Settings › Languages › PHP ', AnsiUtils::stripAnsiCodes($header->render(28, Styles::dark(), hint: '12 settings')), 'no room: no hint at all');
     }
 }

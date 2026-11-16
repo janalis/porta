@@ -78,7 +78,7 @@ final class PresencePeer
         $path = (string) \realpath($this->cache->path($relative));
         $buffer = $this->buffers->get($path) ?? $this->buffers->open($path, (string) \file_get_contents($path));
         $this->buffers->setActive($path);
-        $buffer->document->setCursor($line, 0);
+        $buffer->document->setCursor($line, col: 0);
     }
 
     /** Let $seconds pass for this peer, and only for it. */
@@ -90,7 +90,7 @@ final class PresencePeer
     /** Whether its look is still waiting for the server. */
     public function looking(): bool
     {
-        return true === Probe::get($this->sync, 'busy');
+        return true === Probe::get($this->sync, property: 'busy');
     }
 
     /** @return array<string, int> name => line of everyone it sees, by name */

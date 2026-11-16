@@ -116,11 +116,11 @@ final class ListSelectionTest extends TestCase
 
         // Everything fits: scroll untouched.
         $list->select(1);
-        $this->assertSame(0, $list->followHeights($heights, 12));
+        $this->assertSame(0, $list->followHeights($heights, availableRows: 12));
 
         // Selecting the last with room for two cards: scroll to the third.
         $list->select(3);
-        $this->assertSame(2, $list->followHeights($heights, 7));
+        $this->assertSame(2, $list->followHeights($heights, availableRows: 7));
     }
 
     public function testFollowHeightsScrollsBackUpWhenTheSelectionMovesAboveTheWindow(): void
@@ -128,10 +128,10 @@ final class ListSelectionTest extends TestCase
         $list = new ListSelection();
         $heights = [3, 3, 3, 3];
         $list->select(3);
-        $list->followHeights($heights, 7); // window starts at 2
+        $list->followHeights($heights, availableRows: 7); // window starts at 2
 
         $list->select(0);
-        $this->assertSame(0, $list->followHeights($heights, 7));
+        $this->assertSame(0, $list->followHeights($heights, availableRows: 7));
     }
 
     /**
@@ -143,13 +143,13 @@ final class ListSelectionTest extends TestCase
     {
         $list = new ListSelection();
         $list->select(3);
-        $this->assertSame(2, $list->followHeights([3, 3, 3, 3], 7));
+        $this->assertSame(2, $list->followHeights([3, 3, 3, 3], availableRows: 7));
 
-        $this->assertSame(1, $list->followHeights([3, 3, 3, 3], 9), 'three items fit nine rows');
-        $this->assertSame(0, $list->followHeights([1, 1, 1, 1], 7), 'and all four once they are shorter');
+        $this->assertSame(1, $list->followHeights([3, 3, 3, 3], availableRows: 9), 'three items fit nine rows');
+        $this->assertSame(0, $list->followHeights([1, 1, 1, 1], availableRows: 7), 'and all four once they are shorter');
 
-        $this->assertSame(2, $list->followHeights([3, 3, 3, 3], 7));
-        $this->assertSame(0, $list->followHeights([1, 1, 1, 1], 4), 'items exactly as tall as the window all fit');
+        $this->assertSame(2, $list->followHeights([3, 3, 3, 3], availableRows: 7));
+        $this->assertSame(0, $list->followHeights([1, 1, 1, 1], availableRows: 4), 'items exactly as tall as the window all fit');
     }
 
     /**
@@ -190,7 +190,7 @@ final class ListSelectionTest extends TestCase
         $list = new ListSelection();
         $list->select(2);
 
-        $this->assertSame(2, $list->followHeights([2, 2, 9], 5));
+        $this->assertSame(2, $list->followHeights([2, 2, 9], availableRows: 5));
     }
 
     /**

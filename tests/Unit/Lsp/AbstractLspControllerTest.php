@@ -84,7 +84,7 @@ final class AbstractLspControllerTest extends TestCase
         $this->editor->showDocument('/tmp/proj/a.php', $doc);
         $this->assertNull($controller->readyPublic(), 'the editor has the file, but no server session for it yet');
 
-        $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), 'php', 1);
+        $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), languageId: 'php', version: 1);
         $this->assertSame('/tmp/proj/a.php', $controller->readyPublic(), 'now a session exists and is ready');
     }
 
@@ -126,7 +126,7 @@ final class AbstractLspControllerTest extends TestCase
         $controller = $this->controller();
         $doc = new Document("<?php\n");
         $this->editor->showDocument('/tmp/proj/a.php', $doc);
-        $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), 'php', 1);
+        $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), languageId: 'php', version: 1);
 
         $this->assertSame('/tmp/proj/a.php', $controller->readyOrExplainPublic());
         $this->assertSame('', $this->flashText($this->statusBar), 'nothing to explain');

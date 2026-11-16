@@ -44,22 +44,22 @@ final class BufferManagerTest extends TestCase
         $factory = new CodeHighlighterFactory(new HighlightRegistry($source, new HighlightPreferences()));
 
         $manager = new BufferManager($factory);
-        $buffer = $manager->open('/p/a.php', 'hello');
+        $buffer = $manager->open('/p/a.php', content: 'hello');
 
-        $this->assertSame(["\x1b[31mhello\x1b[39m"], $buffer->highlighter->highlight(['hello'], 0));
+        $this->assertSame(["\x1b[31mhello\x1b[39m"], $buffer->highlighter->highlight(['hello'], version: 0));
     }
 
     public function testOpenActivatesAndReusesBuffers(): void
     {
         $manager = new BufferManager();
 
-        $a = $manager->open('/p/a.php', 'A');
+        $a = $manager->open('/p/a.php', content: 'A');
         $this->assertSame($a, $manager->active());
         $this->assertTrue($manager->has('/p/a.php'));
         $this->assertSame($a, $manager->get('/p/a.php'));
         $this->assertNull($manager->get('/p/none.php'));
 
-        $again = $manager->open('/p/a.php', 'ignored — buffer already exists');
+        $again = $manager->open('/p/a.php', content: 'ignored — buffer already exists');
         $this->assertSame($a, $again, 'reopening returns the same buffer');
         $this->assertSame('A', $again->document->getText());
     }
@@ -67,8 +67,8 @@ final class BufferManagerTest extends TestCase
     public function testSetActive(): void
     {
         $manager = new BufferManager();
-        $manager->open('/p/a.php', 'A');
-        $b = $manager->open('/p/b.php', 'B');
+        $manager->open('/p/a.php', content: 'A');
+        $b = $manager->open('/p/b.php', content: 'B');
 
         $this->assertNull($manager->setActive('/p/missing.php'));
         $this->assertSame($b, $manager->active());
@@ -81,9 +81,9 @@ final class BufferManagerTest extends TestCase
     public function testCycleWrapsBothDirections(): void
     {
         $manager = new BufferManager();
-        $manager->open('/p/a.php', 'A');
-        $manager->open('/p/b.php', 'B');
-        $manager->open('/p/c.php', 'C');
+        $manager->open('/p/a.php', content: 'A');
+        $manager->open('/p/b.php', content: 'B');
+        $manager->open('/p/c.php', content: 'C');
 
         $this->assertSame('/p/a.php', $manager->cycle(1)?->path, 'wraps from c to a');
         $this->assertSame('/p/c.php', $manager->cycle(-1)?->path, 'wraps back');
@@ -94,15 +94,15 @@ final class BufferManagerTest extends TestCase
         $manager = new BufferManager();
         $this->assertNull($manager->cycle(1));
 
-        $manager->open('/p/a.php', 'A');
+        $manager->open('/p/a.php', content: 'A');
         $this->assertNull($manager->cycle(1));
     }
 
     public function testCycleWithExactlyTwoBuffersStillCycles(): void
     {
         $manager = new BufferManager();
-        $manager->open('/p/a.php', 'A');
-        $manager->open('/p/b.php', 'B');
+        $manager->open('/p/a.php', content: 'A');
+        $manager->open('/p/b.php', content: 'B');
 
         $this->assertSame('/p/a.php', $manager->cycle(1)?->path, 'two buffers is already enough to cycle (wraps from b back to a)');
     }
@@ -110,9 +110,9 @@ final class BufferManagerTest extends TestCase
     public function testCloseActiveActivatesMostRecent(): void
     {
         $manager = new BufferManager();
-        $manager->open('/p/a.php', 'A');
-        $manager->open('/p/b.php', 'B');
-        $c = $manager->open('/p/c.php', 'C');
+        $manager->open('/p/a.php', content: 'A');
+        $manager->open('/p/b.php', content: 'B');
+        $c = $manager->open('/p/c.php', content: 'C');
         $manager->setActive('/p/a.php'); // recency: a, c, b
 
         $next = $manager->close('/p/a.php');
@@ -123,8 +123,8 @@ final class BufferManagerTest extends TestCase
     public function testCloseBackgroundKeepsActive(): void
     {
         $manager = new BufferManager();
-        $manager->open('/p/a.php', 'A');
-        $b = $manager->open('/p/b.php', 'B');
+        $manager->open('/p/a.php', content: 'A');
+        $b = $manager->open('/p/b.php', content: 'B');
 
         $this->assertSame($b, $manager->close('/p/a.php'));
         $this->assertSame($b, $manager->active());
@@ -136,8 +136,8 @@ final class BufferManagerTest extends TestCase
         // most-focused survivor" path — which would coincidentally return the
         // same buffer but stamp it with a fresh, unearned focus timestamp.
         $manager = new BufferManager();
-        $manager->open('/p/a.php', 'A');
-        $b = $manager->open('/p/b.php', 'B');
+        $manager->open('/p/a.php', content: 'A');
+        $b = $manager->open('/p/b.php', content: 'B');
         $stampBefore = $b->lastFocused;
 
         $manager->close('/p/a.php');
@@ -148,9 +148,9 @@ final class BufferManagerTest extends TestCase
     public function testCloseActiveBumpsTheReactivatedBuffersFocusStamp(): void
     {
         $manager = new BufferManager();
-        $manager->open('/p/a.php', 'A'); // focus 1
-        $b = $manager->open('/p/b.php', 'B'); // focus 2
-        $manager->open('/p/c.php', 'C'); // focus 3, active
+        $manager->open('/p/a.php', content: 'A'); // focus 1
+        $b = $manager->open('/p/b.php', content: 'B'); // focus 2
+        $manager->open('/p/c.php', content: 'C'); // focus 3, active
 
         $next = $manager->close('/p/c.php');
         $this->assertSame($b, $next);
@@ -160,7 +160,7 @@ final class BufferManagerTest extends TestCase
     public function testCloseUnknownPathReturnsActive(): void
     {
         $manager = new BufferManager();
-        $a = $manager->open('/p/a.php', 'A');
+        $a = $manager->open('/p/a.php', content: 'A');
 
         $this->assertSame($a, $manager->close('/p/never-opened.php'));
     }
@@ -168,7 +168,7 @@ final class BufferManagerTest extends TestCase
     public function testCloseLastBufferReturnsNull(): void
     {
         $manager = new BufferManager();
-        $manager->open('/p/a.php', 'A');
+        $manager->open('/p/a.php', content: 'A');
 
         $this->assertNull($manager->close('/p/a.php'));
         $this->assertNull($manager->active());
@@ -178,8 +178,8 @@ final class BufferManagerTest extends TestCase
     public function testRecentOrdersByFocus(): void
     {
         $manager = new BufferManager();
-        $manager->open('/p/a.php', 'A');
-        $manager->open('/p/b.php', 'B');
+        $manager->open('/p/a.php', content: 'A');
+        $manager->open('/p/b.php', content: 'B');
         $manager->setActive('/p/a.php');
 
         $paths = \array_map(static fn (Buffer $b): string => $b->path, $manager->recent());
@@ -189,9 +189,9 @@ final class BufferManagerTest extends TestCase
     public function testRecentOrdersByFocusEvenWhenItDiffersFromOpenOrder(): void
     {
         $manager = new BufferManager();
-        $a = $manager->open('/p/a.php', 'A');
-        $b = $manager->open('/p/b.php', 'B');
-        $c = $manager->open('/p/c.php', 'C');
+        $a = $manager->open('/p/a.php', content: 'A');
+        $b = $manager->open('/p/b.php', content: 'B');
+        $c = $manager->open('/p/c.php', content: 'C');
         $manager->setActive('/p/a.php'); // recency: a, c, b — open order stays a, b, c
 
         $this->assertSame([$a, $c, $b], $manager->recent());
@@ -200,42 +200,42 @@ final class BufferManagerTest extends TestCase
     public function testReorderMovesBufferPreservingObjectsAndActive(): void
     {
         $manager = new BufferManager();
-        $a = $manager->open('/p/a.php', 'A');
-        $b = $manager->open('/p/b.php', 'B');
-        $c = $manager->open('/p/c.php', 'C');
+        $a = $manager->open('/p/a.php', content: 'A');
+        $b = $manager->open('/p/b.php', content: 'B');
+        $c = $manager->open('/p/c.php', content: 'C');
         $manager->setActive('/p/a.php');
 
-        $manager->reorder(0, 2); // a → end: [b, c, a]
+        $manager->reorder(0, to: 2); // a → end: [b, c, a]
         $this->assertSame([$b, $c, $a], $manager->all());
         $this->assertSame($a, $manager->active(), 'reordering does not change the active buffer');
         $this->assertSame('A', $a->document->getText(), 'Buffer object identity preserved');
 
-        $manager->reorder(2, 0); // a → front: [a, b, c]
+        $manager->reorder(2, to: 0); // a → front: [a, b, c]
         $this->assertSame([$a, $b, $c], $manager->all());
     }
 
     public function testReorderClampsAndNoOps(): void
     {
         $manager = new BufferManager();
-        $a = $manager->open('/p/a.php', 'A');
-        $b = $manager->open('/p/b.php', 'B');
+        $a = $manager->open('/p/a.php', content: 'A');
+        $b = $manager->open('/p/b.php', content: 'B');
 
-        $manager->reorder(0, 99); // clamp to last: [b, a]
+        $manager->reorder(0, to: 99); // clamp to last: [b, a]
         $this->assertSame([$b, $a], $manager->all());
 
-        $manager->reorder(1, 1); // same index: no-op
+        $manager->reorder(1, to: 1); // same index: no-op
         $this->assertSame([$b, $a], $manager->all());
 
-        $manager->reorder(5, 0); // out-of-range source: no-op
+        $manager->reorder(5, to: 0); // out-of-range source: no-op
         $this->assertSame([$b, $a], $manager->all());
     }
 
     public function testMoveActive(): void
     {
         $manager = new BufferManager();
-        $a = $manager->open('/p/a.php', 'A');
-        $b = $manager->open('/p/b.php', 'B');
-        $c = $manager->open('/p/c.php', 'C');
+        $a = $manager->open('/p/a.php', content: 'A');
+        $b = $manager->open('/p/b.php', content: 'B');
+        $c = $manager->open('/p/c.php', content: 'C');
         $manager->setActive('/p/b.php'); // active = b (index 1)
 
         $this->assertTrue($manager->moveActive(1)); // [a, c, b]
@@ -253,9 +253,9 @@ final class BufferManagerTest extends TestCase
     public function testMoveActiveAllTheWayToFrontIsAValidDestination(): void
     {
         $manager = new BufferManager();
-        $a = $manager->open('/p/a.php', 'A');
-        $b = $manager->open('/p/b.php', 'B');
-        $c = $manager->open('/p/c.php', 'C');
+        $a = $manager->open('/p/a.php', content: 'A');
+        $b = $manager->open('/p/b.php', content: 'B');
+        $c = $manager->open('/p/c.php', content: 'C');
         $manager->setActive('/p/c.php'); // index 2, offset -2 lands exactly on index 0
 
         $this->assertTrue($manager->moveActive(-2));
@@ -271,14 +271,14 @@ final class BufferManagerTest extends TestCase
     public function testAPaneTabCarriesItsIdAndRefreshesItsPayload(): void
     {
         $manager = new BufferManager();
-        $buffer = $manager->openPane('/p/arch.dot', 'graph', 'digraph { A -> B; }');
+        $buffer = $manager->openPane('/p/arch.dot', paneId: 'graph', payload: 'digraph { A -> B; }');
 
         $this->assertSame('graph', $buffer->paneId);
         $this->assertSame('digraph { A -> B; }', $buffer->panePayload);
         $this->assertTrue($buffer->isViewer());
         $this->assertFalse($buffer->isDirty(), 'the empty backing document never dirties');
 
-        $again = $manager->openPane('/p/arch.dot', 'graph', 'digraph { A; }');
+        $again = $manager->openPane('/p/arch.dot', paneId: 'graph', payload: 'digraph { A; }');
         $this->assertSame($buffer, $again, 'path-keyed reuse');
         $this->assertSame('digraph { A; }', $again->panePayload, 're-opening refreshes the payload');
     }
@@ -286,8 +286,8 @@ final class BufferManagerTest extends TestCase
     public function testOpenPaneAdvancesTheFocusOrder(): void
     {
         $manager = new BufferManager();
-        $manager->openPane('/p/one.dot', 'graph', 'A');
-        $manager->openPane('/p/two.dot', 'graph', 'B');
+        $manager->openPane('/p/one.dot', paneId: 'graph', payload: 'A');
+        $manager->openPane('/p/two.dot', paneId: 'graph', payload: 'B');
 
         $paths = \array_map(static fn (Buffer $b): string => $b->path, $manager->recent());
         $this->assertSame(['/p/two.dot', '/p/one.dot'], $paths, 'the pane opened last is the most recently focused');
@@ -298,17 +298,17 @@ final class BufferManagerTest extends TestCase
         // Whatever the pane is: a text buffer is not a viewer, a pane buffer is,
         // and no core caller needs to know WHICH pane to stay safe.
         $manager = new BufferManager();
-        $this->assertFalse($manager->open('/p/a.php', 'A')->isViewer());
-        $this->assertTrue($manager->openPane('/p/doc.md', 'help', '# hi')->isViewer());
-        $this->assertTrue($manager->openPane('/p/g.dot', 'graph', 'digraph {}')->isViewer());
-        $this->assertTrue($manager->openPane('/p/x.q', 'third-party', ['anything'])->isViewer(), 'a payload core cannot name is still a viewer');
+        $this->assertFalse($manager->open('/p/a.php', content: 'A')->isViewer());
+        $this->assertTrue($manager->openPane('/p/doc.md', paneId: 'help', payload: '# hi')->isViewer());
+        $this->assertTrue($manager->openPane('/p/g.dot', paneId: 'graph', payload: 'digraph {}')->isViewer());
+        $this->assertTrue($manager->openPane('/p/x.q', paneId: 'third-party', payload: ['anything'])->isViewer(), 'a payload core cannot name is still a viewer');
     }
 
     public function testDirtyCount(): void
     {
         $manager = new BufferManager();
-        $manager->open('/p/a.php', 'A');
-        $b = $manager->open('/p/b.php', 'B');
+        $manager->open('/p/a.php', content: 'A');
+        $b = $manager->open('/p/b.php', content: 'B');
         $this->assertSame(0, $manager->dirtyCount());
 
         $b->document->insert('x');

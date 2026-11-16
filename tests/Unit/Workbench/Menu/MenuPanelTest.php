@@ -38,14 +38,14 @@ final class MenuPanelTest extends TestCase
         ];
 
         $this->assertSame(1, MenuPanel::firstSelectable($items), 'skips the disabled first item');
-        $this->assertSame(3, MenuPanel::step($items, 1, 1), 'down from b skips the separator to c');
-        $this->assertSame(1, MenuPanel::step($items, 3, 1), 'wraps back to b, skipping disabled a and the separator');
+        $this->assertSame(3, MenuPanel::step($items, current: 1, dir: 1), 'down from b skips the separator to c');
+        $this->assertSame(1, MenuPanel::step($items, current: 3, dir: 1), 'wraps back to b, skipping disabled a and the separator');
     }
 
     public function testDisabledItemRendersDimAndIsNeverHighlighted(): void
     {
         $items = [new MenuItem('Save', 'Ctrl+S', static fn (): null => null, false, static fn (): bool => false)];
-        $segment = MenuPanel::segments($items, 0, 20, new Styles(DarkTheme::definition()))[0]['segment']; // selected index 0, yet disabled
+        $segment = MenuPanel::segments($items, selected: 0, panelWidth: 20, styles: new Styles(DarkTheme::definition()))[0]['segment']; // selected index 0, yet disabled
 
         $this->assertStringContainsString("\x1b[38;5;242m", $segment, 'disabled item uses the faint foreground');
         $this->assertStringContainsString("\x1b[2m", $segment, 'SGR dim attribute keeps the state visible without color');
@@ -66,7 +66,7 @@ final class MenuPanelTest extends TestCase
     public function testSegmentsRenderExactWidthWithSelectionHighlight(): void
     {
         $width = MenuPanel::width($this->items());
-        $segments = MenuPanel::segments($this->items(), 2, $width, new Styles(DarkTheme::definition()));
+        $segments = MenuPanel::segments($this->items(), selected: 2, panelWidth: $width, styles: new Styles(DarkTheme::definition()));
 
         $this->assertCount(3, $segments);
         $this->assertTrue($segments[1]['separator']);
@@ -90,7 +90,7 @@ final class MenuPanelTest extends TestCase
     public function testLongLabelIsTruncatedToFit(): void
     {
         $items = [new MenuItem('A very long menu item label indeed', 'F2', static fn (): null => null)];
-        $segments = MenuPanel::segments($items, 0, 20, new Styles(DarkTheme::definition()));
+        $segments = MenuPanel::segments($items, selected: 0, panelWidth: 20, styles: new Styles(DarkTheme::definition()));
         $this->assertSame(20, AnsiUtils::visibleWidth($segments[0]['segment']));
         $this->assertStringContainsString('…', AnsiUtils::stripAnsiCodes($segments[0]['segment']));
     }
@@ -105,10 +105,10 @@ final class MenuPanelTest extends TestCase
     public function testStepSkipsSeparatorsAndWraps(): void
     {
         $items = $this->items(); // Save(0), sep(1), Quit(2)
-        $this->assertSame(2, MenuPanel::step($items, 0, 1), 'down from Save skips the separator to Quit');
-        $this->assertSame(0, MenuPanel::step($items, 2, 1), 'down from Quit wraps to Save');
-        $this->assertSame(2, MenuPanel::step($items, 0, -1), 'up from Save wraps past the separator to Quit');
-        $this->assertSame(0, MenuPanel::step([MenuItem::separator(), MenuItem::separator()], 0, 1), 'no selectable item → stays put');
+        $this->assertSame(2, MenuPanel::step($items, current: 0, dir: 1), 'down from Save skips the separator to Quit');
+        $this->assertSame(0, MenuPanel::step($items, current: 2, dir: 1), 'down from Quit wraps to Save');
+        $this->assertSame(2, MenuPanel::step($items, current: 0, dir: -1), 'up from Save wraps past the separator to Quit');
+        $this->assertSame(0, MenuPanel::step([MenuItem::separator(), MenuItem::separator()], current: 0, dir: 1), 'no selectable item → stays put');
     }
 
     public function testStepMovesInTheRequestedDirectionNotReversed(): void
@@ -123,8 +123,8 @@ final class MenuPanelTest extends TestCase
             new MenuItem('C', '', static fn (): null => null),
             new MenuItem('D', '', static fn (): null => null),
         ];
-        $this->assertSame(1, MenuPanel::step($items, 0, 1), 'forward from A lands on B, not D');
-        $this->assertSame(3, MenuPanel::step($items, 0, -1), 'backward from A lands on D, not B');
+        $this->assertSame(1, MenuPanel::step($items, current: 0, dir: 1), 'forward from A lands on B, not D');
+        $this->assertSame(3, MenuPanel::step($items, current: 0, dir: -1), 'backward from A lands on D, not B');
     }
 
     public function testWidthContinuesPastASeparatorInsteadOfStoppingThere(): void
@@ -146,14 +146,18 @@ final class MenuPanelTest extends TestCase
         $items = [MenuItem::separator()];
         $styles = new Styles(DarkTheme::definition());
 
-        $this->assertSame(0, AnsiUtils::visibleWidth(MenuPanel::segments($items, 0, 0, $styles)[0]['segment']), 'a zero-width panel draws no separator glyphs');
-        $this->assertSame(0, AnsiUtils::visibleWidth(MenuPanel::segments($items, 0, -1, $styles)[0]['segment']), 'a negative panel width clamps to zero rather than crashing str_repeat');
+        $this->assertSame(0, AnsiUtils::visibleWidth(MenuPanel::segments($items, selected: 0, panelWidth: 0, styles: $styles)[0]['segment']), 'a zero-width panel draws no separator glyphs');
+        $this->assertSame(
+            0,
+            AnsiUtils::visibleWidth(MenuPanel::segments($items, selected: 0, panelWidth: -1, styles: $styles)[0]['segment']),
+            'a negative panel width clamps to zero rather than crashing str_repeat',
+        );
     }
 
     public function testInnerWidthFloorLeavesNoRoomForALabelAtATooNarrowPanel(): void
     {
         $items = [new MenuItem('Hi', '', static fn (): null => null)];
-        $segment = MenuPanel::segments($items, 0, 2, new Styles(DarkTheme::definition()))[0]['segment'];
+        $segment = MenuPanel::segments($items, selected: 0, panelWidth: 2, styles: new Styles(DarkTheme::definition()))[0]['segment'];
         // inner = max(0, 2 - EDGE_COLS(2)) = 0: no budget for even a
         // truncation ellipsis, just the two edge spaces — and no gap, which
         // used to make the row one column wider than its panel.
@@ -171,16 +175,27 @@ final class MenuPanelTest extends TestCase
         $styles = new Styles(DarkTheme::definition());
         $items = [new MenuItem('Save', 'Ctrl+Alt+Shift+Insert', static fn (): null => null)];
 
-        $this->assertSame(' Save  ', AnsiUtils::stripAnsiCodes(MenuPanel::segments($items, 0, 7, $styles)[0]['segment']));
-        $this->assertSame(' Save  Ctrl+Alt+Shift+Insert ', AnsiUtils::stripAnsiCodes(MenuPanel::segments($items, 0, 29, $styles)[0]['segment']), 'the control: where both fit, both show');
-        $this->assertSame(\str_pad(' Save', length: 28), AnsiUtils::stripAnsiCodes(MenuPanel::segments($items, 0, 28, $styles)[0]['segment']), 'one column short, the key goes whole — never cut');
+        $this->assertSame(' Save  ', AnsiUtils::stripAnsiCodes(MenuPanel::segments($items, selected: 0, panelWidth: 7, styles: $styles)[0]['segment']));
+        $this->assertSame(
+            ' Save  Ctrl+Alt+Shift+Insert ',
+            AnsiUtils::stripAnsiCodes(MenuPanel::segments($items, selected: 0, panelWidth: 29, styles: $styles)[0]['segment']),
+            'the control: where both fit, both show',
+        );
+        $this->assertSame(
+            \str_pad(' Save', length: 28),
+            AnsiUtils::stripAnsiCodes(MenuPanel::segments($items, selected: 0, panelWidth: 28, styles: $styles)[0]['segment']),
+            'one column short, the key goes whole — never cut',
+        );
     }
 
     /** Each row decides alone: a short item keeps its key beside a long one that had to drop its own. */
     public function testOnlyTheRowsThatCannotFitDropTheirShortcut(): void
     {
         $items = [new MenuItem('Undo', 'Ctrl+Z', static fn (): null => null), new MenuItem('Undo Last Refactoring', 'Ctrl+Alt+Z', static fn (): null => null)];
-        $rows = \array_map(static fn (array $row): string => AnsiUtils::stripAnsiCodes($row['segment']), MenuPanel::segments($items, 0, 26, new Styles(DarkTheme::definition())));
+        $rows = \array_map(
+            static fn (array $row): string => AnsiUtils::stripAnsiCodes($row['segment']),
+            MenuPanel::segments($items, selected: 0, panelWidth: 26, styles: new Styles(DarkTheme::definition())),
+        );
 
         $this->assertSame([' Undo              Ctrl+Z ', ' Undo Last Refactoring    '], $rows);
     }
@@ -189,7 +204,7 @@ final class MenuPanelTest extends TestCase
     public function testAMirroredRowWithNoShortcutCarriesNoMark(): void
     {
         $items = [new MenuItem('Welcome', '', static fn (): null => null)];
-        $segment = MenuPanel::segments($items, 0, 12, new Styles(DarkTheme::definition()), BaseDirection::Rtl)[0]['segment'];
+        $segment = MenuPanel::segments($items, selected: 0, panelWidth: 12, styles: new Styles(DarkTheme::definition()), direction: BaseDirection::Rtl)[0]['segment'];
 
         $this->assertStringNotContainsString(Bidi::RTL_MARK, $segment);
         $this->assertSame(12, AnsiUtils::visibleWidth($segment));
@@ -198,7 +213,7 @@ final class MenuPanelTest extends TestCase
     public function testLongLabelWithNoShortcutTruncatesToExactlyTheInnerWidth(): void
     {
         $items = [new MenuItem(\str_repeat('x', times: 20), '', static fn (): null => null)];
-        $segment = MenuPanel::segments($items, 0, 14, new Styles(DarkTheme::definition()))[0]['segment'];
+        $segment = MenuPanel::segments($items, selected: 0, panelWidth: 14, styles: new Styles(DarkTheme::definition()))[0]['segment'];
         // inner = 12: 11 x's plus the truncation ellipsis exactly fill it, and
         // the row is the panel's 14 — a gap floored at 1 once made it 15, and
         // the frame's clip then cut it again, a second ellipsis.
@@ -212,14 +227,14 @@ final class MenuPanelTest extends TestCase
         // that quietly widens from '' to a single space when there is none.
         $items = [new MenuItem('X', '', static fn (): null => null)];
         $width = MenuPanel::width($items);
-        $segment = MenuPanel::segments($items, 0, $width, new Styles(DarkTheme::definition()))[0]['segment'];
+        $segment = MenuPanel::segments($items, selected: 0, panelWidth: $width, styles: new Styles(DarkTheme::definition()))[0]['segment'];
         $this->assertSame($width, AnsiUtils::visibleWidth($segment), 'the empty-shortcut tail must not widen the row past panelWidth');
     }
 
     public function testSegmentLayoutIsExactlyEdgeLabelGapShortcutEdge(): void
     {
         $items = [new MenuItem('Ab', 'F2', static fn (): null => null)];
-        $segment = MenuPanel::segments($items, 0, 10, new Styles(DarkTheme::definition()))[0]['segment'];
+        $segment = MenuPanel::segments($items, selected: 0, panelWidth: 10, styles: new Styles(DarkTheme::definition()))[0]['segment'];
         // inner=8, labelMax=8-(2+2)=4 (label fits untouched), gap=8-2-2=4.
         $this->assertSame(' Ab    F2 ', AnsiUtils::stripAnsiCodes($segment));
     }
@@ -241,7 +256,7 @@ final class MenuPanelTest extends TestCase
         ];
 
         $columns = [];
-        foreach (MenuPanel::segments($items, 0, 30, new Styles(DarkTheme::definition()), BaseDirection::Rtl) as $row) {
+        foreach (MenuPanel::segments($items, selected: 0, panelWidth: 30, styles: new Styles(DarkTheme::definition()), direction: BaseDirection::Rtl) as $row) {
             $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($row['segment'], BaseDirection::Rtl));
             $columns[] = \mb_strpos($mirrored, needle: 'Ctrl+Q', encoding: 'UTF-8');
         }
@@ -254,7 +269,7 @@ final class MenuPanelTest extends TestCase
     {
         $items = [new MenuItem('הגדרות…', 'Ctrl+,', static fn (): null => null)];
 
-        $row = MenuPanel::segments($items, 0, 30, new Styles(DarkTheme::definition()), BaseDirection::Rtl)[0]['segment'];
+        $row = MenuPanel::segments($items, selected: 0, panelWidth: 30, styles: new Styles(DarkTheme::definition()), direction: BaseDirection::Rtl)[0]['segment'];
 
         $this->assertStringContainsString('Ctrl+,', AnsiUtils::stripAnsiCodes(Bidi::reorder($row, BaseDirection::Rtl)));
     }
@@ -264,7 +279,7 @@ final class MenuPanelTest extends TestCase
     {
         $items = [new MenuItem('חזרה', '←', static fn (): null => null)];
 
-        $row = MenuPanel::segments($items, 0, 30, new Styles(DarkTheme::definition()), BaseDirection::Rtl)[0]['segment'];
+        $row = MenuPanel::segments($items, selected: 0, panelWidth: 30, styles: new Styles(DarkTheme::definition()), direction: BaseDirection::Rtl)[0]['segment'];
         $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($row, BaseDirection::Rtl));
 
         $this->assertStringContainsString('←', $mirrored);
@@ -290,7 +305,7 @@ final class MenuPanelTest extends TestCase
             new MenuItem('Show TODO', 'Ctrl+Q', static fn (): null => null),
         ];
 
-        foreach (MenuPanel::segments($items, 0, $width, new Styles(DarkTheme::definition()), $direction) as $row) {
+        foreach (MenuPanel::segments($items, selected: 0, panelWidth: $width, styles: new Styles(DarkTheme::definition()), direction: $direction) as $row) {
             $this->assertSame($width, AnsiUtils::visibleWidth($row['segment']), 'a row wider than its panel garbles the rows beneath it');
         }
     }
@@ -309,7 +324,7 @@ final class MenuPanelTest extends TestCase
     {
         $items = [new MenuItem('Show TODO', 'Ctrl+Q', static fn (): null => null)];
 
-        $segment = MenuPanel::segments($items, 0, 30, new Styles(DarkTheme::definition()))[0]['segment'];
+        $segment = MenuPanel::segments($items, selected: 0, panelWidth: 30, styles: new Styles(DarkTheme::definition()))[0]['segment'];
 
         $this->assertStringNotContainsString(Bidi::RTL_MARK, $segment, 'nothing to pin when nothing mirrors');
     }
@@ -322,7 +337,7 @@ final class MenuPanelTest extends TestCase
     public function testInMonochromeNeitherADisabledItemNorASeparatorLooksHovered(): void
     {
         $items = [new MenuItem('Save All', '', static fn (): null => null, false, static fn (): bool => false), MenuItem::separator()];
-        $segments = MenuPanel::segments($items, 1, 20, new Styles(MonochromeTheme::definition()));
+        $segments = MenuPanel::segments($items, selected: 1, panelWidth: 20, styles: new Styles(MonochromeTheme::definition()));
 
         foreach ($segments as $i => $segment) {
             $this->assertStringNotContainsString("\x1b[4m", $segment['segment'], "row {$i} is not underlined");
@@ -337,7 +352,7 @@ final class MenuPanelTest extends TestCase
      */
     public function testAnAccessLetterSurvivesTheMirroredReorder(): void
     {
-        $row = "\x1b[48;5;236m ".MenuPanel::underlineLetter('קובץ חדש', 'קובץ חדש', 0).' Ctrl+N '."\x1b[49m";
+        $row = "\x1b[48;5;236m ".MenuPanel::underlineLetter('קובץ חדש', label: 'קובץ חדש', letter: 0).' Ctrl+N '."\x1b[49m";
 
         $mirrored = Bidi::reorder($row, BaseDirection::Rtl);
 
@@ -363,7 +378,7 @@ final class MenuPanelTest extends TestCase
         $width = MenuPanel::width($items);
         $this->assertSame(MenuPanel::width([$items[1], new MenuItem('Soft-Wrap', 'Alt+Z', null)]) + 2, $width, 'the gutter widens the panel');
 
-        $rows = MenuPanel::segments($items, 1, $width, Styles::dark());
+        $rows = MenuPanel::segments($items, selected: 1, panelWidth: $width, styles: Styles::dark());
         $plain = \array_map(static fn (array $row): string => AnsiUtils::stripAnsiCodes($row['segment']), $rows);
 
         $this->assertStringStartsWith(' ✓ Soft-Wrap', $plain[0]);
@@ -374,21 +389,29 @@ final class MenuPanelTest extends TestCase
         }
 
         $on = false;
-        $this->assertStringStartsWith('   Soft-Wrap', AnsiUtils::stripAnsiCodes(MenuPanel::segments($items, 1, $width, Styles::dark())[0]['segment']), 'off: the blank, nothing moves');
-        $this->assertStringStartsWith(' Structure', AnsiUtils::stripAnsiCodes(MenuPanel::segments([$items[1]], 0, 20, Styles::dark())[0]['segment']), 'a menu with no toggle has no gutter');
+        $this->assertStringStartsWith(
+            '   Soft-Wrap',
+            AnsiUtils::stripAnsiCodes(MenuPanel::segments($items, selected: 1, panelWidth: $width, styles: Styles::dark())[0]['segment']),
+            'off: the blank, nothing moves',
+        );
+        $this->assertStringStartsWith(
+            ' Structure',
+            AnsiUtils::stripAnsiCodes(MenuPanel::segments([$items[1]], selected: 0, panelWidth: 20, styles: Styles::dark())[0]['segment']),
+            'a menu with no toggle has no gutter',
+        );
 
         $on = true;
-        $selected = MenuPanel::segments($items, 0, $width, Styles::dark())[0]['segment'];
+        $selected = MenuPanel::segments($items, selected: 0, panelWidth: $width, styles: Styles::dark())[0]['segment'];
         $this->assertStringNotContainsString(Styles::dark()->of(Role::TabAccent)->apply('✓'), $selected, 'the selected row keeps its own shade');
     }
 
     /** The window moves only as far as keeps the selection in it, and never past the last item. */
     public function testTheWindowFollowsTheSelectionNoFurther(): void
     {
-        $this->assertSame(0, MenuPanel::window(0, 3, 10, 4), 'already in view: stays');
-        $this->assertSame(2, MenuPanel::window(0, 5, 10, 4), 'below: the selection becomes the last row');
-        $this->assertSame(1, MenuPanel::window(4, 1, 10, 4), 'above: the selection becomes the first row');
-        $this->assertSame(6, MenuPanel::window(8, 9, 10, 4), 'never past the last item');
-        $this->assertSame(0, MenuPanel::window(3, 5, 10, 20), 'room for all: no scroll');
+        $this->assertSame(0, MenuPanel::window(0, selected: 3, count: 10, visibleRows: 4), 'already in view: stays');
+        $this->assertSame(2, MenuPanel::window(0, selected: 5, count: 10, visibleRows: 4), 'below: the selection becomes the last row');
+        $this->assertSame(1, MenuPanel::window(4, selected: 1, count: 10, visibleRows: 4), 'above: the selection becomes the first row');
+        $this->assertSame(6, MenuPanel::window(8, selected: 9, count: 10, visibleRows: 4), 'never past the last item');
+        $this->assertSame(0, MenuPanel::window(3, selected: 5, count: 10, visibleRows: 20), 'room for all: no scroll');
     }
 }

@@ -72,7 +72,7 @@ final class WrapAndLensesTogetherTest extends TestCase
     public function testTheCaretWalksSegmentsPastTheLensesWithoutStoppingOnThem(): void
     {
         $editor = $this->editor();
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
 
         $editor->handleInput(self::DOWN);
         $this->assertSame([1, 0], $this->caret(), 'into the lensed line at its first segment');
@@ -87,11 +87,11 @@ final class WrapAndLensesTogetherTest extends TestCase
     public function testTheViewportFollowsTheCaretWithBothFeaturesOn(): void
     {
         $editor = $this->editor(rows: 5);
-        $editor->getDocument()->setCursor(2, 0);
+        $editor->getDocument()->setCursor(2, col: 0);
         $this->rows(5);
 
         $this->assertStringContainsString('last', \implode("\n", $this->rows(5)), 'the caret line is on screen');
-        $this->assertGreaterThan(0, Probe::get($editor, 'scroll')->vScroll + Probe::get($editor, 'scroll')->vScrollSegment, 'which took scrolling');
+        $this->assertGreaterThan(0, Probe::get($editor, property: 'scroll')->vScroll + Probe::get($editor, property: 'scroll')->vScrollSegment, 'which took scrolling');
     }
 
     /** @return array{int, int} line, display column */

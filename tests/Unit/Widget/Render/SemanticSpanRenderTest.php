@@ -81,8 +81,8 @@ final class SemanticSpanRenderTest extends TestCase
             $this->store([
                 0 => [['col' => 4, 'endCol' => 7, 'type' => 'property', 'modifiers' => []]],
             ]),
-            'aaa bbb ccc',
-            $theme,
+            highlighted: 'aaa bbb ccc',
+            theme: $theme,
         );
 
         $this->assertStringContainsString($theme->before(TokenTypeEnum::PROPERTY), $row);
@@ -95,14 +95,14 @@ final class SemanticSpanRenderTest extends TestCase
         // The one thing a decoration may never do. A shifted column or a
         // mangled escape shows up here and nowhere else.
         $doc = new Document("aaa bbb ccc\n");
-        $plain = $this->render($doc, $this->store([]), 'aaa bbb ccc', new DarkTerminalTheme());
+        $plain = $this->render($doc, $this->store([]), highlighted: 'aaa bbb ccc', theme: new DarkTerminalTheme());
         $coloured = $this->render(
             $doc,
             $this->store([
                 0 => [['col' => 4, 'endCol' => 7, 'type' => 'property', 'modifiers' => []]],
             ]),
-            'aaa bbb ccc',
-            new DarkTerminalTheme(),
+            highlighted: 'aaa bbb ccc',
+            theme: new DarkTerminalTheme(),
         );
 
         $this->assertNotSame($plain, $coloured, 'the token must actually change the row, or this test proves nothing');
@@ -116,8 +116,8 @@ final class SemanticSpanRenderTest extends TestCase
         $tokens = [0 => [['col' => 4, 'endCol' => 7, 'type' => 'property', 'modifiers' => []]]];
 
         $this->assertSame(
-            $this->render($doc, $this->store([]), 'aaa bbb ccc', null),
-            $this->render($doc, $this->store($tokens), 'aaa bbb ccc', null),
+            $this->render($doc, $this->store([]), highlighted: 'aaa bbb ccc', theme: null),
+            $this->render($doc, $this->store($tokens), highlighted: 'aaa bbb ccc', theme: null),
         );
     }
 
@@ -127,8 +127,8 @@ final class SemanticSpanRenderTest extends TestCase
         $tokens = [0 => [['col' => 4, 'endCol' => 7, 'type' => 'notInOurPalette', 'modifiers' => []]]];
 
         $this->assertSame(
-            $this->render($doc, $this->store([]), 'aaa bbb ccc', new DarkTerminalTheme()),
-            $this->render($doc, $this->store($tokens), 'aaa bbb ccc', new DarkTerminalTheme()),
+            $this->render($doc, $this->store([]), highlighted: 'aaa bbb ccc', theme: new DarkTerminalTheme()),
+            $this->render($doc, $this->store($tokens), highlighted: 'aaa bbb ccc', theme: new DarkTerminalTheme()),
         );
     }
 
@@ -140,8 +140,8 @@ final class SemanticSpanRenderTest extends TestCase
             $this->store([
                 0 => [['col' => 0, 'endCol' => 3, 'type' => 'method', 'modifiers' => ['deprecated']]],
             ]),
-            'aaa bbb ccc',
-            new PlainTerminalTheme(),
+            highlighted: 'aaa bbb ccc',
+            theme: new PlainTerminalTheme(),
         );
 
         $this->assertStringContainsString("\x1b[9m", $row);
@@ -161,8 +161,8 @@ final class SemanticSpanRenderTest extends TestCase
             $this->store([
                 0 => [['col' => 3, 'endCol' => 6, 'type' => 'property', 'modifiers' => []]],
             ]),
-            "\u{65e5}\u{672c} abc",
-            $theme,
+            highlighted: "\u{65e5}\u{672c} abc",
+            theme: $theme,
         );
 
         $open = $theme->before(TokenTypeEnum::PROPERTY);
@@ -182,11 +182,11 @@ final class SemanticSpanRenderTest extends TestCase
             $this->store([
                 0 => [['col' => 300, 'endCol' => 400, 'type' => 'property', 'modifiers' => []]],
             ]),
-            'ab',
-            new DarkTerminalTheme(),
+            highlighted: 'ab',
+            theme: new DarkTerminalTheme(),
         );
 
-        $this->assertSame($this->render($doc, $this->store([]), 'ab', new DarkTerminalTheme()), $stale);
+        $this->assertSame($this->render($doc, $this->store([]), highlighted: 'ab', theme: new DarkTerminalTheme()), $stale);
     }
 
     public function testATokenReachingPastTheLineEndDoesNotWidenTheRow(): void
@@ -199,10 +199,10 @@ final class SemanticSpanRenderTest extends TestCase
             $this->store([
                 0 => [['col' => 0, 'endCol' => 400, 'type' => 'property', 'modifiers' => []]],
             ]),
-            'ab',
-            new DarkTerminalTheme(),
+            highlighted: 'ab',
+            theme: new DarkTerminalTheme(),
         );
-        $none = $this->render($doc, $this->store([]), 'ab', new DarkTerminalTheme());
+        $none = $this->render($doc, $this->store([]), highlighted: 'ab', theme: new DarkTerminalTheme());
 
         $this->assertSame(
             AnsiUtils::visibleWidth($none),

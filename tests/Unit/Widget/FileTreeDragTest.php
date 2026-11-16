@@ -99,11 +99,11 @@ final class FileTreeDragTest extends TestCase
     public function testTheWindowScrollsUnderADragSoOffScreenRowsCanBeReached(): void
     {
         $tree = $this->tallTree();
-        $this->assertStringNotContainsString('f09.php', $this->rowsOf($tree, 6), 'off screen to begin with');
+        $this->assertStringNotContainsString('f09.php', $this->rowsOf($tree, rows: 6), 'off screen to begin with');
 
         $this->assertTrue($tree->scrollDuringDrag(5), 'the window moved');
 
-        $this->assertStringContainsString('f09.php', $this->rowsOf($tree, 6), 'and now it can be dropped on');
+        $this->assertStringContainsString('f09.php', $this->rowsOf($tree, rows: 6), 'and now it can be dropped on');
     }
 
     /**
@@ -135,7 +135,7 @@ final class FileTreeDragTest extends TestCase
 
         $tree->scrollDuringDrag(99);
 
-        $this->assertStringContainsString('f11.php', $this->rowsOf($tree, 6), 'the last entry is reachable');
+        $this->assertStringContainsString('f11.php', $this->rowsOf($tree, rows: 6), 'the last entry is reachable');
     }
 
     /**
@@ -150,9 +150,9 @@ final class FileTreeDragTest extends TestCase
     {
         $tree = $this->tree();
 
-        $tree->setDropTarget($this->project->path('src'), "\u{2190} 3 files");
+        $tree->setDropTarget($this->project->path('src'), label: "\u{2190} 3 files");
 
-        $this->assertStringContainsString('3 files', $this->rowsOf($tree, 12));
+        $this->assertStringContainsString('3 files', $this->rowsOf($tree, rows: 12));
     }
 
     /**
@@ -167,7 +167,7 @@ final class FileTreeDragTest extends TestCase
     public function testThePayloadLabelSitsOnTheTargetRowAndNoOther(): void
     {
         $tree = $this->tree();
-        $tree->setDropTarget($this->project->path('src'), "\u{2190} 3 files");
+        $tree->setDropTarget($this->project->path('src'), label: "\u{2190} 3 files");
 
         $rows = \array_slice($tree->render(new RenderContext(40, 12)), offset: 1);
         $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $rows);
@@ -192,7 +192,7 @@ final class FileTreeDragTest extends TestCase
     public function testANarrowPaneDropsTheLabelRatherThanTheName(): void
     {
         $tree = $this->tree();
-        $tree->setDropTarget($this->project->path('src'), "\u{2190} 3 files");
+        $tree->setDropTarget($this->project->path('src'), label: "\u{2190} 3 files");
 
         $narrow = AnsiUtils::stripAnsiCodes(\implode("\n", \array_slice($tree->render(new RenderContext(12, 12)), offset: 1)));
 
@@ -212,10 +212,10 @@ final class FileTreeDragTest extends TestCase
     public function testTheLabelSurvivesExactlyDownToItsFloor(): void
     {
         $tree = $this->tree();
-        $tree->setDropTarget($this->project->path('src'), "\u{2190} 3 files");
+        $tree->setDropTarget($this->project->path('src'), label: "\u{2190} 3 files");
 
-        $this->assertStringContainsString('3 files', $this->rowsOf($tree, 12, width: 19), 'nineteen columns still fits it');
-        $this->assertStringNotContainsString('3 files', $this->rowsOf($tree, 12, width: 18), 'eighteen does not');
+        $this->assertStringContainsString('3 files', $this->rowsOf($tree, rows: 12, width: 19), 'nineteen columns still fits it');
+        $this->assertStringNotContainsString('3 files', $this->rowsOf($tree, rows: 12, width: 18), 'eighteen does not');
     }
 
     /** Changing only the label still redraws — the count is part of the row. */
@@ -223,10 +223,10 @@ final class FileTreeDragTest extends TestCase
     {
         $tree = $this->tree();
         $src = $this->project->path('src');
-        $tree->setDropTarget($src, "\u{2190} 1 file");
+        $tree->setDropTarget($src, label: "\u{2190} 1 file");
         $before = $tree->getRenderRevision();
 
-        $tree->setDropTarget($src, "\u{2190} 2 files");
+        $tree->setDropTarget($src, label: "\u{2190} 2 files");
 
         $this->assertNotSame($before, $tree->getRenderRevision());
     }
@@ -244,11 +244,11 @@ final class FileTreeDragTest extends TestCase
         $tree = $this->tree();
         $src = $this->project->path('src');
         $tree->clickRow(1); // collapse src/ again
-        $this->assertStringNotContainsString('a.php', $this->rowsOf($tree, 12), 'collapsed to begin with');
+        $this->assertStringNotContainsString('a.php', $this->rowsOf($tree, rows: 12), 'collapsed to begin with');
 
         $this->assertTrue($tree->expandDuringDrag($src), 'it opened');
 
-        $this->assertStringContainsString('a.php', $this->rowsOf($tree, 12), 'and its contents can be dropped on');
+        $this->assertStringContainsString('a.php', $this->rowsOf($tree, rows: 12), 'and its contents can be dropped on');
     }
 
     /**
@@ -264,11 +264,11 @@ final class FileTreeDragTest extends TestCase
     {
         $tree = $this->tree();
         $tree->pressRow(1); // defers src/'s toggle
-        $this->assertSame(1, Probe::get($tree, 'pendingToggle'), 'the press deferred one');
+        $this->assertSame(1, Probe::get($tree, property: 'pendingToggle'), 'the press deferred one');
 
         $tree->expandDuringDrag($this->project->path('src'));
 
-        $this->assertSame(1, Probe::get($tree, 'pendingToggle'), 'still owed, neither paid nor forgotten');
+        $this->assertSame(1, Probe::get($tree, property: 'pendingToggle'), 'still owed, neither paid nor forgotten');
     }
 
     /**
@@ -285,7 +285,7 @@ final class FileTreeDragTest extends TestCase
 
         $this->assertTrue($tree->expandDuringDrag($this->project->path('d05')), 'the sixth folder, not the first');
 
-        $this->assertStringContainsString('keep.php', $this->rowsOf($tree, 20));
+        $this->assertStringContainsString('keep.php', $this->rowsOf($tree, rows: 20));
     }
 
     /** An already-open folder, a file, and a path outside the tree change nothing. */
@@ -314,7 +314,7 @@ final class FileTreeDragTest extends TestCase
         $tree->scrollDuringDrag(99);
 
         // Twelve entries in a five-entry window: the last window is f07..f11.
-        $plain = $this->rowsOf($tree, 6);
+        $plain = $this->rowsOf($tree, rows: 6);
         $this->assertStringContainsString('f07.php', $plain, 'the last window starts at the eighth entry');
         $this->assertStringNotContainsString('f06.php', $plain, 'and not one earlier — it did not scroll past the end');
     }
@@ -398,7 +398,7 @@ final class FileTreeDragTest extends TestCase
             $seen[] = [$event->sources, $event->targetDir, $event->action];
         });
 
-        $this->tree($events)->requestDrop(['/p/a.php'], '/p/src', DropAction::Copy);
+        $this->tree($events)->requestDrop(['/p/a.php'], targetDir: '/p/src', action: DropAction::Copy);
 
         $this->assertSame([[['/p/a.php'], '/p/src', DropAction::Copy]], $seen);
     }
@@ -437,7 +437,7 @@ final class FileTreeDragTest extends TestCase
     {
         $tree = $this->tree();
         $tree->pressRow(1); // src/, plain press
-        $this->assertSame(1, Probe::get($tree, 'pendingToggle'), 'a folder grabbed for a drag waits');
+        $this->assertSame(1, Probe::get($tree, property: 'pendingToggle'), 'a folder grabbed for a drag waits');
 
         $tree = $this->tree($events = new EventDispatcher());
         $activated = [];
@@ -445,18 +445,18 @@ final class FileTreeDragTest extends TestCase
             $activated[] = $event->path;
         });
         $tree->pressRow(2); // src/a.php
-        $this->assertNull(Probe::get($tree, 'pendingToggle'), 'a file has no toggle to hold back');
+        $this->assertNull(Probe::get($tree, property: 'pendingToggle'), 'a file has no toggle to hold back');
         // The other half: "nothing was deferred" is equally true of a press
         // that does nothing at all, so say what DID happen.
         $this->assertSame([$this->project->path('src/a.php')], $activated, 'it opened on the press, as this tree has always done');
 
         $tree = $this->tree();
         $tree->pressRow(1, ClickIntent::Add); // Ctrl on src/
-        $this->assertNull(Probe::get($tree, 'pendingToggle'), 'Ctrl is building a selection, not grabbing one');
+        $this->assertNull(Probe::get($tree, property: 'pendingToggle'), 'Ctrl is building a selection, not grabbing one');
 
         $tree = $this->tree();
         $tree->pressRow(0); // the header: no node under it
-        $this->assertNull(Probe::get($tree, 'pendingToggle'), 'and there is nothing to defer on a row that is not one');
+        $this->assertNull(Probe::get($tree, property: 'pendingToggle'), 'and there is nothing to defer on a row that is not one');
     }
 
     /**
@@ -481,7 +481,7 @@ final class FileTreeDragTest extends TestCase
                 $sources = $tree->pressRow($relRow, $intent);
                 $where = \sprintf('row %d, %s', $relRow, $intent->name);
 
-                if (null === Probe::get($tree, 'pendingToggle')) {
+                if (null === Probe::get($tree, property: 'pendingToggle')) {
                     continue;
                 }
 
@@ -492,7 +492,7 @@ final class FileTreeDragTest extends TestCase
         // say that at least one row does.
         $tree = $this->tree();
         $tree->pressRow(1);
-        $this->assertSame(1, Probe::get($tree, 'pendingToggle'), 'a plain press on a folder still defers');
+        $this->assertSame(1, Probe::get($tree, property: 'pendingToggle'), 'a plain press on a folder still defers');
     }
 
     /**

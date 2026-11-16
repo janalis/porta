@@ -91,7 +91,7 @@ final class LspQueryTest extends TestCase
         $b = $this->path('src/B.php');
         $got = null;
 
-        $query->definition($b, 1, 5, static function (array $rows, ?string $error) use (&$got): void {
+        $query->definition($b, line: 1, column: 5, onDone: static function (array $rows, ?string $error) use (&$got): void {
             $got = [$rows, $error];
         });
 
@@ -125,11 +125,11 @@ final class LspQueryTest extends TestCase
         $b = $this->path('src/B.php');
         $noop = static function (array $rows, ?string $error): void {};
 
-        $query->definition($b, 1, 5, $noop);
-        $query->references($b, 1, 5, $noop);
+        $query->definition($b, line: 1, column: 5, onDone: $noop);
+        $query->references($b, line: 1, column: 5, onDone: $noop);
         $this->assertSame(['includeDeclaration' => true], $this->client()->requests[1]['params']['context']);
 
-        $this->answer(0, null);
+        $this->answer(0, result: null);
         $this->assertSame(['textDocument/didOpen '.Uri::fromPath($b)], $this->documents(), 'still in use by the second question');
         $this->answer(1, []);
         $this->assertSame(['textDocument/didOpen '.Uri::fromPath($b), 'textDocument/didClose '.Uri::fromPath($b)], $this->documents());
@@ -139,10 +139,10 @@ final class LspQueryTest extends TestCase
     {
         $query = $this->query();
         $b = $this->path('src/B.php');
-        $query->hover($b, 1, 5, static function (?string $text, ?string $error): void {});
+        $query->hover($b, line: 1, column: 5, onDone: static function (?string $text, ?string $error): void {});
 
-        $this->buffers->open($b, "<?php\nnew A();\n");
-        $this->answer(0, null);
+        $this->buffers->open($b, content: "<?php\nnew A();\n");
+        $this->answer(0, result: null);
 
         $this->assertSame(['textDocument/didOpen '.Uri::fromPath($b)], $this->documents(), 'the document is the user\'s now');
     }
@@ -151,12 +151,12 @@ final class LspQueryTest extends TestCase
     {
         $query = $this->query();
         $b = $this->path('src/B.php');
-        $this->pool->notifyDidOpen($b, "<?php\nnew A();\n", 'php', 1);
-        $buffer = $this->buffers->open($b, "<?php\nnew A();\n");
+        $this->pool->notifyDidOpen($b, text: "<?php\nnew A();\n", languageId: 'php', version: 1);
+        $buffer = $this->buffers->open($b, content: "<?php\nnew A();\n");
         $buffer->document->insert('// unsaved'."\n");
         $rows = null;
 
-        $query->references($b, 0, 0, static function (array $found) use (&$rows): void {
+        $query->references($b, line: 0, column: 0, onDone: static function (array $found) use (&$rows): void {
             $rows = $found;
         });
         $this->answer(0, [['uri' => Uri::fromPath($b), 'range' => ['start' => ['line' => 0, 'character' => 0]]]]);
@@ -174,10 +174,10 @@ final class LspQueryTest extends TestCase
             $said[] = [$text, $error];
         };
 
-        $query->hover($a, 1, 6, $keep);
+        $query->hover($a, line: 1, column: 6, onDone: $keep);
         $this->answer(0, ['contents' => ['kind' => 'markdown', 'value' => 'class **A**']]);
-        $query->hover($a, 1, 6, $keep);
-        $this->answer(1, null);
+        $query->hover($a, line: 1, column: 6, onDone: $keep);
+        $this->answer(1, result: null);
 
         $this->assertSame([['class A', null], [null, null]], $said);
     }
@@ -190,12 +190,12 @@ final class LspQueryTest extends TestCase
             $said[] = [$answer, $error];
         };
 
-        $query->definition($this->path('README.md'), 0, 0, $keep);
-        $query->definition($this->path('src/Gone.php'), 0, 0, $keep);
-        $query->hover($this->path('src/A.php'), 0, 0, $keep);
-        $this->answer(0, null, ['code' => -32_603, 'message' => 'Internal error']);
-        $query->references($this->path('src/A.php'), 0, 0, $keep);
-        $this->answer(1, null, ['code' => -32_603]);
+        $query->definition($this->path('README.md'), line: 0, column: 0, onDone: $keep);
+        $query->definition($this->path('src/Gone.php'), line: 0, column: 0, onDone: $keep);
+        $query->hover($this->path('src/A.php'), line: 0, column: 0, onDone: $keep);
+        $this->answer(0, result: null, error: ['code' => -32_603, 'message' => 'Internal error']);
+        $query->references($this->path('src/A.php'), line: 0, column: 0, onDone: $keep);
+        $this->answer(1, result: null, error: ['code' => -32_603]);
 
         $this->assertSame(
             [
@@ -212,10 +212,10 @@ final class LspQueryTest extends TestCase
     {
         $query = $this->query();
         $a = $this->path('src/A.php');
-        $this->buffers->open($a, "<?php\nclass A {}\n"); // no didOpen: no session was ever started
+        $this->buffers->open($a, content: "<?php\nclass A {}\n"); // no didOpen: no session was ever started
         $said = null;
 
-        $query->definition($a, 1, 6, static function (array $rows, ?string $error) use (&$said): void {
+        $query->definition($a, line: 1, column: 6, onDone: static function (array $rows, ?string $error) use (&$said): void {
             $said = $error;
         });
 
@@ -233,13 +233,13 @@ final class LspQueryTest extends TestCase
         $query->workspaceSymbols('A', $keep);
         $this->assertSame([[[], 'No language server is running — open a file of the project first']], $said);
 
-        $this->pool->notifyDidOpen($this->path('src/A.php'), "<?php\n", 'php', 1);
+        $this->pool->notifyDidOpen($this->path('src/A.php'), text: "<?php\n", languageId: 'php', version: 1);
         $this->active->set($this->path('src/A.php'));
         $query->workspaceSymbols('A', $keep);
         $this->assertSame(['query' => 'A'], $this->client()->requests[0]['params']);
         $this->answer(0, [['name' => 'A', 'kind' => 5, 'location' => ['uri' => Uri::fromPath($this->path('src/A.php')), 'range' => ['start' => ['line' => 1, 'character' => 0]]]]]);
         $query->workspaceSymbols('A', $keep);
-        $this->answer(1, null, ['code' => 1, 'message' => 'Index not ready']);
+        $this->answer(1, result: null, error: ['code' => 1, 'message' => 'Index not ready']);
 
         $this->assertSame(
             [
@@ -261,9 +261,9 @@ final class LspQueryTest extends TestCase
         };
 
         $query->documentSymbols($a, $keep);
-        $query->rename($a, 1, 6, 'Z', $keep);
-        $query->rename($a, 1, 6, 'Z', $keep);
-        $query->rename($a, 1, 6, 'Z', $keep);
+        $query->rename($a, line: 1, column: 6, newName: 'Z', onDone: $keep);
+        $query->rename($a, line: 1, column: 6, newName: 'Z', onDone: $keep);
+        $query->rename($a, line: 1, column: 6, newName: 'Z', onDone: $keep);
         $query->formatting($a, ['tabSize' => 2, 'insertSpaces' => true], $keep);
         $query->formatting($a, ['tabSize' => 2, 'insertSpaces' => true], $keep);
 
@@ -278,10 +278,10 @@ final class LspQueryTest extends TestCase
         $format = ['range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 0]], 'newText' => ' '];
         $this->answer(0, ['A' => ['name' => 'A', 'kind' => 5, 'selectionRange' => ['start' => ['line' => 1, 'character' => 6]]]]);
         $this->answer(1, $edit);
-        $this->answer(2, null);
-        $this->answer(3, null, ['message' => 'No symbol here']);
+        $this->answer(2, result: null);
+        $this->answer(3, result: null, error: ['message' => 'No symbol here']);
         $this->answer(4, [7 => $format]);
-        $this->answer(5, null);
+        $this->answer(5, result: null);
 
         $this->assertSame(
             [
@@ -313,11 +313,11 @@ final class LspQueryTest extends TestCase
         $buffers = new BufferManager();
         $query = new LspQuery(new LspSessionPool('/p', new FixedActiveFile(), new Translator('en')), $buffers, new LineTextReader($buffers), new ProjectPaths('/p'), $guard);
 
-        $transport = $query->serverTransport(['command' => ['phpactor', 'language-server'], 'name' => 'phpactor'], '/p/root', 'phpactor (for Ana)');
+        $transport = $query->serverTransport(['command' => ['phpactor', 'language-server'], 'name' => 'phpactor'], rootDir: '/p/root', peerName: 'phpactor (for Ana)');
 
-        $this->assertSame($guard, Probe::get($transport, 'guard'));
-        $this->assertSame(['phpactor', 'language-server'], Probe::get($transport, 'command'));
-        $this->assertSame('/p/root', Probe::get($transport, 'rootDir'));
-        $this->assertSame('phpactor (for Ana)', Probe::get($transport, 'peerName'));
+        $this->assertSame($guard, Probe::get($transport, property: 'guard'));
+        $this->assertSame(['phpactor', 'language-server'], Probe::get($transport, property: 'command'));
+        $this->assertSame('/p/root', Probe::get($transport, property: 'rootDir'));
+        $this->assertSame('phpactor (for Ana)', Probe::get($transport, property: 'peerName'));
     }
 }

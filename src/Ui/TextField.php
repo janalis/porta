@@ -190,15 +190,15 @@ final readonly class TextField
         $keys = new Keybindings(self::KEYS, $kb->getParser());
 
         return match (true) {
-            $keys->matches($data, 'left') => $this->moveLeft(),
-            $keys->matches($data, 'right') => $this->moveRight(),
-            $keys->matches($data, 'word_left') => $this->line->moveWordBackward(),
-            $keys->matches($data, 'word_right') => $this->line->moveWordForward(),
-            $keys->matches($data, 'home') => $this->moveHome(),
-            $keys->matches($data, 'end') => $this->moveEnd(),
-            $keys->matches($data, 'delete') => $this->deleteForward(),
-            $keys->matches($data, 'delete_word') => $this->deleteWordBackward(),
-            $keys->matches($data, 'delete_word_part') => $this->deleteWordPartBackward(),
+            $keys->matches($data, action: 'left') => $this->moveLeft(),
+            $keys->matches($data, action: 'right') => $this->moveRight(),
+            $keys->matches($data, action: 'word_left') => $this->line->moveWordBackward(),
+            $keys->matches($data, action: 'word_right') => $this->line->moveWordForward(),
+            $keys->matches($data, action: 'home') => $this->moveHome(),
+            $keys->matches($data, action: 'end') => $this->moveEnd(),
+            $keys->matches($data, action: 'delete') => $this->deleteForward(),
+            $keys->matches($data, action: 'delete_word') => $this->deleteWordBackward(),
+            $keys->matches($data, action: 'delete_word_part') => $this->deleteWordPartBackward(),
             default => false,
         };
     }

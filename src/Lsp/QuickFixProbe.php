@@ -118,8 +118,8 @@ final class QuickFixProbe
                 'range' => $lspDiag['range'],
                 'context' => ['diagnostics' => [$lspDiag], 'triggerKind' => self::TRIGGER_AUTOMATIC],
             ],
-            'codeActionProvider',
-            function (mixed $result, ?array $error) use ($key): void {
+            capability: 'codeActionProvider',
+            onResult: function (mixed $result, ?array $error) use ($key): void {
                 $this->answer($key, null === $error && \is_array($result) ? $result : []);
             },
         );

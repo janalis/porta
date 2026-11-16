@@ -96,11 +96,11 @@ final class PsalmPluginTest extends TestCase
                     // TWO paints, not one: the status line reports the run, and
                     // the inline diagnostic lands in the editor separately. Await
                     // the LAST thing asserted, not the first.
-                    $this->awaitPainted($tui, $terminal, 'psalm: 1 issue in a.php');
+                    $this->awaitPainted($tui, $terminal, needle: 'psalm: 1 issue in a.php');
                     // Inline: the SENTENCE, with nothing in front of it. The
                     // rule's name used to be glued to the message by the plugin
                     // because there was nowhere else to put it.
-                    $this->awaitPainted($tui, $terminal, 'Boom detected');
+                    $this->awaitPainted($tui, $terminal, needle: 'Boom detected');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringNotContainsString('UndefinedVariable: Boom detected', $screen, 'the rule is not part of the message');
 
@@ -108,12 +108,12 @@ final class PsalmPluginTest extends TestCase
                     // — and this is where the rule's name belongs, at the END
                     // of the row: what you search for, not what you read past.
                     $tui->handleInput("\x1b6"); // alt+6
-                    $this->awaitPainted($tui, $terminal, 'Boom detected  UndefinedVariable');
+                    $this->awaitPainted($tui, $terminal, needle: 'Boom detected  UndefinedVariable');
                     $this->assertStringContainsString('✗ Boom detected  UndefinedVariable', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x1b"); // close the panel
 
                     // Swap in a clean stub and re-analyse: diagnostics clear.
-                    $this->installStub($project, 'echo json_encode([]); exit(0);');
+                    $this->installStub($project, body: 'echo json_encode([]); exit(0);');
                     $tui->handleInput("\x1b\x10");
                 },
                 450 => function ($tui, $terminal): void {
@@ -136,7 +136,7 @@ final class PsalmPluginTest extends TestCase
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('psalm:toggle-on-save');
-                    $this->awaitPainted($tui, $terminal, 'psalm on save: on');
+                    $this->awaitPainted($tui, $terminal, needle: 'psalm on save: on');
                     $this->assertStringContainsString('psalm on save: on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertTrue((bool) (IdeConfig::load($project->dir)->plugins['psalm']['autoLint'] ?? false), 'the toggle persisted to .porta.json');
 

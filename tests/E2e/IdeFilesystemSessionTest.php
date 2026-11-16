@@ -79,8 +79,8 @@ final class IdeFilesystemSessionTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 300 => function ($tui): void {
                     $this->assertSame('tree', $tui->getFocus()?->getId());
                 },
@@ -98,7 +98,7 @@ final class IdeFilesystemSessionTest extends TestCase
 
         $terminal = $this->runIde($project, $project->path('a.php'), [
             0 => function (Tui $tui, VirtualTerminal $terminal): void {
-                $this->awaitPainted($tui, $terminal, 'not_a_real_action');
+                $this->awaitPainted($tui, $terminal, needle: 'not_a_real_action');
             },
         ]);
 
@@ -109,11 +109,11 @@ final class IdeFilesystemSessionTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['ok.php' => "<?php\n"]);
-        $unreadable = $project->write('secret.php', 'nope');
+        $unreadable = $project->write('secret.php', content: 'nope');
         \chmod($unreadable, permissions: 0o000);
         $project->write('exactly.bin', \str_repeat("x\n", 1024 * 1024)); // exactly MAX_TEXT_BYTES, many short lines
         $project->write('huge.bin', \str_repeat('x', (2 * 1024 * 1024) + 1));
-        $project->write('latin1.txt', "caf\xE9");
+        $project->write('latin1.txt', content: "caf\xE9");
 
         $terminal = $this->runIde(
             $project,
@@ -135,7 +135,7 @@ final class IdeFilesystemSessionTest extends TestCase
                     // is meant for the tree, so take focus back — before this,
                     // they went to the pane and the walk never reached
                     // secret.php at all.
-                    $this->awaitPainted($tui, $terminal, 'Read-only');
+                    $this->awaitPainted($tui, $terminal, needle: 'Read-only');
                     $tui->handleInput("\x14");
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\r"); // latin1.txt
@@ -144,7 +144,7 @@ final class IdeFilesystemSessionTest extends TestCase
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\r"); // secret.php
                     // Last of the two refusals the post-run assertions read.
-                    $this->awaitPainted($tui, $terminal, 'Cannot read secret.php');
+                    $this->awaitPainted($tui, $terminal, needle: 'Cannot read secret.php');
                 },
             ],
         );
@@ -167,8 +167,8 @@ final class IdeFilesystemSessionTest extends TestCase
 
         $terminal = $this->runIde(
             $project,
-            null, // start with no file and no session → the editor has nothing open
-            [
+            file: null, // start with no file and no session → the editor has nothing open
+            steps: [
                 250 => function (Tui $tui, $terminal): void {
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('No file open', $screen, 'the empty pane shows the placeholder');
@@ -194,7 +194,7 @@ final class IdeFilesystemSessionTest extends TestCase
                     $tui->handleInput("\x11"); // ctrl+q -> first press warns
                 },
                 400 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, '1 file has edits');
+                    $this->awaitPainted($tui, $terminal, needle: '1 file has edits');
                     $this->assertStringContainsString('1 file has edits', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -232,7 +232,7 @@ final class IdeFilesystemSessionTest extends TestCase
                             static fn (): bool => \str_ends_with((string) Widgets::editor($tui)->getFilePath(), 'B.php'),
                             what: 'B.php to open from the tree',
                         );
-                        Widgets::editor($tui)->getDocument()->setCursor(0, 2);
+                        Widgets::editor($tui)->getDocument()->setCursor(0, col: 2);
                         $tui->handleInput("\x11"); // ctrl+q (clean buffers -> quits)
                     },
                 ],
@@ -484,7 +484,7 @@ final class IdeFilesystemSessionTest extends TestCase
                 200 => function (Tui $tui, $terminal, $ide) use ($project): void {
                     $tui->tick();
                     $this->assertStringContainsString('original', Widgets::editor($tui)->getDocument()->getText());
-                    $project->write('A.php', "<?php\n// changed on disk\n"); // external edit
+                    $project->write('A.php', content: "<?php\n// changed on disk\n"); // external edit
                     $ide->pollFilesystem();
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
@@ -533,12 +533,12 @@ final class IdeFilesystemSessionTest extends TestCase
             [
                 200 => static function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     $tui->tick();
-                    Widgets::editor($tui)->getDocument()->setCursor(0, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(0, col: 0);
                     Widgets::editor($tui)->handleInput('X'); // unsaved edit → dirty
                     $buffer = Services::resolve($ide, BufferManager::class)->active();
                     \assert(null !== $buffer, description: 'A.php is open');
                     $buffer->diskChangedUnderEdit = true; // a clash noticed earlier
-                    $project->write('A.php', "X<?php\n"); // someone else saves that same text
+                    $project->write('A.php', content: "X<?php\n"); // someone else saves that same text
                     $ide->pollFilesystem();
                 },
                 300 => function (Tui $tui, $terminal, Ide $ide): void {
@@ -564,9 +564,9 @@ final class IdeFilesystemSessionTest extends TestCase
             [
                 200 => static function (Tui $tui, $terminal, $ide) use ($project): void {
                     $tui->tick();
-                    Widgets::editor($tui)->getDocument()->setCursor(0, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(0, col: 0);
                     Widgets::editor($tui)->handleInput('X'); // unsaved edit → dirty
-                    $project->write('A.php', "<?php\n// external\n");
+                    $project->write('A.php', content: "<?php\n// external\n");
                     $ide->pollFilesystem();
                 },
                 300 => function (Tui $tui): void {
@@ -649,14 +649,14 @@ final class IdeFilesystemSessionTest extends TestCase
                 200 => function (Tui $tui, VirtualTerminal $terminal, $ide) use ($project): void {
                     $tui->tick();
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNull($this->rowOf($grid, 'fresh.php'), 'not there yet');
-                    $project->write('fresh.php', "<?php\n"); // created by an external tool
+                    $this->assertNull($this->rowOf($grid, needle: 'fresh.php'), 'not there yet');
+                    $project->write('fresh.php', content: "<?php\n"); // created by an external tool
                     $ide->pollFilesystem();
                     $tui->tick();
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'fresh.php'), 'poll refreshed the tree');
+                    $this->assertNotNull($this->rowOf($grid, needle: 'fresh.php'), 'poll refreshed the tree');
                 },
             ],
         );
@@ -687,7 +687,7 @@ final class IdeFilesystemSessionTest extends TestCase
                         Widgets::editor($tui)->getDocument()->getLine(0),
                         'the mark is off the text the editor holds',
                     );
-                    Widgets::editor($tui)->getDocument()->setCursor(0, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(0, col: 0);
                     $tui->handleInput('X');
                     $tui->handleInput("\x13"); // ctrl+s
                 },
@@ -711,7 +711,7 @@ final class IdeFilesystemSessionTest extends TestCase
             $project->path('win.php'),
             [
                 200 => static function (Tui $tui): void {
-                    Widgets::editor($tui)->getDocument()->setCursor(0, 5);
+                    Widgets::editor($tui)->getDocument()->setCursor(0, col: 5);
                     $tui->handleInput('X');
                     $tui->handleInput("\x13"); // ctrl+s
                 },

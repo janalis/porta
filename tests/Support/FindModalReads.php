@@ -40,7 +40,7 @@ trait FindModalReads
         \assert($search instanceof ProjectSearch, description: 'the wiring\'s controller holds the search engine');
         // Re-evaluates: it reads the objects' live state, it captures no scalar.
         $this->await(
-            static fn (): bool => null === Probe::get($wiring, 'searchDebounce') && null === Probe::get($search, 'process') && null === Probe::get($search, 'slice'),
+            static fn (): bool => null === Probe::get($wiring, property: 'searchDebounce') && null === Probe::get($search, property: 'process') && null === Probe::get($search, property: 'slice'),
             what: 'the project search to settle',
         );
     }

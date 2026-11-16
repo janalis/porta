@@ -33,7 +33,7 @@ trait PanelRowStyle
      */
     private function barred(string $text, bool $selected, bool $marked = false): string
     {
-        return SelectionBar::of($selected, $this->isFocused(), $marked)->value.AnsiText::columnsFrom($text, 1, AnsiUtils::visibleWidth($text));
+        return SelectionBar::of($selected, $this->isFocused(), $marked)->value.AnsiText::columnsFrom($text, startCol: 1, length: AnsiUtils::visibleWidth($text));
     }
 
     /**

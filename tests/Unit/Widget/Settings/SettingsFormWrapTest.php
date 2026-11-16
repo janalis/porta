@@ -48,7 +48,7 @@ final class SettingsFormWrapTest extends TestCase
         );
         $this->assertStringContainsString('  Long     │                      │ · a hint far', $rows[6], 'opened beside the label, on the field\'s value row');
         $this->assertStringContainsString('Changed', $rows[13], 'the next item starts under the last line');
-        $this->assertNull($widget->tooltipAt(6, 3), 'nothing was cut, so nothing to say');
+        $this->assertNull($widget->tooltipAt(6, col: 3), 'nothing was cut, so nothing to say');
         $this->assertSame([50], \array_unique(\array_map(AnsiUtils::visibleWidth(...), $rows)), 'every row the pane wide');
     }
 
@@ -92,15 +92,15 @@ final class SettingsFormWrapTest extends TestCase
         $form = new SettingsFormWidget(new Translator('en'));
         $form->setRows($rows);
         $form->selectKey('k2');
-        $tui = TestTui::create(220, 16);
+        $tui = TestTui::create(220, rows: 16);
         $terminal = $tui->getTerminal();
         $this->assertInstanceOf(VirtualTerminal::class, $terminal, 'the test rig\'s terminal');
         $tui->add(new ContainerWidget()->add($form));
         $frame = static function (int $columns) use ($tui, $terminal, $form): array {
-            $terminal->simulateResize($columns, 16);
+            $terminal->simulateResize($columns, rows: 16);
             $tui->requestRender();
             $tui->processRender();
-            $lines = Probe::get($form, 'renderCacheLines');
+            $lines = Probe::get($form, property: 'renderCacheLines');
             self::assertInstanceOf(LineBufferInterface::class, $lines);
 
             return \array_map(AnsiUtils::stripAnsiCodes(...), $lines->toArray());
@@ -141,7 +141,7 @@ final class SettingsFormWrapTest extends TestCase
                 hint: 'השרת מפעיל את קוד ה-PHP של הפרויקט כדי לאנדקס אותו',
             ),
             new SettingsRow('short', 'קצר', SettingsRowKind::Bool, true, false),
-        ], 'T');
+        ], title: 'T');
 
         $rows = \array_map(
             static fn (string $line): string => AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl)),
@@ -169,7 +169,7 @@ final class SettingsFormWrapTest extends TestCase
     public function testAMirroredDetailRowStartingInLatinStaysBesideTheBox(): void
     {
         $widget = new SettingsFormWidget(new Translator('he'));
-        $widget->setRows([new SettingsRow('runtime', 'אינדוקס', SettingsRowKind::Bool, true, false, hint: 'השרת מפעיל את הקוד PHP 8.5 של הפרויקט')], 'T');
+        $widget->setRows([new SettingsRow('runtime', 'אינדוקס', SettingsRowKind::Bool, true, false, hint: 'השרת מפעיל את הקוד PHP 8.5 של הפרויקט')], title: 'T');
 
         $rows = \array_map(
             static fn (string $line): string => \rtrim(AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl))),
@@ -194,7 +194,7 @@ final class SettingsFormWrapTest extends TestCase
             new SettingsRow('rt', 'Runtime indexing (trusts the workspace: the server executes its PHP)', SettingsRowKind::Bool, false, false),
         ];
         $widget = new SettingsFormWidget(new Translator('en'));
-        $widget->setRows($rows, 'T');
+        $widget->setRows($rows, title: 'T');
         $screen = \array_map(static fn (string $line): string => \rtrim(AnsiUtils::stripAnsiCodes($line)), $widget->render(new RenderContext(62, 20)));
 
         $this->assertSame(
@@ -211,10 +211,10 @@ final class SettingsFormWrapTest extends TestCase
             ],
             \array_slice($screen, offset: 3, length: 9),
         );
-        $this->assertNull($widget->tooltipAt(6, 3), 'drawn whole, so nothing to say');
+        $this->assertNull($widget->tooltipAt(6, col: 3), 'drawn whole, so nothing to say');
 
         $mirrored = new SettingsFormWidget(new Translator('he'));
-        $mirrored->setRows($rows, 'T');
+        $mirrored->setRows($rows, title: 'T');
         $screen = \array_map(
             static fn (string $line): string => \rtrim(AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl))),
             $mirrored->render(new RenderContext(62, 20)),
@@ -224,10 +224,10 @@ final class SettingsFormWrapTest extends TestCase
         // Narrower still, under the field is no wider than beside it: the
         // hint is cut beside its checkbox, and its tooltip says the rest.
         $narrow = new SettingsFormWidget(new Translator('en'));
-        $narrow->setRows([new SettingsRow('flag', 'Flag', SettingsRowKind::Bool, true, false, hint: 'a hint far too long to fit')], 'T');
+        $narrow->setRows([new SettingsRow('flag', 'Flag', SettingsRowKind::Bool, true, false, hint: 'a hint far too long to fit')], title: 'T');
         $screen = \array_map(static fn (string $line): string => \rtrim(AnsiUtils::stripAnsiCodes($line)), $narrow->render(new RenderContext(20, 8)));
         $this->assertSame('  Flag  │ ✓ │ · a h…', $screen[3]);
-        $this->assertSame('a hint far too long to fit', $narrow->tooltipAt(3, 3)?->text);
+        $this->assertSame('a hint far too long to fit', $narrow->tooltipAt(3, col: 3)?->text);
     }
 
     /**
@@ -239,7 +239,7 @@ final class SettingsFormWrapTest extends TestCase
     public function testAMirroredFormKeepsALatinHintsPunctuationOnEveryLine(): void
     {
         $widget = new SettingsFormWidget(new Translator('he'));
-        $widget->setRows([new SettingsRow('bin', 'בינארי', SettingsRowKind::Text, '', false, hint: 'empty = PATH, then ~/.porta/bin (install it under Tools below)')], 'T');
+        $widget->setRows([new SettingsRow('bin', 'בינארי', SettingsRowKind::Text, '', false, hint: 'empty = PATH, then ~/.porta/bin (install it under Tools below)')], title: 'T');
 
         $rows = \array_map(
             static fn (string $line): string => \rtrim(AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl))),
@@ -251,7 +251,7 @@ final class SettingsFormWrapTest extends TestCase
             \array_slice($rows, offset: 3, length: 3),
         );
 
-        $widget->setRows([new SettingsRow('rt', 'Runtime indexing (trusts the workspace: the server executes its PHP)', SettingsRowKind::Bool, true, false)], 'T');
+        $widget->setRows([new SettingsRow('rt', 'Runtime indexing (trusts the workspace: the server executes its PHP)', SettingsRowKind::Bool, true, false)], title: 'T');
         $label = \array_map(
             static fn (string $line): string => \rtrim(AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl))),
             $widget->render(new RenderContext(44, 8)),

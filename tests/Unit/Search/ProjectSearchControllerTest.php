@@ -157,7 +157,7 @@ final class ProjectSearchControllerTest extends TestCase
             'plugins/git/src/B.php' => "<?php\n",
         ]);
         $controller = $this->controller($project->dir);
-        $this->showFile($project, 'plugins/git/src/B.php');
+        $this->showFile($project, relative: 'plugins/git/src/B.php');
 
         $controller->open();
 
@@ -169,7 +169,7 @@ final class ProjectSearchControllerTest extends TestCase
     {
         $project = new TempProject(['composer.json' => '{}', 'src/A.php' => "<?php\n"]);
         $controller = $this->controller($project->dir);
-        $this->showFile($project, 'src/A.php');
+        $this->showFile($project, relative: 'src/A.php');
 
         $controller->open();
 
@@ -181,7 +181,7 @@ final class ProjectSearchControllerTest extends TestCase
     {
         $project = new TempProject(['src/Deep/A.php' => "<?php\n"]);
         $controller = $this->controller($project->dir);
-        $this->showFile($project, 'src/Deep/A.php');
+        $this->showFile($project, relative: 'src/Deep/A.php');
 
         $controller->open();
 
@@ -201,7 +201,7 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->open();
         $this->assertSame('Open Files (0)', $this->scopeLabel(3), 'empty, and it says so');
 
-        $this->buffers->open($project->path('src/A.php'), "<?php\n");
+        $this->buffers->open($project->path('src/A.php'), content: "<?php\n");
         $controller->open();
 
         $this->assertSame('Open Files (1)', $this->scopeLabel(3));
@@ -212,7 +212,7 @@ final class ProjectSearchControllerTest extends TestCase
     {
         $project = new TempProject(['src/A.php' => "<?php\n"]);
         $controller = $this->controller($project->dir);
-        $this->showFile($project, 'src/A.php');
+        $this->showFile($project, relative: 'src/A.php');
 
         $controller->open();
 
@@ -230,7 +230,7 @@ final class ProjectSearchControllerTest extends TestCase
     private function scopeLabel(int $index): string
     {
         /** @var list<string> $labels */
-        $labels = Probe::get($this->editor->findModal, 'scopeLabels');
+        $labels = Probe::get($this->editor->findModal, property: 'scopeLabels');
 
         return $labels[$index] ?? '';
     }
@@ -280,7 +280,7 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->toggleOption(SearchOption::Regex);
 
         $controller->search("(a+)+\nz");
-        $this->await(fn (): bool => \str_contains($this->statusRow($this->statusBar), 'too complex'), 3.0, 'the too-complex flash');
+        $this->await(fn (): bool => \str_contains($this->statusRow($this->statusBar), 'too complex'), timeout: 3.0, what: 'the too-complex flash');
 
         $this->assertStringContainsString('too complex', $this->statusRow($this->statusBar));
     }
@@ -325,7 +325,7 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->promoteToPane(); // closes the modal, hands rows to the dock tab
 
         // A re-run (F5) with the modal now closed must still reach the live pane.
-        $project->write('src/A.php', "<?php\n// needle here\n// needle again\n");
+        $project->write('src/A.php', content: "<?php\n// needle here\n// needle again\n");
         $controller->rerun();
 
         $this->awaitPanelShows('needle again');
@@ -362,7 +362,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         // OpenFiles (index 3 in BUILT_INS) narrows to exactly the buffers open
         // right now — the most deterministic built-in scope to select here.
-        $this->buffers->open($project->path('src/A.php'), "<?php\n// needle in src\n");
+        $this->buffers->open($project->path('src/A.php'), content: "<?php\n// needle in src\n");
         $controller->setScopeIndex(3);
 
         $this->await(fn (): bool => !\str_contains($this->modal(), 'needle in other'), what: 'the scope-narrowed re-run to land');
@@ -386,7 +386,7 @@ final class ProjectSearchControllerTest extends TestCase
 
     private function searchOptions(ProjectSearchController $controller): SearchOptions
     {
-        return Probe::get($controller, 'searchOptions');
+        return Probe::get($controller, property: 'searchOptions');
     }
 
     /**
@@ -438,7 +438,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         $controller->search('needle');
         $this->awaitModalShows('a.php');
-        $this->assertFalse(Probe::get(Probe::object($controller, 'projectSearch'), 'localOnly'), 'the server answered this one');
+        $this->assertFalse(Probe::get(Probe::object($controller, 'projectSearch'), property: 'localOnly'), 'the server answered this one');
     }
 
     /** A fetch that answers at once runs the replace from inside the first try — and only there, and says what it did. */
@@ -464,7 +464,7 @@ final class ProjectSearchControllerTest extends TestCase
     {
         $project = new TempProject(['src/A.php' => "<?php\n\$needle = 1;\n\$needle = 2;\n"]);
         $controller = $this->controller($project->dir);
-        $buffer = $this->buffers->open($project->path('src/A.php'), "<?php\n\$needle = 1;\n\$needle = 2;\n");
+        $buffer = $this->buffers->open($project->path('src/A.php'), content: "<?php\n\$needle = 1;\n\$needle = 2;\n");
         $controller->open();
         $controller->search('needle');
         $this->awaitModalShows('$needle = 1;');
@@ -484,8 +484,8 @@ final class ProjectSearchControllerTest extends TestCase
     {
         $project = new TempProject(['src/A.php' => "<?php\n\$needle = 1;\n\$needle = 2;\n"]);
         $controller = $this->controller($project->dir);
-        $buffer = $this->buffers->open($project->path('src/A.php'), "<?php\n\$needle = 1;\n\$needle = 2;\n");
-        $buffer->document->setCursor(1, 0);
+        $buffer = $this->buffers->open($project->path('src/A.php'), content: "<?php\n\$needle = 1;\n\$needle = 2;\n");
+        $buffer->document->setCursor(1, col: 0);
         $buffer->document->insert("// added\n");
         $controller->open();
         $controller->search('needle');
@@ -494,7 +494,7 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->replaceAll('found', excluded: [1]);
 
         $this->assertSame("<?php\n// added\n\$needle = 1;\n\$needle = 2;\n", $buffer->document->getText(), 'nothing rewritten at the disk\'s line numbers');
-        $this->assertStringContainsString('Not replaced in src/A.php: unsaved edits', $this->statusRow($this->statusBar, 200));
+        $this->assertStringContainsString('Not replaced in src/A.php: unsaved edits', $this->statusRow($this->statusBar, columns: 200));
     }
 
     /**
@@ -639,7 +639,7 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->search('foo');
         $this->awaitModalShows("\$foo = 'foo';");
         \unlink($project->path('src/A.php'));
-        $project->write('src/B.php', "<?php \$foo = 'other foo';\n");
+        $project->write('src/B.php', content: "<?php \$foo = 'other foo';\n");
 
         $controller->replaceAll('bar');
 
@@ -680,7 +680,7 @@ final class ProjectSearchControllerTest extends TestCase
         // And the arm is SPENT. Without clearing it, one confirmation would
         // stand for the rest of the session and every later empty replace-all
         // would delete on its first ask.
-        $project->write('src/A.php', "<?php\n\$needle = 2;\n");
+        $project->write('src/A.php', content: "<?php\n\$needle = 2;\n");
         $controller->open(); // finishReplace() closed the modal behind the first one
         $controller->search('needle');
         $this->awaitModalShows('$needle = 2;');
@@ -1015,7 +1015,7 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->closeSearch(new SearchTabState('kept-query', new SearchOptions(), ['.'], '*.tpl', ScopeKind::Project));
 
         $this->assertContains('kept-query', new SearchHistoryStore($project->dir)->queries, '✖ing a search tab records its query');
-        $this->assertContains('*.tpl', Probe::get(new SearchPrefsStore($project->dir), 'recentMasks'), 'and its mask');
+        $this->assertContains('*.tpl', Probe::get(new SearchPrefsStore($project->dir), property: 'recentMasks'), 'and its mask');
     }
 
     /**
@@ -1036,7 +1036,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         $controller->open();
         // The built-ins come first, so the saved one sits after them.
-        $savedIndex = \count(Probe::getStatic(ProjectSearchController::class, 'BUILT_INS'));
+        $savedIndex = \count(Probe::getStatic(ProjectSearchController::class, member: 'BUILT_INS'));
         $controller->setScopeIndex($savedIndex);
 
         // A FRESH controller, so the stores are re-read from disk: reopening the
@@ -1045,8 +1045,8 @@ final class ProjectSearchControllerTest extends TestCase
         $reopened = $this->controller($project->dir);
         $reopened->open();
 
-        $this->assertSame($savedIndex, Probe::get($reopened, 'scopeIndex'), 'the saved scope came back');
-        $this->assertSame(['src'], Probe::get($reopened, 'scope'), 'and resolved to its own paths');
+        $this->assertSame($savedIndex, Probe::get($reopened, property: 'scopeIndex'), 'the saved scope came back');
+        $this->assertSame(['src'], Probe::get($reopened, property: 'scope'), 'and resolved to its own paths');
     }
 
     /**
@@ -1063,13 +1063,13 @@ final class ProjectSearchControllerTest extends TestCase
         new SearchScopeStore($project->dir)->addPinned('src', ['src']);
         $controller = $this->controller($project->dir);
         $controller->open();
-        $controller->setScopeIndex(\count(Probe::getStatic(ProjectSearchController::class, 'BUILT_INS')));
+        $controller->setScopeIndex(\count(Probe::getStatic(ProjectSearchController::class, member: 'BUILT_INS')));
 
         $controller->setScopeIndex(0); // back to the first built-in
 
         $reopened = $this->controller($project->dir);
         $reopened->open();
-        $this->assertSame(0, Probe::get($reopened, 'scopeIndex'), 'the built-in stuck');
+        $this->assertSame(0, Probe::get($reopened, property: 'scopeIndex'), 'the built-in stuck');
     }
 
     /**
@@ -1083,14 +1083,14 @@ final class ProjectSearchControllerTest extends TestCase
         new SearchScopeStore($project->dir)->addPinned('src', ['src']);
         $controller = $this->controller($project->dir);
         $controller->open();
-        $controller->setScopeIndex(\count(Probe::getStatic(ProjectSearchController::class, 'BUILT_INS')));
+        $controller->setScopeIndex(\count(Probe::getStatic(ProjectSearchController::class, member: 'BUILT_INS')));
 
         // The scope is removed from the store between sessions.
         new SearchScopeStore($project->dir)->forget('src');
         $reopened = $this->controller($project->dir);
         $reopened->open();
 
-        $this->assertSame(0, Probe::get($reopened, 'scopeIndex'), 'back to the first built-in');
+        $this->assertSame(0, Probe::get($reopened, property: 'scopeIndex'), 'back to the first built-in');
     }
 
     /**
@@ -1109,8 +1109,8 @@ final class ProjectSearchControllerTest extends TestCase
             'src/C.php' => "<?php\n\$needle = 3;\n",
         ]);
         $controller = $this->controller($project->dir);
-        $a = $this->buffers->open($project->path('src/A.php'), "<?php\n\$needle = 1;\n");
-        $b = $this->buffers->open($project->path('src/B.php'), "<?php\n\$needle = 2;\n");
+        $a = $this->buffers->open($project->path('src/A.php'), content: "<?php\n\$needle = 1;\n");
+        $b = $this->buffers->open($project->path('src/B.php'), content: "<?php\n\$needle = 2;\n");
         $controller->open();
         $controller->search('needle');
         $this->awaitModalShows('$needle = 3;');
@@ -1147,7 +1147,7 @@ final class ProjectSearchControllerTest extends TestCase
         $b = $this->buffers->open($project->path('src/B.php'), $text);
         $controller->open();
         $controller->search("foo()\n{");
-        $this->await(static fn (): bool => 6 === \count(Probe::get($controller, 'lastSearchResults')), what: 'both matches in all three files');
+        $this->await(static fn (): bool => 6 === \count(Probe::get($controller, property: 'lastSearchResults')), what: 'both matches in all three files');
 
         // The replacement still CONTAINS the query, so a file visited twice
         // would be rewritten twice — visible, where an idempotent one hides it.
@@ -1170,22 +1170,22 @@ final class ProjectSearchControllerTest extends TestCase
         $project = new TempProject(['src/A.php' => $text, 'src/B.php' => $text]);
         $controller = $this->controller($project->dir);
         $buffer = $this->buffers->open($project->path('src/A.php'), $text);
-        $buffer->document->setCursor(4, 0);
+        $buffer->document->setCursor(4, col: 0);
         $buffer->document->insert("function foo()\n{\n}\n"); // unsaved: a second match the search never saw
         $controller->open();
         $controller->search("foo()\n{");
-        $this->await(static fn (): bool => 2 === \count(Probe::get($controller, 'lastSearchResults')), what: 'one match on disk in each file');
+        $this->await(static fn (): bool => 2 === \count(Probe::get($controller, property: 'lastSearchResults')), what: 'one match on disk in each file');
         // The unsaved file FIRST, whatever order the scan found them in: a
         // replace that stopped at it, rather than passing it by, then shows.
-        $results = Probe::array($controller, 'lastSearchResults');
+        $results = Probe::array($controller, property: 'lastSearchResults');
         \usort($results, static fn (array $x, array $y): int => $x['path'] <=> $y['path']);
-        Probe::set($controller, 'lastSearchResults', $results);
+        Probe::set($controller, property: 'lastSearchResults', value: $results);
 
         $controller->replaceAll("bar()\n{");
 
         $this->assertSame($text."function foo()\n{\n}\n", $buffer->document->getText(), 'neither match rewritten: one was never shown');
         $this->assertStringContainsString("bar()\n{", (string) \file_get_contents($project->path('src/B.php')), 'the replace goes on past it to the next file');
-        $this->assertStringContainsString('Not replaced in src/A.php: unsaved edits', $this->statusRow($this->statusBar, 200));
+        $this->assertStringContainsString('Not replaced in src/A.php: unsaved edits', $this->statusRow($this->statusBar, columns: 200));
     }
 
     /** replaceLines() skips an index past the end and still reaches the valid ones after it. */
@@ -1193,7 +1193,7 @@ final class ProjectSearchControllerTest extends TestCase
     {
         $project = new TempProject(['src/A.php' => "<?php\n"]);
         $controller = $this->controller($project->dir);
-        Probe::set($controller, 'lastSearchQuery', 'needle');
+        Probe::set($controller, property: 'lastSearchQuery', value: 'needle');
 
         $this->assertSame("a\nx", Probe::invoke($controller, 'replaceLines', "a\nneedle", [5, 1], 'x'));
     }
@@ -1264,13 +1264,13 @@ final class ProjectSearchControllerTest extends TestCase
         $controller = $this->controller($project->dir);
         $controller->open();
 
-        $first = Probe::get($controller, 'scopeChoices')[0];
-        $this->assertNotSame($first->kind, Probe::get($controller, 'scopeChoices')[1]->kind, 'sanity: the first two choices differ');
+        $first = Probe::get($controller, property: 'scopeChoices')[0];
+        $this->assertNotSame($first->kind, Probe::get($controller, property: 'scopeChoices')[1]->kind, 'sanity: the first two choices differ');
 
         $controller->setScopeIndex(99);
 
-        $this->assertSame($first->kind, Probe::get($controller, 'scopeKind'), 'it fell back to choice 0, not choice 1');
-        $this->assertSame(['.'], Probe::get($controller, 'scope'));
+        $this->assertSame($first->kind, Probe::get($controller, property: 'scopeKind'), 'it fell back to choice 0, not choice 1');
+        $this->assertSame(['.'], Probe::get($controller, property: 'scope'));
     }
 
     /** Of two saved scopes, the one that was last chosen is the one a reopen restores — not merely the first saved one. */
@@ -1284,17 +1284,17 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->open();
         // Whichever saved scope the list puts SECOND is the one chosen: restoring
         // "the first saved scope" must not pass by coincidence.
-        $saved = \array_values(\array_filter(Probe::get($controller, 'scopeChoices'), static fn (object $choice): bool => null === $choice->kind));
+        $saved = \array_values(\array_filter(Probe::get($controller, property: 'scopeChoices'), static fn (object $choice): bool => null === $choice->kind));
         $this->assertCount(2, $saved);
         $second = $saved[1]->label;
-        $index = \array_search($second, \array_map(static fn (object $choice): string => $choice->label, Probe::get($controller, 'scopeChoices')), strict: true);
+        $index = \array_search($second, \array_map(static fn (object $choice): string => $choice->label, Probe::get($controller, property: 'scopeChoices')), strict: true);
         $this->assertIsInt($index);
         $controller->setScopeIndex($index);
 
         $reopened = $this->controller($project->dir);
         $reopened->open();
 
-        $this->assertSame([$second], Probe::get($reopened, 'scope'));
+        $this->assertSame([$second], Probe::get($reopened, property: 'scope'));
     }
 
     /** Toggling an option shows it in the open modal, not only in the controller's state. */
@@ -1306,7 +1306,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         $controller->toggleOption(SearchOption::Regex);
 
-        $this->assertTrue(Probe::get($this->editor->findModal, 'options')['regex']);
+        $this->assertTrue(Probe::get($this->editor->findModal, property: 'options')['regex']);
     }
 
     /** Closing the panel records the mask in use. */
@@ -1319,6 +1319,6 @@ final class ProjectSearchControllerTest extends TestCase
 
         $controller->cancel();
 
-        $this->assertContains('*.tpl', Probe::get(new SearchPrefsStore($project->dir), 'recentMasks'));
+        $this->assertContains('*.tpl', Probe::get(new SearchPrefsStore($project->dir), property: 'recentMasks'));
     }
 }

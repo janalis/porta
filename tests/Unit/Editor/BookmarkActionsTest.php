@@ -47,7 +47,7 @@ final class BookmarkActionsTest extends TestCase
         $this->bookmarks = new Bookmarks();
         $this->results = new ResultsPanelWidget();
         $this->editor = new CodeEditorWidget();
-        $this->dock = TestBottomDock::create(TestTui::create(100, 24), new TerminalPanelWidget(), $this->results, new DebugPanelWidget());
+        $this->dock = TestBottomDock::create(TestTui::create(100, rows: 24), new TerminalPanelWidget(), $this->results, new DebugPanelWidget());
 
         return new BookmarkActions(
             $this->bookmarks,
@@ -56,7 +56,7 @@ final class BookmarkActionsTest extends TestCase
             $this->dock,
             new Translator('en'),
             new BookmarkDecorations($this->bookmarks, $this->editor->decorations),
-            new Notifier($this->status = new StatusBarWidget(), TestTui::create(100, 24)),
+            new Notifier($this->status = new StatusBarWidget(), TestTui::create(100, rows: 24)),
             $this->keys ?? new Keybindings(['toggle_bookmark' => ['f11']]),
         );
     }
@@ -69,10 +69,10 @@ final class BookmarkActionsTest extends TestCase
     public function testToggleMarksTheCaretLineAndPaintsTheGutter(): void
     {
         $actions = $this->actions();
-        $buffer = $this->buffers->open('/p/src/A.php', "<?php\n\$a = 1;\n");
+        $buffer = $this->buffers->open('/p/src/A.php', content: "<?php\n\$a = 1;\n");
         $this->buffers->setActive('/p/src/A.php');
         $this->editor->showDocument('/p/src/A.php', $buffer->document);
-        $buffer->document->setCursor(1, 0);
+        $buffer->document->setCursor(1, col: 0);
 
         $actions->toggle();
 
@@ -89,9 +89,9 @@ final class BookmarkActionsTest extends TestCase
     {
         // Marking a line must not throw a panel over what you are reading.
         $actions = $this->actions();
-        $buffer = $this->buffers->open('/p/src/A.php', "<?php\nmarked line;\n");
+        $buffer = $this->buffers->open('/p/src/A.php', content: "<?php\nmarked line;\n");
         $this->buffers->setActive('/p/src/A.php');
-        $buffer->document->setCursor(1, 0);
+        $buffer->document->setCursor(1, col: 0);
 
         $actions->toggle();
         $this->assertFalse($this->dock->hasList(ResultsPanelMode::Bookmarks), 'no tab was standing, so none was opened');
@@ -99,7 +99,7 @@ final class BookmarkActionsTest extends TestCase
         $actions->show();
         $this->assertStringContainsString('marked line;', $this->panel());
 
-        $buffer->document->setCursor(0, 0);
+        $buffer->document->setCursor(0, col: 0);
         $actions->toggle();
         $this->assertStringContainsString('<?php', $this->panel(), 'the standing tab picked up the new mark in place');
     }
@@ -107,11 +107,11 @@ final class BookmarkActionsTest extends TestCase
     public function testShowListsEveryMarkAcrossFilesUnderItsOwnMode(): void
     {
         $actions = $this->actions();
-        $buffer = $this->buffers->open('/p/src/A.php', "<?php\nfirst;\n");
+        $buffer = $this->buffers->open('/p/src/A.php', content: "<?php\nfirst;\n");
         $this->buffers->setActive('/p/src/A.php');
-        $buffer->document->setCursor(1, 0);
+        $buffer->document->setCursor(1, col: 0);
         $actions->toggle();
-        $this->bookmarks->toggle('/p/src/B.php', 4);
+        $this->bookmarks->toggle('/p/src/B.php', line: 4);
 
         $actions->show();
 
@@ -124,7 +124,7 @@ final class BookmarkActionsTest extends TestCase
     public function testAViewerTabHasNoLinesToBookmark(): void
     {
         $actions = $this->actions();
-        $this->buffers->openPane('/p/graph.dot', 'graph', payload: null);
+        $this->buffers->openPane('/p/graph.dot', paneId: 'graph', payload: null);
         $this->buffers->setActive('/p/graph.dot');
 
         $actions->toggle();
@@ -171,7 +171,7 @@ final class BookmarkActionsTest extends TestCase
     public function testWithBookmarksThePanelSpeaksForItself(): void
     {
         $actions = $this->actions();
-        $this->buffers->open('/p/a.php', "one\ntwo\n");
+        $this->buffers->open('/p/a.php', content: "one\ntwo\n");
         $actions->toggle();
 
         $actions->show();

@@ -20,7 +20,7 @@ final class MermaidSceneRows
         $width = \max(1, \min(200, $width));
         $height = \max(1, \min(24, (int) \ceil($scene->graph->height / 2)));
         $view = new ZoomPanModel((int) \ceil($scene->graph->width), (int) \ceil($scene->graph->height), [1.0]);
-        $rows = GraphRenderer::render($scene->graph, $view, null, $width, $height, $styles);
+        $rows = GraphRenderer::render($scene->graph, $view, selected: null, cols: $width, rows: $height, styles: $styles);
         $origins = [];
         $rect = $view->visibleRect($width, 2 * $height);
         $scale = $view->effectiveScale($width, 2 * $height);

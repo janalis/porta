@@ -26,13 +26,13 @@ return new class('composer', 'composer') extends AbstractToolPlugin {
         $this->registerBinarySetting($api);
         $runner = new ComposerRunner($api, fn (): ?string => $this->acquire($api), $this->release(...));
 
-        $api->registerListTool(ComposerRunner::TOOL, 'Packages', rerun: $runner->checkOutdated(...));
-        $api->registerCommand('outdated', 'Composer: Show Outdated Packages', $runner->checkOutdated(...));
-        $api->registerCommand('install', 'Composer: Install', $runner->install(...));
-        $api->registerCommand('update', 'Composer: Update All', $runner->updateAll(...));
-        $api->registerCommand('update_at_caret', 'Composer: Update Package at Caret', $runner->updateAtCaret(...));
-        $api->registerCommand('require', 'Composer: Require Package…', $runner->require(...));
-        $api->registerCommand('remove_at_caret', 'Composer: Remove Package at Caret', $runner->removeAtCaret(...));
+        $api->registerListTool(ComposerRunner::TOOL, title: 'Packages', rerun: $runner->checkOutdated(...));
+        $api->registerCommand('outdated', label: 'Composer: Show Outdated Packages', handler: $runner->checkOutdated(...));
+        $api->registerCommand('install', label: 'Composer: Install', handler: $runner->install(...));
+        $api->registerCommand('update', label: 'Composer: Update All', handler: $runner->updateAll(...));
+        $api->registerCommand('update_at_caret', label: 'Composer: Update Package at Caret', handler: $runner->updateAtCaret(...));
+        $api->registerCommand('require', label: 'Composer: Require Package…', handler: $runner->require(...));
+        $api->registerCommand('remove_at_caret', label: 'Composer: Remove Package at Caret', handler: $runner->removeAtCaret(...));
 
         $available = $this->binaryAvailable($api);
         foreach (['outdated', 'install', 'update', 'update_at_caret', 'require', 'remove_at_caret'] as $command) {

@@ -224,7 +224,7 @@ final class TreeDragAndDropTest extends TestCase
                     // the floor under the assertion below that it appears.
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click src/
                     $tui->tick();
-                    $this->assertNull($this->rowOf($this->screenGrid($tui, $terminal), 'Paste'), 'no Paste with an empty clipboard');
+                    $this->assertNull($this->rowOf($this->screenGrid($tui, $terminal), needle: 'Paste'), 'no Paste with an empty clipboard');
                     $tui->handleInput("\x1b"); // dismiss
                     $tui->handleInput("\x1b1"); // back to the tree
                 },
@@ -240,7 +240,7 @@ final class TreeDragAndDropTest extends TestCase
                     $tui->handleInput("\x1b[<2;3;3M"); // right-click src/
                     $tui->tick();
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'Paste'), 'the menu offers Paste now there is something to paste');
+                    $this->assertNotNull($this->rowOf($grid, needle: 'Paste'), 'the menu offers Paste now there is something to paste');
                 },
                 380 => function (Tui $tui) use ($project): void {
                     $tui->handleInput("\x1b"); // dismiss the menu

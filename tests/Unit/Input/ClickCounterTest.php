@@ -21,13 +21,13 @@ final class ClickCounterTest extends TestCase
         $clock = new MockClock();
         $counter = new ClickCounter($clock);
 
-        $this->assertSame(1, $counter->countAt(3, 7));
+        $this->assertSame(1, $counter->countAt(3, col: 7));
         $clock->sleep(0.1);
-        $this->assertSame(2, $counter->countAt(3, 7), 'a second press inside the window doubles');
+        $this->assertSame(2, $counter->countAt(3, col: 7), 'a second press inside the window doubles');
         $clock->sleep(0.1);
-        $this->assertSame(3, $counter->countAt(3, 7), 'a third triples');
+        $this->assertSame(3, $counter->countAt(3, col: 7), 'a third triples');
         $clock->sleep(0.1);
-        $this->assertSame(3, $counter->countAt(3, 7), 'and the multiplicity caps there');
+        $this->assertSame(3, $counter->countAt(3, col: 7), 'and the multiplicity caps there');
     }
 
     public function testAPressInAnotherCellStartsOver(): void
@@ -35,8 +35,8 @@ final class ClickCounterTest extends TestCase
         $clock = new MockClock();
         $counter = new ClickCounter($clock);
 
-        $counter->countAt(3, 7);
-        $this->assertSame(1, $counter->countAt(3, 8), 'one column over is a new click');
+        $counter->countAt(3, col: 7);
+        $this->assertSame(1, $counter->countAt(3, col: 8), 'one column over is a new click');
     }
 
     public function testAnExpiredWindowStartsOverInTheSameCell(): void
@@ -44,9 +44,9 @@ final class ClickCounterTest extends TestCase
         $clock = new MockClock();
         $counter = new ClickCounter($clock);
 
-        $counter->countAt(3, 7);
+        $counter->countAt(3, col: 7);
         $clock->sleep(0.5); // past the 0.4s window
-        $this->assertSame(1, $counter->countAt(3, 7), 'the same cell, but too late to be a double-click');
+        $this->assertSame(1, $counter->countAt(3, col: 7), 'the same cell, but too late to be a double-click');
     }
 
     public function testAPressExactlyAtTheWindowBoundaryIsExpired(): void
@@ -57,10 +57,10 @@ final class ClickCounterTest extends TestCase
         // "$lastTime = 0.0" default is still in effect: 0.4 - 0.0 is exact.
         $clock = new MockClock('@0.4');
         $counter = new ClickCounter($clock);
-        Probe::set($counter, 'lastRow', 3);
-        Probe::set($counter, 'lastCol', 7);
-        Probe::set($counter, 'count', 1);
+        Probe::set($counter, property: 'lastRow', value: 3);
+        Probe::set($counter, property: 'lastCol', value: 7);
+        Probe::set($counter, property: 'count', value: 1);
 
-        $this->assertSame(1, $counter->countAt(3, 7), 'elapsed time equal to the window is already too late: strict "<", not "<="');
+        $this->assertSame(1, $counter->countAt(3, col: 7), 'elapsed time equal to the window is already too late: strict "<", not "<="');
     }
 }

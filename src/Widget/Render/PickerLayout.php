@@ -109,7 +109,7 @@ final class PickerLayout
         $width = $place->width - ModalFrame::CHROME_COLS;
         $boxRows = $place->rows - $chrome;
         $maxItems = \min($boxRows, \max(1, \count($items)));
-        $windowStart = IntMath::clamp($selected - $maxItems + 1, 0, \count($items) - $maxItems);
+        $windowStart = IntMath::clamp($selected - $maxItems + 1, lo: 0, hi: \count($items) - $maxItems);
         $visible = \array_slice($items, $windowStart, $maxItems);
 
         $content = [];
@@ -243,7 +243,7 @@ final class PickerLayout
         $width = $place->width - ModalFrame::CHROME_COLS;
         $boxRows = $place->rows - $chrome;
         $maxRows = \max(1, \min($boxRows, \count($search->rows)));
-        $windowStart = IntMath::clamp($search->selected - $maxRows + 1, 0, \max(0, \count($search->rows) - $maxRows));
+        $windowStart = IntMath::clamp($search->selected - $maxRows + 1, lo: 0, hi: \max(0, \count($search->rows) - $maxRows));
         $visible = \array_slice($search->rows, $windowStart, $maxRows);
 
         // No legend: the title bar already names what is being searched.

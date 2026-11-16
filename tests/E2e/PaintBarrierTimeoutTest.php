@@ -37,7 +37,7 @@ final class PaintBarrierTimeoutTest extends TestCase
             [
                 200 => function (Tui $tui, VirtualTerminal $terminal) use (&$message): void {
                     try {
-                        $this->awaitPainted($tui, $terminal, 'never painted', timeout: 0.1);
+                        $this->awaitPainted($tui, $terminal, needle: 'never painted', timeout: 0.1);
                     } catch (\RuntimeException $gaveUp) {
                         $message = $gaveUp->getMessage();
                     }

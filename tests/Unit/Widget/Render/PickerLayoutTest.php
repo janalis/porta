@@ -263,7 +263,7 @@ final class PickerLayoutTest extends TestCase
             foreach (\mb_str_split($typed) as $character) {
                 $filter->insert($character);
             }
-            $widths[] = $this->layout($filter, 'aucune correspondance')['width'];
+            $widths[] = $this->layout($filter, emptyMessage: 'aucune correspondance')['width'];
         }
 
         $this->assertSame([$widths[0], $widths[0], $widths[0]], $widths, 'one width, whatever the filter matches');

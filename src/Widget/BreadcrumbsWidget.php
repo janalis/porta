@@ -233,7 +233,7 @@ final class BreadcrumbsWidget extends AbstractWidget implements MenuOverlayHost,
             $tagWidth = FieldBox::toggleWidth($caption, rows: 1);
             $hovered = null !== $this->hoverCol && $this->hoverCol >= $col && $this->hoverCol < ($col + $tagWidth);
             $this->toggleZones->add((string) $index, $col, $col + $tagWidth);
-            $line .= FieldBox::toggle($caption, OptionTagState::of($mode === $shown, $hovered), 1, $this->styles)[0].' ';
+            $line .= FieldBox::toggle($caption, OptionTagState::of($mode === $shown, $hovered), rows: 1, styles: $this->styles)[0].' ';
             $col += $tagWidth + 1;
         }
 

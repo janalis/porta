@@ -18,7 +18,7 @@ final class SettingsSearchIndexTest extends TestCase
 {
     public function testASettingIsFoundByItsOwnLabel(): void
     {
-        $hits = $this->index()->search('sticky', 10);
+        $hits = $this->index()->search('sticky', limit: 10);
 
         $this->assertSame(['stickyScroll'], \array_column($hits, 'key'));
         $this->assertSame('Interface', $hits[0]->page, 'a hit says which page it lives on');
@@ -33,7 +33,7 @@ final class SettingsSearchIndexTest extends TestCase
     public function testAMatchInTheLabelOutranksTheSameMatchInThePageName(): void
     {
         // 'style' is in one row's label and in no page name.
-        $hits = $this->index()->search('style', 10);
+        $hits = $this->index()->search('style', limit: 10);
 
         $this->assertSame('indentStyle', $hits[0]->key);
     }
@@ -47,11 +47,11 @@ final class SettingsSearchIndexTest extends TestCase
     public function testARowNamedForTheQueryBeatsARowMerelyLivingOnAPageNamedForIt(): void
     {
         $index = new SettingsSearchIndex(new SettingsPages([
-            $this->section('theme', 'Theme', ['unrelated' => 'Something else']),
-            $this->section('general', 'General', ['themeName' => 'Theme name']),
+            $this->section('theme', label: 'Theme', rows: ['unrelated' => 'Something else']),
+            $this->section('general', label: 'General', rows: ['themeName' => 'Theme name']),
         ]), new Translator());
 
-        $hits = $index->search('theme', 10);
+        $hits = $index->search('theme', limit: 10);
 
         $this->assertSame('themeName', $hits[0]->key, 'the row called Theme name, not the row on the Theme page');
     }
@@ -59,7 +59,7 @@ final class SettingsSearchIndexTest extends TestCase
     /** Typing a page's name surfaces that page's rows — the haystack holds it. */
     public function testAPageNameSurfacesThatPagesRows(): void
     {
-        $hits = $this->index()->search('interface', 10);
+        $hits = $this->index()->search('interface', limit: 10);
 
         $this->assertNotSame([], $hits);
         foreach ($hits as $hit) {
@@ -69,7 +69,7 @@ final class SettingsSearchIndexTest extends TestCase
 
     public function testAPageQualifiedQueryNarrowsToThatPage(): void
     {
-        $hits = $this->index()->search('php ind', 10);
+        $hits = $this->index()->search('php ind', limit: 10);
 
         $this->assertNotSame([], $hits);
         foreach ($hits as $hit) {
@@ -79,12 +79,12 @@ final class SettingsSearchIndexTest extends TestCase
 
     public function testAnEmptyQueryReturnsTheFirstSettingsUpToTheLimit(): void
     {
-        $this->assertCount(2, $this->index()->search('   ', 2));
+        $this->assertCount(2, $this->index()->search('   ', limit: 2));
     }
 
     public function testNoMatchIsAnEmptyResultRatherThanEverything(): void
     {
-        $this->assertSame([], $this->index()->search('zzzznope', 10));
+        $this->assertSame([], $this->index()->search('zzzznope', limit: 10));
     }
 
     /**
@@ -95,14 +95,14 @@ final class SettingsSearchIndexTest extends TestCase
     {
         $pages = new MutableSettingsSection();
         $index = new SettingsSearchIndex(new SettingsPages([$pages]), new Translator());
-        $this->assertSame([], $index->search('late', 10));
+        $this->assertSame([], $index->search('late', limit: 10));
 
-        $pages->addRow('lateArrival', 'Late arrival');
-        $this->assertSame([], $index->search('late', 10), 'still the built index');
+        $pages->addRow('lateArrival', label: 'Late arrival');
+        $this->assertSame([], $index->search('late', limit: 10), 'still the built index');
 
         $index->onSettingsRowsStale(new SettingsRowsStale());
 
-        $this->assertSame(['lateArrival'], \array_column($index->search('late', 10), 'key'));
+        $this->assertSame(['lateArrival'], \array_column($index->search('late', limit: 10), 'key'));
     }
 
     /**
@@ -114,28 +114,28 @@ final class SettingsSearchIndexTest extends TestCase
         $pages = new MutableSettingsSection();
         $translator = new Translator();
         $index = new SettingsSearchIndex(new SettingsPages([$pages]), $translator);
-        $index->search('', 1); // build
+        $index->search('', limit: 1); // build
 
-        $pages->addRow('lateArrival', 'Late arrival');
-        $this->assertSame([], $index->search('late', 10), 'still the built index');
+        $pages->addRow('lateArrival', label: 'Late arrival');
+        $this->assertSame([], $index->search('late', limit: 10), 'still the built index');
 
         $translator->setLocale('fr');
 
-        $this->assertSame(['lateArrival'], \array_column($index->search('late', 10), 'key'));
+        $this->assertSame(['lateArrival'], \array_column($index->search('late', limit: 10), 'key'));
     }
 
     private function index(): SettingsSearchIndex
     {
         return new SettingsSearchIndex(new SettingsPages([
-            $this->section('interface', 'Interface', [
+            $this->section('interface', label: 'Interface', rows: [
                 'stickyScroll' => 'Sticky scroll',
                 'interfaceHint' => 'Interface hint',
             ]),
-            $this->section('lang:php', 'PHP', [
+            $this->section('lang:php', label: 'PHP', rows: [
                 'indentStyle' => 'Indent style',
                 'indentSize' => 'Indent size',
             ]),
-            $this->section('lang:css', 'CSS', ['indentStyle' => 'Indent style']),
+            $this->section('lang:css', label: 'CSS', rows: ['indentStyle' => 'Indent style']),
         ]), new Translator());
     }
 
@@ -148,7 +148,7 @@ final class SettingsSearchIndexTest extends TestCase
     /** A label in any script is found ignoring its case: THÈME finds Thème. */
     public function testALabelIsFoundIgnoringTheCaseOfEveryLetter(): void
     {
-        $index = new SettingsSearchIndex(new SettingsPages([$this->section('interface', 'Interface', ['theme' => 'Thème', 'screen' => 'Écran'])]), new Translator());
+        $index = new SettingsSearchIndex(new SettingsPages([$this->section('interface', label: 'Interface', rows: ['theme' => 'Thème', 'screen' => 'Écran'])]), new Translator());
         $found = static fn (string $query): array => \array_map(static fn (SettingsSearchEntry $e): string => $e->label, $index->search($query, limit: 5));
 
         $this->assertSame(['Thème'], $found(' THÈME '), 'the query folded, and its spaces are not part of it');

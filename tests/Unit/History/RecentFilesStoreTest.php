@@ -88,7 +88,7 @@ final class RecentFilesStoreTest extends TestCase
         $store->record('/a.php');
         $store->record('/b.php');
 
-        $store->rename('/a.php', '/renamed.php');
+        $store->rename('/a.php', to: '/renamed.php');
 
         $this->assertSame(['/b.php', '/renamed.php'], $store->paths, 'in place, not moved to the front');
         $this->assertSame(['/b.php', '/renamed.php'], new RecentFilesStore($project->dir)->paths, 'and written down');
@@ -103,7 +103,7 @@ final class RecentFilesStoreTest extends TestCase
         $store->record('/old.php');
         $store->record('/target.php');
 
-        $store->rename('/old.php', '/target.php');
+        $store->rename('/old.php', to: '/target.php');
 
         $this->assertSame(['/target.php'], $store->paths);
     }
@@ -121,7 +121,7 @@ final class RecentFilesStoreTest extends TestCase
         \touch($file, $backdated);
         \clearstatcache();
 
-        $store->rename('/elsewhere.php', '/other.php');
+        $store->rename('/elsewhere.php', to: '/other.php');
 
         $this->assertSame(['/a.php'], $store->paths);
         \clearstatcache();
@@ -143,17 +143,17 @@ final class RecentFilesStoreTest extends TestCase
         $project = new TempProject();
         $this->assertSame([], new RecentFilesStore($project->dir)->paths, 'nothing written yet');
 
-        $project->write('.porta/recent-files.json', '{"paths": "nope"}');
+        $project->write('.porta/recent-files.json', content: '{"paths": "nope"}');
         $this->assertSame([], new RecentFilesStore($project->dir)->paths, 'wrong shape');
 
-        $project->write('.porta/recent-files.json', '{"paths": ["/a.php", 7, "", null, "/b.php"]}');
+        $project->write('.porta/recent-files.json', content: '{"paths": ["/a.php", 7, "", null, "/b.php"]}');
         $this->assertSame(['/a.php', '/b.php'], new RecentFilesStore($project->dir)->paths, 'non-strings dropped');
 
         // A hand-edited object rather than an array: the keys go, the string
         // values stay. Deliberately tolerant — the alternative is throwing away
         // a whole list over one malformed edit, and every path is checked
         // against the disk before it is offered anyway.
-        $project->write('.porta/recent-files.json', '{"paths": {"1": "/a.php", "2": "/b.php"}}');
+        $project->write('.porta/recent-files.json', content: '{"paths": {"1": "/a.php", "2": "/b.php"}}');
         $this->assertSame(['/a.php', '/b.php'], new RecentFilesStore($project->dir)->paths);
     }
 
@@ -224,7 +224,7 @@ final class RecentFilesStoreTest extends TestCase
         $store->record('/p/olden/b.php');
         $store->record('/p/old/a.php');
 
-        $store->rename('/p/old', '/p/new');
+        $store->rename('/p/old', to: '/p/new');
 
         $this->assertSame(['/p/new/a.php', '/p/olden/b.php'], $store->paths);
     }
@@ -239,7 +239,7 @@ final class RecentFilesStoreTest extends TestCase
         \touch($file, mtime: 1_000_000_000); // backdated: mtime resolves to the second
         \clearstatcache();
 
-        $store->rename('/p/elsewhere.php', '/p/moved.php');
+        $store->rename('/p/elsewhere.php', to: '/p/moved.php');
 
         $this->assertSame(['/p/a.php'], $store->paths);
         $this->assertSame(1_000_000_000, \filemtime($file), 'no write for a rename that changed nothing');

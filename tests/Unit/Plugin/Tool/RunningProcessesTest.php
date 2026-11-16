@@ -24,13 +24,13 @@ final class RunningProcessesTest extends TestCase
         $run([\PHP_BINARY, '-r', 'echo "done";'], \sys_get_temp_dir(), static function (int $code, string $stdout) use (&$out): void {
             $out = $stdout;
         });
-        $this->assertCount(1, Probe::get($runs, 'running'), 'kept while it runs');
+        $this->assertCount(1, Probe::get($runs, property: 'running'), 'kept while it runs');
 
         $this->await(static function () use (&$out): bool {
             return null !== $out;
         }, what: 'the program to end');
         $this->assertSame('done', $out);
-        $this->assertSame([], Probe::get($runs, 'running'), 'and forgotten once it ended');
+        $this->assertSame([], Probe::get($runs, property: 'running'), 'and forgotten once it ended');
     }
 
     public function testStoppedItNeverCallsBack(): void
@@ -46,6 +46,6 @@ final class RunningProcessesTest extends TestCase
         $this->pump(0.3);
 
         $this->assertFalse($called, 'an install stopped mid-way hears nothing back');
-        $this->assertSame([], Probe::get($runs, 'running'));
+        $this->assertSame([], Probe::get($runs, property: 'running'));
     }
 }

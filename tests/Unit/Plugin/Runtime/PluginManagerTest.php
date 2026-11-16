@@ -39,7 +39,7 @@ final class PluginManagerTest extends TestCase
 {
     private function buffer(string $path): Buffer
     {
-        return new BufferManager()->open($path, '');
+        return new BufferManager()->open($path, content: '');
     }
 
     private StatusBarWidget $status;
@@ -47,7 +47,7 @@ final class PluginManagerTest extends TestCase
     private function wiredManager(EventDispatcher $events): PluginManager
     {
         $manager = new PluginManager($events, new PluginSettings('/p', []));
-        $tui = TestTui::create(120, 24);
+        $tui = TestTui::create(120, rows: 24);
         $this->status = new StatusBarWidget();
         $manager->wireRuntime(
             TestPluginRuntime::create(new CodeEditorWidget(), $this->status, $tui),
@@ -59,14 +59,14 @@ final class PluginManagerTest extends TestCase
     public function testCommitAggregatesCommandsKeysAndMenuSpecs(): void
     {
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
-        $api = $manager->api('demo', '/p', new PluginSettings('/p', []));
-        $api->registerCommand('hello', 'Say Hello', static function (): void {}, ['ctrl+alt+y']);
-        $api->registerCommand('quiet', 'Quiet One', static function (): void {});
+        $api = $manager->api('demo', rootDir: '/p', settings: new PluginSettings('/p', []));
+        $api->registerCommand('hello', label: 'Say Hello', handler: static function (): void {}, keys: ['ctrl+alt+y']);
+        $api->registerCommand('quiet', label: 'Quiet One', handler: static function (): void {});
         $api->addMenuItem('hello');
         $manager->commit($api);
 
         $this->assertTrue($manager->hasPlugin('demo'));
-        $this->assertSame(['demo'], \array_keys(Probe::get($manager, 'names')));
+        $this->assertSame(['demo'], \array_keys(Probe::get($manager, property: 'names')));
         $this->assertSame(['demo:hello' => ['ctrl+alt+y']], $manager->defaultKeys, 'keyless commands contribute no defaults');
         $this->assertEquals([new PluginMenuSpec('demo', 'i:demo:hello')], $manager->menuSpecs());
 
@@ -83,7 +83,7 @@ final class PluginManagerTest extends TestCase
         // has to go when its plugin does — a view left behind would keep a
         // removed plugin's workspace takeover reachable by id.
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
-        $api = $manager->api('demo', '/p', new PluginSettings('/p', []));
+        $api = $manager->api('demo', rootDir: '/p', settings: new PluginSettings('/p', []));
         $factory = static fn (): ?object => null;
         $api->registerView('vcs', $factory);
         $manager->commit($api);
@@ -111,16 +111,16 @@ final class PluginManagerTest extends TestCase
     public function testRegisterCommandsIsIncrementalAcrossCommits(): void
     {
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
-        $first = $manager->api('one', '/p', new PluginSettings('/p', []));
-        $first->registerCommand('a', 'Command A', static function (): void {});
+        $first = $manager->api('one', rootDir: '/p', settings: new PluginSettings('/p', []));
+        $first->registerCommand('a', label: 'Command A', handler: static function (): void {});
         $manager->commit($first);
 
         $registry = new CommandRegistry();
         $manager->registerCommands($registry);
 
         // A live install commits a second plugin after boot registration.
-        $second = $manager->api('two', '/p', new PluginSettings('/p', []));
-        $second->registerCommand('b', 'Command B', static function (): void {});
+        $second = $manager->api('two', rootDir: '/p', settings: new PluginSettings('/p', []));
+        $second->registerCommand('b', label: 'Command B', handler: static function (): void {});
         $manager->commit($second);
         $manager->registerCommands($registry);
 
@@ -137,17 +137,17 @@ final class PluginManagerTest extends TestCase
         $registry = new CommandRegistry();
         $registry->add('core:stay', static function (): void {}, keyBound: KeyDispatch::Bound, label: 'Core');
 
-        $api = $manager->api('demo', '/p', $settings);
-        $api->registerSetting('binary', 'Binary', 'text', '');
-        $api->registerCommand('hi', 'Say Hi', static function (): void {}, ['ctrl+alt+y']);
+        $api = $manager->api('demo', rootDir: '/p', settings: $settings);
+        $api->registerSetting('binary', label: 'Binary', kind: 'text', default: '');
+        $api->registerCommand('hi', label: 'Say Hi', handler: static function (): void {}, keys: ['ctrl+alt+y']);
         $api->addMenuItem('hi');
         $hookRan = 0;
         $api->onFileSaved(static function () use (&$hookRan): void {
             ++$hookRan;
         });
         $manager->commit($api);
-        $bystander = $manager->api('bystander', '/p', $settings);
-        $bystander->registerCommand('stay', 'Bystander Stay', static function (): void {});
+        $bystander = $manager->api('bystander', rootDir: '/p', settings: $settings);
+        $bystander->registerCommand('stay', label: 'Bystander Stay', handler: static function (): void {});
         $manager->commit($bystander);
         $manager->registerCommands($registry);
         $this->assertContains('demo:hi', $registry->keyBoundIds());
@@ -157,7 +157,7 @@ final class PluginManagerTest extends TestCase
         $manager->deactivate('demo', $registry); // unknown now → no-op
 
         $this->assertFalse($manager->hasPlugin('demo'));
-        $this->assertSame(['bystander'], \array_keys(Probe::get($manager, 'names')), 'the other plugin is untouched');
+        $this->assertSame(['bystander'], \array_keys(Probe::get($manager, property: 'names')), 'the other plugin is untouched');
         $this->assertContains('bystander:stay', $registry->keyBoundIds());
         $this->assertSame([], $manager->menuSpecs());
         $this->assertSame([], $manager->defaultKeys);
@@ -169,8 +169,8 @@ final class PluginManagerTest extends TestCase
         $this->assertSame(0, $hookRan, 'hooks unsubscribed');
 
         // The same name reinstalls live, and the watermark stayed exact.
-        $again = $manager->api('demo', '/p', $settings);
-        $again->registerCommand('hi', 'Say Hi Again', static function (): void {});
+        $again = $manager->api('demo', rootDir: '/p', settings: $settings);
+        $again->registerCommand('hi', label: 'Say Hi Again', handler: static function (): void {});
         $manager->commit($again);
         $manager->registerCommands($registry);
         $labels = \array_column($registry->paletteCommands(), 'label');
@@ -189,22 +189,22 @@ final class PluginManagerTest extends TestCase
         $tool = static fn (PluginApi $api, string $id) => $api->registerTool($id, 'Tool '.$id, ['type' => 'object'], static fn (array $arguments): string => $id);
 
         // Boot: committed before the runtime is wired, so nothing is announced.
-        $git = $manager->api('git', '/p', new PluginSettings('/p', []));
+        $git = $manager->api('git', rootDir: '/p', settings: new PluginSettings('/p', []));
         $tool($git, id: 'status');
         $manager->commit($git);
-        $quiet = $manager->api('quiet', '/p', new PluginSettings('/p', []));
+        $quiet = $manager->api('quiet', rootDir: '/p', settings: new PluginSettings('/p', []));
         $manager->commit($quiet);
         $this->assertSame(0, $announced, 'nothing could have read the set yet');
         $this->assertSame(['git:status'], \array_map(static fn (array $t): string => $t['plugin'].':'.$t['id'], $manager->tools()));
 
         // Live: a plugin that offers tools arriving, and one that offers none.
-        $manager->wireRuntime(Probe::get($this->wiredManager(new EventDispatcher()), 'runtime'));
-        $review = $manager->api('review', '/p', new PluginSettings('/p', []));
+        $manager->wireRuntime(Probe::get($this->wiredManager(new EventDispatcher()), property: 'runtime'));
+        $review = $manager->api('review', rootDir: '/p', settings: new PluginSettings('/p', []));
         $tool($review, id: 'threads');
         $tool($review, id: 'reply');
         $manager->commit($review);
         $this->assertSame(1, $announced);
-        $manager->commit($manager->api('silent', '/p', new PluginSettings('/p', [])));
+        $manager->commit($manager->api('silent', rootDir: '/p', settings: new PluginSettings('/p', [])));
         $this->assertSame(1, $announced, 'a plugin with no tools changes nothing');
         $this->assertSame(['git:status', 'review:threads', 'review:reply'], \array_map(static fn (array $t): string => $t['plugin'].':'.$t['id'], $manager->tools()));
 
@@ -220,10 +220,10 @@ final class PluginManagerTest extends TestCase
     public function testDeactivateTakesBackWhatThePluginPutOnScreen(): void
     {
         $manager = $this->wiredManager(new EventDispatcher());
-        $editor = Probe::get(Probe::get($manager, 'runtime'), 'editor');
-        $blame = $manager->api('blame', '/p', new PluginSettings('/p', []));
+        $editor = Probe::get(Probe::get($manager, property: 'runtime'), property: 'editor');
+        $blame = $manager->api('blame', rootDir: '/p', settings: new PluginSettings('/p', []));
         $manager->commit($blame);
-        $other = $manager->api('other', '/p', new PluginSettings('/p', []));
+        $other = $manager->api('other', rootDir: '/p', settings: new PluginSettings('/p', []));
         $manager->commit($other);
         $blame->setLineAnnotations([0 => 'pierre, 2 days ago']);
         $other->setLineAnnotations([1 => 'kept']);
@@ -233,7 +233,7 @@ final class PluginManagerTest extends TestCase
         $this->assertSame([1 => 'kept'], $editor->decorations->lineAnnotations);
 
         // What its own teardown publishes on the way out goes too.
-        $late = $manager->api('late', '/p', new PluginSettings('/p', []));
+        $late = $manager->api('late', rootDir: '/p', settings: new PluginSettings('/p', []));
         $manager->commit($late, new readonly class($late) implements PortaPlugin, DisposablePlugin {
             public function __construct(
                 private PluginApi $api,
@@ -256,7 +256,7 @@ final class PluginManagerTest extends TestCase
 
         // A retract that fails is reported, and the plugin still leaves.
         $other->setLineAnnotations([1 => 'again']);
-        Probe::set($manager, 'runtime', null);
+        Probe::set($manager, property: 'runtime', value: null);
         $manager->deactivate('other', new CommandRegistry());
         $this->assertFalse($manager->hasPlugin('other'));
         $this->assertNotSame([], $manager->warnings, 'the failure was said');
@@ -267,7 +267,7 @@ final class PluginManagerTest extends TestCase
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager(new EventDispatcher(), $settings);
         $plugin = $this->disposablePlugin('demo');
-        $manager->commit($manager->api('demo', '/p', $settings), $plugin);
+        $manager->commit($manager->api('demo', rootDir: '/p', settings: $settings), $plugin);
 
         $manager->deactivate('demo', new CommandRegistry());
         $manager->deactivate('demo', new CommandRegistry()); // unknown now → no-op
@@ -281,7 +281,7 @@ final class PluginManagerTest extends TestCase
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager(new EventDispatcher(), $settings);
         $first = $this->disposablePlugin('first');
-        $manager->commit($manager->api('first', '/p', $settings), new class('broken') extends AbstractPlugin implements DisposablePlugin {
+        $manager->commit($manager->api('first', rootDir: '/p', settings: $settings), new class('broken') extends AbstractPlugin implements DisposablePlugin {
             public function activate(PluginApi $api): void {}
 
             public function deactivate(): void
@@ -289,8 +289,8 @@ final class PluginManagerTest extends TestCase
                 throw new \RuntimeException('teardown exploded');
             }
         });
-        $manager->commit($manager->api('second', '/p', $settings), $first);
-        $manager->commit($manager->api('plain', '/p', $settings), new class('plain') extends AbstractPlugin {
+        $manager->commit($manager->api('second', rootDir: '/p', settings: $settings), $first);
+        $manager->commit($manager->api('plain', rootDir: '/p', settings: $settings), new class('plain') extends AbstractPlugin {
             public function activate(PluginApi $api): void {}
         });
 
@@ -307,8 +307,8 @@ final class PluginManagerTest extends TestCase
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager(new EventDispatcher(), $settings);
         $registry = new CommandRegistry();
-        $api = $manager->api('demo', '/p', $settings);
-        $api->registerCommand('hi', 'Say Hi', static function (): void {});
+        $api = $manager->api('demo', rootDir: '/p', settings: $settings);
+        $api->registerCommand('hi', label: 'Say Hi', handler: static function (): void {});
         $api->addMenuItem('hi');
         $plugin = new class('demo') extends AbstractPlugin implements DisposablePlugin {
             public function activate(PluginApi $api): void {}
@@ -335,7 +335,7 @@ final class PluginManagerTest extends TestCase
         // deactivation must not trip over the absence.
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager(new EventDispatcher(), $settings);
-        $manager->commit($manager->api('demo', '/p', $settings));
+        $manager->commit($manager->api('demo', rootDir: '/p', settings: $settings));
 
         $manager->deactivate('demo', new CommandRegistry());
 
@@ -349,11 +349,11 @@ final class PluginManagerTest extends TestCase
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager(new EventDispatcher(), $settings);
         $first = $this->disposablePlugin('demo');
-        $manager->commit($manager->api('demo', '/p', $settings), $first);
+        $manager->commit($manager->api('demo', rootDir: '/p', settings: $settings), $first);
         $manager->deactivate('demo', new CommandRegistry());
 
         $second = $this->disposablePlugin('demo');
-        $manager->commit($manager->api('demo', '/p', $settings), $second);
+        $manager->commit($manager->api('demo', rootDir: '/p', settings: $settings), $second);
         $manager->deactivate('demo', new CommandRegistry());
 
         $this->assertSame(1, $first->tornDown);
@@ -378,8 +378,8 @@ final class PluginManagerTest extends TestCase
     public function testAResolverThatThrowsIsAFailureNotAMissingBinary(): void
     {
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
-        $api = $manager->api('broken', '/p', new PluginSettings('/p', []));
-        $api->registerLanguageServer('php', 'broken-ls', static fn (): array => throw new \RuntimeException('no'));
+        $api = $manager->api('broken', rootDir: '/p', settings: new PluginSettings('/p', []));
+        $api->registerLanguageServer('php', name: 'broken-ls', resolveCommand: static fn (): array => throw new \RuntimeException('no'));
         $manager->commit($api);
 
         $this->assertSame([], $manager->missingServers());
@@ -390,20 +390,20 @@ final class PluginManagerTest extends TestCase
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
 
         // one registers a php server whose binary is missing (resolver null).
-        $one = $manager->api('one', '/p', new PluginSettings('/p', []));
-        $one->registerLanguageServer('php', 'one-ls', static fn (): ServerNotFound => new ServerNotFound());
-        $one->registerLanguageServer('typescript', 'not-mine', static fn (): ?array => null);
+        $one = $manager->api('one', rootDir: '/p', settings: new PluginSettings('/p', []));
+        $one->registerLanguageServer('php', name: 'one-ls', resolveCommand: static fn (): ServerNotFound => new ServerNotFound());
+        $one->registerLanguageServer('typescript', name: 'not-mine', resolveCommand: static fn (): ?array => null);
         $manager->commit($one);
 
         // two provides an available php server and a typescript server.
-        $two = $manager->api('two', '/p', new PluginSettings('/p', []));
-        $two->registerLanguageServer('php', 'two-ls', static fn (): array => ['/bin/two']);
-        $two->registerLanguageServer('typescript', 'ts', static fn (): array => ['/bin/ts', '--stdio']);
+        $two = $manager->api('two', rootDir: '/p', settings: new PluginSettings('/p', []));
+        $two->registerLanguageServer('php', name: 'two-ls', resolveCommand: static fn (): array => ['/bin/two']);
+        $two->registerLanguageServer('typescript', name: 'ts', resolveCommand: static fn (): array => ['/bin/ts', '--stdio']);
         $manager->commit($two);
 
         // three's php server loses — two already serves php.
-        $three = $manager->api('three', '/p', new PluginSettings('/p', []));
-        $three->registerLanguageServer('php', 'three-ls', static fn (): array => ['/bin/three']);
+        $three = $manager->api('three', rootDir: '/p', settings: new PluginSettings('/p', []));
+        $three->registerLanguageServer('php', name: 'three-ls', resolveCommand: static fn (): array => ['/bin/three']);
         $manager->commit($three);
 
         $this->assertSame(
@@ -426,11 +426,11 @@ final class PluginManagerTest extends TestCase
         $manager = new PluginManager(new EventDispatcher(), $settings);
 
         $trust = false;
-        $sf = $manager->api('sf', '/p', $settings);
-        $sf->registerLanguageServer('twig', 'sf-ls', static fn (): array => ['/bin/sf'], static function () use (&$trust): array {
+        $sf = $manager->api('sf', rootDir: '/p', settings: $settings);
+        $sf->registerLanguageServer('twig', name: 'sf-ls', resolveCommand: static fn (): array => ['/bin/sf'], initializationOptions: static function () use (&$trust): array {
             return ['workspaceTrust' => $trust];
         });
-        $sf->registerLanguageServer('yaml', 'sf-ls', static fn (): array => ['/bin/sf'], static fn (): array => []);
+        $sf->registerLanguageServer('yaml', name: 'sf-ls', resolveCommand: static fn (): array => ['/bin/sf'], initializationOptions: static fn (): array => []);
         $manager->commit($sf);
 
         $this->assertSame(
@@ -455,8 +455,8 @@ final class PluginManagerTest extends TestCase
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager(new EventDispatcher(), $settings);
 
-        $bad = $manager->api('bad', '/p', $settings);
-        $bad->registerLanguageServer('twig', 'bad-ls', static fn (): array => ['/bin/bad'], static fn (): array => throw new \RuntimeException('boom'));
+        $bad = $manager->api('bad', rootDir: '/p', settings: $settings);
+        $bad->registerLanguageServer('twig', name: 'bad-ls', resolveCommand: static fn (): array => ['/bin/bad'], initializationOptions: static fn (): array => throw new \RuntimeException('boom'));
         $manager->commit($bad);
 
         $this->assertSame([], $manager->languageServers());
@@ -471,8 +471,8 @@ final class PluginManagerTest extends TestCase
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager(new EventDispatcher(), $settings);
 
-        $bad = $manager->api('bad', '/p', $settings);
-        $bad->registerLanguageServer('twig', 'bad-ls', static fn (): array => ['/bin/bad'], static fn (): array => ['timeout' => \INF]);
+        $bad = $manager->api('bad', rootDir: '/p', settings: $settings);
+        $bad->registerLanguageServer('twig', name: 'bad-ls', resolveCommand: static fn (): array => ['/bin/bad'], initializationOptions: static fn (): array => ['timeout' => \INF]);
         $manager->commit($bad);
 
         $this->assertSame([], $manager->languageServers(), 'the language stays unserved rather than carrying poison');
@@ -486,14 +486,14 @@ final class PluginManagerTest extends TestCase
         $manager = new PluginManager($events, $settings);
         $registry = new CommandRegistry();
 
-        $boom = $manager->api('boom', '/p', $settings);
-        $boom->registerLanguageServer('php', 'boom-ls', static fn (): array => throw new \RuntimeException('bad binary'));
+        $boom = $manager->api('boom', rootDir: '/p', settings: $settings);
+        $boom->registerLanguageServer('php', name: 'boom-ls', resolveCommand: static fn (): array => throw new \RuntimeException('bad binary'));
         $manager->commit($boom);
         $this->assertSame([], $manager->languageServers(), 'a throwing resolver leaves the language unserved');
         $this->assertNotEmpty($manager->warnings, 'and reports a boot warning');
 
-        $ok = $manager->api('ok', '/p', $settings);
-        $ok->registerLanguageServer('php', 'ok-ls', static fn (): array => ['/bin/ok']);
+        $ok = $manager->api('ok', rootDir: '/p', settings: $settings);
+        $ok->registerLanguageServer('php', name: 'ok-ls', resolveCommand: static fn (): array => ['/bin/ok']);
         $manager->commit($ok);
         $this->assertArrayHasKey('php', $manager->languageServers());
 
@@ -509,7 +509,7 @@ final class PluginManagerTest extends TestCase
         $registry = new CommandRegistry();
 
         $available = false;
-        $plugin = $manager->api('linter', '/p', $settings);
+        $plugin = $manager->api('linter', rootDir: '/p', settings: $settings);
         $plugin->registerInstaller(
             'phpstan',
             static function () use (&$available): bool {
@@ -534,8 +534,8 @@ final class PluginManagerTest extends TestCase
     public function testAThrowingMenuWhenClosureReadsDisabledAndReportsOnce(): void
     {
         $manager = $this->wiredManager(new EventDispatcher());
-        $api = $manager->api('demo', '/p', new PluginSettings('/p', []));
-        $api->registerCommand('hi', 'Say Hi', static function (): void {});
+        $api = $manager->api('demo', rootDir: '/p', settings: new PluginSettings('/p', []));
+        $api->registerCommand('hi', label: 'Say Hi', handler: static function (): void {});
         $api->addMenuItem('hi', static function (): bool {
             throw new \RuntimeException('broken when');
         });
@@ -551,12 +551,12 @@ final class PluginManagerTest extends TestCase
     public function testWrappedCommandHandlersCatchAndFlash(): void
     {
         $manager = $this->wiredManager(new EventDispatcher());
-        $api = $manager->api('demo', '/p', new PluginSettings('/p', []));
+        $api = $manager->api('demo', rootDir: '/p', settings: new PluginSettings('/p', []));
         $ran = false;
-        $api->registerCommand('ok', 'Ok', static function () use (&$ran): void {
+        $api->registerCommand('ok', label: 'Ok', handler: static function () use (&$ran): void {
             $ran = true;
         });
-        $api->registerCommand('boom', 'Boom', static function (): never {
+        $api->registerCommand('boom', label: 'Boom', handler: static function (): never {
             throw new \RuntimeException('kaboom');
         });
         $manager->commit($api);
@@ -574,7 +574,7 @@ final class PluginManagerTest extends TestCase
     {
         $events = new EventDispatcher();
         $manager = $this->wiredManager($events);
-        $api = $manager->api('demo', '/p', new PluginSettings('/p', []));
+        $api = $manager->api('demo', rootDir: '/p', settings: new PluginSettings('/p', []));
         $seen = [];
         $api->onFileSaved(static function (string $p) use (&$seen): void {
             $seen[] = $p;
@@ -616,7 +616,7 @@ final class PluginManagerTest extends TestCase
         $manager = $this->wiredManager($events);
         $seen = [];
         foreach (['one', 'two'] as $name) {
-            $api = $manager->api($name, '/p', new PluginSettings('/p', []));
+            $api = $manager->api($name, rootDir: '/p', settings: new PluginSettings('/p', []));
             $api->onFileSaved(static function (string $path) use (&$seen, $name): void {
                 $seen[] = $name;
             });
@@ -635,7 +635,7 @@ final class PluginManagerTest extends TestCase
         $manager = $this->wiredManager($events);
         $calls = 0;
         $subscribe = static function (PluginManager $manager) use (&$calls): void {
-            $api = $manager->api('demo', '/p', new PluginSettings('/p', []));
+            $api = $manager->api('demo', rootDir: '/p', settings: new PluginSettings('/p', []));
             $api->onFileSaved(static function () use (&$calls): void {
                 ++$calls;
             });
@@ -656,7 +656,7 @@ final class PluginManagerTest extends TestCase
         // of the frozen subset — even though a core adapter listens to it on
         // the plugin's behalf for onFileSaved().
         $manager = $this->wiredManager(new EventDispatcher());
-        $api = $manager->api('demo', '/p', new PluginSettings('/p', []));
+        $api = $manager->api('demo', rootDir: '/p', settings: new PluginSettings('/p', []));
 
         $this->expectException(PluginException::class);
         $this->expectExceptionMessageIsOrContains('is not a plugin-observable event');
@@ -667,7 +667,7 @@ final class PluginManagerTest extends TestCase
     {
         $events = new EventDispatcher();
         $manager = $this->wiredManager($events);
-        $api = $manager->api('demo', '/p', new PluginSettings('/p', []));
+        $api = $manager->api('demo', rootDir: '/p', settings: new PluginSettings('/p', []));
         $seen = null;
         $api->on(ActiveBufferChanged::class, static function (ActiveBufferChanged $event) use (&$seen): void {
             $seen = $event->path;
@@ -690,7 +690,7 @@ final class PluginManagerTest extends TestCase
         $manager = $this->wiredManager(new EventDispatcher());
         $settings = new PluginSettings('/p', []);
         foreach (['one' => '/bin/one', 'two' => '/bin/two'] as $plugin => $binary) {
-            $api = $manager->api($plugin, '/p', $settings);
+            $api = $manager->api($plugin, rootDir: '/p', settings: $settings);
             $api->registerLanguageServer('php', $plugin, static fn (): array => [$binary]);
             $manager->commit($api);
         }
@@ -713,11 +713,11 @@ final class PluginManagerTest extends TestCase
     {
         $manager = $this->wiredManager(new EventDispatcher());
         $settings = new PluginSettings('/p', []);
-        $beside = $manager->api('symfony-lsp', '/p', $settings);
-        $beside->registerLanguageServer('php', 'symfony-lsp', static fn (): array => ['/bin/sf'], null, ServerRole::Supplementary);
+        $beside = $manager->api('symfony-lsp', rootDir: '/p', settings: $settings);
+        $beside->registerLanguageServer('php', name: 'symfony-lsp', resolveCommand: static fn (): array => ['/bin/sf'], role: ServerRole::Supplementary);
         $manager->commit($beside);
-        $own = $manager->api('phpantom', '/p', $settings);
-        $own->registerLanguageServer('php', 'phpantom', static fn (): array => ['/bin/phpantom']);
+        $own = $manager->api('phpantom', rootDir: '/p', settings: $settings);
+        $own->registerLanguageServer('php', name: 'phpantom', resolveCommand: static fn (): array => ['/bin/phpantom']);
         $manager->commit($own);
 
         $this->assertSame(
@@ -741,13 +741,13 @@ final class PluginManagerTest extends TestCase
     {
         $manager = $this->wiredManager(new EventDispatcher());
         $settings = new PluginSettings('/p', []);
-        $relay = $manager->api('assist', '/p', $settings);
-        $relay->registerLanguageServer('php', 'assist', static fn (): array => ['/bin/relay'], null, ServerRole::Relayed);
+        $relay = $manager->api('assist', rootDir: '/p', settings: $settings);
+        $relay->registerLanguageServer('php', name: 'assist', resolveCommand: static fn (): array => ['/bin/relay'], role: ServerRole::Relayed);
         $manager->commit($relay);
         foreach (['phpantom' => ServerRole::Primary, 'symfony-lsp' => ServerRole::Supplementary] as $plugin => $role) {
-            $api = $manager->api($plugin, '/p', $settings);
-            $api->registerLanguageServer('php', $plugin, static fn (): array => ['/bin/'.$plugin], null, $role);
-            $api->registerLanguageServer('typescript', $plugin, static fn (): array => ['/bin/'.$plugin], null, $role);
+            $api = $manager->api($plugin, rootDir: '/p', settings: $settings);
+            $api->registerLanguageServer('php', $plugin, static fn (): array => ['/bin/'.$plugin], role: $role);
+            $api->registerLanguageServer('typescript', $plugin, static fn (): array => ['/bin/'.$plugin], role: $role);
             $manager->commit($api);
         }
 
@@ -770,8 +770,8 @@ final class PluginManagerTest extends TestCase
     public function testALoneSupplementaryClaimIsPromoted(): void
     {
         $manager = $this->wiredManager(new EventDispatcher());
-        $api = $manager->api('symfony-lsp', '/p', new PluginSettings('/p', []));
-        $api->registerLanguageServer('php', 'symfony-lsp', static fn (): array => ['/bin/sf'], null, ServerRole::Supplementary);
+        $api = $manager->api('symfony-lsp', rootDir: '/p', settings: new PluginSettings('/p', []));
+        $api->registerLanguageServer('php', name: 'symfony-lsp', resolveCommand: static fn (): array => ['/bin/sf'], role: ServerRole::Supplementary);
         $manager->commit($api);
 
         $this->assertSame(
@@ -789,11 +789,11 @@ final class PluginManagerTest extends TestCase
     {
         $manager = $this->wiredManager(new EventDispatcher());
         $settings = new PluginSettings('/p', []);
-        $own = $manager->api('phpantom', '/p', $settings);
-        $own->registerLanguageServer('php', 'phpantom', static fn (): ?array => null);
+        $own = $manager->api('phpantom', rootDir: '/p', settings: $settings);
+        $own->registerLanguageServer('php', name: 'phpantom', resolveCommand: static fn (): ?array => null);
         $manager->commit($own);
-        $beside = $manager->api('symfony-lsp', '/p', $settings);
-        $beside->registerLanguageServer('php', 'symfony-lsp', static fn (): array => ['/bin/sf'], null, ServerRole::Supplementary);
+        $beside = $manager->api('symfony-lsp', rootDir: '/p', settings: $settings);
+        $beside->registerLanguageServer('php', name: 'symfony-lsp', resolveCommand: static fn (): array => ['/bin/sf'], role: ServerRole::Supplementary);
         $manager->commit($beside);
 
         $this->assertSame(
@@ -810,11 +810,11 @@ final class PluginManagerTest extends TestCase
     {
         $manager = $this->wiredManager(new EventDispatcher());
         $settings = new PluginSettings('/p', []);
-        $own = $manager->api('phpantom', '/p', $settings);
-        $own->registerLanguageServer('php', 'phpantom', static fn (): array => ['/bin/shared']);
+        $own = $manager->api('phpantom', rootDir: '/p', settings: $settings);
+        $own->registerLanguageServer('php', name: 'phpantom', resolveCommand: static fn (): array => ['/bin/shared']);
         $manager->commit($own);
-        $beside = $manager->api('other', '/p', $settings);
-        $beside->registerLanguageServer('php', 'other', static fn (): array => ['/bin/shared'], null, ServerRole::Supplementary);
+        $beside = $manager->api('other', rootDir: '/p', settings: $settings);
+        $beside->registerLanguageServer('php', name: 'other', resolveCommand: static fn (): array => ['/bin/shared'], role: ServerRole::Supplementary);
         $manager->commit($beside);
 
         $this->assertSame(
@@ -828,11 +828,17 @@ final class PluginManagerTest extends TestCase
     {
         $manager = $this->wiredManager(new EventDispatcher());
         $settings = new PluginSettings('/p', []);
-        $own = $manager->api('one', '/p', $settings);
-        $own->registerLanguageServer('php', 'one', static fn (): array => ['/bin/shared'], static fn (): array => ['trust' => true]);
+        $own = $manager->api('one', rootDir: '/p', settings: $settings);
+        $own->registerLanguageServer('php', name: 'one', resolveCommand: static fn (): array => ['/bin/shared'], initializationOptions: static fn (): array => ['trust' => true]);
         $manager->commit($own);
-        $beside = $manager->api('two', '/p', $settings);
-        $beside->registerLanguageServer('php', 'two', static fn (): array => ['/bin/shared'], static fn (): array => ['trust' => false], ServerRole::Supplementary);
+        $beside = $manager->api('two', rootDir: '/p', settings: $settings);
+        $beside->registerLanguageServer(
+            'php',
+            name: 'two',
+            resolveCommand: static fn (): array => ['/bin/shared'],
+            initializationOptions: static fn (): array => ['trust' => false],
+            role: ServerRole::Supplementary,
+        );
         $manager->commit($beside);
 
         $this->assertCount(2, $manager->languageServers()['php']);

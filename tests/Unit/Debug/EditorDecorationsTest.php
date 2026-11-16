@@ -22,9 +22,9 @@ final class EditorDecorationsTest extends TestCase
         $editor->showDocument('/p/a.php', new Document("<?php\n\$a = 1;\n"));
 
         $breakpoints = new BreakpointStore();
-        $breakpoints->toggle('/p/a.php', 1);
+        $breakpoints->toggle('/p/a.php', line: 1);
         $state = new DebugSessionState();
-        $state->stopAt('/p/a.php', 1);
+        $state->stopAt('/p/a.php', line: 1);
 
         new EditorDecorations($breakpoints, $state, $editor->decorations)->apply('/p/a.php');
 
@@ -38,7 +38,7 @@ final class EditorDecorationsTest extends TestCase
         $editor->showDocument('/p/a.php', new Document("<?php\n\$a = 1;\n"));
 
         $breakpoints = new BreakpointStore();
-        $breakpoints->toggle('/p/a.php', 1);
+        $breakpoints->toggle('/p/a.php', line: 1);
         $decorations = new EditorDecorations($breakpoints, new DebugSessionState(), $editor->decorations);
 
         $decorations->onBufferSwitched(new BufferSwitched(new Buffer('/p/a.php', new Document(''))));

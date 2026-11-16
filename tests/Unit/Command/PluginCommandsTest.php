@@ -56,11 +56,11 @@ final class PluginCommandsTest extends TestCase
         $this->status = new StatusBarWidget();
         $this->lifecycle = new FakePluginLifecycle();
         $this->commands = new CommandRegistry();
-        $this->plugin('viewer', 'Shows pictures', [['name' => 'dot', 'sources' => [['brew', 'graphviz']]]]);
-        $this->plugin('linter', 'Checks code', [['name' => 'lint', 'sources' => [['brew', 'lint']]]]);
-        $this->plugin('quiet', null, []);
+        $this->plugin('viewer', description: 'Shows pictures', tools: [['name' => 'dot', 'sources' => [['brew', 'graphviz']]]]);
+        $this->plugin('linter', description: 'Checks code', tools: [['name' => 'lint', 'sources' => [['brew', 'lint']]]]);
+        $this->plugin('quiet', description: null, tools: []);
 
-        $notifier = new Notifier($this->status, TestTui::create(160, 24));
+        $notifier = new Notifier($this->status, TestTui::create(160, rows: 24));
         $tools = new TestTools(
             $this->project->dir,
             new PluginInstaller($this->project->dir, null, new Translator('en'), null),
@@ -102,7 +102,7 @@ final class PluginCommandsTest extends TestCase
      */
     private function plugin(string $name, ?string $description, array $tools): void
     {
-        $this->project->write('.porta/plugins/'.$name.'/porta.php', "<?php\n");
+        $this->project->write('.porta/plugins/'.$name.'/porta.php', content: "<?php\n");
         $manifest = ['extra' => ['porta' => ['tools' => $tools]]];
         if (null !== $description) {
             $manifest['description'] = $description;
@@ -113,7 +113,7 @@ final class PluginCommandsTest extends TestCase
 
     private function toast(): string
     {
-        return $this->statusRow($this->status, 160);
+        return $this->statusRow($this->status, columns: 160);
     }
 
     public function testEnableOffersTheDisabledPluginsWithWhatTheyDo(): void

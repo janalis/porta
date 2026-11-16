@@ -64,7 +64,7 @@ final class IdeViewWindowTest extends TestCase
     {
         $this->frame($tui);
         Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-        $this->awaitPainted($tui, $terminal, 'Settings › General ');
+        $this->awaitPainted($tui, $terminal, needle: 'Settings › General ');
         $box = Services::resolve($ide, ViewWindowPresenter::class)->box();
         $this->assertInstanceOf(ModalBox::class, $box);
 
@@ -75,12 +75,12 @@ final class IdeViewWindowTest extends TestCase
     {
         $this->runIde(
             $this->project(),
-            null,
-            [
+            file: null,
+            steps: [
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $box = $this->openSettings($tui, $terminal, $ide);
                     $presenter = Services::resolve($ide, ViewWindowPresenter::class);
-                    $delivery = Probe::get($presenter, 'delivery');
+                    $delivery = Probe::get($presenter, property: 'delivery');
                     $this->assertInstanceOf(OverlayDelivery::class, $delivery);
                     $bounds = $delivery->bounds();
                     $this->assertNotNull($bounds);
@@ -106,19 +106,19 @@ final class IdeViewWindowTest extends TestCase
     {
         $this->runIde(
             $this->project(),
-            null,
-            [
+            file: null,
+            steps: [
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->openSettings($tui, $terminal, $ide);
                     $grid = $this->screenGrid($tui, $terminal);
-                    $row = $this->rowOf($grid, 'Interface');
+                    $row = $this->rowOf($grid, needle: 'Interface');
                     $this->assertNotNull($row);
                     $col = \mb_strpos($grid[$row], needle: 'Interface');
                     $this->assertIsInt($col);
 
                     self::click($tui, $row, $col);
 
-                    $this->awaitPainted($tui, $terminal, 'Settings › Interface ');
+                    $this->awaitPainted($tui, $terminal, needle: 'Settings › Interface ');
                 },
             ],
             columns: 120,
@@ -130,8 +130,8 @@ final class IdeViewWindowTest extends TestCase
     {
         $this->runIde(
             $this->project(),
-            null,
-            [
+            file: null,
+            steps: [
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $views = Services::resolve($ide, ViewRegistry::class);
 
@@ -163,13 +163,13 @@ final class IdeViewWindowTest extends TestCase
     {
         $this->runIde(
             $this->project(),
-            null,
-            [
+            file: null,
+            steps: [
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->openSettings($tui, $terminal, $ide);
                     $grid = $this->screenGrid($tui, $terminal);
 
-                    self::click($tui, \count($grid) - 1, 1); // the status bar, outside the workspace
+                    self::click($tui, \count($grid) - 1, col: 1); // the status bar, outside the workspace
 
                     $this->assertTrue(Services::resolve($ide, ViewRegistry::class)->isOpen('settings'), 'the chrome is not "beside the window"');
                 },
@@ -183,8 +183,8 @@ final class IdeViewWindowTest extends TestCase
     {
         $this->runIde(
             $this->project(),
-            null,
-            [
+            file: null,
+            steps: [
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $presenter = Services::resolve($ide, ViewWindowPresenter::class);
                     $box = $this->openSettings($tui, $terminal, $ide);
@@ -226,8 +226,8 @@ final class IdeViewWindowTest extends TestCase
     {
         $this->runIde(
             $this->project(),
-            null,
-            [
+            file: null,
+            steps: [
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $presenter = Services::resolve($ide, ViewWindowPresenter::class);
                     $box = $this->openSettings($tui, $terminal, $ide);
@@ -264,8 +264,8 @@ final class IdeViewWindowTest extends TestCase
     {
         $this->runIde(
             $this->project(),
-            null,
-            [
+            file: null,
+            steps: [
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $views = Services::resolve($ide, ViewRegistry::class);
                     $this->openSettings($tui, $terminal, $ide);
@@ -274,16 +274,16 @@ final class IdeViewWindowTest extends TestCase
                     // the window stays.
                     $tui->handleInput("\x1b[21~"); // F10: the menu bar
                     $tui->handleInput("\r"); // … and its File menu
-                    $this->awaitPainted($tui, $terminal, 'Save File');
+                    $this->awaitPainted($tui, $terminal, needle: 'Save File');
                     $this->assertTrue($views->isOpen('settings'), 'opening the menu leaves the window');
                     $tui->handleInput("\x1b"); // close the menu
 
                     // File ▸ Go to File acts on the editor: the window closes first.
                     $tui->handleInput("\x1b[21~");
                     $tui->handleInput("\r");
-                    $this->awaitPainted($tui, $terminal, 'Save File');
+                    $this->awaitPainted($tui, $terminal, needle: 'Save File');
                     $grid = $this->screenGrid($tui, $terminal);
-                    $row = $this->rowOf($grid, 'Go to File');
+                    $row = $this->rowOf($grid, needle: 'Go to File');
                     $this->assertNotNull($row, 'the File menu is enabled and open');
                     $col = \mb_strpos($grid[$row], needle: 'Go to File');
                     $this->assertIsInt($col);
@@ -328,11 +328,11 @@ final class IdeViewWindowTest extends TestCase
     {
         $this->runIde(
             $this->project(),
-            null,
-            [
+            file: null,
+            steps: [
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $box = $this->openSettings($tui, $terminal, $ide);
-                    $frame = Probe::get(Services::resolve($ide, ViewWindowPresenter::class), 'frame');
+                    $frame = Probe::get(Services::resolve($ide, ViewWindowPresenter::class), property: 'frame');
                     $this->assertInstanceOf(WindowFrame::class, $frame);
                     $close = $box->closeButton->leads() ? $box->col + 1 : $box->col + $box->width - 2;
 

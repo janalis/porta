@@ -56,7 +56,7 @@ final class PluginManifestTest extends TestCase
     public function testAPluginWithNoManifestShipsNothingAndRequiresNothing(): void
     {
         $project = new TempProject();
-        $manifest = PluginManifest::beside($this->pluginDir($project, 'plain', null));
+        $manifest = PluginManifest::beside($this->pluginDir($project, name: 'plain', json: null));
 
         $this->assertSame('plain', $manifest->name, 'the directory name is the identity');
         $this->assertSame([], $manifest->autoloadDirs(), 'no psr-4, nothing to autoload');
@@ -66,7 +66,7 @@ final class PluginManifestTest extends TestCase
     public function testComposersPsr4MapIsTheAutoloadMap(): void
     {
         $project = new TempProject();
-        $file = $this->pluginDir($project, 'acme', '{"autoload": {"psr-4": {"Acme\\\\Tools\\\\": "src/"}}, "extra": {"porta": {"requires": ["image-viewer"]}}}');
+        $file = $this->pluginDir($project, name: 'acme', json: '{"autoload": {"psr-4": {"Acme\\\\Tools\\\\": "src/"}}, "extra": {"porta": {"requires": ["image-viewer"]}}}');
         $manifest = PluginManifest::beside($file);
 
         $this->assertSame(['Acme\\Tools\\' => ['src/']], $manifest->autoload, 'the prefix keeps its trailing separator');
@@ -82,7 +82,7 @@ final class PluginManifestTest extends TestCase
         // Composer accepts a string or a list, and `.`/`""` mean the package
         // root — a plugin whose classes sit beside its porta.php.
         $project = new TempProject();
-        $file = $this->pluginDir($project, 'multi', '{"autoload": {"psr-4": {"A\\\\": ["src/", "."], "B\\\\": "src"}}}');
+        $file = $this->pluginDir($project, name: 'multi', json: '{"autoload": {"psr-4": {"A\\\\": ["src/", "."], "B\\\\": "src"}}}');
         $dirs = PluginManifest::beside($file)->autoloadDirs();
 
         $this->assertSame(
@@ -95,7 +95,7 @@ final class PluginManifestTest extends TestCase
     public function testAnAutoloadDirectoryThatDoesNotExistIsNotOne(): void
     {
         $project = new TempProject();
-        $file = $this->pluginDirWithoutSrc($project, 'empty', '{"autoload": {"psr-4": {"Acme\\\\Empty\\\\": "src/"}}}');
+        $file = $this->pluginDirWithoutSrc($project, name: 'empty', json: '{"autoload": {"psr-4": {"Acme\\\\Empty\\\\": "src/"}}}');
 
         $this->assertSame([], PluginManifest::beside($file)->autoloadDirs(), 'a prefix left with no directory goes with them');
     }
@@ -106,7 +106,7 @@ final class PluginManifestTest extends TestCase
         // for everything, so accepting it would make this one plugin the
         // answer to every unresolved class in the process.
         $project = new TempProject();
-        $file = $this->pluginDir($project, 'greedy', '{"autoload": {"psr-4": {"": "src/", "\\\\": "src/"}}}');
+        $file = $this->pluginDir($project, name: 'greedy', json: '{"autoload": {"psr-4": {"": "src/", "\\\\": "src/"}}}');
 
         $this->assertSame([], PluginManifest::beside($file)->autoload);
     }
@@ -114,7 +114,7 @@ final class PluginManifestTest extends TestCase
     public function testPlatformRequirementsAreTheComplementOfPackages(): void
     {
         $project = new TempProject();
-        $manifest = PluginManifest::beside($this->pluginDir($project, 'plat', '{"require": {"php": ">=8.4", "ext-gd": "*", "vendor/pkg": "^1"}}'));
+        $manifest = PluginManifest::beside($this->pluginDir($project, name: 'plat', json: '{"require": {"php": ">=8.4", "ext-gd": "*", "vendor/pkg": "^1"}}'));
 
         $this->assertSame(['php' => '>=8.4', 'ext-gd' => '*'], $manifest->platform, 'no-slash requirements are platform');
         $this->assertSame(['vendor/pkg'], $manifest->packages, 'slashed ones stay installable packages');
@@ -128,11 +128,11 @@ final class PluginManifestTest extends TestCase
         // for nothing. A package the host does not ship still installs.
         $project = new TempProject();
 
-        $shipped = $this->composerPlugin($project, 'shipped', '{"require": {"symfony/filesystem": "^8.1"}}');
+        $shipped = $this->composerPlugin($project, name: 'shipped', json: '{"require": {"symfony/filesystem": "^8.1"}}');
         $this->assertSame([], $shipped->installablePackages());
         $this->assertFalse($shipped->needsInstall());
 
-        $vendoring = $this->composerPlugin($project, 'vendoring', '{"require": {"symfony/filesystem": "^8.1", "acme/unknown": "^1"}}');
+        $vendoring = $this->composerPlugin($project, name: 'vendoring', json: '{"require": {"symfony/filesystem": "^8.1", "acme/unknown": "^1"}}');
         $this->assertSame(['acme/unknown'], $vendoring->installablePackages(), 'only the half the host does not ship');
         $this->assertTrue($vendoring->needsInstall());
     }
@@ -142,8 +142,8 @@ final class PluginManifestTest extends TestCase
         $project = new TempProject();
         $manifest = PluginManifest::beside($this->pluginDir(
             $project,
-            'needs',
-            '{"require": {"php": ">=99.0", "ext-porta_nonexistent": "*", "ext-mbstring": "*", "php-64bit": "*", "lib-icu": "*"}}',
+            name: 'needs',
+            json: '{"require": {"php": ">=99.0", "ext-porta_nonexistent": "*", "ext-mbstring": "*", "php-64bit": "*", "lib-icu": "*"}}',
         ));
 
         $unmet = $manifest->unmetPlatform();
@@ -151,7 +151,7 @@ final class PluginManifestTest extends TestCase
         $this->assertContains('ext-porta_nonexistent', $unmet);
         $this->assertCount(2, $unmet, 'a loaded extension is met, and php-64bit/lib-* are not checked at all');
 
-        $garbled = PluginManifest::beside($this->pluginDir($project, 'garbled', '{"require": {"php": "certainly not a constraint"}}'));
+        $garbled = PluginManifest::beside($this->pluginDir($project, name: 'garbled', json: '{"require": {"php": "certainly not a constraint"}}'));
         $this->assertSame([], $garbled->unmetPlatform(), 'an unreadable constraint is trusted, never refused');
     }
 
@@ -159,9 +159,9 @@ final class PluginManifestTest extends TestCase
     {
         $project = new TempProject();
 
-        $this->assertSame(2, PluginManifest::beside($this->pluginDir($project, 'api-int', '{"extra": {"porta": {"api": 2}}}'))->api);
-        $this->assertNull(PluginManifest::beside($this->pluginDir($project, 'api-str', '{"extra": {"porta": {"api": "2"}}}'))->api, 'a string reads as undeclared');
-        $this->assertNull(PluginManifest::beside($this->pluginDir($project, 'api-none', '{}'))->api);
+        $this->assertSame(2, PluginManifest::beside($this->pluginDir($project, name: 'api-int', json: '{"extra": {"porta": {"api": 2}}}'))->api);
+        $this->assertNull(PluginManifest::beside($this->pluginDir($project, name: 'api-str', json: '{"extra": {"porta": {"api": "2"}}}'))->api, 'a string reads as undeclared');
+        $this->assertNull(PluginManifest::beside($this->pluginDir($project, name: 'api-none', json: '{}'))->api);
     }
 
     public function testTheCommandsMapNamesToClassesAndDropsTheMalformed(): void
@@ -169,15 +169,15 @@ final class PluginManifestTest extends TestCase
         $project = new TempProject();
         $json = '{"extra": {"porta": {"commands": {"review": "A\\\\Review", "": "A\\\\Empty", "blank": "", "num": 3, "0": "A\\\\Indexed"}}}}';
 
-        $this->assertSame(['review' => 'A\\Review'], PluginManifest::beside($this->pluginDir($project, 'cmds', $json))->commands);
-        $this->assertSame([], PluginManifest::beside($this->pluginDir($project, 'none', '{"extra": {"porta": {"commands": "review"}}}'))->commands);
+        $this->assertSame(['review' => 'A\\Review'], PluginManifest::beside($this->pluginDir($project, name: 'cmds', json: $json))->commands);
+        $this->assertSame([], PluginManifest::beside($this->pluginDir($project, name: 'none', json: '{"extra": {"porta": {"commands": "review"}}}'))->commands);
     }
 
     public function testATypoedComposerJsonSaysWhy(): void
     {
         $project = new TempProject();
         $error = null;
-        $manifest = PluginManifest::beside($this->pluginDir($project, 'typo', '{"autoload": '), $error);
+        $manifest = PluginManifest::beside($this->pluginDir($project, name: 'typo', json: '{"autoload": '), $error);
 
         $this->assertSame([], $manifest->autoload, 'defaults still apply — degrade, never decline');
         $this->assertStringContainsString('Syntax error', (string) $error, 'the decoder reason surfaces instead of being discarded');
@@ -212,19 +212,19 @@ final class PluginManifestTest extends TestCase
         // which is the whole bundled set.
         $project = new TempProject();
 
-        $this->assertFalse($this->composerPlugin($project, 'nothing', '{}')->needsInstall(), 'no require at all');
-        $this->assertFalse($this->composerPlugin($project, 'empty', '{"require":{}}')->needsInstall());
-        $this->assertFalse($this->composerPlugin($project, 'notanobject', '{"require":"nope"}')->needsInstall());
+        $this->assertFalse($this->composerPlugin($project, name: 'nothing', json: '{}')->needsInstall(), 'no require at all');
+        $this->assertFalse($this->composerPlugin($project, name: 'empty', json: '{"require":{}}')->needsInstall());
+        $this->assertFalse($this->composerPlugin($project, name: 'notanobject', json: '{"require":"nope"}')->needsInstall());
         $this->assertFalse(
-            $this->composerPlugin($project, 'platform', '{"require":{"php":">=8.4","ext-gd":"*","composer-runtime-api":"^2"}}')->needsInstall(),
+            $this->composerPlugin($project, name: 'platform', json: '{"require":{"php":">=8.4","ext-gd":"*","composer-runtime-api":"^2"}}')->needsInstall(),
             'platform requirements install nothing',
         );
         $this->assertFalse(
-            $this->composerPlugin($project, 'devonly', '{"require-dev":{"phpunit/phpunit":"^11"}}')->needsInstall(),
+            $this->composerPlugin($project, name: 'devonly', json: '{"require-dev":{"phpunit/phpunit":"^11"}}')->needsInstall(),
             'the installer runs --no-dev, so a dev requirement is a refusal nothing could satisfy',
         );
 
-        $real = $this->composerPlugin($project, 'real', '{"require":{"php":">=8.4","vend/lib":"^1.0"}}');
+        $real = $this->composerPlugin($project, name: 'real', json: '{"require":{"php":">=8.4","vend/lib":"^1.0"}}');
         $this->assertSame(['vend/lib'], $real->packages, 'the platform half is not a package');
         $this->assertTrue($real->needsInstall());
         $this->assertFalse(
@@ -240,12 +240,12 @@ final class PluginManifestTest extends TestCase
         // a vendor/ means those classes would never resolve.
         $project = new TempProject();
 
-        $this->assertTrue($this->composerPlugin($project, 'cm', '{"autoload":{"classmap":["lib/"]}}')->needsInstall());
-        $this->assertTrue($this->composerPlugin($project, 'fi', '{"autoload":{"files":["helpers.php"]}}')->needsInstall());
+        $this->assertTrue($this->composerPlugin($project, name: 'cm', json: '{"autoload":{"classmap":["lib/"]}}')->needsInstall());
+        $this->assertTrue($this->composerPlugin($project, name: 'fi', json: '{"autoload":{"files":["helpers.php"]}}')->needsInstall());
         $this->assertFalse($this->composerPlugin($project, 'dumped', '{"autoload":{"classmap":["lib/"]}}', 'vendor')->needsInstall());
-        $this->assertFalse($this->composerPlugin($project, 'psr4only', '{"autoload":{"psr-4":{"A\\\\":"src/"}}}')->needsInstall(), 'psr-4 needs no dump');
-        $this->assertFalse($this->composerPlugin($project, 'emptycm', '{"autoload":{"classmap":[]}}')->needsInstall());
-        $this->assertFalse($this->composerPlugin($project, 'noautoload', '{"autoload":"nope"}')->needsInstall());
+        $this->assertFalse($this->composerPlugin($project, name: 'psr4only', json: '{"autoload":{"psr-4":{"A\\\\":"src/"}}}')->needsInstall(), 'psr-4 needs no dump');
+        $this->assertFalse($this->composerPlugin($project, name: 'emptycm', json: '{"autoload":{"classmap":[]}}')->needsInstall());
+        $this->assertFalse($this->composerPlugin($project, name: 'noautoload', json: '{"autoload":"nope"}')->needsInstall());
     }
 
     public function testAMalformedComposerJsonAsksForNothing(): void
@@ -254,14 +254,14 @@ final class PluginManifestTest extends TestCase
         // typo must not make a plugin vanish behind a message about installing.
         $project = new TempProject();
 
-        $this->assertFalse($this->composerPlugin($project, 'junk', 'not json at all')->needsInstall());
-        $this->assertFalse($this->composerPlugin($project, 'scalar', '"a string"')->needsInstall());
+        $this->assertFalse($this->composerPlugin($project, name: 'junk', json: 'not json at all')->needsInstall());
+        $this->assertFalse($this->composerPlugin($project, name: 'scalar', json: '"a string"')->needsInstall());
     }
 
     public function testHasLegacyManifestDetectsAStalePluginJson(): void
     {
         $project = new TempProject();
-        $manifest = PluginManifest::beside($this->pluginDir($project, 'nolegacy', null));
+        $manifest = PluginManifest::beside($this->pluginDir($project, name: 'nolegacy', json: null));
         $this->assertFalse($manifest->hasLegacyManifest());
 
         \file_put_contents($project->path('plugins/nolegacy/plugin.json'), data: '{}');
@@ -283,7 +283,7 @@ final class PluginManifestTest extends TestCase
     public function testShadowedPackagesIsEmptyWithoutAVendorDirOrAReadableInstalledJson(): void
     {
         $project = new TempProject();
-        $this->assertSame([], $this->composerPlugin($project, 'novendor', '{}')->shadowedPackages(), 'no vendor/ at all');
+        $this->assertSame([], $this->composerPlugin($project, name: 'novendor', json: '{}')->shadowedPackages(), 'no vendor/ at all');
 
         $withVendor = $this->composerPlugin($project, 'badjson', '{}', 'vendor/composer');
         \file_put_contents($project->path('plugins/badjson/vendor/composer/installed.json'), data: 'not json at all');
@@ -292,7 +292,7 @@ final class PluginManifestTest extends TestCase
 
     public function testTheDescriptionAndToolsAreRead(): void
     {
-        $manifest = $this->composerPlugin(new TempProject(), 'viewer', '{"description": " Renders diagrams ", "extra": {"porta": {"tools": [{"name": "dot"}]}}}');
+        $manifest = $this->composerPlugin(new TempProject(), name: 'viewer', json: '{"description": " Renders diagrams ", "extra": {"porta": {"tools": [{"name": "dot"}]}}}');
 
         $this->assertSame('Renders diagrams', $manifest->description);
         $this->assertCount(1, $manifest->tools);
@@ -302,7 +302,7 @@ final class PluginManifestTest extends TestCase
 
     public function testNoDescriptionAndNoToolsByDefault(): void
     {
-        $manifest = $this->composerPlugin(new TempProject(), 'bare', '{"description": 3}');
+        $manifest = $this->composerPlugin(new TempProject(), name: 'bare', json: '{"description": 3}');
 
         $this->assertSame('', $manifest->description);
         $this->assertSame([], $manifest->tools);

@@ -25,7 +25,7 @@ final class MarkdownFenceInteractionTest extends TestCase
 {
     private static function semanticResult(array $actions): FenceResult
     {
-        return FenceResult::png(PngFixture::bytes(120, 80))->interactive([
+        return FenceResult::png(PngFixture::bytes(120, height: 80))->interactive([
             new FenceElement('left', 'Left semantic', 1, [[0.0, 0.0], [0.45, 0.0], [0.45, 1.0], [0.0, 1.0]]),
             new FenceElement('right', 'Right semantic', 2, [[0.55, 0.0], [1.0, 0.0], [1.0, 1.0], [0.55, 1.0]]),
         ], $actions);
@@ -34,10 +34,10 @@ final class MarkdownFenceInteractionTest extends TestCase
     private function click(MarkdownPageWidget $pane, string $suffix): LinkSpan
     {
         /** @var RenderedDoc $doc */
-        $doc = Probe::get($pane, 'doc');
+        $doc = Probe::get($pane, property: 'doc');
         $span = \array_find($doc->links, static fn (LinkSpan $span): bool => \str_ends_with($span->target, $suffix));
         $this->assertInstanceOf(LinkSpan::class, $span);
-        $this->assertTrue($pane->clickAt($span->line + 2 - Probe::get($pane, 'scrollTop'), $span->col + Probe::get($pane, 'marginCols')));
+        $this->assertTrue($pane->clickAt($span->line + 2 - Probe::get($pane, property: 'scrollTop'), $span->col + Probe::get($pane, property: 'marginCols')));
 
         return $span;
     }
@@ -48,21 +48,21 @@ final class MarkdownFenceInteractionTest extends TestCase
         $pane = new MarkdownPreviewWidget(fences: $provider->registry, fenceQueue: $provider->queue, scheduler: $provider->scheduler);
         $tui = TestTui::create();
         $tui->add($pane);
-        $pane->show('/doc.md', "```mermaid\nflowchart LR\nA-->B\n```");
+        $pane->show('/doc.md', payload: "```mermaid\nflowchart LR\nA-->B\n```");
         $context = new RenderContext(80, 40);
         $pane->render($context);
         $provider->drain();
-        Probe::set($tui, 'renderRequested', false);
+        Probe::set($tui, property: 'renderRequested', value: false);
         $provider->requests[0]['success'](self::semanticResult([]));
-        $this->assertTrue(Probe::get($tui, 'renderRequested'), 'completion must paint without another key, edit or timer');
+        $this->assertTrue(Probe::get($tui, property: 'renderRequested'), 'completion must paint without another key, edit or timer');
         $pane->render($context);
         $this->assertStringContainsString('Left semantic', \implode("\n", $pane->findLines));
-        $pane->show('/doc.md', "```mermaid\nflowchart LR\nA-->C\n```");
+        $pane->show('/doc.md', payload: "```mermaid\nflowchart LR\nA-->C\n```");
         $pane->render($context);
         $provider->drain();
-        Probe::set($tui, 'renderRequested', false);
+        Probe::set($tui, property: 'renderRequested', value: false);
         $provider->requests[1]['error']('Broken diagram');
-        $this->assertTrue(Probe::get($tui, 'renderRequested'), 'an asynchronous failure also needs its own frame');
+        $this->assertTrue(Probe::get($tui, property: 'renderRequested'), 'an asynchronous failure also needs its own frame');
         $pane->render($context);
         $this->assertStringContainsString('Broken diagram', \implode("\n", $pane->findLines));
         $pane->hide();
@@ -87,18 +87,18 @@ final class MarkdownFenceInteractionTest extends TestCase
         $pane->render($context);
         $this->assertStringContainsString('Left semantic', \implode("\n", $pane->findLines));
         $this->assertStringContainsString('Right semantic', \implode("\n", $pane->findLines));
-        $this->click($pane, ':left');
+        $this->click($pane, suffix: ':left');
         $this->assertSame('reveal:4:0', \array_last($handler->events));
         $pane->render($context);
-        $this->click($pane, ':find-node');
+        $this->click($pane, suffix: ':find-node');
         $this->assertCount(1, $contexts);
         $this->assertSame(1, $contexts[0]->number);
         $contexts[0]->select('right');
         $this->assertSame('reveal:5:0', \array_last($handler->events));
         /** @var RenderedDoc $doc */
-        $doc = Probe::get($pane, 'doc');
+        $doc = Probe::get($pane, property: 'doc');
         $right = \array_find($doc->links, static fn (LinkSpan $span): bool => \str_ends_with($span->target, ':right'));
-        $this->assertSame($right->group, Probe::get($pane, 'currentLink'));
+        $this->assertSame($right->group, Probe::get($pane, property: 'currentLink'));
         $pane->render($context);
         $pane->handleInput("\t");
         $pane->handleInput("\r");
@@ -140,13 +140,13 @@ final class MarkdownFenceInteractionTest extends TestCase
         $provider->requests[0]['success'](self::semanticResult([$action]));
         $pane->render($context);
         /** @var RenderedDoc $doc */
-        $doc = Probe::get($pane, 'doc');
+        $doc = Probe::get($pane, property: 'doc');
         $this->assertInstanceOf(LinkSpan::class, \array_find($doc->links, static fn (LinkSpan $span): bool => $target === $span->target && $doc->isAction($span->group)));
         $spoof = \array_find($doc->links, static fn (LinkSpan $span): bool => $target === $span->target && !$doc->isAction($span->group));
         $this->assertInstanceOf(LinkSpan::class, $spoof);
         $pane->clickAt($spoof->line + 2, $spoof->col + 1);
         $this->assertSame(0, $exports);
-        $this->click($pane, ':export-svg');
+        $this->click($pane, suffix: ':export-svg');
         $this->assertSame(1, $exports);
         $pane->hide();
     }
@@ -157,14 +157,14 @@ final class MarkdownFenceInteractionTest extends TestCase
         $pane = new HelpViewerWidget(fences: $provider->registry, fenceQueue: $provider->queue, scheduler: $provider->scheduler);
         $handler = new RecordingHelpViewerHandler();
         $pane->setHandler($handler);
-        $pane->show('/doc.md', "```mermaid\nheader\nleft\nright\n```\n");
+        $pane->show('/doc.md', payload: "```mermaid\nheader\nleft\nright\n```\n");
         $context = new RenderContext(70, 30);
         $pane->render($context);
         $provider->drain();
         $provider->requests[0]['success'](self::semanticResult([]));
         $pane->render($context);
-        $span = $this->click($pane, ':right');
-        $this->assertSame($span->group, Probe::get($pane, 'currentLink'));
+        $span = $this->click($pane, suffix: ':right');
+        $this->assertSame($span->group, Probe::get($pane, property: 'currentLink'));
         $this->assertSame([], $handler->events);
         $pane->hide();
     }

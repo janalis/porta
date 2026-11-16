@@ -45,7 +45,7 @@ final class ToolCatalogTest extends TestCase
             $this->project->dir,
             new PluginInstaller($this->project->dir, null, new Translator('en'), null),
             $this->plugins,
-            new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
+            new Notifier(new StatusBarWidget(), TestTui::create(80, rows: 24)),
             new FakePluginLifecycle(),
             path: $path,
             run: function (array $argv, string $cwd, \Closure $onExit): void {
@@ -60,7 +60,7 @@ final class ToolCatalogTest extends TestCase
     /** @param array<string, mixed> $manifest */
     private function plugin(string $name, array $manifest): void
     {
-        $this->project->write('.porta/plugins/'.$name.'/porta.php', "<?php\n");
+        $this->project->write('.porta/plugins/'.$name.'/porta.php', content: "<?php\n");
         $this->project->write('.porta/plugins/'.$name.'/composer.json', (string) \json_encode($manifest, \JSON_THROW_ON_ERROR));
     }
 
@@ -82,7 +82,7 @@ final class ToolCatalogTest extends TestCase
 
     public function testAPluginWithoutAManifestDeclaresNothing(): void
     {
-        $this->project->write('.porta/plugins/bare/porta.php', "<?php\n");
+        $this->project->write('.porta/plugins/bare/porta.php', content: "<?php\n");
 
         $this->assertSame([], $this->tools()->catalog->declared('bare'));
     }
@@ -90,7 +90,7 @@ final class ToolCatalogTest extends TestCase
     public function testAStatusSaysWhereAndWhatAndWhoManagesIt(): void
     {
         $this->plugin('p', ['extra' => ['porta' => ['tools' => [['name' => 'a', 'sources' => [['brew', 'a']]], ['name' => 'b', 'role' => 'suggested']]]]]);
-        $bin = $this->project->write('Cellar/a/1/bin/a', "#!/bin/sh\n");
+        $bin = $this->project->write('Cellar/a/1/bin/a', content: "#!/bin/sh\n");
         \chmod($bin, permissions: 0o755);
         $tools = $this->tools(['a' => $bin]);
 
@@ -130,7 +130,7 @@ final class ToolCatalogTest extends TestCase
         $available = false;
         $asked = 0;
         $api = $this->plugins->api('p', $this->project->dir, new PluginSettings($this->project->dir, []));
-        $api->registerCommand('install', 'Install it', static function (): void {});
+        $api->registerCommand('install', label: 'Install it', handler: static function (): void {});
         $api->registerInstaller(
             'srv',
             static function () use (&$available): bool {

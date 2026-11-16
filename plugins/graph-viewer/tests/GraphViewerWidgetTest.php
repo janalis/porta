@@ -32,13 +32,13 @@ final class GraphViewerWidgetTest extends TestCase
         // action nothing binds is a keymap row that does nothing, and a bound
         // key nothing declares is a key the user can never find or rebind.
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
-        $api = $manager->api('graph-viewer', '/p', new PluginSettings('/p', []));
+        $api = $manager->api('graph-viewer', rootDir: '/p', settings: new PluginSettings('/p', []));
         $plugin = require \dirname(__DIR__).'/porta.php';
         $plugin->activate($api);
 
         $declared = \array_column($api->contributions()->actions->all(), 'id');
         /** @var array<string, list<string>> $bound */
-        $bound = Probe::invokeStatic(GraphViewerWidget::class, 'getDefaultKeybindings');
+        $bound = Probe::invokeStatic(GraphViewerWidget::class, method: 'getDefaultKeybindings');
         // Scoped to the ids CORE does not declare — a pane also binds core
         // actions (goto_file, next_buffer…), which are the catalog's rows. What
         // must match is the remainder: the actions that exist only because this
@@ -65,7 +65,7 @@ final class GraphViewerWidgetTest extends TestCase
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'digraph G { A -> B [label="calls"]; B -> C; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B [label="calls"]; B -> C; }');
 
         $screen = self::plain($widget->render(new RenderContext(80, 24)));
         $this->assertStringContainsString('A', $screen);
@@ -84,7 +84,7 @@ final class GraphViewerWidgetTest extends TestCase
     {
         $this->engine->nextResult = self::layout('clustered.json');
         $widget = $this->widget();
-        $widget->show('/p/arch.dot', 'clustered');
+        $widget->show('/p/arch.dot', payload: 'clustered');
 
         $lines = $widget->render(new RenderContext(100, 28));
         $screen = self::plain($lines);
@@ -98,8 +98,8 @@ final class GraphViewerWidgetTest extends TestCase
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'same dot');
-        $widget->show('/p/g.dot', 'same dot');
+        $widget->show('/p/g.dot', payload: 'same dot');
+        $widget->show('/p/g.dot', payload: 'same dot');
 
         $this->assertSame(1, $this->engine->layoutCalls, 'the N-shows-one-call contract');
     }
@@ -108,13 +108,13 @@ final class GraphViewerWidgetTest extends TestCase
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/a.dot', 'dot A');
+        $widget->show('/p/a.dot', payload: 'dot A');
         $widget->clear();
-        $widget->show('/p/b.dot', 'dot B');
+        $widget->show('/p/b.dot', payload: 'dot B');
         $this->assertSame(2, $this->engine->layoutCalls);
 
         $widget->clear();
-        $widget->show('/p/a.dot', 'dot A'); // back to A: served from the hash cache
+        $widget->show('/p/a.dot', payload: 'dot A'); // back to A: served from the hash cache
         $this->assertSame(2, $this->engine->layoutCalls, 'the cached layout was adopted');
         $this->assertStringContainsString('nodes', $widget->statusInfo());
     }
@@ -123,13 +123,13 @@ final class GraphViewerWidgetTest extends TestCase
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'good dot');
+        $widget->show('/p/g.dot', payload: 'good dot');
         $this->assertStringContainsString('A', self::plain($widget->render(new RenderContext(60, 20))));
 
         // Not dot's report on the source, which the editor shows: the tool
         // itself failed, and only the pane can say so.
         $this->engine->nextResult = "dot produced invalid JSON: Syntax error\nmore context";
-        $widget->show('/p/g.dot', 'broken dot {');
+        $widget->show('/p/g.dot', payload: 'broken dot {');
 
         $screen = self::plain($widget->render(new RenderContext(60, 20)));
         $this->assertStringContainsString('dot produced invalid JSON', $screen, 'the banner shows the first line');
@@ -153,11 +153,11 @@ final class GraphViewerWidgetTest extends TestCase
         });
         $widget->textBeside(true); // Split: the editor is on screen
         $this->engine->nextResult = self::layout();
-        $widget->show('/p/g.dot', "digraph G {\n a -> b;\n}");
+        $widget->show('/p/g.dot', payload: "digraph G {\n a -> b;\n}");
         $this->assertSame([], $told, 'a clean source that was never wrong is not re-told');
 
         $this->engine->nextResult = "Error: <stdin>: syntax error in line 2 near '->'\n";
-        $widget->show('/p/g.dot', "digraph G {\n a -> ;\n}");
+        $widget->show('/p/g.dot', payload: "digraph G {\n a -> ;\n}");
 
         $this->assertSame([['/p/g.dot', [['line' => 1, 'message' => "syntax error near '->'", 'severity' => 1, 'column' => 3]]]], $told);
         $screen = self::plain($widget->render(new RenderContext(60, 20)));
@@ -165,7 +165,7 @@ final class GraphViewerWidgetTest extends TestCase
         $this->assertStringContainsString('┌', $screen, 'the last good graph stays');
 
         $this->engine->nextResult = self::layout();
-        $widget->show('/p/g.dot', "digraph G {\n a -> c;\n}");
+        $widget->show('/p/g.dot', payload: "digraph G {\n a -> c;\n}");
         $this->assertSame(['/p/g.dot', []], $told[1], 'fixed: the errors are cleared');
         $this->assertCount(2, $told);
     }
@@ -179,9 +179,9 @@ final class GraphViewerWidgetTest extends TestCase
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'good');
+        $widget->show('/p/g.dot', payload: 'good');
         $this->engine->nextResult = "Error: <stdin>: syntax error in line 2 near '->'\nError: <stdin>: syntax error in line 5\n";
-        $widget->show('/p/g.dot', "digraph G {\n a -> ;\n}");
+        $widget->show('/p/g.dot', payload: "digraph G {\n a -> ;\n}");
 
         $alone = self::plain($widget->render(new RenderContext(60, 20)));
         $this->assertStringContainsString("Line 2: syntax error near '->'", $alone, 'alone: the first error, on the picture');
@@ -193,7 +193,7 @@ final class GraphViewerWidgetTest extends TestCase
 
         $widget->textBeside(false);
         $this->engine->nextResult = self::layout();
-        $widget->show('/p/g.dot', 'fixed');
+        $widget->show('/p/g.dot', payload: 'fixed');
         $this->assertStringNotContainsString('syntax error', self::plain($widget->render(new RenderContext(60, 20))), 'fixed: gone');
     }
 
@@ -201,20 +201,20 @@ final class GraphViewerWidgetTest extends TestCase
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/a.dot', 'good');
+        $widget->show('/p/a.dot', payload: 'good');
         $this->engine->nextResult = "Error: <stdin>: syntax error in line 1\n";
-        $widget->show('/p/a.dot', 'bad');
+        $widget->show('/p/a.dot', payload: 'bad');
         $this->engine->deferred = true;
 
-        $widget->show('/p/b.dot', 'other'); // laying out
+        $widget->show('/p/b.dot', payload: 'other'); // laying out
         $this->assertStringNotContainsString('syntax error', self::plain($widget->render(new RenderContext(60, 20))));
 
         $this->engine->deferred = false;
         $this->engine->nextResult = "Error: <stdin>: syntax error in line 1\n";
-        $widget->show('/p/a.dot', 'bad again');
+        $widget->show('/p/a.dot', payload: 'bad again');
         $widget->clear();
         $this->engine->nextResult = self::layout();
-        $widget->show('/p/c.dot', 'c');
+        $widget->show('/p/c.dot', payload: 'c');
         $this->assertStringNotContainsString('syntax error', self::plain($widget->render(new RenderContext(60, 20))), 'nor after a clear');
     }
 
@@ -222,7 +222,7 @@ final class GraphViewerWidgetTest extends TestCase
     {
         $this->engine->deferred = true;
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'digraph {}');
+        $widget->show('/p/g.dot', payload: 'digraph {}');
 
         $this->assertStringContainsString('layout…', self::plain($widget->render(new RenderContext(40, 8))));
 
@@ -238,7 +238,7 @@ final class GraphViewerWidgetTest extends TestCase
         $handler = new RecordingViewerTabHandler();
         $widget = $this->widget();
         $widget->setHandler($handler);
-        $widget->show('/p/g.dot', 'dot');
+        $widget->show('/p/g.dot', payload: 'dot');
         $widget->render(new RenderContext(80, 24));
 
         $widget->handleInput('n');
@@ -259,7 +259,7 @@ final class GraphViewerWidgetTest extends TestCase
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'dot');
+        $widget->show('/p/g.dot', payload: 'dot');
         $widget->render(new RenderContext(80, 24));
 
         $choices = $widget->nodeChoices();
@@ -295,7 +295,7 @@ final class GraphViewerWidgetTest extends TestCase
         $widget = new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler, onFindNode: static function () use (&$asked): void {
             ++$asked;
         });
-        $widget->show('/p/g.dot', 'dot');
+        $widget->show('/p/g.dot', payload: 'dot');
         $widget->render(new RenderContext(80, 24));
 
         $widget->handleInput('/');
@@ -310,7 +310,7 @@ final class GraphViewerWidgetTest extends TestCase
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'dot');
+        $widget->show('/p/g.dot', payload: 'dot');
         $widget->render(new RenderContext(80, 24));
         $widget->handleInput('n');
 
@@ -323,12 +323,12 @@ final class GraphViewerWidgetTest extends TestCase
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'dot');
+        $widget->show('/p/g.dot', payload: 'dot');
         $widget->render(new RenderContext(80, 24));
 
         $widget->handleInput('n'); // select A, then find its rendered position via the status
         $this->assertStringContainsString('· A', $widget->statusInfo());
-        $widget->selectAt(0, 0); // the top-left corner is letterbox/empty at fit
+        $widget->selectAt(0, relCol: 0); // the top-left corner is letterbox/empty at fit
         $this->assertSame('3 nodes · 2 edges', $widget->statusInfo(), 'clicking empty space deselects');
     }
 
@@ -336,7 +336,7 @@ final class GraphViewerWidgetTest extends TestCase
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'dot');
+        $widget->show('/p/g.dot', payload: 'dot');
         $widget->render(new RenderContext(80, 24));
         $fit = $widget->zoomLabel();
 
@@ -348,8 +348,8 @@ final class GraphViewerWidgetTest extends TestCase
         $this->assertNotSame($fit, $widget->zoomLabel(), 'the + alias zooms too');
         $widget->handleInput('1');
         $this->assertStringContainsString('100%', $widget->zoomLabel());
-        $widget->scrollBy(4, 0);
-        $widget->zoomAt(1, 10, 5);
+        $widget->scrollBy(4, dyHalfRows: 0);
+        $widget->zoomAt(1, relCol: 10, relRow: 5);
         $this->assertStringContainsString('%', $widget->zoomLabel());
     }
 
@@ -357,17 +357,17 @@ final class GraphViewerWidgetTest extends TestCase
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'dot v1');
+        $widget->show('/p/g.dot', payload: 'dot v1');
         $widget->render(new RenderContext(80, 24));
         $widget->handleInput('1'); // 100%
         $this->assertStringContainsString('100%', $widget->zoomLabel());
 
         $this->engine->nextResult = self::layout(); // same bb extent
-        $widget->show('/p/g.dot', 'dot v2 same extent');
+        $widget->show('/p/g.dot', payload: 'dot v2 same extent');
         $this->assertStringContainsString('100%', $widget->zoomLabel(), 'zoom survived the regeneration');
 
         $this->engine->nextResult = self::layout('clustered.json'); // different extent
-        $widget->show('/p/g.dot', 'dot v3 new extent');
+        $widget->show('/p/g.dot', payload: 'dot v3 new extent');
         $this->assertStringContainsString('Fit', $widget->zoomLabel(), 'a changed extent refits');
     }
 
@@ -375,14 +375,14 @@ final class GraphViewerWidgetTest extends TestCase
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'dot');
+        $widget->show('/p/g.dot', payload: 'dot');
         $widget->render(new RenderContext(80, 24));
         $widget->handleInput('1');
 
         $widget->forget('/p/g.dot');
         $this->assertSame('', $widget->zoomLabel(), 'the displayed tab cleared');
 
-        $widget->show('/p/g.dot', 'dot');
+        $widget->show('/p/g.dot', payload: 'dot');
         $this->assertStringContainsString('Fit', $widget->zoomLabel(), 'the remembered zoom is gone — fresh fit');
     }
 
@@ -407,9 +407,9 @@ final class GraphViewerWidgetTest extends TestCase
         $this->assertSame('', $widget->statusInfo());
 
         $widget->handleInput('='); // view-less input is a no-op
-        $widget->scrollBy(1, 1);
-        $widget->zoomAt(1, 0, 0);
-        $widget->selectAt(0, 0);
+        $widget->scrollBy(1, dyHalfRows: 1);
+        $widget->zoomAt(1, relCol: 0, relRow: 0);
+        $widget->selectAt(0, relCol: 0);
 
         $widget->setFocused(true);
         $focused = self::plain($widget->render(new RenderContext(12, 4)));
@@ -420,7 +420,7 @@ final class GraphViewerWidgetTest extends TestCase
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'dot');
+        $widget->show('/p/g.dot', payload: 'dot');
         $widget->render(new RenderContext(40, 12));
         $widget->handleInput('1'); // 100%: the graph overflows a 40-col pane, so panning has room
 
@@ -435,8 +435,8 @@ final class GraphViewerWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->handleInput('n');
         $widget->handleInput('p');
-        $widget->zoomAt(1, 0, 0);
-        $widget->magnifyAt(1.08, 0, 0); // a stray wheel burst before the layout lands
+        $widget->zoomAt(1, relCol: 0, relRow: 0);
+        $widget->magnifyAt(1.08, relCol: 0, relRow: 0); // a stray wheel burst before the layout lands
         $this->assertSame('', $widget->statusInfo());
         $this->assertSame('', $widget->zoomLabel());
     }
@@ -452,11 +452,11 @@ final class GraphViewerWidgetTest extends TestCase
         $this->assertSame(9, $this->engine->layoutCalls);
 
         $widget->clear();
-        $widget->show('/p/g1.dot', 'dot 1'); // the cap's eight, g1 to g8, are all still held
+        $widget->show('/p/g1.dot', payload: 'dot 1'); // the cap's eight, g1 to g8, are all still held
         $this->assertSame(9, $this->engine->layoutCalls);
 
         $widget->clear();
-        $widget->show('/p/g0.dot', 'dot 0'); // the oldest hash was evicted: the engine runs again
+        $widget->show('/p/g0.dot', payload: 'dot 0'); // the oldest hash was evicted: the engine runs again
         $this->assertSame(10, $this->engine->layoutCalls);
     }
 
@@ -464,11 +464,11 @@ final class GraphViewerWidgetTest extends TestCase
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'dot v1');
+        $widget->show('/p/g.dot', payload: 'dot v1');
         $widget->render(new RenderContext(60, 16));
 
         $this->engine->deferred = true;
-        $widget->show('/p/g.dot', 'dot v2');
+        $widget->show('/p/g.dot', payload: 'dot v2');
         $screen = self::plain($widget->render(new RenderContext(60, 16)));
         $this->assertStringContainsString('layout…', $screen, 'the hint rides the first row');
         $this->assertStringContainsString('┌', $screen, 'the previous graph stays visible underneath');
@@ -480,13 +480,13 @@ final class GraphViewerWidgetTest extends TestCase
         $widget = new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler, renderMode: 'cells');
         $handler = new RecordingViewerTabHandler();
         $widget->setHandler($handler);
-        $widget->show('/p/g.dot', "digraph G {\n  A -> B;\n  B -> C;\n}\n");
+        $widget->show('/p/g.dot', payload: "digraph G {\n  A -> B;\n  B -> C;\n}\n");
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $widget->render(new RenderContext(80, 24)));
         $row = (int) \array_key_first(\array_filter($rows, static fn (string $r): bool => 1 === \preg_match('/\bC\b/', $r)));
         $handler->events = [];
 
         $widget->selectAt($row, (int) \mb_strpos($rows[$row], needle: 'C')); // a column: the frame is multibyte
-        $widget->selectAt(0, 0); // empty space: deselected, nothing to reveal
+        $widget->selectAt(0, relCol: 0); // empty space: deselected, nothing to reveal
 
         $this->assertSame(['view', 'reveal:2:7', 'view'], $handler->events, 'C is first written on line 2, after "B -> "');
     }
@@ -495,15 +495,15 @@ final class GraphViewerWidgetTest extends TestCase
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/g.dot', "digraph G {\n  A -> B;\n  B -> C;\n}\n");
+        $widget->show('/p/g.dot', payload: "digraph G {\n  A -> B;\n  B -> C;\n}\n");
         $widget->render(new RenderContext(80, 24));
         $handler = new RecordingViewerTabHandler();
         $widget->setHandler($handler);
 
-        $widget->followSource(2, 7);
+        $widget->followSource(2, byteCol: 7);
         $this->assertStringContainsString('· C', $widget->statusInfo());
-        $widget->followSource(2, 8); // the same node: nothing to move
-        $widget->followSource(0, 0); // a line naming no node: the selection stays
+        $widget->followSource(2, byteCol: 8); // the same node: nothing to move
+        $widget->followSource(0, byteCol: 0); // a line naming no node: the selection stays
 
         $this->assertStringContainsString('· C', $widget->statusInfo());
         $this->assertSame(['view'], $handler->events, 'one pan, for the one node reached');
@@ -511,13 +511,13 @@ final class GraphViewerWidgetTest extends TestCase
 
     public function testAPictureWithNoLayoutHasNoNodeToFollow(): void
     {
-        $this->plantUml->nextPng = PngFixture::bytes(120, 80);
+        $this->plantUml->nextPng = PngFixture::bytes(120, height: 80);
         $widget = $this->widget();
-        $widget->show('/p/seq.puml', "@startuml\nA -> B\n@enduml");
+        $widget->show('/p/seq.puml', payload: "@startuml\nA -> B\n@enduml");
         $this->settle();
         $widget->render(new RenderContext(80, 24));
 
-        $widget->followSource(1, 0);
+        $widget->followSource(1, byteCol: 0);
 
         $this->assertSame('', $widget->statusInfo());
     }

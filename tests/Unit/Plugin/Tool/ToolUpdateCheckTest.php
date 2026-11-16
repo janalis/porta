@@ -82,7 +82,7 @@ final class ToolUpdateCheckTest extends TestCase
 
         $this->assertFalse($check->due(self::NOON, ToolUpdateCheck::DAY), 'the same second');
         $this->assertFalse($check->due(self::NOON + ToolUpdateCheck::DAY - 1, ToolUpdateCheck::DAY), 'one second short of a day');
-        $this->assertTrue($check->due(self::NOON + ToolUpdateCheck::DAY - 1, 60), 'a shorter cadence is due sooner');
+        $this->assertTrue($check->due(self::NOON + ToolUpdateCheck::DAY - 1, every: 60), 'a shorter cadence is due sooner');
     }
 
     public function testADayLaterIsDue(): void

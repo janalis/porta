@@ -102,7 +102,7 @@ final class EditorScroll
     public function scrollBy(int $delta): void
     {
         $max = \max(0, $this->document->getLineCount() - 1);
-        $this->vScroll = IntMath::clamp($this->vScroll + $delta, 0, $max);
+        $this->vScroll = IntMath::clamp($this->vScroll + $delta, lo: 0, hi: $max);
         $this->vScrollSegment = 0;
         $this->detached = true;
         ($this->invalidate)();
@@ -166,7 +166,7 @@ final class EditorScroll
         }
         $moved = $this->vScroll > 0;
         if ($moved) {
-            $this->vScroll = $this->foldModel->visibleLineAbove($this->vScroll, 1);
+            $this->vScroll = $this->foldModel->visibleLineAbove($this->vScroll, steps: 1);
             $this->vScrollSegment = $rowsFor($this->vScroll) - 1;
         }
 
@@ -202,7 +202,7 @@ final class EditorScroll
         $this->lastLine = $cursorLine;
         $this->lastCol = $doc->cursorCol;
         $this->foldModel->revealCaretLine();
-        $this->settleTop($this->foldModel->snapVisible(IntMath::clamp($this->vScroll, 0, $this->document->getLineCount() - 1)));
+        $this->settleTop($this->foldModel->snapVisible(IntMath::clamp($this->vScroll, lo: 0, hi: $this->document->getLineCount() - 1)));
         for ($iter = 0; $iter <= self::MAX_STICKY_ROWS; ++$iter) {
             $stickyCount = $stickyCountAt($this->vScroll);
             $cursorRow = $this->caretRow($cursorLine);
@@ -295,7 +295,7 @@ final class EditorScroll
         // Bounded by $step, so no guard is needed for visibleLineAbove() not
         // advancing — and a guard nothing can reach is not a guard.
         for ($step = 0; $step <= $cursorLine; ++$step) {
-            $above = $this->foldModel->visibleLineAbove($line, 1);
+            $above = $this->foldModel->visibleLineAbove($line, steps: 1);
             $cost = $rowsFor($above);
             if (($spent + $cost) > $budget) {
                 break;
@@ -350,7 +350,7 @@ final class EditorScroll
     /** Scroll the view horizontally without touching the caret, clamped to [0, $max]. */
     public function scrollHBy(int $cols, int $max): void
     {
-        $this->hScroll = IntMath::clamp($this->hScroll + $cols, 0, \max(0, $max));
+        $this->hScroll = IntMath::clamp($this->hScroll + $cols, lo: 0, hi: \max(0, $max));
         ($this->invalidate)();
     }
 }

@@ -50,7 +50,7 @@ final class SignatureActiveParameterTest extends TestCase
 
         $this->editor->showDocument('/p/a.php', new Document("<?php\nfn(1, 2);\n"));
         $this->activeFile->set('/p/a.php');
-        Probe::get($controller, 'lsp')->notifyDidOpen('/p/a.php', "<?php\n", 'php', 1);
+        Probe::get($controller, property: 'lsp')->notifyDidOpen('/p/a.php', text: "<?php\n", languageId: 'php', version: 1);
 
         return $controller;
     }
@@ -59,11 +59,11 @@ final class SignatureActiveParameterTest extends TestCase
     private function answer(mixed $result): ?array
     {
         $controller = $this->controller();
-        $controller->requestSignatureHelp(1, 4);
+        $controller->requestSignatureHelp(1, col: 4);
         \end($this->client->requests)['respond']($result, error: null);
 
         /** @var \Porta\Editor\SignatureHint|null $hint */
-        $hint = Probe::get($this->editor, 'caretPopups')->signature;
+        $hint = Probe::get($this->editor, property: 'caretPopups')->signature;
 
         return $hint?->activeRange;
     }
@@ -221,17 +221,17 @@ final class SignatureActiveParameterTest extends TestCase
         // Asserted from a hint that was actually SHOWING: null over null is
         // indistinguishable from doing nothing at all.
         $controller = $this->controller();
-        $controller->requestSignatureHelp(1, 4);
+        $controller->requestSignatureHelp(1, col: 4);
         \end($this->client->requests)['respond'](['signatures' => [['label' => self::LABEL]]], error: null);
-        $this->assertSame(self::LABEL, Probe::get($this->editor, 'caretPopups')->signature?->label);
+        $this->assertSame(self::LABEL, Probe::get($this->editor, property: 'caretPopups')->signature?->label);
 
-        Probe::set($this->tui, 'renderRequested', false);
-        $controller->requestSignatureHelp(1, 4);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
+        $controller->requestSignatureHelp(1, col: 4);
         \end($this->client->requests)['respond'](['signatures' => []], error: null);
 
-        $this->assertNull(Probe::get($this->editor, 'caretPopups')->signature);
+        $this->assertNull(Probe::get($this->editor, property: 'caretPopups')->signature);
         // A hint cleared without a repaint stays on the screen it was drawn on.
-        $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'));
+        $this->assertTrue((bool) Probe::get($this->tui, property: 'renderRequested'));
     }
 
     public function testAParameterLabelInNeitherFormEmphasisesNothing(): void
@@ -241,7 +241,7 @@ final class SignatureActiveParameterTest extends TestCase
         $this->assertNull($this->answer([
             'signatures' => [['label' => self::LABEL, 'parameters' => [['label' => ['not' => 'a pair']]], 'activeParameter' => 0]],
         ]));
-        $this->assertSame(self::LABEL, Probe::get($this->editor, 'caretPopups')->signature?->label);
+        $this->assertSame(self::LABEL, Probe::get($this->editor, property: 'caretPopups')->signature?->label);
     }
 
     public function testAnEmptyParameterSubstringEmphasisesNothing(): void
@@ -256,12 +256,12 @@ final class SignatureActiveParameterTest extends TestCase
     public function testASignatureWithNoParametersStillShowsItsLabel(): void
     {
         $this->assertNull($this->answer(['signatures' => [['label' => self::LABEL]]]));
-        $this->assertSame(self::LABEL, Probe::get($this->editor, 'caretPopups')->signature?->label);
+        $this->assertSame(self::LABEL, Probe::get($this->editor, property: 'caretPopups')->signature?->label);
     }
 
     public function testAnEmptyLabelClearsTheHintEntirely(): void
     {
         $this->assertNull($this->answer(['signatures' => [['label' => '']]]));
-        $this->assertNull(Probe::get($this->editor, 'caretPopups')->signature);
+        $this->assertNull(Probe::get($this->editor, property: 'caretPopups')->signature);
     }
 }

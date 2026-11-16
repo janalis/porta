@@ -57,7 +57,7 @@ final readonly class TestTools
             $rootDir,
             new PluginInstaller($rootDir, null, new Translator('en'), null),
             new PluginManager(new EventDispatcher(), $settings),
-            new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
+            new Notifier(new StatusBarWidget(), TestTui::create(80, rows: 24)),
             $lifecycle ?? new FakePluginLifecycle(),
         );
     }

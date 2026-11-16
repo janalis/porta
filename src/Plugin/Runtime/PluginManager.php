@@ -109,7 +109,7 @@ final class PluginManager implements
     private array $statusSegments = [];
     /** @var list<array{plugin: string, languageId: string, resolve: \Closure(): (list<string>|null)}> committed debug adapters, in load order */
     private array $debugAdapters = [];
-    /** @var list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>, ToolCaller=): (string|array<array-key, mixed>), effect: ?ToolEffect}> committed tools, in load order */
+    /** @var list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>, ToolCaller): (string|array<array-key, mixed>), effect: ?ToolEffect}> committed tools, in load order */
     private array $tools = [];
     /** @var list<ConfigWarning> */
     public private(set) array $warnings = [];
@@ -442,7 +442,7 @@ final class PluginManager implements
      * The committed tools, in load order — what {@see PluginApi::tools()}
      * hands a plugin that serves them.
      *
-     * @return list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>, ToolCaller=): (string|array<array-key, mixed>), effect: ?ToolEffect}>
+     * @return list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>, ToolCaller): (string|array<array-key, mixed>), effect: ?ToolEffect}>
      */
     public function tools(): array
     {

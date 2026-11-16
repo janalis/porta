@@ -42,7 +42,7 @@ final class SettingsSearchLauncher
 
     public function open(): void
     {
-        $this->picker ??= $this->pickers->createScoped($this->source, 'Find Setting');
+        $this->picker ??= $this->pickers->createScoped($this->source, title: 'Find Setting');
         $this->picker->open();
     }
 }

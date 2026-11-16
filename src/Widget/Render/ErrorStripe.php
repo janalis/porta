@@ -175,6 +175,6 @@ final class ErrorStripe
     /** The stripe row a document line lands on, proportionally over the whole file. */
     private static function rowOf(int $line, int $rows, int $lineCount): int
     {
-        return $lineCount <= 1 ? 0 : IntMath::clamp(\intdiv($line * $rows, $lineCount), 0, $rows - 1);
+        return $lineCount <= 1 ? 0 : IntMath::clamp(\intdiv($line * $rows, $lineCount), lo: 0, hi: $rows - 1);
     }
 }

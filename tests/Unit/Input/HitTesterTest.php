@@ -91,7 +91,7 @@ final class HitTesterTest extends TestCase
 
         $tester = new HitTester($renderer);
 
-        $this->assertSame(['row' => 0, 'col' => 3], $tester->hit($widget, 0, 3));
+        $this->assertSame(['row' => 0, 'col' => 3], $tester->hit($widget, row: 0, col: 3));
     }
 
     public function testHitOutsideTheWidgetsRectIsNull(): void
@@ -105,7 +105,7 @@ final class HitTesterTest extends TestCase
 
         $tester = new HitTester($renderer);
 
-        $this->assertNull($tester->hit($widget, 5, 5));
+        $this->assertNull($tester->hit($widget, row: 5, col: 5));
     }
 
     public function testContainsIsFalseWithoutARect(): void
@@ -150,11 +150,11 @@ final class HitTesterTest extends TestCase
         $tui->processRender();
         $tester = new HitTester($renderer);
 
-        $tip = $tester->tooltip($widget, 2, 0);
+        $tip = $tester->tooltip($widget, row: 2, col: 0);
         $this->assertSame([[1, 0]], $widget->asked, 'asked in its own cells');
         $this->assertSame([2, 0, 1], [$tip?->row, $tip?->colStart, $tip?->colEnd], 'answered on the screen');
-        $this->assertNull($tester->tooltip($widget, 2, 1), 'a cell that means nothing');
-        $this->assertNull($tester->tooltip($widget, 0, 0), 'outside the widget: not even asked');
+        $this->assertNull($tester->tooltip($widget, row: 2, col: 1), 'a cell that means nothing');
+        $this->assertNull($tester->tooltip($widget, row: 0, col: 0), 'outside the widget: not even asked');
         $this->assertCount(2, $widget->asked);
     }
 }

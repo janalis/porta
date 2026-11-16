@@ -65,7 +65,7 @@ final readonly class DiffViewRenderer
      */
     public function row(int $rowIndex, array $row, int $width): string
     {
-        return $this->segment($rowIndex, $row, $width, 0);
+        return $this->segment($rowIndex, $row, $width, segment: 0);
     }
 
     /**
@@ -120,7 +120,7 @@ final readonly class DiffViewRenderer
         }
         $band = $this->styles->of($role)->getAnsiRestore();
 
-        return '' === $band ? $rendered : LineDecorator::apply($rendered, 0, $width, $band, Sgr::DEFAULT_BG, $band);
+        return '' === $band ? $rendered : LineDecorator::apply($rendered, startCol: 0, endCol: $width, openSgr: $band, closeSgr: Sgr::DEFAULT_BG, bgReapply: $band);
     }
 
     /**

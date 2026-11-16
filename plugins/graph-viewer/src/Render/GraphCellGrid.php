@@ -128,7 +128,7 @@ final class GraphCellGrid
             }
             $this->put($target, $row, $char, $key);
             for ($i = 1; $i < $width; ++$i) {
-                $this->put($target + $i, $row, '', $key);
+                $this->put($target + $i, $row, char: '', key: $key);
             }
             $target += $width;
         }

@@ -43,16 +43,16 @@ final class PluginUpdatesTest extends TestCase
 
     public function testOnlyAPackagistInstallWithANewerReleaseThatRunsHereIsOutdated(): void
     {
-        $this->store->publish('acme/porta-old', 'v1.1.0');
-        $this->store->publish('acme/porta-current', 'v1.0.0');
-        $this->store->publish('acme/porta-path', 'v2.0.0');
-        $this->store->publish('acme/porta-future', 'v3.0.0', api: 99);
+        $this->store->publish('acme/porta-old', version: 'v1.1.0');
+        $this->store->publish('acme/porta-current', version: 'v1.0.0');
+        $this->store->publish('acme/porta-path', version: 'v2.0.0');
+        $this->store->publish('acme/porta-future', version: 'v3.0.0', api: 99);
         $this->store->fill();
-        $this->store->installed('acme/porta-old', 'v1.0.0');
-        $this->store->installed('acme/porta-current', 'v1.0.0', InstallScope::Project);
-        $this->store->installed('acme/porta-path', 'v1.0.0', InstallScope::Project, fromPackagist: false);
-        $this->store->installed('acme/porta-future', 'v1.0.0');
-        $this->store->installed('acme/porta-unlisted', 'v1.0.0');
+        $this->store->installed('acme/porta-old', version: 'v1.0.0');
+        $this->store->installed('acme/porta-current', version: 'v1.0.0', scope: InstallScope::Project);
+        $this->store->installed('acme/porta-path', version: 'v1.0.0', scope: InstallScope::Project, fromPackagist: false);
+        $this->store->installed('acme/porta-future', version: 'v1.0.0');
+        $this->store->installed('acme/porta-unlisted', version: 'v1.0.0');
         $updates = $this->updates();
 
         $this->assertSame(['old v1.0.0 → v1.1.0'], self::names($updates));
@@ -62,9 +62,9 @@ final class PluginUpdatesTest extends TestCase
 
     public function testUpdateBringsThePluginUpAndSaysARestartRunsIt(): void
     {
-        $this->store->publish('acme/porta-old', 'v1.1.0');
+        $this->store->publish('acme/porta-old', version: 'v1.1.0');
         $this->store->fill();
-        $this->store->installed('acme/porta-old', 'v1.0.0');
+        $this->store->installed('acme/porta-old', version: 'v1.0.0');
         $updates = $this->updates();
         $update = $updates->outdated()[0];
 
@@ -83,11 +83,11 @@ final class PluginUpdatesTest extends TestCase
 
     public function testUpdateAllRunsOneAtATimeAndAFailureIsSaid(): void
     {
-        $this->store->publish('acme/porta-one', 'v1.1.0');
-        $this->store->publish('acme/porta-two', 'v1.1.0');
+        $this->store->publish('acme/porta-one', version: 'v1.1.0');
+        $this->store->publish('acme/porta-two', version: 'v1.1.0');
         $this->store->fill();
-        $this->store->installed('acme/porta-one', 'v1.0.0');
-        $this->store->installed('acme/porta-two', 'v1.0.0', InstallScope::Project);
+        $this->store->installed('acme/porta-one', version: 'v1.0.0');
+        $this->store->installed('acme/porta-two', version: 'v1.0.0', scope: InstallScope::Project);
         // Untrusted project: its copy cannot be updated, and says why.
         $this->store->trusted = false;
         $updates = $this->updates();
@@ -99,9 +99,9 @@ final class PluginUpdatesTest extends TestCase
 
     public function testAnUpdateAlreadyRunningIsNotQueuedTwice(): void
     {
-        $this->store->publish('acme/porta-old', 'v1.1.0');
+        $this->store->publish('acme/porta-old', version: 'v1.1.0');
         $this->store->fill();
-        $this->store->installed('acme/porta-old', 'v1.0.0');
+        $this->store->installed('acme/porta-old', version: 'v1.0.0');
         $updates = $this->updates();
         $update = $updates->outdated()[0];
 
@@ -113,8 +113,8 @@ final class PluginUpdatesTest extends TestCase
 
     public function testTheCheckIsDueWhenTheCatalogIsOlderThanTheCadence(): void
     {
-        $this->store->publish('acme/porta-old', 'v1.1.0');
-        $this->store->installed('acme/porta-old', 'v1.0.0');
+        $this->store->publish('acme/porta-old', version: 'v1.1.0');
+        $this->store->installed('acme/porta-old', version: 'v1.0.0');
 
         $this->updates(['pluginUpdateCheck' => 'off'])->checkIfDue();
         $this->assertSame([], $this->store->http->batches, 'off asks nothing');
@@ -139,8 +139,8 @@ final class PluginUpdatesTest extends TestCase
 
     public function testACheckThatFindsNothingOrCannotReachPackagistSaysNothing(): void
     {
-        $this->store->publish('acme/porta-old', 'v1.0.0');
-        $this->store->installed('acme/porta-old', 'v1.0.0');
+        $this->store->publish('acme/porta-old', version: 'v1.0.0');
+        $this->store->installed('acme/porta-old', version: 'v1.0.0');
         $this->updates()->checkIfDue();
         $this->assertSame('', $this->store->toast());
 
@@ -152,8 +152,8 @@ final class PluginUpdatesTest extends TestCase
 
     public function testAutoUpdateInstallsWhatTheCheckFinds(): void
     {
-        $this->store->publish('acme/porta-old', 'v1.1.0');
-        $this->store->installed('acme/porta-old', 'v1.0.0');
+        $this->store->publish('acme/porta-old', version: 'v1.1.0');
+        $this->store->installed('acme/porta-old', version: 'v1.0.0');
         $updates = $this->updates(['pluginAutoUpdate' => true]);
 
         $updates->checkIfDue();
@@ -165,7 +165,7 @@ final class PluginUpdatesTest extends TestCase
         );
 
         $updates->setAuto(false);
-        $this->store->publish('acme/porta-old', 'v1.2.0');
+        $this->store->publish('acme/porta-old', version: 'v1.2.0');
         $this->now += 30 * 86_400;
         $updates->checkIfDue();
         $this->assertStringStartsWith('Plugin updates available', $this->store->toast(), 'switched off, it only says so');
@@ -177,7 +177,7 @@ final class PluginUpdatesTest extends TestCase
             $this->store->publish('acme/porta-'.$name, $to);
             $this->store->installed('acme/porta-'.$name, $from);
         }
-        $this->store->home->write('.porta/composer.json', '{"require":{"acme/porta-major":"*","acme/porta-zero":"*","acme/porta-patch":"*"}}');
+        $this->store->home->write('.porta/composer.json', content: '{"require":{"acme/porta-major":"*","acme/porta-zero":"*","acme/porta-patch":"*"}}');
         $updates = $this->updates(['pluginAutoUpdate' => true]);
         $updates->checkIfDue();
         $this->await(fn (): bool => \str_starts_with($this->store->toast(), 'Updated'), what: 'the compatible automatic update');
@@ -190,7 +190,7 @@ final class PluginUpdatesTest extends TestCase
     public function testAutomaticSelectionFindsTheNewestCompatibleReleaseWithinTheExistingConstraint(): void
     {
         $package = 'acme/porta-constrained';
-        $this->store->publish($package, 'v2.0.0');
+        $this->store->publish($package, version: 'v2.0.0');
         $url = \sprintf(PackagistMetadata::RELEASES, $package);
         $metadata = \json_decode($this->store->http->bodies[$url], associative: true, flags: \JSON_THROW_ON_ERROR);
         $release = $metadata['packages'][$package][0];
@@ -198,8 +198,8 @@ final class PluginUpdatesTest extends TestCase
             $metadata['packages'][$package][] = ['version' => 'v'.$version, 'version_normalized' => $version.'.0'] + $release;
         }
         $this->store->http->bodies[$url] = \json_encode($metadata, \JSON_THROW_ON_ERROR);
-        $this->store->installed($package, 'v1.0.0');
-        $this->store->home->write('.porta/composer.json', '{"require":{"acme/porta-constrained":">=1.0 <1.3"}}');
+        $this->store->installed($package, version: 'v1.0.0');
+        $this->store->home->write('.porta/composer.json', content: '{"require":{"acme/porta-constrained":">=1.0 <1.3"}}');
         $updates = $this->updates(['pluginAutoUpdate' => true]);
         $updates->checkIfDue();
         $this->await(fn (): bool => \str_starts_with($this->store->toast(), 'Updated'), what: 'the bounded update');
@@ -208,8 +208,8 @@ final class PluginUpdatesTest extends TestCase
 
     public function testAnUnparseableInstalledVersionDoesNotEscapeTheBackgroundCallback(): void
     {
-        $this->store->publish('acme/porta-dev', 'v1.1.0');
-        $this->store->installed('acme/porta-dev', 'dev-main');
+        $this->store->publish('acme/porta-dev', version: 'v1.1.0');
+        $this->store->installed('acme/porta-dev', version: 'dev-main');
         $updates = $this->updates(['pluginAutoUpdate' => true]);
         $updates->checkIfDue();
         $this->assertFalse($updates->isUpdating('dev', InstallScope::Global));
@@ -221,23 +221,23 @@ final class PluginUpdatesTest extends TestCase
         $updates = $this->updates(['pluginUpdateCheck' => 'off']);
         $updates->start();
         $updates->start();
-        $timer = Probe::get(Probe::object($updates, 'hourly'), 'timer');
+        $timer = Probe::get(Probe::object($updates, 'hourly'), property: 'timer');
         $this->assertIsString($timer);
         $this->assertTrue(EventLoop::isEnabled($timer));
         $updates->stop();
         $updates->stop();
-        $this->assertNull(Probe::get(Probe::object($updates, 'hourly'), 'timer'));
+        $this->assertNull(Probe::get(Probe::object($updates, 'hourly'), property: 'timer'));
     }
 
     public function testOnlyTheCopyThatRunsIsReloadedAndAnOffOneWaits(): void
     {
-        $this->store->publish('acme/porta-off', 'v1.1.0');
-        $this->store->publish('acme/porta-shadowed', 'v1.1.0');
+        $this->store->publish('acme/porta-off', version: 'v1.1.0');
+        $this->store->publish('acme/porta-shadowed', version: 'v1.1.0');
         $this->store->fill();
-        $this->store->installed('acme/porta-off', 'v1.0.0');
-        $this->store->installed('acme/porta-shadowed', 'v1.0.0');
+        $this->store->installed('acme/porta-off', version: 'v1.0.0');
+        $this->store->installed('acme/porta-shadowed', version: 'v1.0.0');
         // A project copy of the same name is the one that runs.
-        $this->store->project->write('.porta/plugins/shadowed/porta.php', "<?php\n");
+        $this->store->project->write('.porta/plugins/shadowed/porta.php', content: "<?php\n");
         $this->store->lifecycle->disabledNames = ['off'];
         $updates = $this->updates();
 
@@ -263,9 +263,9 @@ final class PluginUpdatesTest extends TestCase
     // @mago-expect lint:no-boolean-flag-parameter -- The provider varies the plugin enabled state independently of the symbol kind.
     public function testAPluginThatHadLoadedClassesAsksForARestartToFinish(string $classRoot, string $symbol = 'class', bool $disabled = false): void
     {
-        $this->store->publish('acme/porta-classy', 'v1.1.0');
+        $this->store->publish('acme/porta-classy', version: 'v1.1.0');
         $this->store->fill();
-        $this->store->installed('acme/porta-classy', 'v1.0.0');
+        $this->store->installed('acme/porta-classy', version: 'v1.0.0');
         $class = 'StaleStoreClass'.\bin2hex(\random_bytes(4));
         $declaration = 'function' === $symbol ? "function {$class}(): void {}" : "final class {$class} {}";
         $file = $this->store->home->write('.porta/vendor/'.\str_replace('{class}', $class, $classRoot), "<?php\n{$declaration}\n");
@@ -280,14 +280,14 @@ final class PluginUpdatesTest extends TestCase
         $this->await(fn (): bool => \str_starts_with($this->store->toast(), 'Updated'), what: 'the update');
         $this->assertSame('Updated classy v1.1.0 — restart scheduled for classy', $this->store->toast());
         $this->assertSame([], $this->store->lifecycle->activated, 'named-class plugins remain unloaded until the fresh process starts');
-        $this->assertTrue(Probe::get($restart, 'pending'));
+        $this->assertTrue(Probe::get($restart, property: 'pending'));
     }
 
     public function testAnAnonymousEntrypointStillReloadsLive(): void
     {
-        $this->store->publish('acme/porta-anonymous', 'v1.1.0');
-        $this->store->installed('acme/porta-anonymous', 'v1.0.0');
-        $file = $this->store->home->write('.porta/vendor/acme/porta-anonymous/porta.php', '<?php return new class {};');
+        $this->store->publish('acme/porta-anonymous', version: 'v1.1.0');
+        $this->store->installed('acme/porta-anonymous', version: 'v1.0.0');
+        $file = $this->store->home->write('.porta/vendor/acme/porta-anonymous/porta.php', content: '<?php return new class {};');
         $instance = require $file;
         $this->assertTrue(new \ReflectionClass($instance)->isAnonymous());
         $this->store->fill();
@@ -300,9 +300,9 @@ final class PluginUpdatesTest extends TestCase
 
     public function testAReloadThatFailsIsSaid(): void
     {
-        $this->store->publish('acme/porta-old', 'v1.1.0');
+        $this->store->publish('acme/porta-old', version: 'v1.1.0');
         $this->store->fill();
-        $this->store->installed('acme/porta-old', 'v1.0.0');
+        $this->store->installed('acme/porta-old', version: 'v1.0.0');
         $this->store->lifecycle->activateResult = 'Plugin "old" failed to load: boom';
 
         $this->updates()->updateAll();
@@ -312,8 +312,8 @@ final class PluginUpdatesTest extends TestCase
 
     public function testAnUpdateComposerRefusesBringsThePluginBackOnItsOldFiles(): void
     {
-        $this->store->installed('acme/porta-local', 'v1.0.0', InstallScope::Project);
-        $this->store->publish('acme/porta-local', 'v1.1.0');
+        $this->store->installed('acme/porta-local', version: 'v1.0.0', scope: InstallScope::Project);
+        $this->store->publish('acme/porta-local', version: 'v1.1.0');
         $this->store->fill();
         $this->store->trusted = false; // composer may not run in the project
         $updates = $this->updates();
@@ -328,18 +328,18 @@ final class PluginUpdatesTest extends TestCase
     {
         $restart = $this->store->restart();
         $updates = $this->store->updates(restart: $restart);
-        Probe::set($updates, 'restartFor', ['successful']);
+        Probe::set($updates, property: 'restartFor', value: ['successful']);
         Probe::invoke($updates, 'report', ['successful v1.1.0'], ['other failed']);
-        $this->assertTrue(Probe::get($restart, 'pending'));
+        $this->assertTrue(Probe::get($restart, property: 'pending'));
         $this->assertStringContainsString('other failed', $this->store->toast());
     }
 
     public function testFailedNamedEntrypointUpdateRestartsWithoutRequiringItsClassAgain(): void
     {
         $this->store = new StoreFixture(composerExit: 1);
-        $this->store->publish('acme/porta-failed', 'v1.1.0');
+        $this->store->publish('acme/porta-failed', version: 'v1.1.0');
         $this->store->fill();
-        $this->store->installed('acme/porta-failed', 'v1.0.0');
+        $this->store->installed('acme/porta-failed', version: 'v1.0.0');
         $class = 'FailedEntrypoint'.\bin2hex(\random_bytes(6));
         $file = $this->store->home->write('.porta/vendor/acme/porta-failed/porta.php', '<?php final class '.$class.' {}');
         require $file;
@@ -348,13 +348,13 @@ final class PluginUpdatesTest extends TestCase
         $updates->updateAll();
         $this->await(fn (): bool => \str_contains($this->store->toast(), 'Cannot update'), what: 'the failed named-entrypoint update');
         $this->assertSame([], $this->store->lifecycle->activated);
-        $this->assertTrue(Probe::get($restart, 'pending'));
+        $this->assertTrue(Probe::get($restart, property: 'pending'));
     }
 
     public function testResumedSessionsDoNotRepeatFailedPluginUpdatesImmediately(): void
     {
-        $this->store->publish('acme/porta-resumed', 'v1.1.0');
-        $this->store->installed('acme/porta-resumed', 'v1.0.0');
+        $this->store->publish('acme/porta-resumed', version: 'v1.1.0');
+        $this->store->installed('acme/porta-resumed', version: 'v1.0.0');
         $updates = $this->store->updates(clock: fn (): int => $this->now, restartCheckAfter: (string) ($this->now + 86_400));
         $updates->checkIfDue();
         $this->assertSame([], $this->store->http->batches);

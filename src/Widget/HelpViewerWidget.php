@@ -30,7 +30,7 @@ final class HelpViewerWidget extends MarkdownPageWidget
     #[\Override]
     public function handleInput(string $data): void
     {
-        if (null !== $this->onExit && $this->getKeybindings()->matches($data, 'exit_view')) {
+        if (null !== $this->onExit && $this->getKeybindings()->matches($data, action: 'exit_view')) {
             ($this->onExit)();
 
             return;

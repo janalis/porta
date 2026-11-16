@@ -320,7 +320,7 @@ final class BidiTest extends TestCase
         foreach ([FieldState::Focused, FieldState::Danger] as $state) {
             $field = new TextField();
             $field->setValue(self::SHALOM);
-            $rows = FieldBox::render(new FieldSpec(self::SHALOM), $field, $state, CaretVisibility::Hidden, 16, Styles::dark());
+            $rows = FieldBox::render(new FieldSpec(self::SHALOM), $field, $state, CaretVisibility::Hidden, width: 16, styles: Styles::dark());
             [$topLeft, $topRight, $bottomLeft, $bottomRight] = $state->glyphs();
 
             $top = \trim(self::strip(Bidi::reorder($rows[0], BaseDirection::Rtl)));
@@ -365,10 +365,10 @@ final class BidiTest extends TestCase
     {
         // שלום reverses under rtl, so the leftmost screen column shows the last
         // logical character and vice versa.
-        $this->assertSame(3, Bidi::visualToLogicalColumn(self::SHALOM, 0, BaseDirection::Rtl));
-        $this->assertSame(2, Bidi::visualToLogicalColumn(self::SHALOM, 1, BaseDirection::Rtl));
-        $this->assertSame(1, Bidi::visualToLogicalColumn(self::SHALOM, 2, BaseDirection::Rtl));
-        $this->assertSame(0, Bidi::visualToLogicalColumn(self::SHALOM, 3, BaseDirection::Rtl));
+        $this->assertSame(3, Bidi::visualToLogicalColumn(self::SHALOM, visualCol: 0, direction: BaseDirection::Rtl));
+        $this->assertSame(2, Bidi::visualToLogicalColumn(self::SHALOM, visualCol: 1, direction: BaseDirection::Rtl));
+        $this->assertSame(1, Bidi::visualToLogicalColumn(self::SHALOM, visualCol: 2, direction: BaseDirection::Rtl));
+        $this->assertSame(0, Bidi::visualToLogicalColumn(self::SHALOM, visualCol: 3, direction: BaseDirection::Rtl));
     }
 
     /** A wide glyph's two columns map to its own two, in reading order, wherever the reorder put it. */
@@ -376,36 +376,36 @@ final class BidiTest extends TestCase
     {
         // On screen: םולש then 日 — the Hebrew reversed, the ideograph after it.
         $this->assertSame([5, 4, 3, 2, 0, 1], Bidi::visualToLogicalColumns('日'.self::SHALOM, BaseDirection::Rtl));
-        $this->assertSame(1, Bidi::visualToLogicalColumn('日'.self::SHALOM, 5, BaseDirection::Rtl));
+        $this->assertSame(1, Bidi::visualToLogicalColumn('日'.self::SHALOM, visualCol: 5, direction: BaseDirection::Rtl));
         $this->assertNull(Bidi::visualToLogicalColumns('abc', BaseDirection::Ltr), 'nothing reordered: no map to build');
     }
 
     public function testVisualToLogicalColumnIsIdentityForUnreorderedContent(): void
     {
-        $this->assertSame(2, Bidi::visualToLogicalColumn('abc', 2, BaseDirection::Ltr)); // ltr, no rtl
-        $this->assertSame(1, Bidi::visualToLogicalColumn('abc', 1, BaseDirection::Rtl)); // latin under rtl
+        $this->assertSame(2, Bidi::visualToLogicalColumn('abc', visualCol: 2, direction: BaseDirection::Ltr)); // ltr, no rtl
+        $this->assertSame(1, Bidi::visualToLogicalColumn('abc', visualCol: 1, direction: BaseDirection::Rtl)); // latin under rtl
     }
 
     public function testVisualToLogicalColumnHandlesEdges(): void
     {
         $this->assertSame(0, Bidi::visualToLogicalColumn(self::SHALOM, -3, BaseDirection::Rtl)); // negative clamps
-        $this->assertSame(4, Bidi::visualToLogicalColumn(self::SHALOM, 99, BaseDirection::Rtl)); // past end → line end
-        $this->assertSame(5, Bidi::visualToLogicalColumn('', 5, BaseDirection::Rtl)); // empty line: identity
-        $this->assertSame(2, Bidi::visualToLogicalColumn("\x1b[0m", 2, BaseDirection::Rtl)); // pure SGR: identity
+        $this->assertSame(4, Bidi::visualToLogicalColumn(self::SHALOM, visualCol: 99, direction: BaseDirection::Rtl)); // past end → line end
+        $this->assertSame(5, Bidi::visualToLogicalColumn('', visualCol: 5, direction: BaseDirection::Rtl)); // empty line: identity
+        $this->assertSame(2, Bidi::visualToLogicalColumn("\x1b[0m", visualCol: 2, direction: BaseDirection::Rtl)); // pure SGR: identity
     }
 
     public function testVisualToLogicalColumnSkipsTheZeroWidthMarker(): void
     {
         $marker = "\x1b_pi:c;5\x07";
         // The marker occupies no column, so mapping still lands on the glyphs.
-        $this->assertSame(1, Bidi::visualToLogicalColumn("a{$marker}bc", 1, BaseDirection::Rtl));
+        $this->assertSame(1, Bidi::visualToLogicalColumn("a{$marker}bc", visualCol: 1, direction: BaseDirection::Rtl));
     }
 
     public function testVisualToLogicalColumnMapsWithinWideCharacters(): void
     {
         // 日 occupies screen columns 1–2; a click on its first cell maps to its
         // logical column (1), just past the leading "a".
-        $this->assertSame(1, Bidi::visualToLogicalColumn("a\u{65E5}b", 1, BaseDirection::Rtl));
+        $this->assertSame(1, Bidi::visualToLogicalColumn("a\u{65E5}b", visualCol: 1, direction: BaseDirection::Rtl));
     }
 
     /**
@@ -462,7 +462,7 @@ final class BidiTest extends TestCase
     public function testEveryMirroredGlyphCanReachTheMirror(): void
     {
         $unreachable = [];
-        foreach (\array_keys(Probe::getStatic(Bidi::class, 'MIRROR')) as $glyph) {
+        foreach (\array_keys(Probe::getStatic(Bidi::class, member: 'MIRROR')) as $glyph) {
             if ('L' !== Probe::invokeStatic(Bidi::class, 'classify', (string) $glyph)) {
                 continue;
             }
@@ -862,8 +862,8 @@ final class BidiTest extends TestCase
         // exercised with real Hebrew content so a broken skip shifts the
         // mapped column, not just the raw token count.
         $line = "\x1b[31m\u{05E9}\u{05DC}"; // styled, 2 Hebrew chars, reversed under RTL
-        $this->assertSame(1, Bidi::visualToLogicalColumn($line, 0, BaseDirection::Rtl));
-        $this->assertSame(0, Bidi::visualToLogicalColumn($line, 1, BaseDirection::Rtl));
+        $this->assertSame(1, Bidi::visualToLogicalColumn($line, visualCol: 0, direction: BaseDirection::Rtl));
+        $this->assertSame(0, Bidi::visualToLogicalColumn($line, visualCol: 1, direction: BaseDirection::Rtl));
     }
 
     public function testVisualToLogicalColumnMarkerWidthBoundaryIsExactlyZero(): void
@@ -874,8 +874,8 @@ final class BidiTest extends TestCase
         // shifts which side of the marker a given visual column lands on.
         $marker = "\x1b_pi:c;5\x07";
         $line = "\u{05E9}{$marker}\u{05DC}";
-        $this->assertSame(1, Bidi::visualToLogicalColumn($line, 0, BaseDirection::Rtl));
-        $this->assertSame(0, Bidi::visualToLogicalColumn($line, 1, BaseDirection::Rtl));
+        $this->assertSame(1, Bidi::visualToLogicalColumn($line, visualCol: 0, direction: BaseDirection::Rtl));
+        $this->assertSame(0, Bidi::visualToLogicalColumn($line, visualCol: 1, direction: BaseDirection::Rtl));
     }
 
     public function testClassifyTreatsTheCursorMarkerAsNeutralNotLtr(): void

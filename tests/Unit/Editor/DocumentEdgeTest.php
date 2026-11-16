@@ -20,20 +20,20 @@ final class DocumentEdgeTest extends TestCase
         $doc = new Document("ab\ncd");
 
         $this->assertFalse($doc->moveLeft(), 'left at (0,0)');
-        $doc->setCursor(0, 2);
+        $doc->setCursor(0, col: 2);
         $this->assertTrue($doc->moveRight(), 'right at EOL crosses to next line');
         $this->assertSame([1, 0], [$doc->cursorLine, $doc->cursorCol]);
         $this->assertTrue($doc->moveLeft(), 'left at BOL crosses back');
         $this->assertSame([0, 2], [$doc->cursorLine, $doc->cursorCol]);
 
-        $doc->setCursor(1, 2);
+        $doc->setCursor(1, col: 2);
         $this->assertFalse($doc->moveRight(), 'right at document end');
     }
 
     public function testMoveUpOnFirstLine(): void
     {
         $doc = new Document('abc');
-        $doc->setCursor(0, 2);
+        $doc->setCursor(0, col: 2);
 
         $this->assertTrue($doc->moveUp(), 'jumps to column 0');
         $this->assertSame(0, $doc->cursorCol);
@@ -43,7 +43,7 @@ final class DocumentEdgeTest extends TestCase
     public function testMoveDownOnLastLine(): void
     {
         $doc = new Document('abc');
-        $doc->setCursor(0, 1);
+        $doc->setCursor(0, col: 1);
 
         $this->assertTrue($doc->moveDown(), 'jumps to line end');
         $this->assertSame(3, $doc->cursorCol);
@@ -53,19 +53,19 @@ final class DocumentEdgeTest extends TestCase
     public function testWordMovementFallbacks(): void
     {
         $doc = new Document("  \nword");
-        $doc->setCursor(0, 2); // end of whitespace-only line
+        $doc->setCursor(0, col: 2); // end of whitespace-only line
         $this->assertTrue($doc->moveWordLeft(), 'whitespace-only prefix falls back to column 0');
         $this->assertSame(0, $doc->cursorCol);
 
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $this->assertFalse($doc->moveWordLeft(), 'at col 0 delegates to moveLeft, false at document start');
 
-        $doc->setCursor(0, 2);
+        $doc->setCursor(0, col: 2);
         $this->assertTrue($doc->moveWordRight(), 'at EOL delegates to moveRight, crossing lines');
         $this->assertSame(1, $doc->cursorLine);
 
         $punct = new Document('a +*/- b');
-        $punct->setCursor(0, 2);
+        $punct->setCursor(0, col: 2);
         $punct->moveWordRight();
         $this->assertSame(6, $punct->cursorCol, 'punctuation run is one word');
     }
@@ -73,7 +73,7 @@ final class DocumentEdgeTest extends TestCase
     public function testWordRightOnTrailingSpaces(): void
     {
         $doc = new Document('ab   ');
-        $doc->setCursor(0, 2);
+        $doc->setCursor(0, col: 2);
 
         $this->assertTrue($doc->moveWordRight());
         $this->assertSame(5, $doc->cursorCol, 'trailing spaces: jump to EOL');
@@ -82,11 +82,11 @@ final class DocumentEdgeTest extends TestCase
     public function testLineEndAndStartNoOps(): void
     {
         $doc = new Document('abc');
-        $doc->setCursor(0, 3);
+        $doc->setCursor(0, col: 3);
         $this->assertFalse($doc->moveToLineEnd(), 'already at end');
 
         $blank = new Document('    ');
-        $blank->setCursor(0, 2);
+        $blank->setCursor(0, col: 2);
         $blank->moveToLineStart();
         $this->assertSame(0, $blank->cursorCol, 'all-blank line goes straight to 0');
     }
@@ -102,18 +102,18 @@ final class DocumentEdgeTest extends TestCase
         $this->assertFalse($doc->hasSelection());
 
         // Reversed selection (cursor before anchor) normalizes
-        $doc->setCursor(0, 3);
+        $doc->setCursor(0, col: 3);
         $doc->beginSelect();
-        $doc->setCursor(0, 1, selection: SelectionMode::Keep);
+        $doc->setCursor(0, col: 1, selection: SelectionMode::Keep);
         $this->assertSame('bc', $doc->getSelectedText());
     }
 
     public function testSelectionEndingAtColumnZeroExcludesThatLine(): void
     {
         $doc = new Document("one\ntwo\nthree");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $doc->beginSelect();
-        $doc->setCursor(1, 0, selection: SelectionMode::Keep); // selects line 0 + newline only
+        $doc->setCursor(1, col: 0, selection: SelectionMode::Keep); // selects line 0 + newline only
 
         $doc->duplicateLines();
         $this->assertSame(['one', 'one', 'two', 'three'], $doc->lines, 'line "two" not part of the block');
@@ -122,9 +122,9 @@ final class DocumentEdgeTest extends TestCase
     public function testInsertReplacesSelection(): void
     {
         $doc = new Document('hello world');
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $doc->beginSelect();
-        $doc->setCursor(0, 5, selection: SelectionMode::Keep);
+        $doc->setCursor(0, col: 5, selection: SelectionMode::Keep);
 
         $doc->insert('goodbye');
         $this->assertSame('goodbye world', $doc->getLine(0));
@@ -133,9 +133,9 @@ final class DocumentEdgeTest extends TestCase
     public function testInsertNewLineReplacesSelection(): void
     {
         $doc = new Document('hello world');
-        $doc->setCursor(0, 5);
+        $doc->setCursor(0, col: 5);
         $doc->beginSelect();
-        $doc->setCursor(0, 11, selection: SelectionMode::Keep);
+        $doc->setCursor(0, col: 11, selection: SelectionMode::Keep);
 
         $doc->insertNewLine();
         $this->assertSame(['hello', ''], $doc->lines);
@@ -145,9 +145,9 @@ final class DocumentEdgeTest extends TestCase
     {
         foreach (['deleteBackward', 'deleteForward', 'deleteWordBackward', 'deleteToLineEnd'] as $method) {
             $doc = new Document('hello world');
-            $doc->setCursor(0, 0);
+            $doc->setCursor(0, col: 0);
             $doc->beginSelect();
-            $doc->setCursor(0, 6, selection: SelectionMode::Keep);
+            $doc->setCursor(0, col: 6, selection: SelectionMode::Keep);
 
             $this->assertTrue($doc->{$method}(), $method);
             $this->assertSame('world', $doc->getLine(0), $method.' removed only the selection');
@@ -165,7 +165,7 @@ final class DocumentEdgeTest extends TestCase
     public function testDeleteToLineEndAtEolMergesLines(): void
     {
         $doc = new Document("ab\ncd");
-        $doc->setCursor(0, 2);
+        $doc->setCursor(0, col: 2);
 
         $this->assertTrue($doc->deleteToLineEnd());
         $this->assertSame('abcd', $doc->getLine(0));
@@ -174,7 +174,7 @@ final class DocumentEdgeTest extends TestCase
     public function testDeleteWordBackwardAtColumnZero(): void
     {
         $doc = new Document("ab\ncd");
-        $doc->setCursor(1, 0);
+        $doc->setCursor(1, col: 0);
 
         $this->assertTrue($doc->deleteWordBackward(), 'delegates to deleteBackward, merging lines');
         $this->assertSame('abcd', $doc->getLine(0));
@@ -192,7 +192,7 @@ final class DocumentEdgeTest extends TestCase
     public function testMoveLinesUpAtTopFails(): void
     {
         $doc = new Document("a\nb");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
 
         $this->assertFalse($doc->moveLines(-1));
     }
@@ -200,9 +200,9 @@ final class DocumentEdgeTest extends TestCase
     public function testMoveLinesWithSelectionMovesBlockAndAnchor(): void
     {
         $doc = new Document("a\nb\nc\nd");
-        $doc->setCursor(1, 0);
+        $doc->setCursor(1, col: 0);
         $doc->beginSelect();
-        $doc->setCursor(2, 1, selection: SelectionMode::Keep);
+        $doc->setCursor(2, col: 1, selection: SelectionMode::Keep);
 
         $this->assertTrue($doc->moveLines(1));
         $this->assertSame(['a', 'd', 'b', 'c'], $doc->lines);
@@ -212,9 +212,9 @@ final class DocumentEdgeTest extends TestCase
     public function testDuplicateSelectionBlock(): void
     {
         $doc = new Document("a\nb\nc");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $doc->beginSelect();
-        $doc->setCursor(1, 1, selection: SelectionMode::Keep);
+        $doc->setCursor(1, col: 1, selection: SelectionMode::Keep);
 
         $doc->duplicateLines();
         $this->assertSame(['a', 'b', 'a', 'b', 'c'], $doc->lines);
@@ -223,9 +223,9 @@ final class DocumentEdgeTest extends TestCase
     public function testToggleCommentSkipsBlankLines(): void
     {
         $doc = new Document("code\n\nmore");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $doc->beginSelect();
-        $doc->setCursor(2, 4, selection: SelectionMode::Keep);
+        $doc->setCursor(2, col: 4, selection: SelectionMode::Keep);
 
         $doc->toggleComment(CommentSyntax::lineOnly('//'));
         $this->assertSame(['// code', '', '// more'], $doc->lines);
@@ -273,9 +273,9 @@ final class DocumentEdgeTest extends TestCase
     public function testReplaceBeforeCursorClampsToLineStart(): void
     {
         $doc = new Document('ab');
-        $doc->setCursor(0, 2);
+        $doc->setCursor(0, col: 2);
 
-        $doc->replaceBeforeCursor(99, 'XY');
+        $doc->replaceBeforeCursor(99, replacement: 'XY');
         $this->assertSame('XY', $doc->getLine(0));
     }
 
@@ -289,7 +289,7 @@ final class DocumentEdgeTest extends TestCase
     public function testCursorDisplayColWithWideChars(): void
     {
         $doc = new Document('日本x');
-        $doc->setCursor(0, 6); // after two 3-byte CJK chars
+        $doc->setCursor(0, col: 6); // after two 3-byte CJK chars
 
         $this->assertSame(4, $doc->getCursorDisplayCol(), 'two double-width cells');
     }
@@ -297,7 +297,7 @@ final class DocumentEdgeTest extends TestCase
     public function testGoalColumnOnUnicodeLines(): void
     {
         $doc = new Document("日本語です\nab\n日本語です");
-        $doc->setCursor(0, 9); // after 3 CJK chars = display col 6
+        $doc->setCursor(0, col: 9); // after 3 CJK chars = display col 6
 
         $doc->moveDown();
         $this->assertSame(2, $doc->cursorCol);
@@ -308,7 +308,7 @@ final class DocumentEdgeTest extends TestCase
     public function testMoveLeftWithinLineStepsOverUtf8(): void
     {
         $doc = new Document('héllo');
-        $doc->setCursor(0, 3); // after "hé"
+        $doc->setCursor(0, col: 3); // after "hé"
 
         $this->assertTrue($doc->moveLeft());
         $this->assertSame(1, $doc->cursorCol, 'steps over the 2-byte é in one move');
@@ -319,7 +319,7 @@ final class DocumentEdgeTest extends TestCase
     public function testMoveUpFromSecondLine(): void
     {
         $doc = new Document("first\nsecond");
-        $doc->setCursor(1, 3);
+        $doc->setCursor(1, col: 3);
 
         $this->assertTrue($doc->moveUp());
         $this->assertSame([0, 3], [$doc->cursorLine, $doc->cursorCol]);
@@ -343,7 +343,7 @@ final class DocumentEdgeTest extends TestCase
     public function testDeleteForwardMidLine(): void
     {
         $doc = new Document('abc');
-        $doc->setCursor(0, 1);
+        $doc->setCursor(0, col: 1);
 
         $this->assertTrue($doc->deleteForward());
         $this->assertSame('ac', $doc->getLine(0));
@@ -352,9 +352,9 @@ final class DocumentEdgeTest extends TestCase
     public function testSelectedTextAcrossThreeLines(): void
     {
         $doc = new Document("one\ntwo\nthree");
-        $doc->setCursor(0, 2);
+        $doc->setCursor(0, col: 2);
         $doc->beginSelect();
-        $doc->setCursor(2, 2, selection: SelectionMode::Keep);
+        $doc->setCursor(2, col: 2, selection: SelectionMode::Keep);
 
         $this->assertSame("e\ntwo\nth", $doc->getSelectedText());
     }
@@ -384,12 +384,12 @@ final class DocumentEdgeTest extends TestCase
         $this->assertSame('ab', $doc->getLine(0), 'Backspace took all of it');
 
         $doc = new Document('a'.$grapheme.'b');
-        $doc->setCursor(0, 1);
+        $doc->setCursor(0, col: 1);
         $this->assertTrue($doc->deleteForward());
         $this->assertSame('ab', $doc->getLine(0), 'Delete took all of it');
 
         $doc = new Document('a'.$grapheme.'b');
-        $doc->setCursor(0, 1);
+        $doc->setCursor(0, col: 1);
         $doc->moveRight();
         $this->assertSame(1 + \strlen($grapheme), $doc->cursorCol, '→ crossed it in one step');
         $doc->moveLeft();
@@ -399,7 +399,7 @@ final class DocumentEdgeTest extends TestCase
     public function testDownFromTheEndOfAnAccentLandsAfterTheMark(): void
     {
         $doc = new Document("ab\nae\u{0301}c");
-        $doc->setCursor(0, 2);
+        $doc->setCursor(0, col: 2);
         $doc->moveDown();
 
         $this->assertSame(4, $doc->cursorCol, 'after the combining mark, not between it and its e');

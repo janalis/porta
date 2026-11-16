@@ -43,7 +43,7 @@ final class MermaidSvgRasterizerTest extends TestCase
         );
         $this->assertSame($browser, $rasterizer->binary());
         $source = '<svg><foreignObject><div>HTML label</div></foreignObject></svg>';
-        $png = $this->awaitString(static fn (\Closure $success) => $rasterizer->rasterize($source, 2.0, $success, self::fail(...)));
+        $png = $this->awaitString(static fn (\Closure $success) => $rasterizer->rasterize($source, scale: 2.0, onPng: $success, onError: self::fail(...)));
         $this->assertSame([200, 100], PngDimensions::read($png));
         [$script, $cli, $input, $scale, $svg, $program, $cwd, $rest, $stop] = \json_decode(
             (string) \file_get_contents($this->fakeReports->path('mermaid-browser-request.json')),
@@ -65,7 +65,7 @@ final class MermaidSvgRasterizerTest extends TestCase
         );
         $this->assertSame('700', \file_get_contents($this->fakeReports->path('mermaid-browser-dir-mode.txt')), 'that only this user can open');
         $this->assertDirectoryDoesNotExist(\dirname($input));
-        $this->assertNull(Probe::get($rasterizer, 'directory'));
+        $this->assertNull(Probe::get($rasterizer, property: 'directory'));
         $rasterizer->cancel();
     }
 
@@ -79,11 +79,11 @@ final class MermaidSvgRasterizerTest extends TestCase
             $error = null;
             $rasterizer->rasterize(
                 '<svg/>',
-                null,
-                static function (): never {
+                scale: null,
+                onPng: static function (): never {
                     self::fail('No browser can run');
                 },
-                static function (string $value) use (&$error): void {
+                onError: static function (string $value) use (&$error): void {
                     $error = $value;
                 },
             );
@@ -93,18 +93,18 @@ final class MermaidSvgRasterizerTest extends TestCase
         $error = null;
         $rasterizer->rasterize(
             '<svg/>',
-            null,
-            static function (): never {
+            scale: null,
+            onPng: static function (): never {
                 self::fail('A missing helper cannot render');
             },
-            static function (string $value) use (&$error): void {
+            onError: static function (string $value) use (&$error): void {
                 $error = $value;
             },
         );
         $this->assertNotNull($error);
         $this->assertStringContainsString('missing.mjs', $error);
-        $this->assertNull(Probe::get($rasterizer, 'directory'));
-        $this->assertNull(Probe::get(Probe::get($rasterizer, 'slot'), 'current'), 'no browser was started');
+        $this->assertNull(Probe::get($rasterizer, property: 'directory'));
+        $this->assertNull(Probe::get(Probe::get($rasterizer, property: 'slot'), property: 'current'), 'no browser was started');
         $this->assertFileDoesNotExist($this->fakeReports->path('mermaid-browser-request.json'));
         $rasterizer->cancel();
     }
@@ -120,7 +120,7 @@ final class MermaidSvgRasterizerTest extends TestCase
                     $error = $value;
                 });
                 $this->assertSame('Invalid SVG raster scale', $error);
-                $this->assertNull(Probe::get($rasterizer, 'directory'));
+                $this->assertNull(Probe::get($rasterizer, property: 'directory'));
             }
             $this->assertFileDoesNotExist($this->fakeReports->path('mermaid-browser-request.json'));
         } finally {
@@ -137,7 +137,7 @@ final class MermaidSvgRasterizerTest extends TestCase
             return $config;
         });
         $rest = function () use ($rasterizer): array {
-            $this->awaitString(static fn (\Closure $success) => $rasterizer->rasterize('<svg/>', 1.0, $success, self::fail(...)));
+            $this->awaitString(static fn (\Closure $success) => $rasterizer->rasterize('<svg/>', scale: 1.0, onPng: $success, onError: self::fail(...)));
             [, , , , , , , $rest] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-browser-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
 
             return $rest;
@@ -162,13 +162,13 @@ final class MermaidSvgRasterizerTest extends TestCase
         ]);
         $this->fakeReports->write('fixture.png', PngFixture::bytes(100, height: 50));
         $offline = new MermaidSvgRasterizer($project->dir, $project->path('cli/bin/mmdc.js'), $node, browserConfig: static fn (): string => MermaidEngine::OFFLINE);
-        $this->awaitString(static fn (\Closure $success) => $offline->rasterize('<svg viewBox="0 0 10 10"/>', 1.0, $success, self::fail(...)));
+        $this->awaitString(static fn (\Closure $success) => $offline->rasterize('<svg viewBox="0 0 10 10"/>', scale: 1.0, onPng: $success, onError: self::fail(...)));
         $launch = \json_decode((string) \file_get_contents($this->fakeReports->path('browser-protocol.json')), associative: true, flags: \JSON_THROW_ON_ERROR)['launch'];
         $this->assertSame(['headless' => 'shell', 'args' => ['--proxy-server=127.0.0.1:9', '--proxy-bypass-list=<-loopback>']], $launch, 'a project not trusted: off the network');
 
         $rasterizer = new MermaidSvgRasterizer($project->dir, $project->path('cli/bin/mmdc.js'), $node);
         $source = '<svg viewBox="0 0 100.5 50.25"><foreignObject><div>HTML label</div></foreignObject></svg>';
-        $png = $this->awaitString(static fn (\Closure $success) => $rasterizer->rasterize($source, 2.0, $success, self::fail(...)));
+        $png = $this->awaitString(static fn (\Closure $success) => $rasterizer->rasterize($source, scale: 2.0, onPng: $success, onError: self::fail(...)));
         $this->assertStringEqualsFile($this->fakeReports->path('fixture.png'), $png);
         $record = \json_decode((string) \file_get_contents($this->fakeReports->path('browser-protocol.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame(['launch', 'goto', 'evaluate', 'viewport', 'screenshot', 'close'], $record['calls']);
@@ -204,15 +204,15 @@ final class MermaidSvgRasterizerTest extends TestCase
             $this->assertNotContains('screenshot', $record['calls']);
             $this->assertSame('close', \array_last($record['calls']));
         }
-        $project->write('cli/package.json', '{"name":"another-tool"}');
+        $project->write('cli/package.json', content: '{"name":"another-tool"}');
         $error = null;
         $rasterizer->rasterize(
             $source,
-            null,
-            static function (): never {
+            scale: null,
+            onPng: static function (): never {
                 self::fail('An arbitrary wrapper has no shared browser contract');
             },
-            static function (string $value) use (&$error): void {
+            onError: static function (string $value) use (&$error): void {
                 $error = $value;
             },
         );
@@ -235,7 +235,7 @@ final class MermaidSvgRasterizerTest extends TestCase
         $fail = static function (string $value) use (&$error): void {
             $error = $value;
         };
-        $rasterizer->rasterize('<svg><!--broken-browser--></svg>', null, $accept, $fail);
+        $rasterizer->rasterize('<svg><!--broken-browser--></svg>', scale: null, onPng: $accept, onError: $fail);
         $this->await(static function () use (&$error): bool {
             return null !== $error;
         }, what: 'the browser failure');
@@ -244,15 +244,15 @@ final class MermaidSvgRasterizerTest extends TestCase
         $this->assertDirectoryDoesNotExist(\dirname($script));
         \unlink($this->fakeReports->path('mermaid-browser-request.json'));
         $error = null;
-        $rasterizer->rasterize('<svg><!--deferred-browser--></svg>', null, $accept, $fail);
+        $rasterizer->rasterize('<svg><!--deferred-browser--></svg>', scale: null, onPng: $accept, onError: $fail);
         $request = $this->fakeReports->path('mermaid-browser-request.json');
         $this->await(static fn (): bool => \is_file($request), what: 'the pending browser snapshot');
         [$script] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-browser-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertDirectoryExists(\dirname($script));
-        $slot = Probe::get($rasterizer, 'slot');
-        $this->assertNotNull(Probe::get($slot, 'current'));
+        $slot = Probe::get($rasterizer, property: 'slot');
+        $this->assertNotNull(Probe::get($slot, property: 'current'));
         $rasterizer->cancel();
-        $this->assertNull(Probe::get($slot, 'current'));
+        $this->assertNull(Probe::get($slot, property: 'current'));
         $this->assertDirectoryDoesNotExist(\dirname($script));
         $this->assertSame(0, $success);
         $this->assertNull($error);
@@ -263,12 +263,12 @@ final class MermaidSvgRasterizerTest extends TestCase
     {
         $project = new TempProject();
         $rasterizer = new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc'), self::support('fake-mermaid-browser'));
-        $rasterizer->rasterize('<svg><!--deferred-browser--></svg>', null, $this->fail(...), $this->fail(...));
-        $older = Probe::get($rasterizer, 'directory');
+        $rasterizer->rasterize('<svg><!--deferred-browser--></svg>', scale: null, onPng: $this->fail(...), onError: $this->fail(...));
+        $older = Probe::get($rasterizer, property: 'directory');
         $this->assertIsString($older);
         $this->assertDirectoryExists($older);
 
-        $png = $this->awaitString(static fn (\Closure $success) => $rasterizer->rasterize('<svg/>', null, $success, self::fail(...)));
+        $png = $this->awaitString(static fn (\Closure $success) => $rasterizer->rasterize('<svg/>', scale: null, onPng: $success, onError: self::fail(...)));
 
         $this->assertSame([100, 50], PngDimensions::read($png));
         $this->assertDirectoryDoesNotExist($older);

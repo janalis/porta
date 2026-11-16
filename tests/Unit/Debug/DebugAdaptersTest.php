@@ -42,11 +42,11 @@ final class DebugAdaptersTest extends TestCase
     public function testSetUpdatesLiveAndBlankClears(): void
     {
         $adapters = new DebugAdapters([]);
-        $adapters->set('php', ' node b.js ', ['stopOnEntry' => true]);
+        $adapters->set('php', adapterCommand: ' node b.js ', launch: ['stopOnEntry' => true]);
         $this->assertSame(['node', 'b.js'], $adapters->adapterFor('php')?->adapterArgv);
         $this->assertSame(['stopOnEntry' => true], $adapters->adapterFor('php')?->launch);
 
-        $adapters->set('php', '   ', []);
+        $adapters->set('php', adapterCommand: '   ', launch: []);
         $this->assertNull($adapters->adapterFor('php'), 'blank command clears the entry');
     }
 
@@ -64,7 +64,7 @@ final class DebugAdaptersTest extends TestCase
     public function testSetPreservesTheRunCommandFromBoot(): void
     {
         $adapters = new DebugAdapters(['php' => ['debug' => ['adapter' => 'node a.js'], 'runCommand' => 'frankenphp php-cli']]);
-        $adapters->set('php', 'node b.js', ['stopOnEntry' => true]);
+        $adapters->set('php', adapterCommand: 'node b.js', launch: ['stopOnEntry' => true]);
         $this->assertSame(['frankenphp', 'php-cli'], $adapters->adapterFor('php')?->runCommandArgv, 'a live adapter edit keeps the run command');
     }
 
@@ -84,7 +84,7 @@ final class DebugAdaptersTest extends TestCase
         $this->assertSame(['rust-dap'], $adapters->adapterFor('rust')?->adapterArgv, 'a plugin fills a language the config does not name');
         $this->assertNull($adapters->adapterFor('go'), 'and neither claims go');
 
-        $adapters->set('php', '', []);
+        $adapters->set('php', adapterCommand: '', launch: []);
         $this->assertSame(['php', 'adapter'], $adapters->adapterFor('php')?->adapterArgv, 'clearing the setting hands the language back');
     }
 

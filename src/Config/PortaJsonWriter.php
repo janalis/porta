@@ -40,7 +40,7 @@ final readonly class PortaJsonWriter
     public function persistSetting(ConfigScope $scope, string $key, int|bool|string $value): bool
     {
         return $this->edit($scope, static function (array &$config) use ($key, $value): void {
-            $settings = self::section($config, 'settings');
+            $settings = self::section($config, key: 'settings');
             $settings[$key] = $value;
             // Only core-obsoleted keys are stripped here. Stripping EVERY
             // legacy key (as this once did) destroyed values the git plugin's
@@ -72,7 +72,7 @@ final readonly class PortaJsonWriter
     public function persistKeymap(ConfigScope $scope, string $action, array $keys): bool
     {
         return $this->edit($scope, static function (array &$config) use ($action, $keys): void {
-            $keymap = self::section($config, 'keymap');
+            $keymap = self::section($config, key: 'keymap');
             $keymap[$action] = \array_values($keys);
             $config['keymap'] = $keymap;
         });
@@ -95,7 +95,7 @@ final readonly class PortaJsonWriter
     public function removeKeymap(ConfigScope $scope, string $action): bool
     {
         return $this->edit($scope, static function (array &$config) use ($action): void {
-            $keymap = self::section($config, 'keymap');
+            $keymap = self::section($config, key: 'keymap');
             unset($keymap[$action]);
             if ([] === $keymap) {
                 unset($config['keymap']);
@@ -110,25 +110,25 @@ final readonly class PortaJsonWriter
     /** Persist a project/global plugin as enabled by dropping it from the `disabledPlugins` list. */
     public function persistPluginEnabled(ConfigScope $scope, string $plugin): bool
     {
-        return $this->persistPluginMembership($scope, 'disabledPlugins', $plugin, member: false);
+        return $this->persistPluginMembership($scope, key: 'disabledPlugins', plugin: $plugin, member: false);
     }
 
     /** Persist a project/global plugin as disabled by adding it to the `disabledPlugins` list. */
     public function persistPluginDisabled(ConfigScope $scope, string $plugin): bool
     {
-        return $this->persistPluginMembership($scope, 'disabledPlugins', $plugin, member: true);
+        return $this->persistPluginMembership($scope, key: 'disabledPlugins', plugin: $plugin, member: true);
     }
 
     /** Persist a bundled plugin as enabled by adding it to the `enabledPlugins` list (the effective list materialized first). */
     public function persistBundledEnabled(ConfigScope $scope, string $plugin): bool
     {
-        return $this->persistPluginMembership($scope, 'enabledPlugins', $plugin, member: true, default: $this->bundledBelow());
+        return $this->persistPluginMembership($scope, key: 'enabledPlugins', plugin: $plugin, member: true, default: $this->bundledBelow());
     }
 
     /** Persist a bundled plugin as disabled by dropping it from the `enabledPlugins` list (the effective list materialized first). */
     public function persistBundledDisabled(ConfigScope $scope, string $plugin): bool
     {
-        return $this->persistPluginMembership($scope, 'enabledPlugins', $plugin, member: false, default: $this->bundledBelow());
+        return $this->persistPluginMembership($scope, key: 'enabledPlugins', plugin: $plugin, member: false, default: $this->bundledBelow());
     }
 
     /**
@@ -174,7 +174,7 @@ final readonly class PortaJsonWriter
     public function resetSetting(ConfigScope $scope, string $key): bool
     {
         return $this->edit($scope, static function (array &$config) use ($key): void {
-            $settings = self::section($config, 'settings');
+            $settings = self::section($config, key: 'settings');
             unset($settings[$key]);
             $config['settings'] = $settings;
             if ([] === $settings) {
@@ -187,7 +187,7 @@ final readonly class PortaJsonWriter
     public function resetPluginSetting(ConfigScope $scope, string $plugin, string $key): bool
     {
         return $this->edit($scope, static function (array &$config) use ($plugin, $key): void {
-            $plugins = self::section($config, 'plugins');
+            $plugins = self::section($config, key: 'plugins');
             $entry = \is_array($plugins[$plugin] ?? null) ? $plugins[$plugin] : [];
             unset($entry[$key]);
             $plugins[$plugin] = $entry;
@@ -205,7 +205,7 @@ final readonly class PortaJsonWriter
     public function persistPluginSetting(ConfigScope $scope, string $plugin, string $key, bool|int|string $value): bool
     {
         return $this->edit($scope, static function (array &$config) use ($plugin, $key, $value): void {
-            $plugins = self::section($config, 'plugins');
+            $plugins = self::section($config, key: 'plugins');
             $entry = \is_array($plugins[$plugin] ?? null) ? $plugins[$plugin] : [];
             $entry[$key] = $value;
             $plugins[$plugin] = $entry;
@@ -221,7 +221,7 @@ final readonly class PortaJsonWriter
     public function persistHighlighter(ConfigScope $scope, ?string $language, string $id): bool
     {
         return $this->edit($scope, static function (array &$config) use ($language, $id): void {
-            $highlight = self::section($config, 'highlight');
+            $highlight = self::section($config, key: 'highlight');
 
             if (null === $language) {
                 $highlight['default'] = $id;
@@ -257,7 +257,7 @@ final readonly class PortaJsonWriter
     public function persistLanguageSetting(ConfigScope $scope, string $language, string $key, int|string $value): bool
     {
         return $this->edit($scope, static function (array &$config) use ($language, $key, $value): void {
-            $languages = self::section($config, 'languages');
+            $languages = self::section($config, key: 'languages');
             $entry = \is_array($languages[$language] ?? null) ? $languages[$language] : [];
             $entry[$key] = $value;
             $languages[$language] = $entry;
@@ -276,7 +276,7 @@ final readonly class PortaJsonWriter
     public function persistLanguageDebug(ConfigScope $scope, string $language, string $key, string|array|null $value): bool
     {
         return $this->edit($scope, static function (array &$config) use ($language, $key, $value): void {
-            $languages = self::section($config, 'languages');
+            $languages = self::section($config, key: 'languages');
             $entry = \is_array($languages[$language] ?? null) ? $languages[$language] : [];
             $debug = \is_array($entry['debug'] ?? null) ? $entry['debug'] : [];
 

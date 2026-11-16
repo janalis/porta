@@ -28,7 +28,7 @@ final class TableStart
     private function openUnder(BlockParser $parser, OpenBlock $container, MappedText $content): int
     {
         $cursor = $parser->cursor;
-        $alignments = \array_map(static fn (MappedText $cell): string => $cell->text, TableRows::cells(MappedText::verbatim($cursor->restFromNonspace(), 0)));
+        $alignments = \array_map(static fn (MappedText $cell): string => $cell->text, TableRows::cells(MappedText::verbatim($cursor->restFromNonspace(), source: 0)));
         $split = \strrpos($content->text, needle: "\n");
         $header = false === $split ? $content : $content->from($split + 1);
         if (\count(TableRows::cells($header)) !== \count($alignments)) {

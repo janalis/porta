@@ -148,7 +148,7 @@ final class ToolUpdates
             }
         }
         if ([] !== $outdated) {
-            $this->notifier->flash($this->translator->trans('Updates available: %tools% — run "Plugins: Update Tools"', ['%tools%' => \implode(', ', $outdated)]), 8.0);
+            $this->notifier->flash($this->translator->trans('Updates available: %tools% — run "Plugins: Update Tools"', ['%tools%' => \implode(', ', $outdated)]), seconds: 8.0);
         }
     }
 

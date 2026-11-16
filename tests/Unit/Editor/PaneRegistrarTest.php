@@ -49,7 +49,7 @@ final class PaneRegistrarTest extends TestCase
     {
         $settings = new PluginSettings('/p', []);
         $this->manager = new PluginManager(new EventDispatcher(), $settings);
-        $api = $this->manager->api($plugin, '/p', $settings);
+        $api = $this->manager->api($plugin, rootDir: '/p', settings: $settings);
         $api->registerPane($id, $factory, static fn (string $path): string => 'payload:'.$path);
         $this->manager->commit($api);
     }
@@ -67,12 +67,12 @@ final class PaneRegistrarTest extends TestCase
     {
         $settings = new PluginSettings('/p', []);
         $this->manager = new PluginManager(new EventDispatcher(), $settings);
-        $bad = $this->manager->api('bad-plugin', '/p', $settings);
+        $bad = $this->manager->api('bad-plugin', rootDir: '/p', settings: $settings);
         $bad->registerPane('bad', $badFactory, static fn (string $path): string => '');
         $this->manager->commit($bad);
 
         $pane = new TestPane('good');
-        $good = $this->manager->api('good-plugin', '/p', $settings);
+        $good = $this->manager->api('good-plugin', rootDir: '/p', settings: $settings);
         $good->registerPane('good', static fn (PaneServices $services): EditorPaneWidget => $pane, static fn (string $path): string => '');
         $this->manager->commit($good);
 
@@ -90,7 +90,7 @@ final class PaneRegistrarTest extends TestCase
         $loader = $this->registry->loaderFor('demo');
         $this->assertNotNull($loader);
         $this->assertSame('payload:/p/a.demo', $loader('/p/a.demo'));
-        $this->assertNotNull(Probe::get($pane, 'handler'), 'the pane is handed the tab handler on the way in');
+        $this->assertNotNull(Probe::get($pane, property: 'handler'), 'the pane is handed the tab handler on the way in');
     }
 
     public function testThePaneReceivesTheServicesItCannotAutowire(): void
@@ -154,11 +154,11 @@ final class PaneRegistrarTest extends TestCase
         $settings = new PluginSettings('/p', []);
         $this->manager = new PluginManager(new EventDispatcher(), $settings);
         $mine = new TestPane('mine');
-        $api = $this->manager->api('my-plugin', '/p', $settings);
+        $api = $this->manager->api('my-plugin', rootDir: '/p', settings: $settings);
         $api->registerPane('mine', static fn (PaneServices $services): EditorPaneWidget => $mine, static fn (string $path): string => '');
         $this->manager->commit($api);
         $theirs = new TestPane('theirs');
-        $other = $this->manager->api('their-plugin', '/p', $settings);
+        $other = $this->manager->api('their-plugin', rootDir: '/p', settings: $settings);
         $other->registerPane('theirs', static fn (PaneServices $services): EditorPaneWidget => $theirs, static fn (string $path): string => '');
         $this->manager->commit($other);
 
@@ -212,7 +212,7 @@ final class PaneRegistrarTest extends TestCase
         $settings = new PluginSettings('/p', []);
         $this->manager = new PluginManager(new EventDispatcher(), $settings);
         $good = new TestPane('good');
-        $api = $this->manager->api('demo', '/p', $settings);
+        $api = $this->manager->api('demo', rootDir: '/p', settings: $settings);
         $api->registerPane('bad', static fn (PaneServices $services): EditorPaneWidget => throw new \RuntimeException('no pane today'), static fn (string $path): string => '');
         $api->registerPane('good', static fn (PaneServices $services): EditorPaneWidget => $good, static fn (string $path): string => '');
         $this->manager->commit($api);

@@ -135,7 +135,7 @@ final class TerminalPanelWidgetTest extends TestCase
 
         $this->assertCount(12, $panel->render(new RenderContext(50, 30)), 'default 12 rows');
         $panel->setVisibleRows(20);
-        $this->assertSame(20, Probe::get($panel, 'visibleRows'));
+        $this->assertSame(20, Probe::get($panel, property: 'visibleRows'));
         $this->assertCount(20, $panel->render(new RenderContext(50, 30)), 'resized to 20 rows');
 
         // The scroll clamp uses the new height: lineCount 41 - 20 = 21.
@@ -143,7 +143,7 @@ final class TerminalPanelWidgetTest extends TestCase
         $this->assertSame('[scrolled +21]', $panel->statusText());
 
         $panel->setVisibleRows(1); // clamped to the floor of 2
-        $this->assertSame(2, Probe::get($panel, 'visibleRows'));
+        $this->assertSame(2, Probe::get($panel, property: 'visibleRows'));
     }
 
     public function testForwardsInputAndHandlesPanelKeys(): void

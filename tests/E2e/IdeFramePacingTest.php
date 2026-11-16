@@ -49,7 +49,7 @@ final class IdeFramePacingTest extends TestCase
                     $tui->tick();
 
                     $perf = Services::resolve($ide, PerfCollector::class);
-                    $this->assertGreaterThanOrEqual(1, Probe::get($perf, 'capSkips'), 'Ide wired the pacing: the burst frame was capped');
+                    $this->assertGreaterThanOrEqual(1, Probe::get($perf, property: 'capSkips'), 'Ide wired the pacing: the burst frame was capped');
 
                     // The trailing wakeup runs on the real RevoltScheduler; the
                     // scrolled viewport must still paint without any forcing.
@@ -57,7 +57,7 @@ final class IdeFramePacingTest extends TestCase
                     $scroll = EditorState::scroll($editor);
                     $this->assertSame(6, $scroll->vScroll, 'both notches scrolled the model immediately');
                     $this->await(
-                        static fn (): bool => false === (bool) Probe::get($tui, 'renderRequested'),
+                        static fn (): bool => false === (bool) Probe::get($tui, property: 'renderRequested'),
                         what: 'the capped frame to land via the trailing wakeup',
                     );
                 },

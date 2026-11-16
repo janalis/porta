@@ -970,12 +970,12 @@ final class CodeEditorWidget extends AbstractWidget implements
                     return;
                 }
                 $this->caretPopups->doc = null;
-                if ($kb->matches($data, 'select_cancel')) {
+                if ($kb->matches($data, action: 'select_cancel')) {
                     return;
                 }
             }
 
-            if (null !== $this->caretPopups->signature && $kb->matches($data, 'select_cancel')) {
+            if (null !== $this->caretPopups->signature && $kb->matches($data, action: 'select_cancel')) {
                 $this->setSignatureHint(null);
 
                 return;
@@ -986,8 +986,8 @@ final class CodeEditorWidget extends AbstractWidget implements
             // terminal sends as ESC p / ESC n, and the modified-arrow CSI, which
             // the parser leaves unnamed.
             $overload = match (true) {
-                "\x1b[1;3B" === $data || $kb->matches($data, 'next_member') => 1,
-                "\x1b[1;3A" === $data || $kb->matches($data, 'prev_member') => -1,
+                "\x1b[1;3B" === $data || $kb->matches($data, action: 'next_member') => 1,
+                "\x1b[1;3A" === $data || $kb->matches($data, action: 'prev_member') => -1,
                 default => 0,
             };
             if (0 !== $overload && true === $this->caretPopups->signature?->hasOverloads()) {
@@ -1268,9 +1268,9 @@ final class CodeEditorWidget extends AbstractWidget implements
         if (!$this->display->stickyScroll) {
             return [];
         }
-        $top = $this->foldModel->docLineAtRow($vScroll, 0) ?? 0;
+        $top = $this->foldModel->docLineAtRow($vScroll, row: 0) ?? 0;
 
-        return BreadcrumbScanner::stickyHeaders($this->scopes(), $top, IntMath::clamp($rows - 4, 0, EditorScroll::MAX_STICKY_ROWS));
+        return BreadcrumbScanner::stickyHeaders($this->scopes(), $top, IntMath::clamp($rows - 4, lo: 0, hi: EditorScroll::MAX_STICKY_ROWS));
     }
 
     /**

@@ -64,7 +64,7 @@ final class RuleHalvesFrameTest extends TestCase
         $tui = Services::resolve($ide, BidiTui::class);
         $this->assertInstanceOf(BidiTui::class, $tui);
         $this->tui = $tui;
-        $join = Probe::get($tui, 'frameJoin');
+        $join = Probe::get($tui, property: 'frameJoin');
         $this->assertInstanceOf(\Closure::class, $join);
         $tui->setFrameJoin(function (array $lines) use ($join): array {
             $joined = $join($lines);
@@ -84,7 +84,7 @@ final class RuleHalvesFrameTest extends TestCase
 
     private function cell(int $row, int $col): string
     {
-        return AnsiText::columnsFrom($this->frame[$row] ?? '', $col, 1);
+        return AnsiText::columnsFrom($this->frame[$row] ?? '', $col, length: 1);
     }
 
     private function ide(): Ide
@@ -109,8 +109,8 @@ final class RuleHalvesFrameTest extends TestCase
     private function plainFrame(BidiTui $tui): array
     {
         $tui->requestRender(true);
-        Probe::invoke($tui, 'processRender');
-        $frame = Probe::get($this->ide, 'lastFrame');
+        Probe::invoke($tui, method: 'processRender');
+        $frame = Probe::get($this->ide, property: 'lastFrame');
         $this->assertIsArray($frame);
 
         return $frame;
@@ -231,7 +231,7 @@ final class RuleHalvesFrameTest extends TestCase
     {
         $this->boot(rows: 40);
         Services::resolve($this->ide(), BufferService::class)->openFile($this->project->path('README.md'), OpenFocus::Keep);
-        $halves = Probe::get(Services::resolve($this->ide(), HalfRows::class), 'halves');
+        $halves = Probe::get(Services::resolve($this->ide(), HalfRows::class), property: 'halves');
         $this->assertInstanceOf(RuleHalves::class, $halves);
         $this->assertCount(2, $halves->headWidgets(), 'the bar and the page header');
 

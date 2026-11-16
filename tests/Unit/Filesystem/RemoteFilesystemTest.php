@@ -163,7 +163,7 @@ final class RemoteFilesystemTest extends TestCase
     public function testWhatTheServerNeverNamedIsReadAsItIs(): void
     {
         $files = $this->files();
-        $made = $this->cache->write('local.txt', 'mine');
+        $made = $this->cache->write('local.txt', content: 'mine');
 
         $this->assertTrue($files->available($made, static fn (): null => null));
         $this->assertTrue($files->available($this->cache->path('.porta/session.json'), static fn (): null => null), 'Porta\'s own state is never the server\'s');
@@ -222,7 +222,7 @@ final class RemoteFilesystemTest extends TestCase
         $files->listed($this->cache->dir);
         $files->available($this->cache->path('README.md'), static fn (): null => null);
 
-        $files->dumpFile($this->cache->path('README.md'), "# changed\n");
+        $files->dumpFile($this->cache->path('README.md'), content: "# changed\n");
 
         $this->assertSame("# changed\n", \file_get_contents($this->server->path('README.md')));
         $this->assertSame(0, $files->pending());
@@ -235,7 +235,7 @@ final class RemoteFilesystemTest extends TestCase
      */
     public function testAFolderNamedByDigitsDoesNotStopRenamesOrThePoll(): void
     {
-        $this->server->write('2024/post.md', "# post\n");
+        $this->server->write('2024/post.md', content: "# post\n");
         $files = $this->files();
         $files->listed($this->cache->dir);
         $files->listed($this->cache->path('2024'));
@@ -330,7 +330,7 @@ final class RemoteFilesystemTest extends TestCase
     public function testTheStatusBarIsToldWhenTheCellsCountOrTroubleMoves(): void
     {
         $events = new RecordingEvents();
-        $this->server->write('more.md', 'not fetched yet');
+        $this->server->write('more.md', content: 'not fetched yet');
         $files = $this->transport->filesystem($this->cache->dir, $this->status, $events);
         $files->listed($this->cache->dir);
         $files->available($this->cache->path('README.md'), static fn (): null => null);
@@ -338,15 +338,15 @@ final class RemoteFilesystemTest extends TestCase
         $told();
 
         $this->transport->hold = true;
-        $files->dumpFile($this->cache->path('README.md'), 'one');
+        $files->dumpFile($this->cache->path('README.md'), content: 'one');
         $this->assertSame(1, $told(), 'on its way: the count went up');
         $this->transport->release();
         $this->assertSame(1, $told(), 'answered: the count went down, with nothing else on screen to repaint the cell');
 
         $this->transport->fail['*'] = 'disk full';
-        $files->dumpFile($this->cache->path('README.md'), 'two');
+        $files->dumpFile($this->cache->path('README.md'), content: 'two');
         $this->assertSame(3, $told(), 'up, refused — the cell says why — and down');
-        $files->dumpFile($this->cache->path('README.md'), 'three');
+        $files->dumpFile($this->cache->path('README.md'), content: 'three');
         $this->assertSame(3, $told(), 'up, accepted — the refusal goes — and down');
         $files->poll();
         $files->poll();
@@ -368,9 +368,9 @@ final class RemoteFilesystemTest extends TestCase
         $this->transport->hold = true;
 
         $files->mkdir($this->cache->path('docs')); // something ahead of it in the queue
-        $files->dumpFile($this->cache->path('README.md'), 'one');
-        $files->dumpFile($this->cache->path('README.md'), 'two');
-        $files->dumpFile($this->cache->path('README.md'), 'three');
+        $files->dumpFile($this->cache->path('README.md'), content: 'one');
+        $files->dumpFile($this->cache->path('README.md'), content: 'two');
+        $files->dumpFile($this->cache->path('README.md'), content: 'three');
         $this->assertSame(2, $files->pending());
 
         $this->transport->release();
@@ -386,14 +386,14 @@ final class RemoteFilesystemTest extends TestCase
         $files = $this->files();
         $files->listed($this->cache->dir);
         $files->available($this->cache->path('README.md'), static fn (): null => null);
-        $this->server->write('README.md', "# someone else, longer\n");
+        $this->server->write('README.md', content: "# someone else, longer\n");
 
-        $files->dumpFile($this->cache->path('README.md'), 'mine');
+        $files->dumpFile($this->cache->path('README.md'), content: 'mine');
 
         $this->assertSame("# someone else, longer\n", \file_get_contents($this->server->path('README.md')), 'theirs is kept');
         $this->assertSame('README.md changed on the server — save again to overwrite', $this->flashText($this->status));
 
-        $files->dumpFile($this->cache->path('README.md'), 'mine');
+        $files->dumpFile($this->cache->path('README.md'), content: 'mine');
 
         $this->assertSame('mine', \file_get_contents($this->server->path('README.md')));
     }
@@ -403,8 +403,8 @@ final class RemoteFilesystemTest extends TestCase
         $files = $this->files();
         $files->listed($this->cache->dir);
         $files->available($this->cache->path('README.md'), static fn (): null => null);
-        $this->server->write('README.md', "# someone else, longer\n");
-        $files->dumpFile($this->cache->path('README.md'), 'mine');
+        $this->server->write('README.md', content: "# someone else, longer\n");
+        $files->dumpFile($this->cache->path('README.md'), content: 'mine');
 
         $files->poll();
 
@@ -414,7 +414,7 @@ final class RemoteFilesystemTest extends TestCase
         $this->assertSame(1, $files->pending(), 'still not on the server');
         $this->assertSame('⇅ example.org ⇡1', $files->statusCells()[0]->text);
 
-        $files->dumpFile($this->cache->path('README.md'), 'mine');
+        $files->dumpFile($this->cache->path('README.md'), content: 'mine');
 
         $this->assertSame('mine', \file_get_contents($this->server->path('README.md')), 'saving again overwrites');
         $this->assertSame(0, $files->pending());
@@ -425,8 +425,8 @@ final class RemoteFilesystemTest extends TestCase
         $files = $this->files();
         $this->transport->fail['new.txt'] = 'disk full';
 
-        $files->dumpFile($this->cache->path('new.txt'), 'x');
-        $files->dumpFile($this->cache->path('other.txt'), 'o');
+        $files->dumpFile($this->cache->path('new.txt'), content: 'x');
+        $files->dumpFile($this->cache->path('other.txt'), content: 'o');
 
         $this->assertSame('Cannot change new.txt on the server: disk full', $this->flashText($this->status));
         $this->assertSame('o', \file_get_contents($this->server->path('other.txt')), 'the queue moved on');
@@ -434,7 +434,7 @@ final class RemoteFilesystemTest extends TestCase
         $this->assertSame('⇅ example.org ⇡1', $files->statusCells()[0]->text);
         $this->assertContains('list ', $this->transport->calls, 'the link was checked: up, so a refusal');
 
-        $files->dumpFile($this->cache->path('new.txt'), 'x');
+        $files->dumpFile($this->cache->path('new.txt'), content: 'x');
 
         $this->assertSame(0, $files->pending());
         $this->assertSame('x', \file_get_contents($this->server->path('new.txt')));
@@ -444,7 +444,7 @@ final class RemoteFilesystemTest extends TestCase
     {
         $files = $this->files();
 
-        $files->dumpFile($this->cache->path('deep/new.txt'), 'new');
+        $files->dumpFile($this->cache->path('deep/new.txt'), content: 'new');
 
         $this->assertSame('new', \file_get_contents($this->server->path('deep/new.txt')));
     }
@@ -460,9 +460,9 @@ final class RemoteFilesystemTest extends TestCase
         $files = $this->files();
         $this->transport->hold = true;
         $files->mkdir($this->cache->path('a'));
-        $files->dumpFile($this->cache->path('b.txt'), 'x');
+        $files->dumpFile($this->cache->path('b.txt'), content: 'x');
         $files->rename($this->cache->path('b.txt'), $this->cache->path('c.txt'));
-        $files->dumpFile($this->cache->path('b.txt'), 'a new b');
+        $files->dumpFile($this->cache->path('b.txt'), content: 'a new b');
 
         $this->transport->release();
 
@@ -477,7 +477,7 @@ final class RemoteFilesystemTest extends TestCase
         $files = $this->files();
         $this->transport->hold = true;
         $files->mkdir($this->cache->path('a'));
-        $files->dumpFile($this->cache->path('b.txt'), 'x');
+        $files->dumpFile($this->cache->path('b.txt'), content: 'x');
         $files->remove($this->cache->path('b.txt'));
         $this->transport->fail['b.txt'] = 'quota exceeded';
 
@@ -507,8 +507,8 @@ final class RemoteFilesystemTest extends TestCase
         $files->listed($this->cache->dir);
         $files->available($this->cache->path('README.md'), static fn (): null => null);
 
-        $files->dumpFile($this->cache->path('README.md'), 'a longer first save');
-        $files->dumpFile($this->cache->path('README.md'), 'second');
+        $files->dumpFile($this->cache->path('README.md'), content: 'a longer first save');
+        $files->dumpFile($this->cache->path('README.md'), content: 'second');
 
         $this->assertSame('second', \file_get_contents($this->server->path('README.md')));
         $this->assertStringNotContainsString('changed on the server', $this->flashText($this->status), 'no conflict with our own upload');
@@ -530,9 +530,9 @@ final class RemoteFilesystemTest extends TestCase
     public function testAPathThatClimbsOutIsNeverSent(): void
     {
         $files = $this->files();
-        $this->cache->write('a/.keep', '');
+        $this->cache->write('a/.keep', content: '');
 
-        $files->dumpFile($this->cache->path('a/../b.txt'), 'x');
+        $files->dumpFile($this->cache->path('a/../b.txt'), content: 'x');
 
         $this->assertSame([], $this->transport->calls);
     }
@@ -540,8 +540,8 @@ final class RemoteFilesystemTest extends TestCase
     /** A slow server gets no second round of listings while the first is still out. */
     public function testThePollWaitsForTheLastRoundToAnswer(): void
     {
-        $this->server->write('a/x', '');
-        $this->server->write('b/x', '');
+        $this->server->write('a/x', content: '');
+        $this->server->write('b/x', content: '');
         $files = $this->files();
         foreach (['', 'a', 'b'] as $dir) {
             $files->listed($this->cache->path($dir));
@@ -559,14 +559,14 @@ final class RemoteFilesystemTest extends TestCase
     /** Two directories a round — each once, though two open files share one. */
     public function testAPollListsTwoDirectoriesEachOnce(): void
     {
-        $this->server->write('a/x', '');
-        $this->server->write('b/x', '');
+        $this->server->write('a/x', content: '');
+        $this->server->write('b/x', content: '');
         $files = $this->files();
         foreach (['', 'a', 'b'] as $dir) {
             $files->listed($this->cache->path($dir));
         }
-        $this->buffers->open($this->cache->path('README.md'), '');
-        $this->buffers->open($this->cache->path('empty.txt'), '');
+        $this->buffers->open($this->cache->path('README.md'), content: '');
+        $this->buffers->open($this->cache->path('empty.txt'), content: '');
         $this->transport->calls = [];
 
         $files->poll();
@@ -624,9 +624,9 @@ final class RemoteFilesystemTest extends TestCase
 
     public function testPortasOwnFilesOnTheServerAreNotTheCaches(): void
     {
-        $this->server->write('.porta.json', '{"theirs": true}');
-        $this->server->write('.porta/session.json', '{}');
-        $this->server->write('docs/.porta.json', '{"an example": true}');
+        $this->server->write('.porta.json', content: '{"theirs": true}');
+        $this->server->write('.porta/session.json', content: '{}');
+        $this->server->write('docs/.porta.json', content: '{"an example": true}');
         $files = $this->files();
 
         $files->listed($this->cache->dir);
@@ -645,8 +645,8 @@ final class RemoteFilesystemTest extends TestCase
      */
     public function testPortasOwnFilesAreRefusedHoweverTheServerCasesThem(): void
     {
-        $this->server->write('.PORTA/planted.json', '{}');
-        $this->server->write('.Porta.jſon', '{"theirs": true}');
+        $this->server->write('.PORTA/planted.json', content: '{}');
+        $this->server->write('.Porta.jſon', content: '{"theirs": true}');
         $this->transport->walks = true;
         $files = $this->files();
 
@@ -664,7 +664,7 @@ final class RemoteFilesystemTest extends TestCase
         $files = $this->files();
         $this->transport->hold = true;
         $files->mkdir($this->cache->path('a'));
-        $files->dumpFile($this->cache->path('a/b.txt'), 'x');
+        $files->dumpFile($this->cache->path('a/b.txt'), content: 'x');
         $files->remove($this->cache->path('a'));
 
         $this->transport->release();
@@ -712,7 +712,7 @@ final class RemoteFilesystemTest extends TestCase
     public function testARenameOutOfPortasOwnStateUploadsIt(): void
     {
         $files = $this->files();
-        $this->cache->write('.porta/notes.md', 'notes');
+        $this->cache->write('.porta/notes.md', content: 'notes');
 
         $files->rename($this->cache->path('.porta/notes.md'), $this->cache->path('notes.md'));
 
@@ -821,11 +821,11 @@ final class RemoteFilesystemTest extends TestCase
         $files = $this->files();
         $files->listed($this->cache->dir);
         $files->available($this->cache->path('README.md'), static fn (): null => null);
-        $this->server->write('README.md', "# edited there, longer\n");
-        $this->server->write('NEW.md', 'new');
+        $this->server->write('README.md', content: "# edited there, longer\n");
+        $this->server->write('NEW.md', content: 'new');
         \unlink($this->server->path('empty.txt'));
         new Filesystem()->remove($this->server->path('src'));
-        $this->server->write('src', 'now a file');
+        $this->server->write('src', content: 'now a file');
 
         $files->poll();
 
@@ -840,7 +840,7 @@ final class RemoteFilesystemTest extends TestCase
     public function testADirectoryThatWasAFileHereBecomesOne(): void
     {
         $files = $this->files();
-        $this->cache->write('src', 'stale');
+        $this->cache->write('src', content: 'stale');
 
         $files->listed($this->cache->dir);
 
@@ -853,7 +853,7 @@ final class RemoteFilesystemTest extends TestCase
         $files->listed($this->cache->dir);
         $files->available($this->cache->path('README.md'), static fn (): null => null);
         $this->transport->hold = true;
-        $files->dumpFile($this->cache->path('README.md'), 'mine, not sent yet');
+        $files->dumpFile($this->cache->path('README.md'), content: 'mine, not sent yet');
         \unlink($this->server->path('README.md'));
         $files->poll();
         $this->transport->held = \array_reverse($this->transport->held); // the listing answers before the upload
@@ -871,7 +871,7 @@ final class RemoteFilesystemTest extends TestCase
         $files->available($this->cache->path('README.md'), function (): never {
             $this->fail('the server\'s copy is stale by the time it lands');
         });
-        $files->dumpFile($this->cache->path('README.md'), 'mine');
+        $files->dumpFile($this->cache->path('README.md'), content: 'mine');
 
         $this->transport->release();
 
@@ -883,8 +883,8 @@ final class RemoteFilesystemTest extends TestCase
         $files = $this->files();
         $files->listed($this->cache->dir);
         $files->listed($this->cache->path('src'));
-        $this->buffers->open($this->cache->path('src/App.php'), '');
-        $this->buffers->open('/elsewhere/x.php', '');
+        $this->buffers->open($this->cache->path('src/App.php'), content: '');
+        $this->buffers->open('/elsewhere/x.php', content: '');
         $this->transport->calls = [];
         $this->transport->hold = true;
 
@@ -898,7 +898,7 @@ final class RemoteFilesystemTest extends TestCase
     public function testThePollWalksTheListedDirectoriesInTurn(): void
     {
         foreach (['a', 'b', 'c', 'd'] as $dir) {
-            $this->server->write($dir.'/x', '');
+            $this->server->write($dir.'/x', content: '');
         }
         $files = $this->files();
         $files->listed($this->cache->dir);
@@ -926,11 +926,11 @@ final class RemoteFilesystemTest extends TestCase
     public function testWithNoPluginForTheSchemeItSaysSoOnceAndTheCacheIsAllThereIs(): void
     {
         $files = $this->noTransport();
-        $this->cache->write('a.txt', 'kept');
+        $this->cache->write('a.txt', content: 'kept');
 
         $this->assertFalse($files->listed($this->cache->dir));
         $this->assertSame('', $this->flashText($this->status), 'at boot no plugin has activated yet: not news');
-        $files->dumpFile($this->cache->path('a.txt'), 'changed');
+        $files->dumpFile($this->cache->path('a.txt'), content: 'changed');
         $files->mkdir($this->cache->path('d'));
         $files->rename($this->cache->path('d'), $this->cache->path('e'));
         $files->remove($this->cache->path('e'));
@@ -968,7 +968,7 @@ final class RemoteFilesystemTest extends TestCase
             $this->fail('nothing can fetch it');
         }));
         $this->assertSame('No enabled plugin opens ftp:// projects', $this->flashText($this->status));
-        $this->status->flash('', 0.0);
+        $this->status->flash('', seconds: 0.0);
         $files->available($this->cache->path('README.md'), static fn (): null => null);
         $this->assertSame('', $this->flashText($this->status), 'said once');
     }
@@ -1012,7 +1012,7 @@ final class RemoteFilesystemTest extends TestCase
     {
         $files = $this->files(spec: null);
 
-        $files->dumpFile($this->cache->path('a.txt'), 'x');
+        $files->dumpFile($this->cache->path('a.txt'), content: 'x');
         $files->poll();
 
         $this->assertTrue($files->listed($this->cache->dir));
@@ -1034,9 +1034,9 @@ final class RemoteFilesystemTest extends TestCase
         $this->assertStringContainsString('This project is on example.org', (string) $cell->tooltip);
 
         $this->transport->hold = true;
-        $files->dumpFile($this->cache->path('a.txt'), 'a');
+        $files->dumpFile($this->cache->path('a.txt'), content: 'a');
         $this->assertSame('1 change on its way to example.org', $files->statusCells()[0]->tooltip);
-        $files->dumpFile($this->cache->path('b.txt'), 'b');
+        $files->dumpFile($this->cache->path('b.txt'), content: 'b');
         [$cell] = $files->statusCells();
         $this->assertSame(Glyphs::REMOTE.' example.org '.Glyphs::UPLOADING.'2', $cell->text);
         $this->assertSame(StatusTone::Active, $cell->tone);
@@ -1049,17 +1049,17 @@ final class RemoteFilesystemTest extends TestCase
     {
         $files = $this->files();
         $this->transport->fail['a.txt'] = 'denied';
-        $files->dumpFile($this->cache->path('a.txt'), 'x');
+        $files->dumpFile($this->cache->path('a.txt'), content: 'x');
         $refused = "This project is on example.org: a file is fetched when you open it, and sent back when you save it\n1 change the server refused is only here — save it again to retry\ndenied";
         $this->assertSame(StatusTone::Accent, $files->statusCells()[0]->tone);
         $this->assertSame($refused, $files->statusCells()[0]->tooltip);
 
         $files->listed($this->cache->dir);
         $files->available($this->cache->path('README.md'), static fn (): null => null);
-        $files->dumpFile($this->cache->path('d.txt'), 'd');
+        $files->dumpFile($this->cache->path('d.txt'), content: 'd');
         $this->assertSame(StatusTone::Accent, $files->statusCells()[0]->tone, 'whatever else the server says yes to, that change is still not there');
 
-        $files->dumpFile($this->cache->path('a.txt'), 'x');
+        $files->dumpFile($this->cache->path('a.txt'), content: 'x');
         $this->assertSame(StatusTone::Subtle, $files->statusCells()[0]->tone, 'until it is');
     }
 
@@ -1085,16 +1085,16 @@ final class RemoteFilesystemTest extends TestCase
     public function testTheFirstPollWalksTheWholeTreeIntoTheCache(): void
     {
         for ($i = 0; $i < 600; ++$i) {
-            $this->server->write('deep/many/f'.$i.'.php', '');
+            $this->server->write('deep/many/f'.$i.'.php', content: '');
         }
-        $this->server->write('deep/one/Needle.php', '<?php');
-        $this->server->write('vendor/lib/Skipped.php', '<?php');
-        $this->server->write('.porta/state.json', '{}');
-        $this->server->write('.porta.json', '{"theirs": true}');
+        $this->server->write('deep/one/Needle.php', content: '<?php');
+        $this->server->write('vendor/lib/Skipped.php', content: '<?php');
+        $this->server->write('.porta/state.json', content: '{}');
+        $this->server->write('.porta.json', content: '{"theirs": true}');
         $this->transport->walks = true;
         $index = new FileIndex($this->cache->dir);
         $files = $this->filesWith($index);
-        $this->assertSame([], $index->search('Needle', 5), 'nothing here yet — and the index has looked');
+        $this->assertSame([], $index->search('Needle', limit: 5), 'nothing here yet — and the index has looked');
 
         $files->poll();
         $this->assertFileDoesNotExist($this->cache->path('deep/one/Needle.php'), 'the last of 600+ lands on a later turn');
@@ -1102,7 +1102,7 @@ final class RemoteFilesystemTest extends TestCase
 
         $this->assertSame('', \file_get_contents($this->cache->path('deep/one/Needle.php')), 'a placeholder');
         $this->assertFalse($files->available($this->cache->path('deep/one/Needle.php'), static fn (): null => null), 'fetched when opened');
-        $this->assertSame(['deep/one/Needle.php'], $index->search('Needle', 5), 'and go-to-file sees it');
+        $this->assertSame(['deep/one/Needle.php'], $index->search('Needle', limit: 5), 'and go-to-file sees it');
         $this->assertDirectoryDoesNotExist($this->cache->path('vendor'), 'what go-to-file leaves out is not walked');
         $this->assertFileDoesNotExist($this->cache->path('.porta/state.json'));
         $this->assertFileDoesNotExist($this->cache->path('.porta.json'), 'the server\'s settings are not this copy\'s');
@@ -1119,7 +1119,7 @@ final class RemoteFilesystemTest extends TestCase
         $this->transport->walks = true;
         $files = $this->files();
         $this->transport->hold = true;
-        $files->dumpFile($this->cache->path('README.md'), 'mine');
+        $files->dumpFile($this->cache->path('README.md'), content: 'mine');
         $files->poll();
         $this->transport->held = \array_reverse($this->transport->held);
 
@@ -1195,7 +1195,7 @@ final class RemoteFilesystemTest extends TestCase
      */
     public function testWhatWasLearntSurvivesARestart(): void
     {
-        $this->server->write('deep/one/A.php', '<?php');
+        $this->server->write('deep/one/A.php', content: '<?php');
         $this->transport->walks = true;
         $files = $this->files();
         $files->poll();
@@ -1241,14 +1241,14 @@ final class RemoteFilesystemTest extends TestCase
         $this->assertSame(StatusTone::Accent, $files->statusCells()[0]->tone);
         $this->transport->down = 'Network is unreachable';
 
-        $files->dumpFile($this->cache->path('README.md'), 'written offline');
-        $files->dumpFile($this->cache->path('more.txt'), 'and more');
+        $files->dumpFile($this->cache->path('README.md'), content: 'written offline');
+        $files->dumpFile($this->cache->path('more.txt'), content: 'and more');
 
         $this->assertSame('Lost example.org (Network is unreachable) — trying again', $this->flashText($this->status));
         $this->assertSame(2, $files->pending(), 'nothing dropped');
         $cell = $files->statusCells()[0];
         $this->assertSame('⇅ example.org '.Glyphs::OUT_OF_TOUCH.' ⇡2', $cell->text);
-        $this->server->write('THEIRS.md', 'made there meanwhile');
+        $this->server->write('THEIRS.md', content: 'made there meanwhile');
         $this->assertStringContainsString('Cannot reach example.org: Network is unreachable — trying again', (string) $cell->tooltip);
         $calls = \count($this->transport->calls);
         $files->poll();
@@ -1273,7 +1273,7 @@ final class RemoteFilesystemTest extends TestCase
         $files->listed($this->cache->dir);
         $this->assertSame(0, $files->pending());
         $this->assertSame(StatusTone::Accent, $files->statusCells()[0]->tone, 'down, with nothing on its way, is still news');
-        $files->dumpFile($this->cache->path('a.txt'), 'a');
+        $files->dumpFile($this->cache->path('a.txt'), content: 'a');
         $menu = $files->statusCells()[0]->menu;
         $this->assertNotNull($menu);
         $this->assertTrue($menu()[0]->enabled(), 'Reconnect Now, while down');
@@ -1292,7 +1292,7 @@ final class RemoteFilesystemTest extends TestCase
     {
         $files = $this->files();
         $this->transport->down = FakeRemoteTransport::LOGIN_DENIED;
-        $files->dumpFile($this->cache->path('a.txt'), 'a');
+        $files->dumpFile($this->cache->path('a.txt'), content: 'a');
         $this->assertStringContainsString('example.org refused the login: login denied — right-click to try again', (string) $files->statusCells()[0]->tooltip);
         $calls = \count($this->transport->calls);
 
@@ -1312,16 +1312,16 @@ final class RemoteFilesystemTest extends TestCase
         $files->listed($this->cache->dir);
         $files->available($this->cache->path('README.md'), static fn (): null => null);
         // The bytes reach the server; the answer is lost with the link.
-        $this->server->write('README.md', 'landed, and longer');
+        $this->server->write('README.md', content: 'landed, and longer');
         $this->transport->fail['README.md'] = 'Broken pipe';
         $this->transport->down = 'Broken pipe';
 
-        $files->dumpFile($this->cache->path('README.md'), 'landed, and longer');
+        $files->dumpFile($this->cache->path('README.md'), content: 'landed, and longer');
         $this->transport->down = null;
         $this->await(static fn (): bool => 0 === $files->pending(), what: 'the retry');
 
         $this->assertSame('Back in touch with example.org', $this->flashText($this->status), 'no "changed on the server"');
-        $files->dumpFile($this->cache->path('README.md'), 'saved again');
+        $files->dumpFile($this->cache->path('README.md'), content: 'saved again');
         $this->assertSame('saved again', \file_get_contents($this->server->path('README.md')), 'its stamp was adopted: the next save is no conflict');
         $files->close();
     }
@@ -1331,9 +1331,9 @@ final class RemoteFilesystemTest extends TestCase
         $files = $this->files();
         $files->listed($this->cache->dir);
         $files->available($this->cache->path('README.md'), static fn (): null => null);
-        $this->server->write('README.md', 'theirs, different');
+        $this->server->write('README.md', content: 'theirs, different');
 
-        $files->dumpFile($this->cache->path('README.md'), 'mine');
+        $files->dumpFile($this->cache->path('README.md'), content: 'mine');
 
         $this->assertSame('README.md changed on the server — save again to overwrite', $this->flashText($this->status));
     }
@@ -1368,7 +1368,7 @@ final class RemoteFilesystemTest extends TestCase
         $this->transport->fail['docs'] = 'Permission denied';
         $this->transport->fail['docs/guide.md'] = 'Permission denied';
         $files->mkdir($this->cache->path('docs'));
-        $files->dumpFile($this->cache->path('docs/guide.md'), 'mine');
+        $files->dumpFile($this->cache->path('docs/guide.md'), content: 'mine');
 
         $files->poll();
         $files->listed($this->cache->dir);
@@ -1381,7 +1381,7 @@ final class RemoteFilesystemTest extends TestCase
     {
         $files = $this->files();
         $this->transport->down = 'Network is unreachable';
-        $files->dumpFile($this->cache->path('a.txt'), 'a');
+        $files->dumpFile($this->cache->path('a.txt'), content: 'a');
         $files->close();
         $calls = \count($this->transport->calls);
 
@@ -1400,8 +1400,8 @@ final class RemoteFilesystemTest extends TestCase
         $this->assertSame(0, $files->pending());
         $this->assertSame("# hi\n", \file_get_contents($this->server->path('COPY.md')));
         $this->assertSame("# hi\n", \file_get_contents($this->cache->path('COPY.md')));
-        $this->server->write('COPY.md', 'theirs, and longer');
-        $files->dumpFile($this->cache->path('COPY.md'), 'mine');
+        $this->server->write('COPY.md', content: 'theirs, and longer');
+        $files->dumpFile($this->cache->path('COPY.md'), content: 'mine');
         $this->assertSame('COPY.md changed on the server — save again to overwrite', $this->flashText($this->status), 'its stamp was kept: a change of theirs is seen, not overwritten');
     }
 
@@ -1411,7 +1411,7 @@ final class RemoteFilesystemTest extends TestCase
         $files->listed($this->cache->dir);
         $files->listed($this->cache->path('src'));
         $this->transport->fail['src/New.php'] = 'Permission denied';
-        $files->dumpFile($this->cache->path('src/New.php'), 'mine');
+        $files->dumpFile($this->cache->path('src/New.php'), content: 'mine');
         new Filesystem()->remove($this->server->path('src'));
 
         $files->listed($this->cache->dir);
@@ -1455,13 +1455,13 @@ final class RemoteFilesystemTest extends TestCase
         $this->transport->throws = new \LogicException('a bug in a transport');
 
         try {
-            $files->dumpFile($this->cache->path('a.txt'), 'a');
+            $files->dumpFile($this->cache->path('a.txt'), content: 'a');
             $this->fail('what threw is still heard');
         } catch (\LogicException $error) {
             $this->assertSame('a bug in a transport', $error->getMessage());
         }
 
-        $files->dumpFile($this->cache->path('b.txt'), 'b');
+        $files->dumpFile($this->cache->path('b.txt'), content: 'b');
         $this->assertSame('b', \file_get_contents($this->server->path('b.txt')), 'the queue moved on');
     }
 
@@ -1485,11 +1485,11 @@ final class RemoteFilesystemTest extends TestCase
     public function testARefusedChangeRenamedStaysUnsent(): void
     {
         $files = $this->files();
-        $this->server->write('a.txt', 'theirs');
+        $this->server->write('a.txt', content: 'theirs');
         $files->listed($this->cache->dir);
         $files->available($this->cache->path('a.txt'), static fn (): null => null);
         $this->transport->fail['a.txt'] = 'Disk quota exceeded';
-        $files->dumpFile($this->cache->path('a.txt'), 'mine');
+        $files->dumpFile($this->cache->path('a.txt'), content: 'mine');
         $this->assertSame(1, $files->pending());
 
         $files->rename($this->cache->path('a.txt'), $this->cache->path('b.txt'));

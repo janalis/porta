@@ -57,7 +57,7 @@ final class CompletionDetailTest extends TestCase
     private function itemsOf(EditorCompletion $completion): array
     {
         /** @var list<CompletionItem> */
-        return Probe::get($completion, 'items');
+        return Probe::get($completion, property: 'items');
     }
 
     /** @param non-empty-string $label */
@@ -291,7 +291,7 @@ final class CompletionDetailTest extends TestCase
         // on resolve. A resolve that answers with no type must leave the type
         // that is already there.
         $completion = $this->completion();
-        $completion->show([$this->item('name', 'string')]);
+        $completion->show([$this->item('name', detail: 'string')]);
 
         $this->answer(0, documentation: 'The name of the thing.');
 
@@ -306,7 +306,7 @@ final class CompletionDetailTest extends TestCase
         // already" is not a reason to stop asking.
         $completion = $this->completion();
 
-        $completion->show([$this->item('name', 'string')]);
+        $completion->show([$this->item('name', detail: 'string')]);
 
         $this->assertSame(['name'], \array_column($this->asked, 'label'));
     }

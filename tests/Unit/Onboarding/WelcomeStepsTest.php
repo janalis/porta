@@ -79,7 +79,7 @@ final class WelcomeStepsTest extends TestCase
             $this->project->dir,
             new PluginInstaller($this->project->dir, null, new Translator('en'), null),
             $this->plugins,
-            new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
+            new Notifier(new StatusBarWidget(), TestTui::create(80, rows: 24)),
             $this->lifecycle,
             commands: $this->commands,
         );
@@ -105,7 +105,7 @@ final class WelcomeStepsTest extends TestCase
     private function declare(string $plugin, array $via = [[PluginApi::INSTALL_SELF, 'install']]): void
     {
         $api = $this->plugins->api($plugin, $this->project->dir, new PluginSettings($this->project->dir, []));
-        $api->registerCommand('install', 'Install it', function () use ($plugin): void {
+        $api->registerCommand('install', label: 'Install it', handler: function () use ($plugin): void {
             $this->commandsRun[] = $plugin.':install';
         });
         $api->registerInstaller('symfony-lsp', fn (): bool => $this->available, $via);
@@ -122,7 +122,7 @@ final class WelcomeStepsTest extends TestCase
     /** Ship an executable mago in the project, flipping both tool steps' target. */
     private function withMago(): void
     {
-        \chmod($this->project->write('vendor/bin/mago', "#!/bin/sh\nexit 0\n"), permissions: 0o755);
+        \chmod($this->project->write('vendor/bin/mago', content: "#!/bin/sh\nexit 0\n"), permissions: 0o755);
     }
 
     /** A source with one real backend, i.e. highlighting is configured. */

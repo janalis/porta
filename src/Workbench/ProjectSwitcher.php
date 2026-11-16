@@ -136,7 +136,7 @@ final readonly class ProjectSwitcher
      */
     public function openRemote(): void
     {
-        $this->editor->openPrompt($this->translator->trans('Open remote project (user@host:/path or URL)'), '', function (string $location): void {
+        $this->editor->openPrompt($this->translator->trans('Open remote project (user@host:/path or URL)'), initial: '', onSubmit: function (string $location): void {
             $location = \trim($location);
             if ('' !== $location) {
                 $this->openPath($location);
@@ -147,7 +147,7 @@ final readonly class ProjectSwitcher
     /** Ask for a path, and open it if it is one. */
     private function prompt(): void
     {
-        $this->editor->openPrompt($this->translator->trans('Open project (path)'), '', function (string $path): void {
+        $this->editor->openPrompt($this->translator->trans('Open project (path)'), initial: '', onSubmit: function (string $path): void {
             $path = \trim($path);
             if ('' !== $path) {
                 $this->openPath($path);

@@ -66,7 +66,7 @@ final class FileCommandsTest extends TestCase
             $buffers = Services::resolve($ide, BufferManager::class);
             $commands = Services::resolve($ide, CommandRegistry::class);
 
-            $buffers->open('a.php', "<?php\n");
+            $buffers->open('a.php', content: "<?php\n");
 
             $this->assertFalse($commands->isEnabled('open_as_text'), 'a plain text buffer is not a viewer — the predicate must be exactly true===..., not its negation');
         } finally {
@@ -81,7 +81,7 @@ final class FileCommandsTest extends TestCase
             $buffers = Services::resolve($ide, BufferManager::class);
             $commands = Services::resolve($ide, CommandRegistry::class);
 
-            $buffers->openPane('a.png', 'image', payload: null);
+            $buffers->openPane('a.png', paneId: 'image', payload: null);
 
             $this->assertTrue($commands->isEnabled('open_as_text'), 'a viewer tab must enable open_as_text');
         } finally {
@@ -111,7 +111,7 @@ final class FileCommandsTest extends TestCase
             // A text tab to hop back to: with none open the guard correctly
             // refuses and flashes instead, which is a different case.
             Services::resolve($ide, BufferService::class)->openFile($this->project->path('a.php'));
-            $buffers->openPane('a.png', 'image', payload: null);
+            $buffers->openPane('a.png', paneId: 'image', payload: null);
 
             $commands->run('ide_open_project');
 
@@ -136,7 +136,7 @@ final class FileCommandsTest extends TestCase
         try {
             $buffers = Services::resolve($ide, BufferManager::class);
             Services::resolve($ide, BufferService::class)->openFile($this->project->path('a.php'));
-            $buffers->openPane('a.png', 'image', payload: null);
+            $buffers->openPane('a.png', paneId: 'image', payload: null);
 
             Services::resolve($ide, CommandRegistry::class)->run('ide_open_remote_project');
 

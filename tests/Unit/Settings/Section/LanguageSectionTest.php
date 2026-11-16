@@ -109,7 +109,7 @@ final class LanguageSectionTest extends TestCase
         $this->assertSame(SettingsScopeRow::KEY, $rows[0]->key, 'the chooser leads');
         $this->assertSame('project', $rows[0]->value, 'showing the pinned scope');
 
-        $this->assertTrue($section->change('lang:php', SettingsScopeRow::KEY, 'global'));
+        $this->assertTrue($section->change('lang:php', SettingsScopeRow::KEY, value: 'global'));
 
         $this->assertSame('global', $section->rows('lang:php')[0]->value, 'and the choice took');
     }
@@ -136,7 +136,7 @@ final class LanguageSectionTest extends TestCase
     {
         $project = new TempProject();
         $status = new StatusBarWidget();
-        $this->section($project->dir, $status)->change('lang:php', 'lspServer', 'phpactor');
+        $this->section($project->dir, $status)->change('lang:php', key: 'lspServer', value: 'phpactor');
 
         // A fallthrough into changeLanguageSetting() would reject 'lspServer'
         // as an unknown key and overwrite this flash with its own.
@@ -147,7 +147,7 @@ final class LanguageSectionTest extends TestCase
     {
         $project = new TempProject();
         $status = new StatusBarWidget();
-        $this->section($project->dir, $status)->change('lang:php', 'debugAdapter', 'php-debug-adapter');
+        $this->section($project->dir, $status)->change('lang:php', key: 'debugAdapter', value: 'php-debug-adapter');
 
         // Same fallthrough risk as the lspServer case, on the other guard.
         $this->assertStringNotContainsString('Unknown language setting', $this->flashText($status));

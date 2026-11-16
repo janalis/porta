@@ -65,7 +65,7 @@ final class DapClientTest extends TestCase
         });
         $this->await(static function () use (&$events): bool {
             return \in_array('reverseRejected', \array_column($events, 0), strict: true);
-        }, 2.0);
+        }, timeout: 2.0);
         $this->assertContains('reverseRejected', \array_column($events, 0), 'the client rejected the reverse request');
 
         $verified = null;
@@ -184,8 +184,8 @@ final class DapClientTest extends TestCase
 
         // Close stderr behind the client's back: stop() must skip the now-dead
         // resource in its pipe-closing loop and still close the others cleanly.
-        $transport = Probe::get($client, 'transport');
-        $stderr = Probe::get($transport, 'stderr');
+        $transport = Probe::get($client, property: 'transport');
+        $stderr = Probe::get($transport, property: 'stderr');
         if (\is_resource($stderr)) {
             \fclose($stderr);
         }
@@ -216,7 +216,7 @@ final class DapClientTest extends TestCase
         });
         $this->await(static function () use (&$answer): bool {
             return null !== $answer;
-        }, 2.0);
+        }, timeout: 2.0);
         $this->assertSame('the debug adapter stopped', $answer);
         $this->assertSame([], \array_filter($log, static fn (string $line): bool => \str_contains($line, 'write to debug adapter failed')), 'nothing was written');
 
@@ -224,7 +224,7 @@ final class DapClientTest extends TestCase
         $client->request('initialize'); // stopped, no callback → silent no-op
 
         // The internal reader guard: a drain after stop must not error.
-        $transport = Probe::get($client, 'transport');
+        $transport = Probe::get($client, property: 'transport');
         Probe::invoke($transport, 'drainStdout', static function (): void {}, null);
         $this->assertFalse($client->isRunning());
     }

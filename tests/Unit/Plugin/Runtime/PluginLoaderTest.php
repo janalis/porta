@@ -141,9 +141,9 @@ final class PluginLoaderTest extends TestCase
      */
     public function testAnIdeActionInActivateFailsTheLoadLiveAsAtBoot(): void
     {
-        $project = new TempProject(['.porta/plugins/eager/porta.php' => $this->pluginSource('eager', '$api->flash("hello");')]);
+        $project = new TempProject(['.porta/plugins/eager/porta.php' => $this->pluginSource('eager', extra: '$api->flash("hello");')]);
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
-        $manager->wireRuntime(TestPluginRuntime::create(new CodeEditorWidget(), new StatusBarWidget(), TestTui::create(80, 24)));
+        $manager->wireRuntime(TestPluginRuntime::create(new CodeEditorWidget(), new StatusBarWidget(), TestTui::create(80, rows: 24)));
 
         $warning = new PluginLoader($project->dir, null, new PluginSettings($project->dir, []))->loadFile($project->path('.porta/plugins/eager/porta.php'), $manager);
 
@@ -156,7 +156,7 @@ final class PluginLoaderTest extends TestCase
     public function testAPluginWhoseRequirementFailedToStartIsNotLoaded(): void
     {
         $project = new TempProject([
-            '.porta/plugins/zbase/porta.php' => $this->pluginSource('zbase', 'throw new \\RuntimeException("no database");'),
+            '.porta/plugins/zbase/porta.php' => $this->pluginSource('zbase', extra: 'throw new \\RuntimeException("no database");'),
             '.porta/plugins/app/porta.php' => $this->pluginSource('app'),
             '.porta/plugins/app/composer.json' => '{"extra":{"porta":{"requires":["zbase"]}}}',
         ]);
@@ -239,7 +239,7 @@ final class PluginLoaderTest extends TestCase
             'core/.keep' => '',
             'tr/porta.php' => $this->pluginSource('tr'),
             'tr/translations/messages.fr.xlf' => $catalog,
-            'broken/porta.php' => $this->pluginSource('broken', "throw new \\RuntimeException('boom');"),
+            'broken/porta.php' => $this->pluginSource('broken', extra: "throw new \\RuntimeException('boom');"),
             'broken/translations/messages.fr.xlf' => \str_replace(search: 'Hello from %name%', replace: 'Broken %name%', subject: $catalog),
         ]);
         $translator = new Translator('fr', $project->path('core'));
@@ -308,8 +308,8 @@ final class PluginLoaderTest extends TestCase
             '.porta/plugins/a-parse-error/porta.php' => '<?php this is not php at all {{{',
             '.porta/plugins/b-wrong-return/porta.php' => '<?php return 42;',
             '.porta/plugins/c bad name/porta.php' => $this->pluginSource('fine'),
-            '.porta/plugins/d-activate-throws/porta.php' => $this->pluginSource('thrower', 'throw new \RuntimeException("mid-activate");'),
-            '.porta/plugins/e-action-during-activate/porta.php' => $this->pluginSource('eager', '$api->flash("too soon");'),
+            '.porta/plugins/d-activate-throws/porta.php' => $this->pluginSource('thrower', extra: 'throw new \RuntimeException("mid-activate");'),
+            '.porta/plugins/e-action-during-activate/porta.php' => $this->pluginSource('eager', extra: '$api->flash("too soon");'),
             '.porta/plugins/good/porta.php' => $this->pluginSource('good'),
         ]);
         $manager = $this->load($project);
@@ -417,7 +417,7 @@ final class PluginLoaderTest extends TestCase
         new PluginLoader($project->dir, $global->dir, new PluginSettings($project->dir, []), $embedded->dir, [], ['own'])->loadInto($manager);
 
         // Each is named by its folder; which COPY won shows in what it registered.
-        $labels = \array_column(Probe::get($manager, 'commands'), 'label', 'id');
+        $labels = \array_column(Probe::get($manager, property: 'commands'), 'label', 'id');
         $this->assertSame('Hello from demo', $labels['hello'] ?? $labels['demo:hello'] ?? null, 'the project copy loads (and shadowed the embedded one)');
         $this->assertTrue($manager->hasPlugin('extra'));
         $this->assertContains('Hello from globalextra', $labels, 'the global copy loads (and shadowed the embedded one)');
@@ -509,7 +509,7 @@ final class PluginLoaderTest extends TestCase
         $manager = $this->load($project);
 
         $this->assertTrue($manager->hasPlugin('shadowy'), 'it still loads — this is a warning, not a refusal');
-        $warnings = self::renderAll($manager->warnings, ' | ');
+        $warnings = self::renderAll($manager->warnings, glue: ' | ');
         $this->assertStringContainsString('Plugin "shadowy" vendors symfony/clock, which Porta ships', $warnings);
         $this->assertStringNotContainsString('vend/lib', $warnings, 'a package Porta does not ship is not its business');
     }
@@ -544,7 +544,7 @@ final class PluginLoaderTest extends TestCase
         $manager = $this->load($project);
 
         $this->assertTrue($manager->hasPlugin('legacy'));
-        $warnings = self::renderAll($manager->warnings, ' | ');
+        $warnings = self::renderAll($manager->warnings, glue: ' | ');
         $this->assertStringContainsString('Plugin "legacy" still has a plugin.json', $warnings);
         $this->assertStringContainsString('autoload.psr-4', $warnings, 'and says where the fields went');
     }

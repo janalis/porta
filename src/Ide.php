@@ -558,7 +558,7 @@ final class Ide
         // rethrow-and-fail policy underneath the same run() path.
         $ownsErrorHandler = null === EventLoop::getErrorHandler();
         if ($ownsErrorHandler) {
-            $errors = DiagnosticLog::forRoot($this->rootDir, 'error');
+            $errors = DiagnosticLog::forRoot($this->rootDir, channel: 'error');
             EventLoop::setErrorHandler(function (\Throwable $error) use ($errors): void {
                 $errors->append(\sprintf("%s: %s\n%s", $error::class, $error->getMessage(), $error->getTraceAsString()));
                 $this->notifier->error($this->service(Translator::class)->trans('Internal error — details in .porta/error.log'));
@@ -629,7 +629,7 @@ final class Ide
             if (!$openedInitial && null !== $this->initialFile) {
                 $this->openFile($this->initialFile);
                 if (null !== $this->initialLine) {
-                    $this->editor->jumpTo($this->initialLine - 1, 0); // CLI lines are 1-based
+                    $this->editor->jumpTo($this->initialLine - 1, utf16Col: 0); // CLI lines are 1-based
                 }
                 $this->tui->setFocus($this->editorArea->widget());
                 $openedInitial = true;

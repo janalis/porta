@@ -61,7 +61,7 @@ final class CodeLensController implements EditorCodeLensHandler
     {
         $path = $this->editor->getFilePath();
         /** @var array<string, mixed>|bool|null $capability LSP: boolean or a CodeLensOptions object */
-        $capability = $this->lsp->serverCapability($path, 'codeLensProvider');
+        $capability = $this->lsp->serverCapability($path, name: 'codeLensProvider');
         if (null === $path || null === $capability || false === $capability) {
             return;
         }
@@ -74,8 +74,8 @@ final class CodeLensController implements EditorCodeLensHandler
         $this->lsp->requestAll(
             'textDocument/codeLens',
             ['textDocument' => ['uri' => Uri::fromPath($path)]],
-            'codeLensProvider',
-            function (mixed $result, ?array $error, string $owner) use ($path, $generation): void {
+            capability: 'codeLensProvider',
+            onResult: function (mixed $result, ?array $error, string $owner) use ($path, $generation): void {
                 // A stale answer after a buffer switch belongs to a file that is
                 // no longer on screen; painting it would label the wrong code.
                 if (!\is_array($result) || $path !== $this->editor->getFilePath() || $generation !== $this->generation) {
@@ -116,9 +116,9 @@ final class CodeLensController implements EditorCodeLensHandler
         // happens to share the name.
         $this->lsp->requestTo(
             $lens['owner'],
-            'workspace/executeCommand',
-            ['command' => $lens['command'], 'arguments' => $lens['arguments']],
-            function (mixed $result, ?array $error) use ($title): void {
+            method: 'workspace/executeCommand',
+            params: ['command' => $lens['command'], 'arguments' => $lens['arguments']],
+            onResult: function (mixed $result, ?array $error) use ($title): void {
                 $this->notifier->flash(
                     null !== $error
                         ? $this->translator->trans('"%title%" failed: %message%', ['%title%' => $title, '%message%' => (string) ($error['message'] ?? 'unknown error')])

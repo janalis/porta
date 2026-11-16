@@ -23,8 +23,8 @@ final class SettingsRowLayoutTest extends TestCase
                 $this->row('Skip images larger than'),
                 $this->row('Tab width'),
             ],
-            80,
-            Density::Roomy,
+            width: 80,
+            density: Density::Roomy,
         );
 
         $this->assertSame(\mb_strwidth('Skip images larger than'), $layout->label);
@@ -45,11 +45,11 @@ final class SettingsRowLayoutTest extends TestCase
 
         // Each hint exactly fills what a third (a comfortable label) leaves
         // it, so one column more for the label would cost it a line.
-        $this->assertSame(40, SettingsRowLayout::measure([$label, $text], 120, Density::Roomy, details: ['', \str_repeat('x', times: 49)])->label, 'a third');
-        $this->assertSame(28, SettingsRowLayout::measure([$label, $bool], 60, Density::Roomy, details: ['', \str_repeat('x', times: 20)])->label, 'a comfortable label, past a third');
-        $this->assertSame(20, SettingsRowLayout::measure([$label], 40, Density::Roomy)->label, 'never past half');
-        $this->assertSame(40, SettingsRowLayout::measure([$label, $text], 120, Density::Roomy)->label, 'no hint to pay for it, toward half: never past forty');
-        $this->assertSame(40, SettingsRowLayout::measure([$label], 150, Density::Roomy)->label, 'a third of a wide pane: never past forty');
+        $this->assertSame(40, SettingsRowLayout::measure([$label, $text], width: 120, density: Density::Roomy, details: ['', \str_repeat('x', times: 49)])->label, 'a third');
+        $this->assertSame(28, SettingsRowLayout::measure([$label, $bool], width: 60, density: Density::Roomy, details: ['', \str_repeat('x', times: 20)])->label, 'a comfortable label, past a third');
+        $this->assertSame(20, SettingsRowLayout::measure([$label], width: 40, density: Density::Roomy)->label, 'never past half');
+        $this->assertSame(40, SettingsRowLayout::measure([$label, $text], width: 120, density: Density::Roomy)->label, 'no hint to pay for it, toward half: never past forty');
+        $this->assertSame(40, SettingsRowLayout::measure([$label], width: 150, density: Density::Roomy)->label, 'a third of a wide pane: never past forty');
     }
 
     /**
@@ -63,13 +63,16 @@ final class SettingsRowLayoutTest extends TestCase
 
         $this->assertSame(
             38,
-            SettingsRowLayout::measure([$label, $text], 101, Density::Roomy, details: ['', 'missing · install it yourself, or set its path above'])->label,
+            SettingsRowLayout::measure([$label, $text], width: 101, density: Density::Roomy, details: ['', 'missing · install it yourself, or set its path above'])->label,
             'two lines of hint either way',
         );
-        $this->assertSame(36, SettingsRowLayout::measure([$label, $text], 101, Density::Roomy, details: ['', \str_repeat('x', times: 32).' y'])->label, 'thirty-four columns of hint kept on one line');
+        $this->assertSame(36, SettingsRowLayout::measure([$label, $text], width: 101, density: Density::Roomy, details: [
+            '',
+            \str_repeat('x', times: 32).' y',
+        ])->label, 'thirty-four columns of hint kept on one line');
 
         $button = new SettingsRow('a', 'Go', SettingsRowKind::Action, \str_repeat('caption ', times: 6), false);
-        $boxes = SettingsRowLayout::measure([$this->row(\str_repeat('word ', times: 10)), $button], 70, Density::Roomy);
+        $boxes = SettingsRowLayout::measure([$this->row(\str_repeat('word ', times: 10)), $button], width: 70, density: Density::Roomy);
         $this->assertSame([34, FieldBox::MAX_WIDTH], [$boxes->label, $boxes->control], 'no further than the boxes keep their width');
     }
 
@@ -83,11 +86,11 @@ final class SettingsRowLayoutTest extends TestCase
         $text = new SettingsRow('t', 'Binary', SettingsRowKind::Text, '', false);
         $hint = ['', \str_repeat('x', times: 13)];
 
-        $squeezed = SettingsRowLayout::measure([$label, $text], 66, Density::Roomy, details: $hint);
+        $squeezed = SettingsRowLayout::measure([$label, $text], width: 66, density: Density::Roomy, details: $hint);
         $this->assertSame(22, $squeezed->label, 'a third: thirteen columns beside the field, where seven cut it');
         $this->assertSame([\str_repeat('x', times: 13)], $squeezed->details[1]);
-        $this->assertSame(21, SettingsRowLayout::measure([$label, $text], 64, Density::Roomy, details: $hint)->label, 'twelve columns are enough');
-        $under = SettingsRowLayout::measure([$label, $text], 63, Density::Roomy, details: $hint);
+        $this->assertSame(21, SettingsRowLayout::measure([$label, $text], width: 64, density: Density::Roomy, details: $hint)->label, 'twelve columns are enough');
+        $under = SettingsRowLayout::measure([$label, $text], width: 63, density: Density::Roomy, details: $hint);
         $this->assertSame([false, true], $under->under, 'a third would not keep it beside the field either: under it');
         $this->assertSame([\str_repeat('x', times: 13)], $under->details[1]);
     }
@@ -95,20 +98,20 @@ final class SettingsRowLayoutTest extends TestCase
     /** A narrow pane still leaves a usable column rather than collapsing to nothing. */
     public function testAVeryNarrowPaneKeepsAMinimumColumn(): void
     {
-        $layout = SettingsRowLayout::measure([$this->row(\str_repeat('x', times: 40))], 6, Density::Roomy);
+        $layout = SettingsRowLayout::measure([$this->row(\str_repeat('x', times: 40))], width: 6, density: Density::Roomy);
 
         $this->assertSame(8, $layout->label);
     }
 
     public function testAnEmptyPageMeasuresNothing(): void
     {
-        $this->assertSame(0, SettingsRowLayout::measure([], 80, Density::Roomy)->label);
+        $this->assertSame(0, SettingsRowLayout::measure([], width: 80, density: Density::Roomy)->label);
     }
 
     /** Wide characters count by display width, not by code point. */
     public function testWideCharactersMeasureByDisplayWidth(): void
     {
-        $layout = SettingsRowLayout::measure([$this->row('好好好')], 80, Density::Roomy);
+        $layout = SettingsRowLayout::measure([$this->row('好好好')], width: 80, density: Density::Roomy);
 
         $this->assertSame(6, $layout->label, 'three double-width glyphs occupy six columns');
     }
@@ -129,8 +132,8 @@ final class SettingsRowLayoutTest extends TestCase
                 new SettingsRow('c', 'C', SettingsRowKind::Text, '', false, fieldset: 'Server'),
                 new SettingsRow('d', 'D', SettingsRowKind::Action, 'Go', false),
             ],
-            80,
-            Density::Roomy,
+            width: 80,
+            density: Density::Roomy,
         );
 
         $this->assertTrue($layout->boxed);
@@ -146,8 +149,8 @@ final class SettingsRowLayoutTest extends TestCase
                 new SettingsRow('a', 'A label', SettingsRowKind::Choice, 'x', false, ['x'], fieldset: 'G'),
                 new SettingsRow('b', 'B', SettingsRowKind::Bool, true, false, fieldset: 'G'),
             ],
-            20,
-            Density::Roomy,
+            width: 20,
+            density: Density::Roomy,
         );
 
         $this->assertFalse($layout->boxed, '20 columns less the label leaves no room for a box');
@@ -163,8 +166,8 @@ final class SettingsRowLayoutTest extends TestCase
                 new SettingsRow('a', 'A', SettingsRowKind::Choice, 'x', false, ['x'], fieldset: 'G'),
                 new SettingsRow('b', 'B', SettingsRowKind::Bool, true, false, fieldset: 'G'),
             ],
-            80,
-            Density::Compact,
+            width: 80,
+            density: Density::Compact,
         );
 
         $this->assertFalse($layout->boxed);
@@ -177,8 +180,8 @@ final class SettingsRowLayoutTest extends TestCase
         $this->assertSame('demo (project)'."\u{200E}", SettingsRowLayout::label('demo (project)', BaseDirection::Rtl));
         $this->assertSame('שרת LSP', SettingsRowLayout::label('שרת LSP', BaseDirection::Rtl), 'a letter closes its own run');
         $this->assertSame('demo (project)', SettingsRowLayout::label('demo (project)', BaseDirection::Ltr), 'unmirrored, never');
-        $this->assertSame(14, SettingsRowLayout::measure([$this->row('demo (project)')], 80, Density::Roomy, BaseDirection::Rtl)->label);
-        $this->assertSame(14, SettingsRowLayout::measure([$this->row('demo (project)')], 80, Density::Roomy)->label);
+        $this->assertSame(14, SettingsRowLayout::measure([$this->row('demo (project)')], width: 80, density: Density::Roomy, direction: BaseDirection::Rtl)->label);
+        $this->assertSame(14, SettingsRowLayout::measure([$this->row('demo (project)')], width: 80, density: Density::Roomy)->label);
     }
 
     /**
@@ -188,7 +191,7 @@ final class SettingsRowLayoutTest extends TestCase
      */
     public function testALongLabelWrapsInItsColumnAndGrowsItsItem(): void
     {
-        $layout = SettingsRowLayout::measure([$this->row('Runtime indexing (trusts the workspace: the server executes its PHP)'), $this->row('Short')], 40, Density::Roomy);
+        $layout = SettingsRowLayout::measure([$this->row('Runtime indexing (trusts the workspace: the server executes its PHP)'), $this->row('Short')], width: 40, density: Density::Roomy);
 
         $this->assertTrue($layout->boxed);
         $this->assertSame(20, $layout->label);
@@ -200,9 +203,9 @@ final class SettingsRowLayoutTest extends TestCase
     /** A narrow column widens to its longest word, so a wrap never splits one — up to two thirds of the pane. */
     public function testANarrowColumnWidensToItsLongestWord(): void
     {
-        $this->assertSame(10, SettingsRowLayout::measure([$this->row('Auto-pairs on')], 18, Density::Roomy)->label, 'half of 18 is nine; the word is ten');
-        $this->assertSame([['Auto-pairs', 'on']], SettingsRowLayout::measure([$this->row('Auto-pairs on')], 18, Density::Roomy)->labels);
-        $this->assertSame(12, SettingsRowLayout::measure([$this->row(\str_repeat('x', times: 20).' y')], 18, Density::Roomy)->label, 'never past two thirds');
+        $this->assertSame(10, SettingsRowLayout::measure([$this->row('Auto-pairs on')], width: 18, density: Density::Roomy)->label, 'half of 18 is nine; the word is ten');
+        $this->assertSame([['Auto-pairs', 'on']], SettingsRowLayout::measure([$this->row('Auto-pairs on')], width: 18, density: Density::Roomy)->labels);
+        $this->assertSame(12, SettingsRowLayout::measure([$this->row(\str_repeat('x', times: 20).' y')], width: 18, density: Density::Roomy)->label, 'never past two thirds');
     }
 
     /**
@@ -213,7 +216,7 @@ final class SettingsRowLayoutTest extends TestCase
     public function testAnOverWideWordBreaksAtAHyphenOrSlash(): void
     {
         $text = new SettingsRow('k', 'Binary', SettingsRowKind::Text, '', false);
-        $wrap = static fn (string $detail): ?array => SettingsRowLayout::measure([$text], 50, Density::Roomy, details: [$detail])->details[0];
+        $wrap = static fn (string $detail): ?array => SettingsRowLayout::measure([$text], width: 50, density: Density::Roomy, details: [$detail])->details[0];
 
         // 50 less the chrome, the six-column label, the field and ` · `: thirteen.
         $this->assertSame(['comma-', 'separated; *'], $wrap('comma-separated; *'));
@@ -223,21 +226,21 @@ final class SettingsRowLayoutTest extends TestCase
         $this->assertSame(['-abcdefghijkl', 'mnop'], $wrap('-abcdefghijklmnop'), 'a leading hyphen leaves nothing before it to keep');
         $this->assertSame(
             [['abc-', 'defghijklmno', 'p']],
-            SettingsRowLayout::measure([$this->row('abc-defghijklmnop')], 18, Density::Roomy)->labels,
+            SettingsRowLayout::measure([$this->row('abc-defghijklmnop')], width: 18, density: Density::Roomy)->labels,
             'a label too: its column stops at two thirds of the pane',
         );
     }
 
     public function testWrappedTextCentresOnTheValueRow(): void
     {
-        $boxed = SettingsRowLayout::measure([$this->row('A')], 80, Density::Roomy);
+        $boxed = SettingsRowLayout::measure([$this->row('A')], width: 80, density: Density::Roomy);
         $this->assertSame([1, 1, 0, 0], [$boxed->top(1), $boxed->top(2), $boxed->top(3), $boxed->top(5)]);
-        $this->assertSame([3], SettingsRowLayout::measure([$this->row('Fits on two lines here')], 34, Density::Roomy)->heights, 'two lines from the value row still fit the box');
+        $this->assertSame([3], SettingsRowLayout::measure([$this->row('Fits on two lines here')], width: 34, density: Density::Roomy)->heights, 'two lines from the value row still fit the box');
 
-        $oneRow = SettingsRowLayout::measure([$this->row('Wraps onto three lines')], 80, Density::Compact);
+        $oneRow = SettingsRowLayout::measure([$this->row('Wraps onto three lines')], width: 80, density: Density::Compact);
         $this->assertSame([0, 0], [$oneRow->top(1), $oneRow->top(3)]);
         $this->assertSame([1], $oneRow->heights);
-        $this->assertSame([3], SettingsRowLayout::measure([$this->row('Wraps onto three lines')], 20, Density::Compact)->heights, 'the one-row form grows too');
+        $this->assertSame([3], SettingsRowLayout::measure([$this->row('Wraps onto three lines')], width: 20, density: Density::Compact)->heights, 'the one-row form grows too');
     }
 
     /** The detail wraps in what its control leaves, and the item grows to hold it. */
@@ -246,13 +249,13 @@ final class SettingsRowLayoutTest extends TestCase
         $text = new SettingsRow('k', 'Binary', SettingsRowKind::Text, '', false);
         $detail = \implode(' ', \array_fill(0, count: 30, value: 'word'));
 
-        $layout = SettingsRowLayout::measure([$text], 80, Density::Roomy, details: [$detail]);
+        $layout = SettingsRowLayout::measure([$text], width: 80, density: Density::Roomy, details: [$detail]);
 
         // 80 less the chrome, the six-column label, the 24-column field and ` · `.
         $this->assertSame([\implode(' ', \array_fill(0, count: 8, value: 'word'))], \array_unique(\array_slice($layout->details[0] ?? [], offset: 0, length: 3)));
         $this->assertCount(4, $layout->details[0] ?? []);
         $this->assertSame([5], $layout->heights, 'four lines from the value row, the box\'s second');
-        $this->assertSame([[]], SettingsRowLayout::measure([$text], 80, Density::Roomy)->details, 'no detail, no lines');
+        $this->assertSame([[]], SettingsRowLayout::measure([$text], width: 80, density: Density::Roomy)->details, 'no detail, no lines');
     }
 
     /**
@@ -266,20 +269,20 @@ final class SettingsRowLayoutTest extends TestCase
         $text = new SettingsRow('k', 'Binary', SettingsRowKind::Text, '', false);
         $detail = 'a hint far too long to fit';
 
-        $under = SettingsRowLayout::measure([$text], 48, Density::Roomy, details: [$detail]);
+        $under = SettingsRowLayout::measure([$text], width: 48, density: Density::Roomy, details: [$detail]);
         $this->assertSame([['a hint far too long to fit']], $under->details, 'eleven columns beside it, thirty-five under it');
         $this->assertSame([true], $under->under);
         $this->assertSame([4], $under->heights, 'the box, then the line under it');
-        $beside = SettingsRowLayout::measure([$text], 49, Density::Roomy, details: [$detail]);
+        $beside = SettingsRowLayout::measure([$text], width: 49, density: Density::Roomy, details: [$detail]);
         $this->assertSame([['a hint far', 'too long to', 'fit']], $beside->details, 'twelve beside it are enough');
         $this->assertSame([false], $beside->under);
         $this->assertSame([4], $beside->heights, 'three lines from the value row');
 
-        $cut = SettingsRowLayout::measure([$text], 24, Density::Roomy, details: [$detail]);
+        $cut = SettingsRowLayout::measure([$text], width: 24, density: Density::Roomy, details: [$detail]);
         $this->assertSame([null], $cut->details, 'eleven columns under it: cut');
         $this->assertSame([false], $cut->under);
         $this->assertSame([3], $cut->heights);
-        $this->assertSame([['a hint far', 'too long to', 'fit']], SettingsRowLayout::measure([$text], 25, Density::Roomy, details: [$detail])->details, 'twelve under it');
+        $this->assertSame([['a hint far', 'too long to', 'fit']], SettingsRowLayout::measure([$text], width: 25, density: Density::Roomy, details: [$detail])->details, 'twelve under it');
     }
 
     /** A checkbox leaves the detail what IT is drawn in, not the page's control width. */
@@ -288,14 +291,14 @@ final class SettingsRowLayoutTest extends TestCase
         $bool = $this->row('Binary');
         $detail = \str_repeat('x', times: 22).' y';
 
-        $this->assertSame([\str_repeat('x', times: 22), 'y'], SettingsRowLayout::measure([$bool], 40, Density::Roomy, details: [$detail])->details[0], 'boxed: five columns');
-        $this->assertSame([\str_repeat('x', times: 22).' y'], SettingsRowLayout::measure([$bool], 40, Density::Compact, details: [$detail])->details[0], 'one row: three');
+        $this->assertSame([\str_repeat('x', times: 22), 'y'], SettingsRowLayout::measure([$bool], width: 40, density: Density::Roomy, details: [$detail])->details[0], 'boxed: five columns');
+        $this->assertSame([\str_repeat('x', times: 22).' y'], SettingsRowLayout::measure([$bool], width: 40, density: Density::Compact, details: [$detail])->details[0], 'one row: three');
     }
 
     /** A button whose caption is its own label leaves the label column blank. */
     public function testAButtonCaptionedWithItsLabelLeavesTheColumnBlank(): void
     {
-        $layout = SettingsRowLayout::measure([new SettingsRow('k', 'Install phpstan', SettingsRowKind::Action, false, false)], 80, Density::Roomy);
+        $layout = SettingsRowLayout::measure([new SettingsRow('k', 'Install phpstan', SettingsRowKind::Action, false, false)], width: 80, density: Density::Roomy);
 
         $this->assertSame([['']], $layout->labels);
     }

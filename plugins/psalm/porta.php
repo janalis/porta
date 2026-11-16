@@ -28,7 +28,7 @@ return new class('psalm', 'psalm') extends AbstractAnalyzerPlugin {
     public function activate(PluginApi $api): void
     {
         $this->registerBinarySetting($api);
-        $this->registerAnalysis($api, 'Psalm', ['ctrl+alt+p']);
+        $this->registerAnalysis($api, display: 'Psalm', keys: ['ctrl+alt+p']);
     }
 
     protected function command(string $binary, string $file): array

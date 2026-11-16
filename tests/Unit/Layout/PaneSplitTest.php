@@ -88,7 +88,7 @@ final class PaneSplitTest extends TestCase
         });
         $this->tui->setFocus($this->rest);
 
-        $this->terminal->simulateResize(56, 10);
+        $this->terminal->simulateResize(56, rows: 10);
         $this->frame($this->tui);
         $split->fit();
         $this->frame($this->tui);
@@ -100,7 +100,7 @@ final class PaneSplitTest extends TestCase
         $this->assertSame($this->rest, $this->tui->getFocus(), 'the keys stay where they were');
 
         $split->fit();
-        $this->terminal->simulateResize(57, 10);
+        $this->terminal->simulateResize(57, rows: 10);
         $this->frame($this->tui);
         $split->fit();
         $this->frame($this->tui);
@@ -178,7 +178,7 @@ final class PaneSplitTest extends TestCase
     {
         $split = $this->split(columns: 200, share: 150); // the lead 29: one over its least
 
-        $this->terminal->simulateResize(70, 10);
+        $this->terminal->simulateResize(70, rows: 10);
         $this->frame($this->tui);
         $split->fit();
         $this->frame($this->tui);
@@ -188,7 +188,7 @@ final class PaneSplitTest extends TestCase
         $this->assertSame(28, $split->leadColumns(70), 'and said so to whatever lines up with it');
         $this->assertSame(15, $split->percent(), 'the share kept is still the user\'s');
 
-        $this->terminal->simulateResize(200, 10);
+        $this->terminal->simulateResize(200, rows: 10);
         $this->frame($this->tui);
         $split->fit();
         $this->frame($this->tui);
@@ -200,7 +200,7 @@ final class PaneSplitTest extends TestCase
     {
         $split = $this->split(columns: 200, share: 900);
 
-        $this->terminal->simulateResize(70, 10);
+        $this->terminal->simulateResize(70, rows: 10);
         $this->frame($this->tui);
         $split->fit();
         $this->frame($this->tui);

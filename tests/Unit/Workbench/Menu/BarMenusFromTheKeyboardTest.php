@@ -57,13 +57,13 @@ final class BarMenusFromTheKeyboardTest extends TestCase
     public function testASymbolCrumbGoesToItsLine(): void
     {
         $this->open('src/Kernel.php');
-        $this->editor()->jumpTo(5, 0);
+        $this->editor()->jumpTo(5, utf16Col: 0);
         $this->frame($this->tui());
         $this->tui()->handleInput(self::ALT_HOME);
         $trail = $this->breadcrumbs()->trail();
         $symbol = \array_key_first(\array_filter($trail, static fn (array $crumb): bool => null !== $crumb['line']));
         $this->assertNotNull($symbol, 'the trail names the class around the caret');
-        $this->editor()->jumpTo(0, 0);
+        $this->editor()->jumpTo(0, utf16Col: 0);
 
         $this->menu()->runItem($symbol);
 
@@ -102,7 +102,7 @@ final class BarMenusFromTheKeyboardTest extends TestCase
         $this->tui()->handleInput(self::ALT_END);
 
         $this->assertSame(['main ▾', 'Checkout…', 'New Branch…', '', 'server ▾', 'Reconnect Now'], $this->labels(), 'each cell\'s items under its own text');
-        $items = Probe::get($this->menu(), 'items');
+        $items = Probe::get($this->menu(), property: 'items');
         $this->assertFalse($items[0]->enabled(), 'a header names, it does not run');
         $this->menu()->runItem(5);
         $this->assertSame(['Reconnect Now'], $ran);
@@ -128,7 +128,7 @@ final class BarMenusFromTheKeyboardTest extends TestCase
     /** @return list<string> */
     private function labels(): array
     {
-        return \array_map(static fn (MenuItem $item): string => $item->label, Probe::get($this->menu(), 'items'));
+        return \array_map(static fn (MenuItem $item): string => $item->label, Probe::get($this->menu(), property: 'items'));
     }
 
     private function menu(): ContextMenu

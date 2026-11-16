@@ -94,7 +94,7 @@ final class AbstractToolPluginTest extends TestCase
         $this->status = new StatusBarWidget();
         $this->buffers = new BufferManager();
         $this->editor = new CodeEditorWidget();
-        $tui = TestTui::create(100, 24);
+        $tui = TestTui::create(100, rows: 24);
         $manager->wireRuntime(new PluginRuntime(
             new Notifier($this->status, $tui),
             new Translator($locale),
@@ -157,15 +157,15 @@ final class AbstractToolPluginTest extends TestCase
 
         // …while it names something that runs. A stale path — a teammate's,
         // riding in on a committed .porta.json — falls through to what works.
-        $api->changeSetting('binary', '/opt/custom/demo');
+        $api->changeSetting('binary', value: '/opt/custom/demo');
         $this->assertSame($project->dir.'/vendor/bin/demo', $plugin->callBinary($api), 'a configured path that is not there does not shadow the shim');
 
         // Tier 3: no setting, no shim → PATH (nothing named this exists there).
-        $api->changeSetting('binary', '');
+        $api->changeSetting('binary', value: '');
         $this->assertSame($project->dir.'/vendor/bin/demo', $plugin->callBinary($api), 'clearing the setting falls back');
 
         $missingApi = $this->api();
-        $missing = $this->plugin('demo', 'porta-nonexistent-tool');
+        $missing = $this->plugin('demo', binaryName: 'porta-nonexistent-tool');
         $this->activate($missing, $missingApi);
         $this->assertNull($missing->callBinary($missingApi));
     }
@@ -223,7 +223,7 @@ final class AbstractToolPluginTest extends TestCase
         $this->project = $project;
 
         $api = $this->api();
-        $plugin = $this->plugin('demo', 'demo', BinarySearch::PathOnly);
+        $plugin = $this->plugin('demo', binaryName: 'demo', search: BinarySearch::PathOnly);
         $this->activate($plugin, $api);
 
         $this->assertNull($plugin->callBinary($api), 'a PATH-only tool ignores vendor/bin — composer never installs it');
@@ -232,7 +232,7 @@ final class AbstractToolPluginTest extends TestCase
     public function testAcquireFlashesWhatIsWrongAndReleasesTheSlot(): void
     {
         $api = $this->api();
-        $missing = $this->plugin('demo', 'porta-nonexistent-tool');
+        $missing = $this->plugin('demo', binaryName: 'porta-nonexistent-tool');
         $this->activate($missing, $api);
 
         $this->assertNull($missing->callAcquire($api));
@@ -274,7 +274,7 @@ final class AbstractToolPluginTest extends TestCase
     public function testPathOnlyToolsGetTheirOwnMissingMessage(): void
     {
         $api = $this->api();
-        $plugin = $this->plugin('demo', 'porta-nonexistent-tool', BinarySearch::PathOnly);
+        $plugin = $this->plugin('demo', binaryName: 'porta-nonexistent-tool', search: BinarySearch::PathOnly);
         $this->activate($plugin, $api);
         $plugin->callAcquire($api);
 
@@ -289,12 +289,12 @@ final class AbstractToolPluginTest extends TestCase
         $this->assertNull($plugin->callActiveFile($api), 'no tab, no file');
         $this->assertStringContainsString('demo: open a PHP file first', $this->flashText($this->status));
 
-        $this->buffers->open('/p/notes.txt', 'text');
+        $this->buffers->open('/p/notes.txt', content: 'text');
         $this->assertNull($plugin->callActiveFile($api), 'wrong extension');
 
-        $this->buffers->open('/p/a.php', "<?php\n");
+        $this->buffers->open('/p/a.php', content: "<?php\n");
         $this->assertSame('/p/a.php', $plugin->callActiveFile($api));
-        $this->assertNull($plugin->callActiveFile($api, '.rs'), 'the extension is a parameter');
+        $this->assertNull($plugin->callActiveFile($api, extension: '.rs'), 'the extension is a parameter');
     }
 
     public function testAvailabilityPredicateFollowsTheBinary(): void
@@ -305,7 +305,7 @@ final class AbstractToolPluginTest extends TestCase
         $api = $this->api();
         $found = $this->plugin();
         $this->activate($found, $api);
-        $missing = $this->plugin('demo', 'porta-nonexistent-tool');
+        $missing = $this->plugin('demo', binaryName: 'porta-nonexistent-tool');
 
         $this->assertTrue($found->callAvailable($api)());
         $this->assertFalse($missing->callAvailable($api)());
@@ -317,8 +317,8 @@ final class AbstractToolPluginTest extends TestCase
         $plugin = $this->plugin();
 
         $plugin->callRegisterBinarySetting($api, [['composer', 'vendor/demo']]);
-        $api->registerSetting('autoRun', 'Run on save', 'bool', false);
-        $plugin->callRegisterToggle($api, 'toggle-on-save', 'Demo: Toggle on Save', 'autoRun', 'demo on save');
+        $api->registerSetting('autoRun', label: 'Run on save', kind: 'bool', default: false);
+        $plugin->callRegisterToggle($api, id: 'toggle-on-save', label: 'Demo: Toggle on Save', key: 'autoRun', phrase: 'demo on save');
         $this->manager->commit($api);
 
         $settings = $api->bufferedSettings();
@@ -345,7 +345,7 @@ final class AbstractToolPluginTest extends TestCase
     public function testPathOnlyHintNamesThePathBinary(): void
     {
         $api = $this->api();
-        $this->plugin('demo', 'demo_lsp', BinarySearch::PathOnly)->callRegisterBinarySetting($api, [['brew', 'demo']]);
+        $this->plugin('demo', binaryName: 'demo_lsp', search: BinarySearch::PathOnly)->callRegisterBinarySetting($api, [['brew', 'demo']]);
 
         $this->assertSame('empty = demo_lsp on PATH', $api->bufferedSettings()[0]['hint']);
         $this->assertSame('demo_lsp binary', $api->bufferedSettings()[0]['label']);
@@ -369,7 +369,7 @@ final class AbstractToolPluginTest extends TestCase
         $plugin->activate($api);
         $this->manager->commit($api);
 
-        $plugin->callRunAndApply($api, ['--version'], 'demo: done');
+        $plugin->callRunAndApply($api, ['--version'], success: 'demo: done');
 
         $this->assertStringContainsString('demo could not be started', $this->flashText($this->status));
         // The slot is free: acquire() answers with the binary rather than
@@ -382,16 +382,16 @@ final class AbstractToolPluginTest extends TestCase
         $api = $this->api();
         $plugin = $this->plugin();
 
-        $plugin->callFlashExit($api, 0, 'demo: fixed a.php');
+        $plugin->callFlashExit($api, code: 0, success: 'demo: fixed a.php');
         $this->assertStringContainsString('demo: fixed a.php', $this->flashText($this->status));
-        $plugin->callFlashExit($api, 3, 'demo: fixed a.php');
+        $plugin->callFlashExit($api, code: 3, success: 'demo: fixed a.php');
         $this->assertStringContainsString('demo: exited with code 3', $this->flashText($this->status));
 
-        $plugin->callFlashCount($api, 0, 'issue', '/p/a.php');
+        $plugin->callFlashCount($api, count: 0, noun: 'issue', file: '/p/a.php');
         $this->assertStringContainsString('demo: no issues in a.php', $this->flashText($this->status));
-        $plugin->callFlashCount($api, 1, 'error', '/p/a.php');
+        $plugin->callFlashCount($api, count: 1, noun: 'error', file: '/p/a.php');
         $this->assertStringContainsString('demo: 1 error in a.php', $this->flashText($this->status));
-        $plugin->callFlashCount($api, 4, 'error', '/p/a.php');
+        $plugin->callFlashCount($api, count: 4, noun: 'error', file: '/p/a.php');
         $this->assertStringContainsString('demo: 4 errors in a.php', $this->flashText($this->status));
     }
 
@@ -410,7 +410,7 @@ final class AbstractToolPluginTest extends TestCase
         $api = $this->api(locale: 'fr');
         $plugin = $this->plugin();
 
-        $plugin->callFlashCount($api, 0, 'issue', '/p/a.php');
+        $plugin->callFlashCount($api, count: 0, noun: 'issue', file: '/p/a.php');
 
         $flash = $this->flashText($this->status);
         $this->assertStringNotContainsString('%', $flash, 'no placeholder survived into the sentence');
@@ -429,12 +429,12 @@ final class AbstractToolPluginTest extends TestCase
             }
         };
 
-        $api->registerSetting('languages', 'Languages', 'text', '');
+        $api->registerSetting('languages', label: 'Languages', kind: 'text', default: '');
         $this->manager->commit($api);
 
         $this->assertSame('viewer', $plugin->name());
         $this->assertSame([], $plugin->callClaimed($api), 'an unset claim list claims nothing');
-        $api->changeSetting('languages', ' rust , go ,, zig ');
+        $api->changeSetting('languages', value: ' rust , go ,, zig ');
         $this->assertSame(['rust', 'go', 'zig'], $plugin->callClaimed($api), 'trimmed, blanks dropped');
     }
 
@@ -449,7 +449,7 @@ final class AbstractToolPluginTest extends TestCase
         $plugin->activate($api);
         $path = $this->project->path('a.php');
         \file_put_contents($path, data: "formatted\n");
-        $buffer = $this->buffers->open($path, "before\n");
+        $buffer = $this->buffers->open($path, content: "before\n");
         $this->buffers->setActive($path);
         $this->editor->showDocument($path, $buffer->document); // documentText() reads the widget's
 
@@ -477,7 +477,7 @@ final class AbstractToolPluginTest extends TestCase
         $api = $this->api();
         $plugin = $this->plugin();
         $path = $this->project->path('a.php');
-        $buffer = $this->buffers->open($path, "text\n");
+        $buffer = $this->buffers->open($path, content: "text\n");
         $this->buffers->setActive($path);
         $this->editor->showDocument($path, $buffer->document);
 

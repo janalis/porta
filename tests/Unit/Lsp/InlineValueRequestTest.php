@@ -30,7 +30,7 @@ final class InlineValueRequestTest extends TestCase
     {
         $pool = FakeLspPool::create('/p', $this->activeFile = new FixedActiveFile(), fn (): FakeLspClient => $this->client = new FakeLspClient($capabilities));
         $this->activeFile->set('/p/a.php');
-        $pool->notifyDidOpen('/p/a.php', "<?php\n\$count = 41;\n", 'php', 1);
+        $pool->notifyDidOpen('/p/a.php', text: "<?php\n\$count = 41;\n", languageId: 'php', version: 1);
 
         return new InlineValueRequest($pool);
     }
@@ -42,7 +42,7 @@ final class InlineValueRequestTest extends TestCase
         // error, for nothing.
         $request = $this->request([]);
 
-        $request->forRange('/p/a.php', 0, 40, frameId: 1, stoppedLine: 12, deliver: static function (array $lookups): never {
+        $request->forRange('/p/a.php', fromLine: 0, toLine: 40, frameId: 1, stoppedLine: 12, deliver: static function (array $lookups): never {
             self::fail('a server that cannot answer should not be asked');
         });
 
@@ -56,7 +56,7 @@ final class InlineValueRequestTest extends TestCase
         // reached the line.
         $request = $this->request(['inlineValueProvider' => true]);
 
-        $request->forRange('/p/a.php', 3, 44, frameId: 7, stoppedLine: 12, deliver: static function (array $lookups): void {});
+        $request->forRange('/p/a.php', fromLine: 3, toLine: 44, frameId: 7, stoppedLine: 12, deliver: static function (array $lookups): void {});
 
         // The WHOLE payload, not a field at a time: this is a wire shape, and
         // a server reads every key of it. A range missing its `character`, or a
@@ -87,7 +87,7 @@ final class InlineValueRequestTest extends TestCase
         $request = $this->request(['inlineValueProvider' => true]);
         $seen = [];
 
-        $request->forRange('/p/a.php', 0, 40, frameId: 1, stoppedLine: 12, deliver: static function (array $lookups) use (&$seen): void {
+        $request->forRange('/p/a.php', fromLine: 0, toLine: 40, frameId: 1, stoppedLine: 12, deliver: static function (array $lookups) use (&$seen): void {
             $seen = $lookups;
         });
         $this->client->requests[0]['respond']([[
@@ -107,7 +107,7 @@ final class InlineValueRequestTest extends TestCase
         $request = $this->request(['inlineValueProvider' => true]);
         $delivered = false;
 
-        $request->forRange('/p/a.php', 0, 40, frameId: 1, stoppedLine: 12, deliver: static function (array $lookups) use (&$delivered): void {
+        $request->forRange('/p/a.php', fromLine: 0, toLine: 40, frameId: 1, stoppedLine: 12, deliver: static function (array $lookups) use (&$delivered): void {
             $delivered = true;
         });
         $this->client->requests[0]['respond']([]);

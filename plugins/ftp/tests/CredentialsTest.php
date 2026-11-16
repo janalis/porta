@@ -18,7 +18,8 @@ final class CredentialsTest extends TestCase
         $spec = new RemoteSpec('ftp', 'example.org', '/', 'me');
 
         $this->assertNull(Credentials::find($home->dir, $spec));
-        $file = Credentials::store($home->dir, $spec, 'pa ss"w\\rd');
+        // @mago-expect lint:no-literal-password -- a test fixture value, named since mago 1.60
+        $file = Credentials::store($home->dir, $spec, password: 'pa ss"w\\rd');
 
         $this->assertSame(Credentials::file($home->dir, $spec), $file);
         $this->assertSame($file, Credentials::find($home->dir, $spec));
@@ -36,12 +37,14 @@ final class CredentialsTest extends TestCase
     {
         $home = new TempProject(['.porta' => 'a file, not a directory']);
 
-        $this->assertNull(Credentials::store($home->dir, new RemoteSpec('ftp', 'h', '/', 'me'), 'x'));
+        // @mago-expect lint:no-literal-password -- a test fixture value, named since mago 1.60
+        $this->assertNull(Credentials::store($home->dir, new RemoteSpec('ftp', 'h', '/', 'me'), password: 'x'));
 
         $readOnly = new TempProject(['.porta/ftp/.keep' => '']);
         \chmod($readOnly->path('.porta/ftp'), permissions: 0o500);
         try {
-            $this->assertNull(Credentials::store($readOnly->dir, new RemoteSpec('ftp', 'h', '/', 'me'), 'x'));
+            // @mago-expect lint:no-literal-password -- a test fixture value, named since mago 1.60
+            $this->assertNull(Credentials::store($readOnly->dir, new RemoteSpec('ftp', 'h', '/', 'me'), password: 'x'));
         } finally {
             \chmod($readOnly->path('.porta/ftp'), permissions: 0o700);
         }

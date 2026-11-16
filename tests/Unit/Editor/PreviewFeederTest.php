@@ -37,7 +37,7 @@ final class PreviewFeederTest extends TestCase
         $panes->register($this->pane, static fn (string $path): string => '');
         $this->scheduler = new FakeScheduler();
         $this->editor = new CodeEditorWidget();
-        $this->tui = TestTui::create(80, 24);
+        $this->tui = TestTui::create(80, rows: 24);
         $this->feeder = new PreviewFeeder($this->buffers, $panes, $this->scheduler, $this->tui, $this->editor);
     }
 
@@ -128,11 +128,11 @@ final class PreviewFeederTest extends TestCase
         $this->feeder->watch();
         $this->assertSame(['follow:0,0'], $this->follows(), 'where the caret starts');
 
-        $buffer->document->setCursor(2, 1);
+        $buffer->document->setCursor(2, col: 1);
         $this->feeder->watch();
-        $buffer->document->setCursor(2, 3); // the same line: nothing new to show
+        $buffer->document->setCursor(2, col: 3); // the same line: nothing new to show
         $this->feeder->watch();
-        $buffer->document->setCursor(3, 2);
+        $buffer->document->setCursor(3, col: 2);
         $this->feeder->watch();
 
         $this->assertSame(['follow:0,0', 'follow:2,1', 'follow:3,2'], $this->follows());
@@ -141,7 +141,7 @@ final class PreviewFeederTest extends TestCase
     public function testAHiddenPreviewFollowsNothing(): void
     {
         $buffer = $this->open("# one\n\ntwo\n", PreviewMode::Editor);
-        $buffer->document->setCursor(2, 0);
+        $buffer->document->setCursor(2, col: 0);
         $this->feeder->watch();
 
         $this->assertSame([], $this->follows());
@@ -156,15 +156,15 @@ final class PreviewFeederTest extends TestCase
         $revisions = static fn (TestPane ...$panes): array => \array_map(static fn (TestPane $pane): int => $pane->getRenderRevision(), $panes);
         $before = $revisions($this->pane, $this->flank);
 
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
         $this->feeder->watch();
         $this->assertSame($before, $revisions($this->pane, $this->flank), 'a frame with the view where it was repaints nothing');
-        $this->assertFalse((bool) Probe::get($this->tui, 'renderRequested'), 'and asks for no frame');
+        $this->assertFalse((bool) Probe::get($this->tui, property: 'renderRequested'), 'and asks for no frame');
 
         $this->editor->scrollBy(5);
         $this->feeder->watch();
         $this->assertSame([$before[0] + 1, $before[1] + 1], $revisions($this->pane, $this->flank), 'a scroll repaints both');
-        $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'), 'and asks for the frame that sees the headers the editor pins as it renders');
+        $this->assertTrue((bool) Probe::get($this->tui, property: 'renderRequested'), 'and asks for the frame that sees the headers the editor pins as it renders');
     }
 
     /**
@@ -188,7 +188,7 @@ final class PreviewFeederTest extends TestCase
 
         // The caret at the long line's end, in a pane shorter than the line:
         // the view scrolls INTO it, its top line unmoved.
-        $this->editor->getDocument()->setCursor(0, 400);
+        $this->editor->getDocument()->setCursor(0, col: 400);
         $this->editor->render(new RenderContext(80, 3));
         $this->assertSame(0, $this->editor->viewport()->vScroll, 'still the long line on top');
         $this->assertGreaterThan(0, $this->editor->viewport()->vScrollSegment, 'some of its rows scrolled away');

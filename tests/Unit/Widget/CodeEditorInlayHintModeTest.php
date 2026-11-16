@@ -24,7 +24,7 @@ final class CodeEditorInlayHintModeTest extends TestCase
     private function editor(InlayHintMode $mode): CodeEditorWidget
     {
         $editor = new CodeEditorWidget();
-        $editor->openFile('status.php', "<?php\nenum StatusTone: string\n{\n}\n");
+        $editor->openFile('status.php', content: "<?php\nenum StatusTone: string\n{\n}\n");
         $editor->setFocused(true);
         $editor->display->setInlayHints($mode);
         // What phpantom sends after a class name, as the mapper keeps it.
@@ -48,13 +48,13 @@ final class CodeEditorInlayHintModeTest extends TestCase
         // hint painted before it forces a scroll.
         $scrollFor = static function (InlayHintMode $mode): int {
             $editor = new CodeEditorWidget();
-            $editor->openFile('a.php', "<?php\n\$x = foo();\n");
+            $editor->openFile('a.php', content: "<?php\n\$x = foo();\n");
             $editor->display->setInlayHints($mode);
-            $editor->getDocument()->setCursor(1, 11);
+            $editor->getDocument()->setCursor(1, col: 11);
             $editor->decorations->setInlayHints([1 => [new InlayHint(11, ': int')]]);
             $editor->render(new RenderContext(20, 10));
 
-            return Probe::get($editor, 'scroll')->hScroll;
+            return Probe::get($editor, property: 'scroll')->hScroll;
         };
 
         $this->assertGreaterThan(0, $scrollFor(InlayHintMode::Inline), 'the painted hint widens the line the caret follows');
@@ -79,7 +79,7 @@ final class CodeEditorInlayHintModeTest extends TestCase
         $this->assertNull($editor->mouse->inlayTooltipAt(1, $gutter + 15, $editor->viewport()), 'not the colon just past it');
         $this->assertNull($editor->mouse->inlayTooltipAt(1, $gutter + 1, $editor->viewport()), 'not `enum`, which has no hint');
         $this->assertNull($editor->mouse->inlayTooltipAt(1, $gutter + 40, $editor->viewport()), 'not past the end of the line');
-        $this->assertNull($editor->mouse->inlayTooltipAt(1, 1, $editor->viewport()), 'not the gutter');
+        $this->assertNull($editor->mouse->inlayTooltipAt(1, relCol: 1, vp: $editor->viewport()), 'not the gutter');
         $this->assertNull($editor->mouse->inlayTooltipAt(5, $gutter + 7, $editor->viewport()), 'not below the last line');
     }
 }

@@ -257,19 +257,19 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
 
         match (true) {
             null !== $this->editing && null !== $this->editField => $this->handleTextInput($data, $kb, $this->editing, $this->editField),
-            $kb->matches($data, 'exit_view') => $this->fire($this->onExit),
-            $kb->matches($data, 'focus_next_pane') => $this->fire($this->onFocusNext),
-            $kb->matches($data, 'find_setting') => $this->events?->dispatch(new SettingsSearchRequested()),
-            $kb->matches($data, 'show_keybindings') => $this->events?->dispatch(new SettingsSectionRequested('keybindings')),
-            $kb->matches($data, 'reset_row') => $this->resetSelected(),
-            SettingsRowKind::Choice === $kind && $kb->matches($data, 'open_list') => $this->openChoice(),
+            $kb->matches($data, action: 'exit_view') => $this->fire($this->onExit),
+            $kb->matches($data, action: 'focus_next_pane') => $this->fire($this->onFocusNext),
+            $kb->matches($data, action: 'find_setting') => $this->events?->dispatch(new SettingsSearchRequested()),
+            $kb->matches($data, action: 'show_keybindings') => $this->events?->dispatch(new SettingsSectionRequested('keybindings')),
+            $kb->matches($data, action: 'reset_row') => $this->resetSelected(),
+            SettingsRowKind::Choice === $kind && $kb->matches($data, action: 'open_list') => $this->openChoice(),
             // A checkbox takes Space and Enter, as in a browser — the arrows and
             // brackets step a select or a number, and on a checkbox they used to
             // flip it, which no browser does.
-            SettingsRowKind::Bool === $kind && $kb->matches($data, 'toggle') => $this->actuate(1),
-            SettingsRowKind::Bool === $kind && ($kb->matches($data, 'increment') || $kb->matches($data, 'decrement')) => null,
-            $kb->matches($data, 'increment') => $this->actuate(1),
-            $kb->matches($data, 'decrement') => $this->actuate(-1),
+            SettingsRowKind::Bool === $kind && $kb->matches($data, action: 'toggle') => $this->actuate(1),
+            SettingsRowKind::Bool === $kind && ($kb->matches($data, action: 'increment') || $kb->matches($data, action: 'decrement')) => null,
+            $kb->matches($data, action: 'increment') => $this->actuate(1),
+            $kb->matches($data, action: 'decrement') => $this->actuate(-1),
             ListNavigation::handleKey($data, $kb, $this->list, \count($this->rows), page: $this->lastPage) => $this->invalidate(),
             default => null,
         };
@@ -393,13 +393,13 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     /** Route a keystroke into the inline text editor: Esc cancels, Enter commits. */
     private function handleTextInput(string $data, Keybindings $kb, int $index, TextField $field): void
     {
-        if ($kb->matches($data, 'exit_view')) {
+        if ($kb->matches($data, action: 'exit_view')) {
             $this->editing = null;
             $this->invalidate();
 
             return;
         }
-        if ($kb->matches($data, 'confirm')) {
+        if ($kb->matches($data, action: 'confirm')) {
             $key = ($this->rows[$index] ?? null)?->key;
             $this->invalidate();
             // A REFUSED value keeps the editor open with the text as typed. It
@@ -416,7 +416,7 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         // Backspace, else caret movement — so a typo at the START of a value is
         // fixable without retyping the rest, a JSON debug launch config being
         // the case that made append-only editing untenable — else typing.
-        $changed = $kb->matches($data, 'delete_char_backward') ? $field->backspace() : $field->editKey($data, $kb) || $field->insert($data);
+        $changed = $kb->matches($data, action: 'delete_char_backward') ? $field->backspace() : $field->editKey($data, $kb) || $field->insert($data);
         if ($changed) {
             $this->invalidate();
         }

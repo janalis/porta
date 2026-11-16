@@ -63,7 +63,7 @@ return new class('chroma', 'chroma', BinarySearch::PathOnly) extends AbstractSub
     public function activate(PluginApi $api): void
     {
         $this->registerBinarySetting($api);
-        $this->registerSubprocessHighlighter($api, 'Chroma', 'rust,go,ruby,elixir,zig');
+        $this->registerSubprocessHighlighter($api, label: 'Chroma', languages: 'rust,go,ruby,elixir,zig');
     }
 
     protected function lexerArgs(string $language): array

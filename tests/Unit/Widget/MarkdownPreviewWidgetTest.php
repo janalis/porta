@@ -59,7 +59,7 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $pane = $this->pane();
         $pane->show($this->project->path('docs/guide.md'), (string) \file_get_contents($this->project->path('docs/guide.md')));
 
-        $rows = $this->drawn($pane, 60, 6);
+        $rows = $this->drawn($pane, columns: 60, rows: 6);
         $this->assertStringContainsString('README › docs › guide', $rows[0], 'the breadcrumb walks the project, like the docs tree');
         $this->assertSame(' Guide', \rtrim($rows[2]), 'a column of margin, away from the divider');
         $this->assertSame(\str_repeat('▀', times: 60), $rows[1], 'the bar\'s half under it, not a rule');
@@ -71,25 +71,25 @@ final class MarkdownPreviewWidgetTest extends TestCase
     {
         $pane = $this->pane();
         $pane->show('/p/a.md', self::longDoc());
-        $this->drawn($pane, 40, 6);
+        $this->drawn($pane, columns: 40, rows: 6);
         $pane->handleInput("\x1b[6~"); // PageDown
-        $scrolled = $this->drawn($pane, 40, 6)[2];
+        $scrolled = $this->drawn($pane, columns: 40, rows: 6)[2];
         $this->assertNotSame('Title', \trim($scrolled), 'a page down moved the view');
 
         $pane->show('/p/a.md', self::longDoc('Renamed'));
-        $this->assertSame($scrolled, $this->drawn($pane, 40, 6)[2], 'an edit keeps the reader where they were');
+        $this->assertSame($scrolled, $this->drawn($pane, columns: 40, rows: 6)[2], 'an edit keeps the reader where they were');
 
         $pane->show('/p/b.md', self::longDoc('Other'));
-        $this->assertSame('Other', \trim($this->drawn($pane, 40, 6)[2]), 'another file starts from its top');
+        $this->assertSame('Other', \trim($this->drawn($pane, columns: 40, rows: 6)[2]), 'another file starts from its top');
     }
 
     public function testTheSameTextForTheSameFileIsNotRedrawn(): void
     {
         $pane = new MarkdownPreviewWidget();
-        $pane->show('/p/a.md', '# A');
+        $pane->show('/p/a.md', payload: '# A');
         $revision = $pane->getRenderRevision();
 
-        $pane->show('/p/a.md', '# A');
+        $pane->show('/p/a.md', payload: '# A');
 
         $this->assertSame($revision, $pane->getRenderRevision());
     }
@@ -104,17 +104,17 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $this->handler->onOpenHelp = static function (string $path) use ($pane): void {
             $pane->show($path, (string) \file_get_contents($path));
         };
-        $this->drawn($pane, 80, 8);
+        $this->drawn($pane, columns: 80, rows: 8);
 
         $pane->handleInput("\t"); // the first link
         $pane->handleInput("\r"); // follow it
         $this->assertSame(['help:other.md'], $this->handler->events);
-        $this->assertStringContainsString('Other', $this->drawn($pane, 80, 8)[2]);
+        $this->assertStringContainsString('Other', $this->drawn($pane, columns: 80, rows: 8)[2]);
 
         $pane->handleInput("\x7f"); // Backspace
         $this->assertSame(['help:other.md', 'help:guide.md'], $this->handler->events, 'back to the page the link was followed from');
 
-        $this->drawn($pane, 80, 8);
+        $this->drawn($pane, columns: 80, rows: 8);
         $pane->handleInput("\t"); // back where it was on the first link: Tab moves on to the second, a URL
         $pane->handleInput("\r");
         $this->assertSame('url:https://example.com', \end($this->handler->events), 'a web link goes to the browser');
@@ -123,7 +123,7 @@ final class MarkdownPreviewWidgetTest extends TestCase
     public function testCtrlFFindsInThePage(): void
     {
         $pane = $this->pane();
-        $pane->show('/p/a.md', '# A');
+        $pane->show('/p/a.md', payload: '# A');
 
         $pane->handleInput("\x06"); // Ctrl+F
 
@@ -133,22 +133,22 @@ final class MarkdownPreviewWidgetTest extends TestCase
     public function testAOneColumnPaneHasNoRoomForTheMargin(): void
     {
         $pane = new MarkdownPreviewWidget();
-        $pane->show('/p/a.md', '# A');
+        $pane->show('/p/a.md', payload: '# A');
 
-        $this->assertNotSame(' ', $this->drawn($pane, 1, 3)[2]);
+        $this->assertNotSame(' ', $this->drawn($pane, columns: 1, rows: 3)[2]);
     }
 
     public function testAClickOnThePageSendsTheCaretToTheWordInTheText(): void
     {
         $pane = $this->pane();
-        $pane->show('/p/a.md', "# Title\n\nsome words\nhere, and **more**.\n\n- last");
-        $rows = $this->drawn($pane, 60, 10);
+        $pane->show('/p/a.md', payload: "# Title\n\nsome words\nhere, and **more**.\n\n- last");
+        $rows = $this->drawn($pane, columns: 60, rows: 10);
         $row = static fn (string $text): int => (int) \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, $text)));
 
         $pane->press($row('some words'), (int) \strpos($rows[$row('some words')], needle: 'here,') + 2);
         $pane->press($row('some words'), (int) \strpos($rows[$row('some words')], needle: 'more.') + 1);
         $pane->press($row('some words'), (int) \strpos($rows[$row('some words')], needle: 'words') + 5); // the space after it
-        $pane->press(2, 3); // the heading
+        $pane->press(2, relCol: 3); // the heading
         $pane->press($row('last'), \mb_strpos($rows[$row('last')], needle: 'last')); // a column: the bullet before it is one cell, three bytes
 
         $this->assertSame(
@@ -163,7 +163,7 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $pane = $this->pane();
         $guide = $this->project->path('docs/guide.md');
         $pane->show($guide, (string) \file_get_contents($guide));
-        $rows = $this->drawn($pane, 80, 8);
+        $rows = $this->drawn($pane, columns: 80, rows: 8);
         $row = (int) \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, 'the other')));
 
         $pane->press($row, (int) \strpos($rows[$row], needle: 'the other'));
@@ -176,16 +176,16 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $pane = new MarkdownPreviewWidget();
         $paragraphs = \array_map(static fn (int $n): string => 'Block '.$n.' '.\str_repeat('word ', times: 12), \range(1, end: 20));
         $pane->show('/p/a.md', \implode("\n\n", $paragraphs));
-        $this->drawn($pane, 80, 6);
+        $this->drawn($pane, columns: 80, rows: 6);
         $pane->handleInput("\x1b[6~");
         $pane->handleInput("\x1b[6~"); // two pages down
-        $top = \trim($this->drawn($pane, 80, 6)[2]);
+        $top = \trim($this->drawn($pane, columns: 80, rows: 6)[2]);
         $this->assertStringStartsWith('Block', $top, 'the view starts at a block');
 
-        $narrow = $this->drawn($pane, 30, 6);
+        $narrow = $this->drawn($pane, columns: 30, rows: 6);
 
         $this->assertStringStartsWith(\explode(' ', $top)[0].' '.\explode(' ', $top)[1], \trim($narrow[2]), 'the block that was at the top still is, rewrapped');
-        $this->assertSame(\trim($this->drawn($pane, 80, 6)[2]), $top, 'and back at the first width');
+        $this->assertSame(\trim($this->drawn($pane, columns: 80, rows: 6)[2]), $top, 'and back at the first width');
     }
 
     public function testFollowingTheCaretBringsItsBlockIntoViewAndLeavesAVisibleOneAlone(): void
@@ -193,18 +193,18 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $pane = new MarkdownPreviewWidget();
         $markdown = self::longDoc(); // "# Title", then "Paragraph N." on source line 2N
         $pane->show('/p/a.md', $markdown);
-        $this->drawn($pane, 40, 8);
+        $this->drawn($pane, columns: 40, rows: 8);
 
-        $pane->followSource(40, 3); // "Paragraph 20."
-        $rows = \array_map(\trim(...), $this->drawn($pane, 40, 8));
+        $pane->followSource(40, byteCol: 3); // "Paragraph 20."
+        $rows = \array_map(\trim(...), $this->drawn($pane, columns: 40, rows: 8));
         $this->assertContains('Paragraph 20.', $rows);
         $this->assertSame('Paragraph 20.', $rows[4], 'a third of the page above it, for what leads in');
 
-        $pane->followSource(38, 0); // "Paragraph 19.", already on screen: the view stays
-        $this->assertSame($rows, \array_map(\trim(...), $this->drawn($pane, 40, 8)));
+        $pane->followSource(38, byteCol: 0); // "Paragraph 19.", already on screen: the view stays
+        $this->assertSame($rows, \array_map(\trim(...), $this->drawn($pane, columns: 40, rows: 8)));
 
-        $pane->followSource(0, 0); // back to the title
-        $this->assertSame('Title', \trim($this->drawn($pane, 40, 8)[2]));
+        $pane->followSource(0, byteCol: 0); // back to the title
+        $this->assertSame('Title', \trim($this->drawn($pane, columns: 40, rows: 8)[2]));
     }
 
     public function testAWrappedBlockIsShownFromItsFirstRow(): void
@@ -212,23 +212,23 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $pane = new MarkdownPreviewWidget();
         $long = 'Start '.\str_repeat('word ', times: 120).'end.';
         $pane->show('/p/a.md', self::longDoc()."\n".$long."\n");
-        $this->drawn($pane, 40, 8);
+        $this->drawn($pane, columns: 40, rows: 8);
         $pane->handleInput("\x1b[F"); // End: the paragraph's tail on screen, its start above
-        $this->assertNotContains('Start word word word word word word', \array_map(\trim(...), $this->drawn($pane, 40, 8)));
+        $this->assertNotContains('Start word word word word word word', \array_map(\trim(...), $this->drawn($pane, columns: 40, rows: 8)));
 
-        $pane->followSource(62, 0); // the long paragraph's source line
+        $pane->followSource(62, byteCol: 0); // the long paragraph's source line
 
-        $this->assertContains('Start word word word word word word', \array_map(\trim(...), $this->drawn($pane, 40, 8)), 'from where the block begins, not merely some row of it');
+        $this->assertContains('Start word word word word word word', \array_map(\trim(...), $this->drawn($pane, columns: 40, rows: 8)), 'from where the block begins, not merely some row of it');
     }
 
     public function testAPaneWiredToNothingIgnoresWhatItCannotPassOn(): void
     {
         $pane = new MarkdownPreviewWidget();
-        $pane->show('/p/a.md', "- [ ] task [gone](#nowhere) words\n");
-        $rows = $this->drawn($pane, 60, 6);
+        $pane->show('/p/a.md', payload: "- [ ] task [gone](#nowhere) words\n");
+        $rows = $this->drawn($pane, columns: 60, rows: 6);
         foreach (['[ ]', 'gone', 'words'] as $text) {
             $pane->press(2, (int) \mb_strpos($rows[2], $text));
         }
-        $this->assertStringContainsString('[ ] task', $this->drawn($pane, 60, 6)[2], 'no handler, no dispatcher: nothing to tell, nothing breaks');
+        $this->assertStringContainsString('[ ] task', $this->drawn($pane, columns: 60, rows: 6)[2], 'no handler, no dispatcher: nothing to tell, nothing breaks');
     }
 }

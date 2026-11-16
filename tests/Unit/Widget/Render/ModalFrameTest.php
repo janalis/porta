@@ -39,7 +39,7 @@ final class ModalFrameTest extends TestCase
 
     public function testTheBarCarriesCornersTitleAndClose(): void
     {
-        $bar = $this->plainBar('Welcome', 24);
+        $bar = $this->plainBar('Welcome', width: 24);
 
         $this->assertSame('╭─ Welcome ─────────[✖]╮', $bar, 'the full bar layout: the rule into both corners, no Esc spelled out');
         $this->assertSame(24, \mb_strwidth($bar));
@@ -63,7 +63,7 @@ final class ModalFrameTest extends TestCase
     /** A title too long for the box yields to the chrome, never the button. */
     public function testALongTitleYieldsToTheChrome(): void
     {
-        $bar = $this->plainBar('Settings and more', 14);
+        $bar = $this->plainBar('Settings and more', width: 14);
 
         $this->assertSame('╭─ Sett… ─[✖]╮', $bar);
         $this->assertSame(14, \mb_strwidth($bar));
@@ -72,21 +72,21 @@ final class ModalFrameTest extends TestCase
     /** A degenerate width still returns exactly that many columns. */
     public function testADegenerateWidthKeepsTheInvariant(): void
     {
-        $this->assertSame(4, AnsiUtils::visibleWidth(ModalFrame::titleBar('X', 4, Styles::dark())));
+        $this->assertSame(4, AnsiUtils::visibleWidth(ModalFrame::titleBar('X', width: 4, styles: Styles::dark())));
     }
 
     /** A wide-char (CJK) title truncates by display columns, not characters. */
     public function testAWideCharTitleKeepsTheWidth(): void
     {
-        $bar = ModalFrame::titleBar('ようこそポルタへ', 16, Styles::dark());
+        $bar = ModalFrame::titleBar('ようこそポルタへ', width: 16, styles: Styles::dark());
 
         $this->assertSame(16, AnsiUtils::visibleWidth($bar));
     }
 
     public function testHoveringTheCloseBrightensIt(): void
     {
-        $normal = ModalFrame::titleBar('Welcome', 24, Styles::dark());
-        $hovered = ModalFrame::titleBar('Welcome', 24, Styles::dark(), hot: WindowZone::Close);
+        $normal = ModalFrame::titleBar('Welcome', width: 24, styles: Styles::dark());
+        $hovered = ModalFrame::titleBar('Welcome', width: 24, styles: Styles::dark(), hot: WindowZone::Close);
 
         $this->assertNotSame($normal, $hovered, 'the ✖ restyles under the pointer');
         $this->assertSame(AnsiUtils::stripAnsiCodes($normal), AnsiUtils::stripAnsiCodes($hovered), 'same text, different shade');
@@ -98,7 +98,7 @@ final class ModalFrameTest extends TestCase
 
     public function testWrapPadsRailsTheContentAndClosesTheBox(): void
     {
-        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), ModalFrame::wrap(['hello', 'a line that is far too wide for ten'], 10, Styles::dark()));
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), ModalFrame::wrap(['hello', 'a line that is far too wide for ten'], innerWidth: 10, styles: Styles::dark()));
 
         $this->assertSame('│            │', $rows[0], 'a padding row under the title bar');
         $this->assertSame('│ hello      │', $rows[1], 'content padded to the inner width, one column off each rail');
@@ -109,7 +109,7 @@ final class ModalFrameTest extends TestCase
 
     public function testEveryWrappedRowIsExactlyTheBoxWidth(): void
     {
-        foreach (ModalFrame::wrap(['a', \str_repeat('x', times: 50)], 20, Styles::dark()) as $i => $row) {
+        foreach (ModalFrame::wrap(['a', \str_repeat('x', times: 50)], innerWidth: 20, styles: Styles::dark()) as $i => $row) {
             $this->assertSame(20 + ModalFrame::CHROME_COLS, AnsiUtils::visibleWidth($row), "row {$i}");
         }
     }
@@ -117,7 +117,7 @@ final class ModalFrameTest extends TestCase
     /** Sections joined by tee rows — the zones read as zones of one box. */
     public function testWrapSectionsJoinsSectionsWithTeeRows(): void
     {
-        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), ModalFrame::wrapSections([['top'], ['mid'], ['end']], 6, Styles::dark()));
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), ModalFrame::wrapSections([['top'], ['mid'], ['end']], innerWidth: 6, styles: Styles::dark()));
 
         $this->assertSame(
             ['│        │', '│ top    │', '├────────┤', '│ mid    │', '├────────┤', '│ end    │', '│        │', '╰────────╯'],
@@ -146,7 +146,7 @@ final class ModalFrameTest extends TestCase
     /** The chrome constants match what wrap() actually emits — consumers derive from them. */
     public function testChromeConstantsMatchTheEmittedFrame(): void
     {
-        $body = ModalFrame::wrap(['x'], 8, Styles::dark());
+        $body = ModalFrame::wrap(['x'], innerWidth: 8, styles: Styles::dark());
 
         $this->assertSame(1 + ModalFrame::CHROME_ROWS, 1 + \count($body), 'title bar + body = content + chrome rows');
         $this->assertSame(8 + ModalFrame::CHROME_COLS, AnsiUtils::visibleWidth($body[0]));
@@ -176,26 +176,26 @@ final class ModalFrameTest extends TestCase
     #[DataProvider('hotHandles')]
     public function testOnlyTheHotHandleHeavies(WindowZone $hot, array $expected): void
     {
-        $rows = [ModalFrame::titleBar('', 8, Styles::dark(), $hot), ...ModalFrame::wrap(['x'], 4, Styles::dark(), $hot)];
+        $rows = [ModalFrame::titleBar('', width: 8, styles: Styles::dark(), hot: $hot), ...ModalFrame::wrap(['x'], innerWidth: 4, styles: Styles::dark(), hot: $hot)];
 
         $this->assertSame($expected, \array_map(AnsiUtils::stripAnsiCodes(...), $rows));
     }
 
     public function testAHotHandleIsBrightAndBold(): void
     {
-        $hot = ModalFrame::wrap(['x'], 2, Styles::dark(), WindowZone::Left)[1];
+        $hot = ModalFrame::wrap(['x'], innerWidth: 2, styles: Styles::dark(), hot: WindowZone::Left)[1];
 
         $this->assertStringContainsString(Styles::dark()->of(Role::Bright)->withBold()->apply(Glyphs::MODAL_GRAB_VERTICAL), $hot);
     }
 
     public function testOnALeftClosePlatformTheCloseLeadsTheTitleBar(): void
     {
-        $bar = AnsiUtils::stripAnsiCodes(ModalFrame::titleBar('Settings', 24, Styles::dark(), closeButton: CloseButton::Mac));
+        $bar = AnsiUtils::stripAnsiCodes(ModalFrame::titleBar('Settings', width: 24, styles: Styles::dark(), closeButton: CloseButton::Mac));
 
         $this->assertSame('╭(✖)─── Settings ──────╮', $bar, 'the button first, the title in the middle, the rule into the corner');
         $this->assertSame(24, AnsiUtils::visibleWidth($bar));
 
-        $narrow = AnsiUtils::stripAnsiCodes(ModalFrame::titleBar('Settings', 18, Styles::dark(), closeButton: CloseButton::Mac));
+        $narrow = AnsiUtils::stripAnsiCodes(ModalFrame::titleBar('Settings', width: 18, styles: Styles::dark(), closeButton: CloseButton::Mac));
         $this->assertSame('╭(✖)─ Settings ──╮', $narrow, 'too little fill to centre it: the title leads');
         $this->assertSame(18, AnsiUtils::visibleWidth($narrow));
     }
@@ -203,8 +203,8 @@ final class ModalFrameTest extends TestCase
     public function testTheMacButtonIsRedAndDarkensUnderThePointer(): void
     {
         $red = Styles::dark()->of(Role::DiagError);
-        $resting = ModalFrame::titleBar('Settings', 24, Styles::dark(), closeButton: CloseButton::Mac);
-        $hovered = ModalFrame::titleBar('Settings', 24, Styles::dark(), WindowZone::Close, closeButton: CloseButton::Mac);
+        $resting = ModalFrame::titleBar('Settings', width: 24, styles: Styles::dark(), closeButton: CloseButton::Mac);
+        $hovered = ModalFrame::titleBar('Settings', width: 24, styles: Styles::dark(), hot: WindowZone::Close, closeButton: CloseButton::Mac);
 
         $this->assertStringContainsString($red->apply(Glyphs::WINDOW_CLOSE_MAC), $resting, 'red at rest');
         $this->assertStringContainsString(Styles::dark()->of(Role::DiagErrorDim)->apply(Glyphs::WINDOW_CLOSE_MAC), $hovered, 'darkened under the pointer, with no fill');
@@ -214,7 +214,7 @@ final class ModalFrameTest extends TestCase
     public function testWithoutColourTheHoverDims(): void
     {
         $plain = new Styles(MonochromeTheme::definition());
-        $hovered = ModalFrame::titleBar('Settings', 24, $plain, WindowZone::Close);
+        $hovered = ModalFrame::titleBar('Settings', width: 24, styles: $plain, hot: WindowZone::Close);
 
         $this->assertStringContainsString($plain->of(Role::Gutter)->withDim()->apply(Glyphs::WINDOW_CLOSE), $hovered);
     }
@@ -223,7 +223,7 @@ final class ModalFrameTest extends TestCase
     public function testAThemeWithOneRedDarkensByDimming(): void
     {
         $contrast = new Styles(HighContrastTheme::definition());
-        $hovered = ModalFrame::titleBar('Settings', 24, $contrast, WindowZone::Close, closeButton: CloseButton::Mac);
+        $hovered = ModalFrame::titleBar('Settings', width: 24, styles: $contrast, hot: WindowZone::Close, closeButton: CloseButton::Mac);
 
         $this->assertStringContainsString($contrast->of(Role::DiagError)->withDim()->apply(Glyphs::WINDOW_CLOSE_MAC), $hovered);
     }

@@ -44,7 +44,7 @@ final class FieldBoxTest extends TestCase
 
     public function testTheBoxIsALegendedFrameAroundTheValue(): void
     {
-        $rows = self::plain(FieldBox::render(new FieldSpec('Find', trailing: '(Tab)'), self::field('foo'), FieldState::Idle, CaretVisibility::Hidden, 20, Styles::dark()));
+        $rows = self::plain(FieldBox::render(new FieldSpec('Find', trailing: '(Tab)'), self::field('foo'), FieldState::Idle, CaretVisibility::Hidden, width: 20, styles: Styles::dark()));
 
         $this->assertSame(
             [
@@ -71,12 +71,12 @@ final class FieldBoxTest extends TestCase
         $field = self::field('foo');
 
         $this->assertSame(
-            FieldBox::render($spec, $field, FieldState::Idle, CaretVisibility::Hidden, 20, Styles::dark()),
-            FieldBox::field($spec, $field, FieldState::Idle, CaretVisibility::Hidden, 20, FieldBox::ROWS, Styles::dark()),
+            FieldBox::render($spec, $field, FieldState::Idle, CaretVisibility::Hidden, width: 20, styles: Styles::dark()),
+            FieldBox::field($spec, $field, FieldState::Idle, CaretVisibility::Hidden, width: 20, rows: FieldBox::ROWS, styles: Styles::dark()),
         );
         $this->assertSame(
-            [FieldBox::compact($spec, $field, FieldState::Idle, CaretVisibility::Hidden, 20, Styles::dark())],
-            FieldBox::field($spec, $field, FieldState::Idle, CaretVisibility::Hidden, 20, 1, Styles::dark()),
+            [FieldBox::compact($spec, $field, FieldState::Idle, CaretVisibility::Hidden, width: 20, styles: Styles::dark())],
+            FieldBox::field($spec, $field, FieldState::Idle, CaretVisibility::Hidden, width: 20, rows: 1, styles: Styles::dark()),
         );
     }
 
@@ -85,11 +85,11 @@ final class FieldBoxTest extends TestCase
     {
         $styles = Styles::dark();
 
-        $this->assertSame([$styles->of(Role::SelectedRow)->apply('[C]')], FieldBox::toggle('C', OptionTagState::On, 1, $styles));
-        $this->assertSame([$styles->of(Role::SelectedRow)->withUnderline()->apply('[C]')], FieldBox::toggle('C', OptionTagState::OnHovered, 1, $styles), 'lit, the pointer underlines');
-        $this->assertSame([$styles->of(Role::RowHighlightBg)->apply(' C ')], FieldBox::toggle('C', OptionTagState::Hovered, 1, $styles));
-        $this->assertSame([$styles->of(Role::Faint)->apply(' C ')], FieldBox::toggle('C', OptionTagState::Off, 1, $styles));
-        $this->assertSame(3, FieldBox::toggleWidth('C', 1));
+        $this->assertSame([$styles->of(Role::SelectedRow)->apply('[C]')], FieldBox::toggle('C', OptionTagState::On, rows: 1, styles: $styles));
+        $this->assertSame([$styles->of(Role::SelectedRow)->withUnderline()->apply('[C]')], FieldBox::toggle('C', OptionTagState::OnHovered, rows: 1, styles: $styles), 'lit, the pointer underlines');
+        $this->assertSame([$styles->of(Role::RowHighlightBg)->apply(' C ')], FieldBox::toggle('C', OptionTagState::Hovered, rows: 1, styles: $styles));
+        $this->assertSame([$styles->of(Role::Faint)->apply(' C ')], FieldBox::toggle('C', OptionTagState::Off, rows: 1, styles: $styles));
+        $this->assertSame(3, FieldBox::toggleWidth('C', rows: 1));
         $this->assertSame(OptionTagState::OnHovered, OptionTagState::of(on: true, hovered: true), 'on AND hovered is its own state');
     }
 
@@ -108,7 +108,7 @@ final class FieldBoxTest extends TestCase
         );
         $this->assertStringContainsString($styles->of(Role::Faint)->apply('.*'), FieldBox::toggle('.*', OptionTagState::Off, FieldBox::ROWS, $styles)[1]);
         $this->assertSame(6, FieldBox::toggleWidth('.*', FieldBox::ROWS));
-        self::assertExactWidth(FieldBox::toggle('.*', OptionTagState::OnHovered, FieldBox::ROWS, $styles), 6);
+        self::assertExactWidth(FieldBox::toggle('.*', OptionTagState::OnHovered, FieldBox::ROWS, $styles), width: 6);
 
         $mono = new Styles(MonochromeTheme::definition());
         $this->assertNotSame(
@@ -123,7 +123,7 @@ final class FieldBoxTest extends TestCase
         $mono = new Styles(MonochromeTheme::definition());
         $shapes = [];
         foreach ([FieldState::Idle, FieldState::Focused, FieldState::Danger] as $state) {
-            $shapes[$state->name] = self::plain(FieldBox::render(new FieldSpec('Find'), self::field('x'), $state, CaretVisibility::Hidden, 16, $mono));
+            $shapes[$state->name] = self::plain(FieldBox::render(new FieldSpec('Find'), self::field('x'), $state, CaretVisibility::Hidden, width: 16, styles: $mono));
         }
 
         $this->assertSame('╭', \mb_substr($shapes['Idle'][0], start: 0, length: 1));
@@ -135,8 +135,8 @@ final class FieldBoxTest extends TestCase
     public function testTheBorderTintRepeatsTheStateWithoutBold(): void
     {
         $styles = Styles::dark();
-        $focused = FieldBox::render(new FieldSpec(''), self::field('x'), FieldState::Focused, CaretVisibility::Hidden, 12, $styles)[0];
-        $idle = FieldBox::render(new FieldSpec(''), self::field('x'), FieldState::Idle, CaretVisibility::Hidden, 12, $styles)[0];
+        $focused = FieldBox::render(new FieldSpec(''), self::field('x'), FieldState::Focused, CaretVisibility::Hidden, width: 12, styles: $styles)[0];
+        $idle = FieldBox::render(new FieldSpec(''), self::field('x'), FieldState::Idle, CaretVisibility::Hidden, width: 12, styles: $styles)[0];
 
         $this->assertStringContainsString($styles->of(Role::TabAccent)->apply('┏'), $focused, 'the accent repeats the shape');
         $this->assertStringContainsString($styles->of(Role::FieldBorder)->apply('╭'), $idle);
@@ -149,24 +149,24 @@ final class FieldBoxTest extends TestCase
         $field = self::field('');
         $spec = new FieldSpec('Find', 'search term…');
 
-        $before = FieldBox::render($spec, $field, FieldState::Focused, CaretVisibility::Shown, 24, $styles);
+        $before = FieldBox::render($spec, $field, FieldState::Focused, CaretVisibility::Shown, width: 24, styles: $styles);
         $this->assertStringContainsString($styles->of(Role::FieldPlaceholder)->apply('search term…'), $before[1], 'shown while focused and empty, like a browser');
         $this->assertStringContainsString('Find', AnsiUtils::stripAnsiCodes($before[0]), 'and the label stays on screen beside it');
 
         $field->insert('a');
-        $this->assertStringNotContainsString('search term', FieldBox::render($spec, $field, FieldState::Focused, CaretVisibility::Shown, 24, $styles)[1]);
+        $this->assertStringNotContainsString('search term', FieldBox::render($spec, $field, FieldState::Focused, CaretVisibility::Shown, width: 24, styles: $styles)[1]);
     }
 
     public function testAnIdleFieldRefusesTheCaret(): void
     {
         $this->expectException(\LogicException::class);
 
-        FieldBox::render(new FieldSpec('Find'), self::field('x'), FieldState::Idle, CaretVisibility::Shown, 20, Styles::dark());
+        FieldBox::render(new FieldSpec('Find'), self::field('x'), FieldState::Idle, CaretVisibility::Shown, width: 20, styles: Styles::dark());
     }
 
     public function testTheCaretMarkerAppearsExactlyOnce(): void
     {
-        $rows = FieldBox::render(new FieldSpec('Find'), self::field('a long query that scrolls'), FieldState::Focused, CaretVisibility::Shown, 14, Styles::dark());
+        $rows = FieldBox::render(new FieldSpec('Find'), self::field('a long query that scrolls'), FieldState::Focused, CaretVisibility::Shown, width: 14, styles: Styles::dark());
 
         $this->assertSame(1, \substr_count(\implode('', $rows), AnsiUtils::CURSOR_MARKER_PREFIX));
         $this->assertStringContainsString('scrolls', AnsiUtils::stripAnsiCodes($rows[1]), 'the caret end stays in view');
@@ -174,28 +174,28 @@ final class FieldBoxTest extends TestCase
 
     public function testAFocusedCaretlessFieldKeepsItsTailInView(): void
     {
-        $row = self::plain(FieldBox::render(new FieldSpec('≡'), self::field('abcdefghijklmnop'), FieldState::Focused, CaretVisibility::Hidden, 10, Styles::dark()))[1];
+        $row = self::plain(FieldBox::render(new FieldSpec('≡'), self::field('abcdefghijklmnop'), FieldState::Focused, CaretVisibility::Hidden, width: 10, styles: Styles::dark()))[1];
 
         $this->assertStringContainsString('mnop', $row, 'the list filter shows where the typing lands');
     }
 
     public function testAnIdleFieldCutsItsValueWithAnEllipsis(): void
     {
-        $row = self::plain(FieldBox::render(new FieldSpec(''), self::field('abcdefghijklmnop'), FieldState::Idle, CaretVisibility::Hidden, 10, Styles::dark()))[1];
+        $row = self::plain(FieldBox::render(new FieldSpec(''), self::field('abcdefghijklmnop'), FieldState::Idle, CaretVisibility::Hidden, width: 10, styles: Styles::dark()))[1];
 
         $this->assertSame('│ abcde… │', $row);
     }
 
     public function testAHintThatDoesNotFitIsDroppedWhole(): void
     {
-        $rows = self::plain(FieldBox::render(new FieldSpec('F', trailing: '(Tab · Alt+A)'), self::field(''), FieldState::Idle, CaretVisibility::Hidden, 12, Styles::dark()));
+        $rows = self::plain(FieldBox::render(new FieldSpec('F', trailing: '(Tab · Alt+A)'), self::field(''), FieldState::Idle, CaretVisibility::Hidden, width: 12, styles: Styles::dark()));
 
         $this->assertSame('╰──────────╯', $rows[2]);
     }
 
     public function testTheSurfaceTintsEveryRow(): void
     {
-        foreach (FieldBox::render(new FieldSpec('F', surface: Role::Toolbar), self::field(''), FieldState::Idle, CaretVisibility::Hidden, 12, Styles::dark()) as $row) {
+        foreach (FieldBox::render(new FieldSpec('F', surface: Role::Toolbar), self::field(''), FieldState::Idle, CaretVisibility::Hidden, width: 12, styles: Styles::dark()) as $row) {
             $this->assertStringStartsWith("\x1b[48;5;235m", $row, 'the dark toolbar background');
         }
     }
@@ -203,8 +203,8 @@ final class FieldBoxTest extends TestCase
     public function testTheCompactFormKeepsTheRailShape(): void
     {
         $mono = new Styles(MonochromeTheme::definition());
-        $idle = AnsiUtils::stripAnsiCodes(FieldBox::compact(new FieldSpec('Find'), self::field('foo'), FieldState::Idle, CaretVisibility::Hidden, 16, $mono));
-        $focused = AnsiUtils::stripAnsiCodes(FieldBox::compact(new FieldSpec('Find'), self::field('foo'), FieldState::Focused, CaretVisibility::Shown, 16, $mono));
+        $idle = AnsiUtils::stripAnsiCodes(FieldBox::compact(new FieldSpec('Find'), self::field('foo'), FieldState::Idle, CaretVisibility::Hidden, width: 16, styles: $mono));
+        $focused = AnsiUtils::stripAnsiCodes(FieldBox::compact(new FieldSpec('Find'), self::field('foo'), FieldState::Focused, CaretVisibility::Shown, width: 16, styles: $mono));
 
         $this->assertSame('Find │ foo     │', $idle);
         $this->assertSame('Find ┃ foo     ┃', $focused);
@@ -212,20 +212,26 @@ final class FieldBoxTest extends TestCase
 
     public function testTheCompactFormDropsItsLabelBeforeItsValue(): void
     {
-        $this->assertSame('│ fo… │', AnsiUtils::stripAnsiCodes(FieldBox::compact(new FieldSpec('Replace'), self::field('foobar'), FieldState::Idle, CaretVisibility::Hidden, 7, Styles::dark())));
+        $this->assertSame(
+            '│ fo… │',
+            AnsiUtils::stripAnsiCodes(FieldBox::compact(new FieldSpec('Replace'), self::field('foobar'), FieldState::Idle, CaretVisibility::Hidden, width: 7, styles: Styles::dark())),
+        );
     }
 
     public function testTheCompactFormKeepsItsHintOnlyWhileTheValueHasRoom(): void
     {
         $spec = new FieldSpec('F', trailing: '(Tab)');
 
-        $this->assertStringEndsWith('│ (Tab)', AnsiUtils::stripAnsiCodes(FieldBox::compact($spec, self::field(''), FieldState::Idle, CaretVisibility::Hidden, 20, Styles::dark())));
-        $this->assertStringNotContainsString('(Tab)', AnsiUtils::stripAnsiCodes(FieldBox::compact($spec, self::field(''), FieldState::Idle, CaretVisibility::Hidden, 19, Styles::dark())));
+        $this->assertStringEndsWith('│ (Tab)', AnsiUtils::stripAnsiCodes(FieldBox::compact($spec, self::field(''), FieldState::Idle, CaretVisibility::Hidden, width: 20, styles: Styles::dark())));
+        $this->assertStringNotContainsString(
+            '(Tab)',
+            AnsiUtils::stripAnsiCodes(FieldBox::compact($spec, self::field(''), FieldState::Idle, CaretVisibility::Hidden, width: 19, styles: Styles::dark())),
+        );
     }
 
     public function testAFrameWrapsSeveralContentRows(): void
     {
-        $rows = self::plain(FieldBox::frame(new FieldSpec('Description'), ['one', 'two'], FieldState::Idle, 20, Styles::dark()));
+        $rows = self::plain(FieldBox::frame(new FieldSpec('Description'), ['one', 'two'], FieldState::Idle, width: 20, styles: Styles::dark()));
 
         $this->assertCount(4, $rows);
         $this->assertSame('│ two              │', $rows[2]);
@@ -233,7 +239,7 @@ final class FieldBoxTest extends TestCase
 
     public function testADisabledControlIsDashedAndNeverTakesKeys(): void
     {
-        $rows = self::plain(FieldBox::button('Built-in', FieldState::Disabled, false, 14, FieldBox::ROWS, new Styles(MonochromeTheme::definition())));
+        $rows = self::plain(FieldBox::button('Built-in', FieldState::Disabled, hovered: false, width: 14, rows: FieldBox::ROWS, styles: new Styles(MonochromeTheme::definition())));
 
         $this->assertSame(['╭┄┄┄┄┄┄┄┄┄┄┄┄╮', '┆  Built-in  ┆', '╰┄┄┄┄┄┄┄┄┄┄┄┄╯'], $rows, 'a dashed border reads "not available" without colour');
         $this->assertFalse(FieldState::Disabled->takesKeys());
@@ -243,31 +249,39 @@ final class FieldBoxTest extends TestCase
     public function testAButtonCentresItsCaptionAndHoverOnlyUnderlinesIt(): void
     {
         $styles = Styles::dark();
-        $rest = FieldBox::button('Go', FieldState::Idle, false, 12, FieldBox::ROWS, $styles, trailing: 'Enter');
-        $hover = FieldBox::button('Go', FieldState::Idle, true, 12, FieldBox::ROWS, $styles, trailing: 'Enter');
+        $rest = FieldBox::button('Go', FieldState::Idle, hovered: false, width: 12, rows: FieldBox::ROWS, styles: $styles, trailing: 'Enter');
+        $hover = FieldBox::button('Go', FieldState::Idle, hovered: true, width: 12, rows: FieldBox::ROWS, styles: $styles, trailing: 'Enter');
 
         $this->assertSame('│    Go    │', AnsiUtils::stripAnsiCodes($rest[1]), 'centred, as a browser button draws it');
         $this->assertStringContainsString('Enter', AnsiUtils::stripAnsiCodes($rest[2]), 'its key sits in the bottom border');
         $this->assertStringContainsString($styles->of(Role::Bright)->withUnderline()->apply('Go'), $hover[1]);
         $this->assertSame($rest[0], $hover[0], 'the border does not move on hover: hover is not a state');
-        $this->assertStringContainsString($styles->of(Role::Faint)->apply('Go'), FieldBox::button('Go', FieldState::Disabled, true, 10, 1, $styles)[0], 'a disabled caption greys, hovered or not');
+        $this->assertStringContainsString(
+            $styles->of(Role::Faint)->apply('Go'),
+            FieldBox::button('Go', FieldState::Disabled, hovered: true, width: 10, rows: 1, styles: $styles)[0],
+            'a disabled caption greys, hovered or not',
+        );
     }
 
     public function testASelectShowsItsValueThenTheArrowAgainstTheRail(): void
     {
         $width = FieldBox::selectWidth(['dark', 'high-contrast']);
-        $rows = self::plain(FieldBox::select(new FieldSpec(''), 'dark', FieldState::Focused, $width, FieldBox::ROWS, Styles::dark()));
+        $rows = self::plain(FieldBox::select(new FieldSpec(''), value: 'dark', state: FieldState::Focused, width: $width, rows: FieldBox::ROWS, styles: Styles::dark()));
 
         $this->assertSame(19, $width, 'the widest option, the arrow and the chrome');
         $this->assertSame('┃ dark          ▾ ┃', $rows[1]);
-        $this->assertSame(['│ dark      ▾ │'], self::plain(FieldBox::select(new FieldSpec(''), 'dark', FieldState::Idle, 15, 1, Styles::dark())), 'the one-row form keeps the arrow');
+        $this->assertSame(
+            ['│ dark      ▾ │'],
+            self::plain(FieldBox::select(new FieldSpec(''), value: 'dark', state: FieldState::Idle, width: 15, rows: 1, styles: Styles::dark())),
+            'the one-row form keeps the arrow',
+        );
     }
 
     public function testControlWidthAndCentringMeasureInColumns(): void
     {
         $this->assertSame(10, FieldBox::controlWidth('漢字'), 'two wide glyphs, a column of air each side, the chrome');
-        $this->assertSame('  ab  ', FieldBox::centred('ab', 6));
-        $this->assertSame('abc…', FieldBox::centred('abcdef', 4), 'cut when it does not fit');
+        $this->assertSame('  ab  ', FieldBox::centred('ab', room: 6));
+        $this->assertSame('abc…', FieldBox::centred('abcdef', room: 4), 'cut when it does not fit');
         $this->assertSame('', FieldBox::centred('ab', -3), 'no room is no text, not an error');
     }
 

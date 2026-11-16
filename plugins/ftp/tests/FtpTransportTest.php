@@ -57,7 +57,7 @@ final class FtpTransportTest extends TestCase
         \ksort($byName);
         $this->assertSame(['README.md', 'a name.txt', 'src'], \array_keys($byName), 'not . and ..');
         $this->assertTrue($byName['src']->isDir);
-        $this->assertEquals($this->stampOf($this->server, 'README.md'), $byName['README.md']->stamp, 'the same clock a fetch reads');
+        $this->assertEquals($this->stampOf($this->server, relative: 'README.md'), $byName['README.md']->stamp, 'the same clock a fetch reads');
     }
 
     public function testListingAMissingDirectorySaysWhy(): void
@@ -71,13 +71,13 @@ final class FtpTransportTest extends TestCase
 
         $this->assertInstanceOf(RemoteFile::class, $file);
         $this->assertSame('spaced', $file->bytes);
-        $this->assertEquals($this->stampOf($this->server, 'a name.txt'), $file->stamp);
+        $this->assertEquals($this->stampOf($this->server, relative: 'a name.txt'), $file->stamp);
     }
 
     public function testItWalksTheTreeOneDirectoryAtATime(): void
     {
-        $this->server->write('vendor/x/Skipped.php', '');
-        $this->server->write('deep/er/Found.php', '<?php');
+        $this->server->write('vendor/x/Skipped.php', content: '');
+        $this->server->write('deep/er/Found.php', content: '<?php');
 
         $entries = $this->answer(fn (\Closure $done): bool => $this->transport->walk('', ['vendor'], $done));
 
@@ -89,7 +89,7 @@ final class FtpTransportTest extends TestCase
         }
         \ksort($byPath);
         $this->assertSame(['README.md', 'a name.txt', 'deep', 'deep/er', 'deep/er/Found.php', 'src', 'src/App.php'], \array_keys($byPath));
-        $this->assertEquals($this->stampOf($this->server, 'deep/er/Found.php'), $byPath['deep/er/Found.php']->stamp);
+        $this->assertEquals($this->stampOf($this->server, relative: 'deep/er/Found.php'), $byPath['deep/er/Found.php']->stamp);
     }
 
     /** A folder the server will not open is passed over; the rest of the tree stands. */
@@ -130,7 +130,8 @@ final class FtpTransportTest extends TestCase
             $this->assertSame('curl: (67) Access denied: 530', $this->answer(static fn (\Closure $done) => $transport->list('', $done)));
             $this->assertSame(1, $refusals);
 
-            Credentials::store($home->dir, $spec, 'right');
+            // @mago-expect lint:no-literal-password -- a test fixture value, named since mago 1.60
+            Credentials::store($home->dir, $spec, password: 'right');
 
             $this->assertIsArray($this->answer(static fn (\Closure $done) => $transport->list('', $done)));
             $this->assertSame(1, $refusals, 'not refused this time');
@@ -164,16 +165,21 @@ final class FtpTransportTest extends TestCase
 
     public function testItWritesThroughAPartialNameAndAnswersTheNewStamp(): void
     {
-        $stamp = $this->answer(fn (\Closure $done) => $this->transport->put('deep/new.txt', "fresh\n", null, $done));
+        $stamp = $this->answer(fn (\Closure $done) => $this->transport->put('deep/new.txt', bytes: "fresh\n", expected: null, done: $done));
 
         $this->assertSame("fresh\n", \file_get_contents($this->server->path('deep/new.txt')));
-        $this->assertEquals($this->stampOf($this->server, 'deep/new.txt'), $stamp);
+        $this->assertEquals($this->stampOf($this->server, relative: 'deep/new.txt'), $stamp);
         $this->assertSame([], \glob($this->server->path('deep/.porta-upload*')));
     }
 
     public function testAWriteOverTheStampItWasFetchedAtReplacesTheFile(): void
     {
-        $this->assertInstanceOf(RemoteStamp::class, $this->answer(fn (\Closure $done) => $this->transport->put('README.md', 'mine', $this->stampOf($this->server, 'README.md'), $done)));
+        $this->assertInstanceOf(RemoteStamp::class, $this->answer(fn (\Closure $done) => $this->transport->put(
+            'README.md',
+            bytes: 'mine',
+            expected: $this->stampOf($this->server, relative: 'README.md'),
+            done: $done,
+        )));
         $this->assertSame('mine', \file_get_contents($this->server->path('README.md')));
     }
 
@@ -181,26 +187,26 @@ final class FtpTransportTest extends TestCase
     {
         $stale = new RemoteStamp(1, 1);
 
-        $this->assertNull($this->answer(fn (\Closure $done) => $this->transport->put('README.md', 'mine', $stale, $done)));
-        $this->assertNull($this->answer(fn (\Closure $done) => $this->transport->put('gone.txt', 'mine', $stale, $done)));
+        $this->assertNull($this->answer(fn (\Closure $done) => $this->transport->put('README.md', bytes: 'mine', expected: $stale, done: $done)));
+        $this->assertNull($this->answer(fn (\Closure $done) => $this->transport->put('gone.txt', bytes: 'mine', expected: $stale, done: $done)));
         $this->assertSame("# hi\n", \file_get_contents($this->server->path('README.md')));
         $this->assertFileDoesNotExist($this->server->path('gone.txt'));
     }
 
     public function testAFailedUploadSaysWhy(): void
     {
-        $this->server->write('file', 'x');
+        $this->server->write('file', content: 'x');
 
-        $this->assertIsString($this->answer(fn (\Closure $done) => $this->transport->put('file/under.txt', 'x', null, $done)));
+        $this->assertIsString($this->answer(fn (\Closure $done) => $this->transport->put('file/under.txt', bytes: 'x', expected: null, done: $done)));
     }
 
     public function testRemovalsThatFailSayWhy(): void
     {
-        $this->assertSame('curl: (21) QUOT command failed with 550', $this->answer(fn (\Closure $done) => $this->transport->remove('missing', false, $done)));
-        $this->assertIsString($this->answer(fn (\Closure $done) => $this->transport->remove('missing', true, $done)), 'a directory that cannot be listed');
+        $this->assertSame('curl: (21) QUOT command failed with 550', $this->answer(fn (\Closure $done) => $this->transport->remove('missing', isDir: false, done: $done)));
+        $this->assertIsString($this->answer(fn (\Closure $done) => $this->transport->remove('missing', isDir: true, done: $done)), 'a directory that cannot be listed');
         \chmod($this->server->path('src'), permissions: 0o500);
         try {
-            $this->assertIsString($this->answer(fn (\Closure $done) => $this->transport->remove('src', true, $done)), 'what it holds cannot go');
+            $this->assertIsString($this->answer(fn (\Closure $done) => $this->transport->remove('src', isDir: true, done: $done)), 'what it holds cannot go');
         } finally {
             \chmod($this->server->path('src'), permissions: 0o755);
         }
@@ -208,8 +214,13 @@ final class FtpTransportTest extends TestCase
 
     public function testANameWithALineBreakIsNeverSent(): void
     {
-        $this->assertSame('a name with a line break in it cannot be sent over FTP', $this->answer(fn (\Closure $done) => $this->transport->remove("x\r\nDELE README.md", false, $done)));
-        $this->assertSame('a name with a line break in it cannot be sent over FTP', $this->answer(fn (\Closure $done) => $this->transport->put("x\nDELE README.md", 'x', null, $done)));
+        $this->assertSame('a name with a line break in it cannot be sent over FTP', $this->answer(fn (\Closure $done) => $this->transport->remove("x\r\nDELE README.md", isDir: false, done: $done)));
+        $this->assertSame('a name with a line break in it cannot be sent over FTP', $this->answer(fn (\Closure $done) => $this->transport->put(
+            "x\nDELE README.md",
+            bytes: 'x',
+            expected: null,
+            done: $done,
+        )));
         $this->assertFileExists($this->server->path('README.md'));
     }
 
@@ -238,7 +249,7 @@ final class FtpTransportTest extends TestCase
             ],
             $transport->command(['--head'], $transport->url('a.txt')),
         );
-        $this->assertNotContains('--netrc-file', new FtpTransport(new RemoteSpec('ftp', 'h', '/'), $home->path('none.netrc'))->command([], 'u'), 'no password kept: anonymous');
+        $this->assertNotContains('--netrc-file', new FtpTransport(new RemoteSpec('ftp', 'h', '/'), $home->path('none.netrc'))->command([], url: 'u'), 'no password kept: anonymous');
     }
 
     public function testUrlsAreAbsoluteOrRelativeToTheLoginDirectory(): void
@@ -256,7 +267,7 @@ final class FtpTransportTest extends TestCase
     {
         \putenv('FAKE_FTP_DOWN=1');
         try {
-            $answer = $this->answer(fn (\Closure $done) => $this->transport->put('README.md', 'mine', $this->stampOf($this->server, 'README.md'), $done));
+            $answer = $this->answer(fn (\Closure $done) => $this->transport->put('README.md', bytes: 'mine', expected: $this->stampOf($this->server, relative: 'README.md'), done: $done));
         } finally {
             \putenv('FAKE_FTP_DOWN');
         }
@@ -273,7 +284,7 @@ final class FtpTransportTest extends TestCase
 
     public function testAPartialLeftBehindIsNeverListed(): void
     {
-        $this->server->write('.porta-upload-0a1b2c3d-README.md', 'half');
+        $this->server->write('.porta-upload-0a1b2c3d-README.md', content: 'half');
 
         $entries = $this->answer(fn (\Closure $done) => $this->transport->list('', $done));
 

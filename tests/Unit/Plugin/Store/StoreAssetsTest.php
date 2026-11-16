@@ -76,9 +76,9 @@ final class StoreAssetsTest extends TestCase
         $this->assertSame(["# Log\n]52;c;Zm9v- fixed\n"], self::ask($this->assets(), self::TEXT));
 
         // What porta 0.1.6 kept is the body as it came: it is fetched again, not drawn.
-        $this->home->write('assets/'.\sha1('https://raw.test/README.md'), "\x1b]0;title\x07raw");
+        $this->home->write('assets/'.\sha1('https://raw.test/README.md'), content: "\x1b]0;title\x07raw");
         $this->http->bodies['https://raw.test/README.md'] = 'clean';
-        $this->assertSame(['clean'], self::ask($this->assets(), 'https://raw.test/README.md'));
+        $this->assertSame(['clean'], self::ask($this->assets(), url: 'https://raw.test/README.md'));
     }
 
     public function testWhatWasKeptAWeekAgoIsAskedForAgain(): void
@@ -97,14 +97,14 @@ final class StoreAssetsTest extends TestCase
         $assets = $this->assets();
 
         $this->assertSame([self::PNG], self::ask($assets, self::SHOT, image: true));
-        $this->assertSame([null], self::ask($assets, 'https://img.test/b.gif', image: true));
-        $this->assertSame([null], self::ask($assets, 'https://raw.test/bin'));
-        $this->assertSame([null], self::ask($assets, 'https://raw.test/missing'));
+        $this->assertSame([null], self::ask($assets, url: 'https://img.test/b.gif', image: true));
+        $this->assertSame([null], self::ask($assets, url: 'https://raw.test/bin'));
+        $this->assertSame([null], self::ask($assets, url: 'https://raw.test/missing'));
         $this->assertFileDoesNotExist($this->home->path('assets/'.\sha1('https://img.test/b.gif')), 'nothing invalid is kept');
 
-        $this->home->write('assets/'.\sha1('https://img.test/c.png'), 'not a png');
+        $this->home->write('assets/'.\sha1('https://img.test/c.png'), content: 'not a png');
         $this->http->bodies['https://img.test/c.png'] = self::PNG;
-        $this->assertSame([self::PNG], self::ask($assets, 'https://img.test/c.png', image: true), 'a kept file that fails the check is fetched again');
+        $this->assertSame([self::PNG], self::ask($assets, url: 'https://img.test/c.png', image: true), 'a kept file that fails the check is fetched again');
     }
 
     public function testTwoAsksForOneAddressShareOneFetch(): void
@@ -130,7 +130,7 @@ final class StoreAssetsTest extends TestCase
         $this->assertSame(['x'], self::ask(new StoreAssets($this->http->fetch(), null), self::TEXT));
 
         // A cache directory that is a file: nothing can be kept under it.
-        $this->home->write('blocked', '');
+        $this->home->write('blocked', content: '');
         $this->assertSame(['x'], self::ask(new StoreAssets($this->http->fetch(), $this->home->path('blocked')), self::TEXT));
     }
 
@@ -138,7 +138,7 @@ final class StoreAssetsTest extends TestCase
     {
         $this->http->bodies = ['https://raw.test/a' => 'A', 'https://raw.test/b' => 'B'];
         $assets = $this->assets();
-        self::ask($assets, 'https://raw.test/a');
+        self::ask($assets, url: 'https://raw.test/a');
         $answers = [];
         $assets->texts(['https://raw.test/a', 'https://raw.test/b', 'https://raw.test/gone', 'https://raw.test/b'], static function (array $bodies) use (&$answers): void {
             $answers[] = $bodies;

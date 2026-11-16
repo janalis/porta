@@ -64,8 +64,8 @@ final class TextEditOverlapTest extends TestCase
     {
         // `alpha beta` with one edit over `alpha bet` and another over `a bet`.
         $overlapping = [
-            self::edit([0, 0], [0, 9], 'X'),
-            self::edit([0, 4], [0, 9], 'Y'),
+            self::edit([0, 0], [0, 9], text: 'X'),
+            self::edit([0, 4], [0, 9], text: 'Y'),
         ];
 
         $this->assertSame('1:0-1:9 overlaps 1:4-1:9', TextEditOverlap::describe($overlapping));
@@ -89,8 +89,8 @@ final class TextEditOverlapTest extends TestCase
     public function testSeveralInsertsAtOnePositionAreNotAnOverlap(): void
     {
         $inserts = [
-            self::edit([1, 0], [1, 0], "use A;\n"),
-            self::edit([1, 0], [1, 0], "use B;\n"),
+            self::edit([1, 0], [1, 0], text: "use A;\n"),
+            self::edit([1, 0], [1, 0], text: "use B;\n"),
         ];
 
         $this->assertNull(TextEditOverlap::describe($inserts));
@@ -108,8 +108,8 @@ final class TextEditOverlapTest extends TestCase
     public function testAnEditStartingWhereAnotherEndsIsAdjacent(): void
     {
         $this->assertNull(TextEditOverlap::describe([
-            self::edit([0, 0], [0, 5], 'aaaaa'),
-            self::edit([0, 5], [0, 10], 'bbbbb'),
+            self::edit([0, 0], [0, 5], text: 'aaaaa'),
+            self::edit([0, 5], [0, 10], text: 'bbbbb'),
         ]));
     }
 
@@ -123,9 +123,9 @@ final class TextEditOverlapTest extends TestCase
     public function testAnOverlapAfterAWellBehavedPairIsStillFound(): void
     {
         $this->assertNotNull(TextEditOverlap::describe([
-            self::edit([0, 0], [0, 2], 'a'),
-            self::edit([0, 3], [0, 9], 'b'),
-            self::edit([0, 5], [0, 7], 'c'),
+            self::edit([0, 0], [0, 2], text: 'a'),
+            self::edit([0, 3], [0, 9], text: 'b'),
+            self::edit([0, 5], [0, 7], text: 'c'),
         ]));
     }
 
@@ -141,16 +141,16 @@ final class TextEditOverlapTest extends TestCase
     public function testTheMessageNamesLineThenCharacterAndNotTheOtherWayRound(): void
     {
         $this->assertSame('3:4-5:6 overlaps 4:7-4:9', TextEditOverlap::describe([
-            self::edit([2, 4], [4, 6], 'a'),
-            self::edit([3, 7], [3, 9], 'b'),
+            self::edit([2, 4], [4, 6], text: 'a'),
+            self::edit([3, 7], [3, 9], text: 'b'),
         ]));
     }
 
     /** Order of arrival does not matter: the check sorts before it compares. */
     public function testTheOverlapIsFoundWhicheverOrderTheEditsArriveIn(): void
     {
-        $late = self::edit([0, 4], [0, 9], 'Y');
-        $early = self::edit([0, 0], [0, 9], 'X');
+        $late = self::edit([0, 4], [0, 9], text: 'Y');
+        $early = self::edit([0, 0], [0, 9], text: 'X');
 
         $this->assertNotNull(TextEditOverlap::describe([$early, $late]));
         $this->assertNotNull(TextEditOverlap::describe([$late, $early]), 'and reversed');
@@ -160,15 +160,15 @@ final class TextEditOverlapTest extends TestCase
     public function testAMultiLineRangeSwallowingAnotherIsAnOverlap(): void
     {
         $this->assertSame('1:0-3:0 overlaps 2:2-2:6', TextEditOverlap::describe([
-            self::edit([0, 0], [2, 0], 'X'),
-            self::edit([1, 2], [1, 6], 'Y'),
+            self::edit([0, 0], [2, 0], text: 'X'),
+            self::edit([1, 2], [1, 6], text: 'Y'),
         ]));
     }
 
     public function testNothingAndOneEditAreAlwaysApplicable(): void
     {
         $this->assertNull(TextEditOverlap::describe([]));
-        $this->assertNull(TextEditOverlap::describe([self::edit([0, 0], [0, 3], 'x')]));
+        $this->assertNull(TextEditOverlap::describe([self::edit([0, 0], [0, 3], text: 'x')]));
     }
 
     /**

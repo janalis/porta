@@ -39,10 +39,10 @@ final class ViewHostMenuTest extends TestCase
         $menu = Services::resolve($this->ide, ContextMenu::class);
         $this->assertFalse($menu->isOpen());
 
-        Services::resolve($this->ide, ViewHost::class)->openMenu($items, 4, 10);
+        Services::resolve($this->ide, ViewHost::class)->openMenu($items, row: 4, col: 10);
 
         $this->assertTrue($menu->isOpen());
-        $this->assertSame(['Unified', 'Split'], \array_map(static fn (MenuItem $item): string => $item->label, Probe::get($menu, 'items')));
+        $this->assertSame(['Unified', 'Split'], \array_map(static fn (MenuItem $item): string => $item->label, Probe::get($menu, property: 'items')));
         $menu->runItem(1);
         $this->assertSame(['split'], $ran, 'a pick runs the view\'s own closure');
     }

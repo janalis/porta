@@ -36,7 +36,7 @@ trait PanelRows
 
     public function setVisibleRows(int $rows): void
     {
-        $rows = IntMath::clamp($rows, 2, 200);
+        $rows = IntMath::clamp($rows, lo: 2, hi: 200);
         if ($rows !== $this->visibleRows) {
             $this->visibleRows = $rows;
             $this->invalidate();

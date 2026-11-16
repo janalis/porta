@@ -49,7 +49,7 @@ final class LaunchArguments
     {
         $arguments = \array_diff_key(\array_replace(['stopOnEntry' => false], $overrides), \array_flip(['program', 'runtimeExecutable', 'runtimeArgs']));
 
-        return self::substitute($arguments, '', $rootDir);
+        return self::substitute($arguments, file: '', rootDir: $rootDir);
     }
 
     /**

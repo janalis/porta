@@ -29,7 +29,7 @@ final class ChangeNavigationTest extends TestCase
     public function testTheWalkStepsBetweenTheMarkedRunsAndWraps(): void
     {
         $editor = new CodeEditorWidget();
-        $editor->openFile('/p/a.php', "a\nb\nc\nd\ne\nf\ng\n");
+        $editor->openFile('/p/a.php', content: "a\nb\nc\nd\ne\nf\ng\n");
         $status = new StatusBarWidget();
         $navigation = new ChangeNavigation($editor, new Notifier($status, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24))), new Translator('en'));
 

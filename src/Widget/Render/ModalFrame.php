@@ -157,7 +157,8 @@ final class ModalFrame
         $position = null !== $overflow && $overflow->clipped() ? $overflow->position() : '';
         $corner = self::edge($hot, WindowZone::BottomRight, Glyphs::MODAL_BOTTOM_RIGHT, Glyphs::MODAL_RESIZE_GRAB, $styles);
         $rows[] = WindowZone::BottomLeft === $hot
-            ? self::edge($hot, WindowZone::BottomLeft, '', Glyphs::MODAL_GRAB_BOTTOM_LEFT, $styles).BorderHint::bottom('', $corner, $rule, $innerWidth + 2, $bottom, $position, $styles)
+            ? self::edge($hot, WindowZone::BottomLeft, rest: '', grab: Glyphs::MODAL_GRAB_BOTTOM_LEFT, styles: $styles)
+            .BorderHint::bottom('', $corner, $rule, $innerWidth + 2, $bottom, $position, $styles)
             : BorderHint::bottom(Glyphs::MODAL_BOTTOM_LEFT, $corner, $rule, $innerWidth + 2, $bottom, $position, $styles);
 
         return $rows;

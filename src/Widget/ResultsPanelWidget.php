@@ -221,7 +221,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     {
         $before = $this->list->selected();
         if (null === $text || !$this->selectText($path, $line, $text)) {
-            $this->relocateSelection($path, $line, null, $before);
+            $this->relocateSelection($path, $line, groupKey: null, fallbackIndex: $before);
         }
         if ($this->list->selected() !== $before) {
             $this->invalidate();
@@ -403,16 +403,16 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         $kb = $this->getKeybindings();
 
         match (true) {
-            $kb->matches($data, 'close') => $this->closeKey(),
+            $kb->matches($data, action: 'close') => $this->closeKey(),
             // A page is the rows the panel shows, so the row landed on was drawn.
             ListNavigation::handleKey($data, $kb, $this->list, \count($this->displayRows), page: $this->visibleRows) => $this->invalidate(),
-            $kb->matches($data, 'jump') => $this->activateRow($this->list->selected()),
-            $this->grouped && $kb->matches($data, 'toggle_all') => $this->toggleAllGroups(),
-            $this->grouped && $kb->matches($data, 'toggle_group') => $this->cycleGrouping(),
-            $this->grouped && $kb->matches($data, 'export') => $this->events?->dispatch(new ResultsExportRequested()),
-            $this->grouped && $kb->matches($data, 'toggle_context') => $this->toggleContext($this->list->selected()),
-            $kb->matches($data, 'rerun') => $this->events?->dispatch(new ResultsRerunRequested()),
-            $kb->matches($data, 'delete_char_backward') => $this->editFilter(static fn (TextField $field): bool => $field->backspace()),
+            $kb->matches($data, action: 'jump') => $this->activateRow($this->list->selected()),
+            $this->grouped && $kb->matches($data, action: 'toggle_all') => $this->toggleAllGroups(),
+            $this->grouped && $kb->matches($data, action: 'toggle_group') => $this->cycleGrouping(),
+            $this->grouped && $kb->matches($data, action: 'export') => $this->events?->dispatch(new ResultsExportRequested()),
+            $this->grouped && $kb->matches($data, action: 'toggle_context') => $this->toggleContext($this->list->selected()),
+            $kb->matches($data, action: 'rerun') => $this->events?->dispatch(new ResultsRerunRequested()),
+            $kb->matches($data, action: 'delete_char_backward') => $this->editFilter(static fn (TextField $field): bool => $field->backspace()),
             default => $this->editFilter(static fn (TextField $field): bool => $field->editKey($data, $kb) || $field->insert($data)),
         };
     }

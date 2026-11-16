@@ -85,8 +85,8 @@ final class MermaidEngine implements DiagramEngine
             return;
         }
         $directory = \sys_get_temp_dir().'/porta-mermaid-'.\bin2hex(\random_bytes(16));
-        $this->files->mkdir($directory, 0o700);
-        $this->files->dumpFile($directory.'/'.self::CONFIG_STOP, '{}');
+        $this->files->mkdir($directory, mode: 0o700);
+        $this->files->dumpFile($directory.'/'.self::CONFIG_STOP, content: '{}');
         $this->directory = $directory;
         $output = $directory.'/diagram.'.$format->extension();
         $browserConfig = null === $this->browserConfig ? null : ($this->browserConfig)();
@@ -100,8 +100,8 @@ final class MermaidEngine implements DiagramEngine
             // directory holds nothing anyone else wrote.
             $directory,
             $source,
-            'mmdc',
-            function () use ($directory, $output, $format, $onBytes, $onError): void {
+            label: 'mmdc',
+            onSuccess: function () use ($directory, $output, $format, $onBytes, $onError): void {
                 if ($directory !== $this->directory) {
                     return;
                 }
@@ -114,7 +114,7 @@ final class MermaidEngine implements DiagramEngine
                 }
                 $onBytes($png);
             },
-            function (string $error) use ($directory, $onError): void {
+            onFailure: function (string $error) use ($directory, $onError): void {
                 if ($directory !== $this->directory) {
                     return;
                 }

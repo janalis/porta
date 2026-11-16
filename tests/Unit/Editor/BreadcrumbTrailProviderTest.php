@@ -45,7 +45,7 @@ final class BreadcrumbTrailProviderTest extends TestCase
             ['label' => 'Svc', 'startLine' => 1, 'endLine' => 5, 'kind' => CodeScopeKind::Type],
             ['label' => 'run', 'startLine' => 2, 'endLine' => 4, 'kind' => CodeScopeKind::Function],
         ]);
-        $this->editor->getDocument()->setCursor(2, 0);
+        $this->editor->getDocument()->setCursor(2, col: 0);
 
         $this->assertSame(
             [['label' => 'Svc', 'line' => 0], ['label' => 'run', 'line' => 1]],
@@ -60,7 +60,7 @@ final class BreadcrumbTrailProviderTest extends TestCase
         $provider = $this->provider();
         $this->editor->showDocument('/p/a.php', new Document("<?php\n\nclass Real\n{\n    public function go(): void\n    {\n    }\n}\n"));
         $this->scopes->set('/p/a.php', [['label' => 'FromTheServer', 'startLine' => 1, 'endLine' => 99, 'kind' => CodeScopeKind::Type]]);
-        $this->editor->getDocument()->setCursor(5, 0);
+        $this->editor->getDocument()->setCursor(5, col: 0);
 
         $labels = \array_column($provider->trail(), 'label');
 
@@ -89,7 +89,7 @@ final class BreadcrumbTrailProviderTest extends TestCase
     public function testTheActiveFilesPathLeadsTheTrail(): void
     {
         $provider = $this->provider();
-        $this->buffers->open('/p/src/Http/Svc.php', '');
+        $this->buffers->open('/p/src/Http/Svc.php', content: '');
 
         $this->assertSame(
             [
@@ -104,7 +104,7 @@ final class BreadcrumbTrailProviderTest extends TestCase
     public function testAFileOutsideTheProjectIsItsNameAlone(): void
     {
         $provider = $this->provider();
-        $this->buffers->open('/elsewhere/lib/Note.md', '');
+        $this->buffers->open('/elsewhere/lib/Note.md', content: '');
 
         $this->assertSame([['label' => 'Note.md', 'line' => null, 'path' => '/elsewhere/lib/Note.md']], $provider->trail());
     }
@@ -112,10 +112,10 @@ final class BreadcrumbTrailProviderTest extends TestCase
     public function testAViewerTabOrATitledBufferHasNoPath(): void
     {
         $provider = $this->provider();
-        $this->buffers->openPane('/p/logo.png', 'image', null);
+        $this->buffers->openPane('/p/logo.png', paneId: 'image', payload: null);
         $this->assertSame([], $provider->trail(), 'a viewer tab');
 
-        $this->buffers->open('/p/graph.svg', '')->title = 'Project Architecture';
+        $this->buffers->open('/p/graph.svg', content: '')->title = 'Project Architecture';
         $this->assertSame([], $provider->trail(), 'a titled buffer names no file the tree holds');
     }
 }

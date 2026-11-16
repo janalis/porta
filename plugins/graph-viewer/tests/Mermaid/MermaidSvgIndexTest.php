@@ -25,7 +25,7 @@ final class MermaidSvgIndexTest extends TestCase
         ]) {
             $this->assertNull(self::read(self::svg(self::NODE), $width, $height), $what);
         }
-        $this->assertInstanceOf(MermaidSvgIndex::class, self::read(self::svg(self::NODE), 1.0, 1.0));
+        $this->assertInstanceOf(MermaidSvgIndex::class, self::read(self::svg(self::NODE), width: 1.0, height: 1.0));
     }
 
     public function testADocumentOfFourMebibytesIsReadAndOneByteMoreIsNot(): void

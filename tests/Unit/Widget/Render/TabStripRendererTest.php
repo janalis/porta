@@ -157,9 +157,9 @@ final class TabStripRendererTest extends TestCase
     {
         $tabs = [['label' => 'one', 'active' => true], ['label' => 'two', 'active' => false]];
 
-        $unfocused = TabStripRenderer::render($tabs, 40, Styles::dark(), rows: 2);
-        $focused = TabStripRenderer::render($tabs, 40, Styles::dark(), rows: 2, paneFocused: true);
-        $hovered = TabStripRenderer::render($tabs, 40, Styles::dark(), hoverCol: 10, rows: 2);
+        $unfocused = TabStripRenderer::render($tabs, columns: 40, styles: Styles::dark(), rows: 2);
+        $focused = TabStripRenderer::render($tabs, columns: 40, styles: Styles::dark(), rows: 2, paneFocused: true);
+        $hovered = TabStripRenderer::render($tabs, columns: 40, styles: Styles::dark(), hoverCol: 10, rows: 2);
 
         $this->assertSame([' one ✖  two ✖ ', '▀▀▀▀▀▀▀───────'], \array_map(AnsiUtils::stripAnsiCodes(...), $unfocused['lines']));
         $this->assertStringContainsString("\x1b[38;5;237m▀▀▀▀▀▀▀", $unfocused['lines'][1], 'the shown tab: the grey of a list cursor without the keys');
@@ -172,7 +172,7 @@ final class TabStripRendererTest extends TestCase
         $this->assertSame(0, $unfocused['labelRow']);
         $this->assertSame(1, $unfocused['footRow']);
 
-        $edged = TabStripRenderer::render($tabs, 40, Styles::dark(), rows: 3);
+        $edged = TabStripRenderer::render($tabs, columns: 40, styles: Styles::dark(), rows: 3);
         $this->assertSame(
             ['▄▄▄▄▄▄▄───────', ' one ✖  two ✖ ', '▀▀▀▀▀▀▀───────'],
             \array_map(AnsiUtils::stripAnsiCodes(...), $edged['lines']),
@@ -180,11 +180,11 @@ final class TabStripRendererTest extends TestCase
         );
         $this->assertSame([1, 2], [$edged['labelRow'], $edged['footRow']]);
 
-        $compact = TabStripRenderer::render($tabs, 40, Styles::dark(), edge: StripEdge::Bottom);
+        $compact = TabStripRenderer::render($tabs, columns: 40, styles: Styles::dark(), edge: StripEdge::Bottom);
         $this->assertNull($compact['footRow'], 'a compact strip has no baseline to run on');
-        $this->assertSame(' one ✖ │ two ✖ │     ', AnsiUtils::stripAnsiCodes(TabStripTail::pad($compact, 21, Styles::dark())[0]), 'so its tail is blank, at either edge');
-        $this->assertStringContainsString("\x1b[48;5;235m", TabStripTail::pad($compact, 21, Styles::dark())[0], 'over the toolbar shade it has always had');
-        $padded = TabStripTail::pad($unfocused, 22, Styles::dark());
+        $this->assertSame(' one ✖ │ two ✖ │     ', AnsiUtils::stripAnsiCodes(TabStripTail::pad($compact, columns: 21, styles: Styles::dark())[0]), 'so its tail is blank, at either edge');
+        $this->assertStringContainsString("\x1b[48;5;235m", TabStripTail::pad($compact, columns: 21, styles: Styles::dark())[0], 'over the toolbar shade it has always had');
+        $padded = TabStripTail::pad($unfocused, columns: 22, styles: Styles::dark());
         $this->assertSame('▀▀▀▀▀▀▀───────────────', AnsiUtils::stripAnsiCodes($padded[1]), 'the baseline runs on past the last tab');
         $this->assertSame(' one ✖  two ✖         ', AnsiUtils::stripAnsiCodes($padded[0]), 'the label row pads with blanks');
         $this->assertStringNotContainsString('48;5;235', $padded[0], 'on nothing');
@@ -193,12 +193,19 @@ final class TabStripRendererTest extends TestCase
     /** At a bottom edge the rows run the other way: the baseline over the labels, holding their upper halves. */
     public function testABottomRoomyStripIsMirrored(): void
     {
-        $strip = TabStripRenderer::render([['label' => 'one', 'active' => true], ['label' => 'two', 'active' => false]], 40, Styles::dark(), rows: 2, edge: StripEdge::Bottom, paneFocused: true);
+        $strip = TabStripRenderer::render(
+            [['label' => 'one', 'active' => true], ['label' => 'two', 'active' => false]],
+            columns: 40,
+            styles: Styles::dark(),
+            rows: 2,
+            edge: StripEdge::Bottom,
+            paneFocused: true,
+        );
 
         $this->assertSame(['▄▄▄▄▄▄▄───────', ' one ✖  two ✖ '], \array_map(AnsiUtils::stripAnsiCodes(...), $strip['lines']));
         $this->assertSame(1, $strip['labelRow']);
         $this->assertSame(0, $strip['footRow']);
-        $edged = TabStripRenderer::render([['label' => 'one', 'active' => true]], 40, Styles::dark(), rows: 3, edge: StripEdge::Bottom);
+        $edged = TabStripRenderer::render([['label' => 'one', 'active' => true]], columns: 40, styles: Styles::dark(), rows: 3, edge: StripEdge::Bottom);
         $this->assertSame(2, $edged['footRow'], 'a strip that is its own top edge keeps its baseline under the labels, at either edge');
     }
 
@@ -206,7 +213,7 @@ final class TabStripRendererTest extends TestCase
     /** Pills stand side by side: a tab's zone is its text, with no margin or divider of its own. */
     public function testAPillsZoneIsItsText(): void
     {
-        $strip = TabStripRenderer::render([['label' => 'one', 'active' => true], ['label' => 'two', 'active' => false]], 40, Styles::dark(), rows: 3);
+        $strip = TabStripRenderer::render([['label' => 'one', 'active' => true], ['label' => 'two', 'active' => false]], columns: 40, styles: Styles::dark(), rows: 3);
 
         $this->assertSame([0, 7], \array_column($strip['hitMap'], 'start'));
         $this->assertSame([7, 7], \array_column($strip['hitMap'], 'width'));
@@ -219,8 +226,8 @@ final class TabStripRendererTest extends TestCase
     {
         $tabs = [['label' => 'one', 'active' => false], ['label' => 'two', 'active' => true]];
 
-        $onLabel = TabStripRenderer::render($tabs, 40, Styles::dark(), 6, rows: 3, hoverRow: 1);
-        $onLid = TabStripRenderer::render($tabs, 40, Styles::dark(), 6, rows: 3, hoverRow: 0);
+        $onLabel = TabStripRenderer::render($tabs, columns: 40, styles: Styles::dark(), hoverCol: 6, rows: 3, hoverRow: 1);
+        $onLid = TabStripRenderer::render($tabs, columns: 40, styles: Styles::dark(), hoverCol: 6, rows: 3, hoverRow: 0);
 
         $this->assertMatchesRegularExpression('/\x1b\[4m(?:\x1b\[[0-9;]*m)*✖/', $onLabel['lines'][1]);
         $this->assertDoesNotMatchRegularExpression('/\x1b\[4m(?:\x1b\[[0-9;]*m)*✖/', $onLid['lines'][1]);
@@ -235,7 +242,7 @@ final class TabStripRendererTest extends TestCase
             $tabs[] = ['label' => "tab{$i}", 'active' => 7 === $i];
         }
 
-        $strip = TabStripRenderer::render($tabs, 30, Styles::dark(), rows: 3);
+        $strip = TabStripRenderer::render($tabs, columns: 30, styles: Styles::dark(), rows: 3);
 
         $this->assertSame(
             [[0, 0], [1, 0], [2, 0]],
@@ -247,7 +254,7 @@ final class TabStripRendererTest extends TestCase
         }
         $foot = AnsiUtils::stripAnsiCodes($strip['lines'][2]);
         $this->assertSame(\mb_strpos($foot, needle: '▀'), \mb_strpos(AnsiUtils::stripAnsiCodes($strip['lines'][0]), needle: '▄'), 'past ‹ the two halves of the shown tab line up');
-        $compact = TabStripRenderer::render($tabs, 30, Styles::dark());
+        $compact = TabStripRenderer::render($tabs, columns: 30, styles: Styles::dark());
         $this->assertSame([0], \array_values(\array_unique(\array_column($compact['indicatorZones'], 'row'))), 'a compact strip\'s ‹ and › are on its one row');
         $this->assertStringStartsWith('────', $foot, 'under ‹ the baseline runs on');
         $this->assertStringEndsWith('▀▀▀▀▀▀▀▀─────', $foot, 'and on to the last column, under ›');

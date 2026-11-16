@@ -44,7 +44,7 @@ final class SymbolScopesTest extends TestCase
      */
     public function testABadSymbolDoesNotTruncateTheOnesAfterIt(): void
     {
-        $scopes = LspMapper::symbolScopes([null, 'not a symbol', self::symbol('Svc', 5, 4, 40)]);
+        $scopes = LspMapper::symbolScopes([null, 'not a symbol', self::symbol('Svc', kind: 5, from: 4, to: 40)]);
 
         $this->assertSame([['label' => 'Svc', 'startLine' => 5, 'endLine' => 41, 'kind' => CodeScopeKind::Type]], $scopes);
     }
@@ -53,14 +53,14 @@ final class SymbolScopesTest extends TestCase
     {
         // A trail asks which scopes contain the caret; a selectionRange is one
         // line long, so every crumb would vanish the moment you moved.
-        $scopes = LspMapper::symbolScopes([self::symbol('Svc', 5, 4, 40)]);
+        $scopes = LspMapper::symbolScopes([self::symbol('Svc', kind: 5, from: 4, to: 40)]);
 
         $this->assertSame([['label' => 'Svc', 'startLine' => 5, 'endLine' => 41, 'kind' => CodeScopeKind::Type]], $scopes);
     }
 
     public function testLinesAreConvertedFromLspSZeroBaseToTheScopesOneBase(): void
     {
-        $scopes = LspMapper::symbolScopes([self::symbol('f', 12, 0, 2)]);
+        $scopes = LspMapper::symbolScopes([self::symbol('f', kind: 12, from: 0, to: 2)]);
 
         $this->assertSame(1, $scopes[0]['startLine']);
         $this->assertSame(3, $scopes[0]['endLine']);
@@ -71,9 +71,9 @@ final class SymbolScopesTest extends TestCase
         // The outermost-first order `select()` relies on comes from the walk
         // being depth-first, not from a sort.
         $scopes = LspMapper::symbolScopes([
-            self::symbol('App', 3, 0, 50, [
-                self::symbol('Svc', 5, 4, 40, [
-                    self::symbol('run', 6, 10, 20),
+            self::symbol('App', kind: 3, from: 0, to: 50, children: [
+                self::symbol('Svc', kind: 5, from: 4, to: 40, children: [
+                    self::symbol('run', kind: 6, from: 10, to: 20),
                 ]),
             ]),
         ]);
@@ -87,11 +87,11 @@ final class SymbolScopesTest extends TestCase
         // A property or a constant is a member, not something a caret is
         // INSIDE — listing them makes every line of a class body its own crumb.
         $scopes = LspMapper::symbolScopes([
-            self::symbol('Svc', 5, 0, 20, [
-                self::symbol('field', 7, 2, 2),
-                self::symbol('SOME_CONST', 14, 3, 3),
-                self::symbol('local', 13, 4, 4),
-                self::symbol('run', 6, 5, 9),
+            self::symbol('Svc', kind: 5, from: 0, to: 20, children: [
+                self::symbol('field', kind: 7, from: 2, to: 2),
+                self::symbol('SOME_CONST', kind: 14, from: 3, to: 3),
+                self::symbol('local', kind: 13, from: 4, to: 4),
+                self::symbol('run', kind: 6, from: 5, to: 9),
             ]),
         ]);
 
@@ -102,7 +102,7 @@ final class SymbolScopesTest extends TestCase
     {
         // Dropping the parent must not drop the subtree with it.
         $scopes = LspMapper::symbolScopes([
-            self::symbol('field', 7, 0, 9, [self::symbol('run', 6, 2, 5)]),
+            self::symbol('field', kind: 7, from: 0, to: 9, children: [self::symbol('run', kind: 6, from: 2, to: 5)]),
         ]);
 
         $this->assertSame(['run'], \array_column($scopes, 'label'));
@@ -124,7 +124,7 @@ final class SymbolScopesTest extends TestCase
     {
         // A one-line function starts and ends on the same line, so the range
         // check has to accept an empty span, not merely a growing one.
-        $scopes = LspMapper::symbolScopes([self::symbol('f', 12, 7, 7)]);
+        $scopes = LspMapper::symbolScopes([self::symbol('f', kind: 12, from: 7, to: 7)]);
 
         $this->assertSame([['label' => 'f', 'startLine' => 8, 'endLine' => 8, 'kind' => CodeScopeKind::Function]], $scopes);
     }
@@ -182,16 +182,16 @@ final class SymbolScopesTest extends TestCase
         // The whole point of matching the scanner's shape. Caret on 0-based
         // line 12 is inside App, Svc and run.
         $scopes = LspMapper::symbolScopes([
-            self::symbol('App', 3, 0, 50, [
-                self::symbol('Svc', 5, 4, 40, [
-                    self::symbol('run', 6, 10, 20),
+            self::symbol('App', kind: 3, from: 0, to: 50, children: [
+                self::symbol('Svc', kind: 5, from: 4, to: 40, children: [
+                    self::symbol('run', kind: 6, from: 10, to: 20),
                 ]),
             ]),
         ]);
 
         $this->assertSame(
             [['label' => 'App', 'line' => 0], ['label' => 'Svc', 'line' => 4], ['label' => 'run', 'line' => 10]],
-            BreadcrumbScanner::select($scopes, 12),
+            BreadcrumbScanner::select($scopes, caretLine: 12),
         );
     }
 }

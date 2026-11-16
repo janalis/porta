@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Event\FileRewritten;
 use Porta\Filesystem\LocalFilesystem;
@@ -74,16 +75,7 @@ final class RefactoringUndoTest extends TestCase
      */
     public function testABufferAndADiskFileComeBackTogether(): void
     {
-        $project = new TempProject(['closed.php' => "old closed\n"]);
-        $we = $this->workspaceEditor();
-        $open = $this->buffers->open('/p/open.php', "old open\n");
-
-        $we->applyWorkspaceEdit([
-            'changes' => [
-                Uri::fromPath('/p/open.php') => [self::edit(0, 8, 'new open')],
-                Uri::fromPath($project->path('closed.php')) => [self::edit(0, 10, 'new closed')],
-            ],
-        ]);
+        [$project, $open] = $this->renameOpenAndClosed();
         $this->assertSame("new open\n", $open->document->getText());
         $this->assertSame("new closed\n", \file_get_contents($project->path('closed.php')));
         $this->assertTrue($this->undo->hasPending());
@@ -105,9 +97,9 @@ final class RefactoringUndoTest extends TestCase
     public function testUndoingClearsWhatItTookBack(): void
     {
         $we = $this->workspaceEditor();
-        $this->buffers->open('/p/a.php', "abc\n");
+        $this->buffers->open('/p/a.php', content: "abc\n");
 
-        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath('/p/a.php') => [self::edit(0, 1, 'X')]]]);
+        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath('/p/a.php') => [self::edit(0, to: 1, text: 'X')]]]);
         $this->assertTrue($this->undo->hasPending(), 'something was recorded to take back');
 
         $this->undo->undo();
@@ -123,11 +115,11 @@ final class RefactoringUndoTest extends TestCase
     public function testANewRefactoringReplacesThePreviousOne(): void
     {
         $we = $this->workspaceEditor();
-        $first = $this->buffers->open('/p/first.php', "one\n");
-        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath('/p/first.php') => [self::edit(0, 3, 'ONE')]]]);
+        $first = $this->buffers->open('/p/first.php', content: "one\n");
+        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath('/p/first.php') => [self::edit(0, to: 3, text: 'ONE')]]]);
 
-        $second = $this->buffers->open('/p/second.php', "two\n");
-        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath('/p/second.php') => [self::edit(0, 3, 'TWO')]]]);
+        $second = $this->buffers->open('/p/second.php', content: "two\n");
+        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath('/p/second.php') => [self::edit(0, to: 3, text: 'TWO')]]]);
 
         $this->assertNull($this->undo->undo());
 
@@ -139,13 +131,13 @@ final class RefactoringUndoTest extends TestCase
     public function testANewDocumentChangesRefactoringAlsoReplacesThePreviousOne(): void
     {
         $we = $this->workspaceEditor();
-        $first = $this->buffers->open('/p/first.php', "one\n");
-        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath('/p/first.php') => [self::edit(0, 3, 'ONE')]]]);
+        $first = $this->buffers->open('/p/first.php', content: "one\n");
+        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath('/p/first.php') => [self::edit(0, to: 3, text: 'ONE')]]]);
 
-        $second = $this->buffers->open('/p/second.php', "two\n");
+        $second = $this->buffers->open('/p/second.php', content: "two\n");
         $we->applyWorkspaceEdit([
             'documentChanges' => [
-                ['textDocument' => ['uri' => Uri::fromPath('/p/second.php')], 'edits' => [self::edit(0, 3, 'TWO')]],
+                ['textDocument' => ['uri' => Uri::fromPath('/p/second.php')], 'edits' => [self::edit(0, to: 3, text: 'TWO')]],
             ],
         ]);
 
@@ -170,16 +162,16 @@ final class RefactoringUndoTest extends TestCase
     public function testAnEditThatAppliesNothingLeavesTheEarlierUndoAlone(): void
     {
         $we = $this->workspaceEditor();
-        $first = $this->buffers->open('/p/first.php', "one\n");
-        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath('/p/first.php') => [self::edit(0, 3, 'ONE')]]]);
+        $first = $this->buffers->open('/p/first.php', content: "one\n");
+        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath('/p/first.php') => [self::edit(0, to: 3, text: 'ONE')]]]);
 
-        $this->buffers->open('/p/second.php', "two\n");
+        $this->buffers->open('/p/second.php', content: "two\n");
         $we->applyWorkspaceEdit([
             'changes' => [
                 Uri::fromPath('/p/second.php') => [
                     // Overlapping: refused per file, deep inside the walk.
-                    self::edit(0, 3, 'X'),
-                    self::edit(1, 3, 'Y'),
+                    self::edit(0, to: 3, text: 'X'),
+                    self::edit(1, to: 3, text: 'Y'),
                 ],
             ],
         ]);
@@ -202,14 +194,14 @@ final class RefactoringUndoTest extends TestCase
     {
         $project = new TempProject(['a.php' => "one\n"]);
         $we = $this->workspaceEditor();
-        $this->buffers->open($project->path('a.php'), "one\n");
-        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath($project->path('a.php')) => [self::edit(0, 3, 'ONE')]]]);
+        $this->buffers->open($project->path('a.php'), content: "one\n");
+        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath($project->path('a.php')) => [self::edit(0, to: 3, text: 'ONE')]]]);
         $this->assertTrue($this->undo->hasPending(), 'a plain text edit is undoable');
 
         $we->applyWorkspaceEdit([
             'documentChanges' => [
                 ['kind' => 'create', 'uri' => Uri::fromPath($project->path('made.php'))],
-                ['textDocument' => ['uri' => Uri::fromPath($project->path('made.php'))], 'edits' => [self::edit(0, 0, 'hello')]],
+                ['textDocument' => ['uri' => Uri::fromPath($project->path('made.php'))], 'edits' => [self::edit(0, to: 0, text: 'hello')]],
             ],
         ]);
 
@@ -224,7 +216,7 @@ final class RefactoringUndoTest extends TestCase
         $files = new RecordingProjectFiles();
         $undo = new RefactoringUndo(new BufferManager(), new EventDispatcher(), $files);
         $undo->begin();
-        $undo->recordFile($project->path('a.php'), 'before', 'after');
+        $undo->recordFile($project->path('a.php'), previous: 'before', written: 'after');
 
         $undo->undo();
 
@@ -255,7 +247,7 @@ final class RefactoringUndoTest extends TestCase
         $project = new TempProject(['a.php' => 'after']);
         $undo = new RefactoringUndo(new BufferManager(), new EventDispatcher(), new LocalFilesystem($throwing));
         $undo->begin();
-        $undo->recordFile($project->path('a.php'), 'before', 'after');
+        $undo->recordFile($project->path('a.php'), previous: 'before', written: 'after');
 
         $this->assertSame($project->path('a.php'), $undo->undo());
     }
@@ -280,7 +272,7 @@ final class RefactoringUndoTest extends TestCase
             $events,
             $this->undo,
         );
-        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath($project->path('a.php')) => [self::edit(0, 6, 'after!')]]]);
+        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath($project->path('a.php')) => [self::edit(0, to: 6, text: 'after!')]]]);
         $events->addListener(FileRewritten::class, static function (FileRewritten $e) use (&$seen): void {
             $seen[] = $e->previousText;
         });
@@ -299,18 +291,9 @@ final class RefactoringUndoTest extends TestCase
      */
     public function testABufferEditedSinceBlocksTheWholeUndo(): void
     {
-        $project = new TempProject(['closed.php' => "old closed\n"]);
-        $we = $this->workspaceEditor();
-        $open = $this->buffers->open('/p/open.php', "old open\n");
+        [$project, $open] = $this->renameOpenAndClosed();
 
-        $we->applyWorkspaceEdit([
-            'changes' => [
-                Uri::fromPath('/p/open.php') => [self::edit(0, 8, 'new open')],
-                Uri::fromPath($project->path('closed.php')) => [self::edit(0, 10, 'new closed')],
-            ],
-        ]);
-
-        $open->document->setCursor(0, 0);
+        $open->document->setCursor(0, col: 0);
         $open->document->insert('typed ');
 
         $this->assertSame('/p/open.php', $this->undo->undo(), 'it names the file that moved on');
@@ -325,16 +308,7 @@ final class RefactoringUndoTest extends TestCase
      */
     public function testADiskFileChangedSinceBlocksTheWholeUndo(): void
     {
-        $project = new TempProject(['closed.php' => "old closed\n"]);
-        $we = $this->workspaceEditor();
-        $open = $this->buffers->open('/p/open.php', "old open\n");
-
-        $we->applyWorkspaceEdit([
-            'changes' => [
-                Uri::fromPath('/p/open.php') => [self::edit(0, 8, 'new open')],
-                Uri::fromPath($project->path('closed.php')) => [self::edit(0, 10, 'new closed')],
-            ],
-        ]);
+        [$project, $open] = $this->renameOpenAndClosed();
 
         \file_put_contents($project->path('closed.php'), data: "someone else\n");
 
@@ -355,8 +329,8 @@ final class RefactoringUndoTest extends TestCase
     public function testClosingTheOnlyParticipantLeavesNothingToUndo(): void
     {
         $we = $this->workspaceEditor();
-        $this->buffers->open('/p/a.php', "one\n");
-        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath('/p/a.php') => [self::edit(0, 3, 'ONE')]]]);
+        $this->buffers->open('/p/a.php', content: "one\n");
+        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath('/p/a.php') => [self::edit(0, to: 3, text: 'ONE')]]]);
         $this->assertTrue($this->undo->hasPending());
 
         $this->buffers->close('/p/a.php');
@@ -375,12 +349,12 @@ final class RefactoringUndoTest extends TestCase
     {
         $project = new TempProject(['closed.php' => "old closed\n"]);
         $we = $this->workspaceEditor();
-        $this->buffers->open('/p/open.php', "old open\n");
+        $this->buffers->open('/p/open.php', content: "old open\n");
 
         $we->applyWorkspaceEdit([
             'changes' => [
-                Uri::fromPath('/p/open.php') => [self::edit(0, 8, 'new open')],
-                Uri::fromPath($project->path('closed.php')) => [self::edit(0, 10, 'new closed')],
+                Uri::fromPath('/p/open.php') => [self::edit(0, to: 8, text: 'new open')],
+                Uri::fromPath($project->path('closed.php')) => [self::edit(0, to: 10, text: 'new closed')],
             ],
         ]);
 
@@ -397,10 +371,10 @@ final class RefactoringUndoTest extends TestCase
     public function testARefusedEditLeavesTheEarlierUndoAlone(): void
     {
         $we = $this->workspaceEditor();
-        $open = $this->buffers->open('/p/a.php', "old\n");
+        $open = $this->buffers->open('/p/a.php', content: "old\n");
         $we->applyWorkspaceEdit([
             'documentChanges' => [
-                ['textDocument' => ['uri' => Uri::fromPath('/p/a.php')], 'edits' => [self::edit(0, 3, 'new')]],
+                ['textDocument' => ['uri' => Uri::fromPath('/p/a.php')], 'edits' => [self::edit(0, to: 3, text: 'new')]],
             ],
         ]);
         $this->assertSame("new\n", $open->document->getText());
@@ -416,5 +390,28 @@ final class RefactoringUndoTest extends TestCase
         $this->assertTrue($this->undo->hasPending(), 'the earlier one survives');
         $this->assertNull($this->undo->undo());
         $this->assertSame("old\n", $open->document->getText());
+    }
+
+    /**
+     * One refactoring that spans an open buffer (`/p/open.php`) and a file no
+     * buffer holds (`closed.php` in the returned project), applied — the
+     * starting point of every all-or-nothing case.
+     *
+     * @return array{TempProject, Buffer}
+     */
+    private function renameOpenAndClosed(): array
+    {
+        $project = new TempProject(['closed.php' => "old closed\n"]);
+        $we = $this->workspaceEditor(); // first: it makes the buffers
+        $open = $this->buffers->open('/p/open.php', content: "old open\n");
+
+        $we->applyWorkspaceEdit([
+            'changes' => [
+                Uri::fromPath('/p/open.php') => [self::edit(0, to: 8, text: 'new open')],
+                Uri::fromPath($project->path('closed.php')) => [self::edit(0, to: 10, text: 'new closed')],
+            ],
+        ]);
+
+        return [$project, $open];
     }
 }

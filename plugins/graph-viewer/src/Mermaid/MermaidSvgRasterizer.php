@@ -34,7 +34,7 @@ final class MermaidSvgRasterizer
 
     public function binary(): ?string
     {
-        return null === $this->resolve($this->cliPath, 'mmdc') ? null : $this->resolve($this->nodePath, 'node');
+        return null === $this->resolve($this->cliPath, fallback: 'mmdc') ? null : $this->resolve($this->nodePath, fallback: 'node');
     }
 
     /** @param \Closure(string): void $onPng
@@ -43,8 +43,8 @@ final class MermaidSvgRasterizer
     public function rasterize(string $svg, ?float $scale, \Closure $onPng, \Closure $onError): void
     {
         $this->cancel();
-        $node = $this->resolve($this->nodePath, 'node');
-        $cli = $this->resolve($this->cliPath, 'mmdc');
+        $node = $this->resolve($this->nodePath, fallback: 'node');
+        $cli = $this->resolve($this->cliPath, fallback: 'mmdc');
         $factor = $scale ?? 1.0;
         $invalidScale = !\is_finite($factor) || $factor <= 0;
         if (null === $node || null === $cli || $invalidScale) {
@@ -64,13 +64,13 @@ final class MermaidSvgRasterizer
             // Never the project: the browser it starts is puppeteer's, which
             // RUNS a `.puppeteerrc.cjs` found in the working directory.
             $directory,
-            '',
-            'the Mermaid SVG browser',
-            function (string $png) use ($onPng): void {
+            stdin: '',
+            label: 'the Mermaid SVG browser',
+            onSuccess: function (string $png) use ($onPng): void {
                 $this->cleanup();
                 $onPng($png);
             },
-            function (string $error) use ($onError): void {
+            onFailure: function (string $error) use ($onError): void {
                 $this->cleanup();
                 $onError($error);
             },
@@ -82,8 +82,8 @@ final class MermaidSvgRasterizer
     {
         $this->directory = \sys_get_temp_dir().'/porta-mermaid-svg-'.\bin2hex(\random_bytes(16));
         try {
-            $this->files->mkdir($this->directory, 0o700);
-            $this->files->dumpFile($this->directory.'/'.MermaidEngine::CONFIG_STOP, '{}'); // its browser is puppeteer's too
+            $this->files->mkdir($this->directory, mode: 0o700);
+            $this->files->dumpFile($this->directory.'/'.MermaidEngine::CONFIG_STOP, content: '{}'); // its browser is puppeteer's too
             $this->files->dumpFile($this->directory.'/diagram.svg', $svg);
             $this->files->dumpFile($this->directory.'/raster.mjs', $this->files->readFile($this->script));
         } catch (IOExceptionInterface $exception) {

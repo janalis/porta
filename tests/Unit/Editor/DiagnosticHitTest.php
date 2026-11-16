@@ -23,12 +23,12 @@ final class DiagnosticHitTest extends TestCase
         // tab runs to the next stop of four, one cell from column 3.
         $doc = new Document("é😀\tx\n");
 
-        $this->assertSame([0, 1], DiagnosticSpan::display($doc, 0, ['col' => 0, 'endCol' => 1]));
-        $this->assertSame([1, 3], DiagnosticSpan::display($doc, 0, ['col' => 1, 'endCol' => 3]), 'the emoji: two units, two cells');
-        $this->assertSame([3, 4], DiagnosticSpan::display($doc, 0, ['col' => 3, 'endCol' => 4]), 'the tab: to its stop');
-        $this->assertSame([4, 5], DiagnosticSpan::display($doc, 0, ['col' => 4]), 'no end is one cell');
-        $this->assertSame([4, 5], DiagnosticSpan::display($doc, 0, ['col' => 4, 'endCol' => 4]), 'an empty range still covers its cell');
-        $this->assertSame([3, \PHP_INT_MAX], DiagnosticSpan::display($doc, 0, ['col' => 3, 'endCol' => \PHP_INT_MAX]), 'a range past its line runs on');
+        $this->assertSame([0, 1], DiagnosticSpan::display($doc, line: 0, diag: ['col' => 0, 'endCol' => 1]));
+        $this->assertSame([1, 3], DiagnosticSpan::display($doc, line: 0, diag: ['col' => 1, 'endCol' => 3]), 'the emoji: two units, two cells');
+        $this->assertSame([3, 4], DiagnosticSpan::display($doc, line: 0, diag: ['col' => 3, 'endCol' => 4]), 'the tab: to its stop');
+        $this->assertSame([4, 5], DiagnosticSpan::display($doc, line: 0, diag: ['col' => 4]), 'no end is one cell');
+        $this->assertSame([4, 5], DiagnosticSpan::display($doc, line: 0, diag: ['col' => 4, 'endCol' => 4]), 'an empty range still covers its cell');
+        $this->assertSame([3, \PHP_INT_MAX], DiagnosticSpan::display($doc, line: 0, diag: ['col' => 3, 'endCol' => \PHP_INT_MAX]), 'a range past its line runs on');
     }
 
     public function testThePointerFindsTheProblemsDrawnUnderItWorstFirst(): void
@@ -38,11 +38,11 @@ final class DiagnosticHitTest extends TestCase
         $error = ['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 1, 'endCol' => 8];
         $rest = ['severity' => DiagnosticSeverity::Hint, 'message' => 'h', 'col' => 9, 'endCol' => \PHP_INT_MAX];
 
-        $this->assertSame([$error, $warning], DiagnosticHit::atDisplayCol($doc, 0, [$warning, $error, $rest], 1));
-        $this->assertSame([$warning], DiagnosticHit::atDisplayCol($doc, 0, [$warning, $error, $rest], 0), 'the first cell');
-        $this->assertSame([], DiagnosticHit::atDisplayCol($doc, 0, [$warning, $error], 8), 'one past the end is not the problem');
-        $this->assertSame([$rest], DiagnosticHit::atDisplayCol($doc, 0, [$rest], 12), "a range past its line covers the line's last character");
-        $this->assertSame([], DiagnosticHit::atDisplayCol($doc, 0, [$rest], 13), 'but not the empty cells after the code');
+        $this->assertSame([$error, $warning], DiagnosticHit::atDisplayCol($doc, line: 0, lineDiags: [$warning, $error, $rest], displayCol: 1));
+        $this->assertSame([$warning], DiagnosticHit::atDisplayCol($doc, line: 0, lineDiags: [$warning, $error, $rest], displayCol: 0), 'the first cell');
+        $this->assertSame([], DiagnosticHit::atDisplayCol($doc, line: 0, lineDiags: [$warning, $error], displayCol: 8), 'one past the end is not the problem');
+        $this->assertSame([$rest], DiagnosticHit::atDisplayCol($doc, line: 0, lineDiags: [$rest], displayCol: 12), "a range past its line covers the line's last character");
+        $this->assertSame([], DiagnosticHit::atDisplayCol($doc, line: 0, lineDiags: [$rest], displayCol: 13), 'but not the empty cells after the code');
     }
 
     public function testAProblemAtTheEndOfTheLineKeepsItsCell(): void
@@ -50,7 +50,7 @@ final class DiagnosticHitTest extends TestCase
         $doc = new Document("ab\n");
         $atEnd = ['severity' => DiagnosticSeverity::Error, 'message' => 'missing ;', 'col' => 2, 'endCol' => \PHP_INT_MAX];
 
-        $this->assertSame([$atEnd], DiagnosticHit::atDisplayCol($doc, 0, [$atEnd], 2));
+        $this->assertSame([$atEnd], DiagnosticHit::atDisplayCol($doc, line: 0, lineDiags: [$atEnd], displayCol: 2));
     }
 
     public function testTheCaretFindsTheProblemItRestsOnOrJustAfter(): void
@@ -58,14 +58,14 @@ final class DiagnosticHitTest extends TestCase
         $range = ['severity' => DiagnosticSeverity::Warning, 'message' => 'w', 'col' => 4, 'endCol' => 7];
         $empty = ['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 2, 'endCol' => 2];
 
-        $this->assertSame([], DiagnosticHit::atCaret([$range], 3), 'before it');
-        $this->assertSame([$range], DiagnosticHit::atCaret([$range], 4));
-        $this->assertSame([$range], DiagnosticHit::atCaret([$range], 7), 'just after it, where typing leaves the caret');
-        $this->assertSame([], DiagnosticHit::atCaret([$range], 8));
-        $this->assertSame([$empty], DiagnosticHit::atCaret([$empty, $range], 2), 'an empty range at its column');
+        $this->assertSame([], DiagnosticHit::atCaret([$range], utf16Col: 3), 'before it');
+        $this->assertSame([$range], DiagnosticHit::atCaret([$range], utf16Col: 4));
+        $this->assertSame([$range], DiagnosticHit::atCaret([$range], utf16Col: 7), 'just after it, where typing leaves the caret');
+        $this->assertSame([], DiagnosticHit::atCaret([$range], utf16Col: 8));
+        $this->assertSame([$empty], DiagnosticHit::atCaret([$empty, $range], utf16Col: 2), 'an empty range at its column');
         $noEnd = ['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 2];
-        $this->assertSame([$noEnd], DiagnosticHit::atCaret([$noEnd], 3), 'no end: one unit wide, so the caret after it still counts');
-        $this->assertSame([], DiagnosticHit::atCaret([$noEnd], 4));
+        $this->assertSame([$noEnd], DiagnosticHit::atCaret([$noEnd], utf16Col: 3), 'no end: one unit wide, so the caret after it still counts');
+        $this->assertSame([], DiagnosticHit::atCaret([$noEnd], utf16Col: 4));
     }
 
     public function testWorstFirstKeepsTheOrderWithinASeverity(): void

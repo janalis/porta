@@ -219,7 +219,7 @@ final class IdeConfigScopeMergeTest extends TestCase
         \putenv('PORTA_HOME='.$this->home->dir);
         $files = new ConfigFiles($this->project->dir, $this->home->dir);
 
-        new PortaJsonWriter($files)->persistBundledDisabled(ConfigScope::Project, 'git');
+        new PortaJsonWriter($files)->persistBundledDisabled(ConfigScope::Project, plugin: 'git');
 
         $this->assertSame(
             ['todo'],
@@ -239,7 +239,7 @@ final class IdeConfigScopeMergeTest extends TestCase
         \putenv('PORTA_HOME='.$this->home->dir);
         $files = new ConfigFiles($this->project->dir, $this->home->dir);
 
-        new PortaJsonWriter($files)->persistBundledEnabled(ConfigScope::Project, 'todo');
+        new PortaJsonWriter($files)->persistBundledEnabled(ConfigScope::Project, plugin: 'todo');
 
         $this->assertSame(['git', 'todo'], IdeConfig::load($this->project->dir)->enabledPlugins);
     }
@@ -256,7 +256,7 @@ final class IdeConfigScopeMergeTest extends TestCase
         \putenv('PORTA_HOME='.$this->home->dir);
         $files = new ConfigFiles($this->project->dir, $this->home->dir);
 
-        new PortaJsonWriter($files)->persistBundledDisabled(ConfigScope::Global, 'git');
+        new PortaJsonWriter($files)->persistBundledDisabled(ConfigScope::Global, plugin: 'git');
 
         $this->assertSame(
             \array_values(\array_diff(IdeConfig::DEFAULT_ENABLED_PLUGINS, ['git'])),
@@ -283,7 +283,7 @@ final class IdeConfigScopeMergeTest extends TestCase
         $files = new ConfigFiles($this->project->dir, $this->home->dir);
 
         $this->assertTrue(
-            new PortaJsonWriter($files)->persistPluginEnabled(ConfigScope::Project, 'noisy'),
+            new PortaJsonWriter($files)->persistPluginEnabled(ConfigScope::Project, plugin: 'noisy'),
             'nothing to persist is not a failure',
         );
 
@@ -303,7 +303,7 @@ final class IdeConfigScopeMergeTest extends TestCase
         \putenv('PORTA_HOME='.$this->home->dir);
         $files = new ConfigFiles($this->project->dir, $this->home->dir);
 
-        new PortaJsonWriter($files)->resetSetting(ConfigScope::Project, 'theme');
+        new PortaJsonWriter($files)->resetSetting(ConfigScope::Project, key: 'theme');
 
         $this->assertFileDoesNotExist($this->project->path('.porta.json'));
     }
@@ -319,7 +319,7 @@ final class IdeConfigScopeMergeTest extends TestCase
         \putenv('PORTA_HOME='.$this->home->dir);
         $files = new ConfigFiles($this->project->dir, $this->home->dir);
 
-        new PortaJsonWriter($files)->resetSetting(ConfigScope::Project, 'theme');
+        new PortaJsonWriter($files)->resetSetting(ConfigScope::Project, key: 'theme');
 
         $this->assertFileExists($this->project->path('.porta.json'), 'a file the user made is not deleted from under them');
         $this->assertSame('dark', IdeConfig::load($this->project->dir)->settings['theme'], 'back to the default');

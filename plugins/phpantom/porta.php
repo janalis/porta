@@ -27,9 +27,9 @@ return new class('phpantom', 'phpantom_lsp', BinarySearch::PathOnly) extends Abs
     public function activate(PluginApi $api): void
     {
         $this->registerBinarySetting($api);
-        $api->registerSetting('autoFix', 'Fix on save', 'bool', false);
+        $api->registerSetting('autoFix', label: 'Fix on save', kind: 'bool', default: false);
 
-        $api->registerLanguageServer('php', 'phpantom', function () use ($api): array|ServerNotFound {
+        $api->registerLanguageServer('php', name: 'phpantom', resolveCommand: function () use ($api): array|ServerNotFound {
             $binary = $this->binary($api);
 
             return null === $binary ? new ServerNotFound() : [$binary];
@@ -37,22 +37,22 @@ return new class('phpantom', 'phpantom_lsp', BinarySearch::PathOnly) extends Abs
 
         $api->registerCommand(
             'fix',
-            'PHPantom: Fix Current File',
-            function () use ($api): void {
+            label: 'PHPantom: Fix Current File',
+            handler: function () use ($api): void {
                 $file = $this->activeFileOrFlash($api);
                 if (null !== $file) {
                     $this->runAndApply($api, ['fix', $file], $api->trans('%tool%: fixed %file%', ['%tool%' => $this->name(), '%file%' => basename($file)]), $file);
                 }
             },
-            ['ctrl+alt+m'],
+            keys: ['ctrl+alt+m'],
         );
-        $api->registerCommand('fix-project', 'PHPantom: Fix Project', function () use ($api): void {
+        $api->registerCommand('fix-project', label: 'PHPantom: Fix Project', handler: function () use ($api): void {
             $this->runAndApply($api, ['fix'], $api->trans('%tool%: fixed project', ['%tool%' => $this->name()]));
         });
-        $api->registerCommand('init', 'PHPantom: Generate Config', function () use ($api): void {
+        $api->registerCommand('init', label: 'PHPantom: Generate Config', handler: function () use ($api): void {
             $this->runAndApply($api, ['init'], $api->trans('%tool%: generated config', ['%tool%' => $this->name()]));
         });
-        $this->registerToggle($api, 'toggle-auto-fix', 'PHPantom: Toggle Fix on Save', 'autoFix', 'phpantom fix on save');
+        $this->registerToggle($api, id: 'toggle-auto-fix', label: 'PHPantom: Toggle Fix on Save', settingKey: 'autoFix', phrase: 'phpantom fix on save');
 
         $usable = $this->binaryAvailable($api);
         $api->addMenuItem('fix', $usable);

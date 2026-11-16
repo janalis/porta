@@ -64,11 +64,11 @@ final class SettingsFormBehaviourTest extends TestCase
             [
                 300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $this->selectSettingsSection($this->settingsNav($tui), 'keybindings');
+                    $this->selectSettingsSection($this->settingsNav($tui), id: 'keybindings');
                     $this->frame($tui);
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $list = Widgets::byId($tui, 'settings-keys', KeybindingsListWidget::class);
+                    $list = Widgets::byId($tui, id: 'settings-keys', class: KeybindingsListWidget::class);
                     $tui->setFocus($list);
                     $list->handleInput('/');
                     foreach (\str_split('duplicate') as $character) {
@@ -102,7 +102,7 @@ final class SettingsFormBehaviourTest extends TestCase
             [
                 300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $this->selectSettingsSection($this->settingsNav($tui), 'interface');
+                    $this->selectSettingsSection($this->settingsNav($tui), id: 'interface');
                     $this->frame($tui);
                 },
             ] + $steps,
@@ -119,8 +119,8 @@ final class SettingsFormBehaviourTest extends TestCase
                     $tui->setFocus($form);
 
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'Language'), 'the page opens showing its early rows');
-                    $this->assertNull($this->rowOf($grid, 'Tooltip delay (ms)'), 'and its last row is below the fold');
+                    $this->assertNotNull($this->rowOf($grid, needle: 'Language'), 'the page opens showing its early rows');
+                    $this->assertNull($this->rowOf($grid, needle: 'Tooltip delay (ms)'), 'and its last row is below the fold');
 
                     // Walk to the end with real input, as a user would.
                     for ($i = 0; $i < self::MAX_FORM_ROWS; ++$i) {
@@ -129,7 +129,7 @@ final class SettingsFormBehaviourTest extends TestCase
                     $this->frame($tui);
 
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'Tooltip delay (ms)'), 'the last row scrolled into view');
+                    $this->assertNotNull($this->rowOf($grid, needle: 'Tooltip delay (ms)'), 'the last row scrolled into view');
                     $this->assertStringContainsString(
                         'Tooltip delay (ms)',
                         $this->selectedSettingRow($form),
@@ -166,7 +166,7 @@ final class SettingsFormBehaviourTest extends TestCase
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
                     $grid = $this->screenGrid($tui, $terminal);
-                    $row = $this->rowOf($grid, 'Save changes to');
+                    $row = $this->rowOf($grid, needle: 'Save changes to');
                     $this->assertNotNull($row, 'the General page shows the row we are about to click');
 
                     // One press+release on it. SGR coordinates are 1-based.
@@ -212,13 +212,13 @@ final class SettingsFormBehaviourTest extends TestCase
                 300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $nav = $this->settingsNav($tui);
-                    $this->selectSettingsSection($nav, 'lang:php');
+                    $this->selectSettingsSection($nav, id: 'lang:php');
                     $this->frame($tui);
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $form = $this->settingsForm($tui);
                     $tui->setFocus($form);
-                    $this->selectSettingRow($form, 'Launch config');
+                    $this->selectSettingRow($form, label: 'Launch config');
 
                     $tui->handleInput("\r"); // open the inline editor
                     foreach (\str_split('{not json') as $char) {
@@ -228,7 +228,7 @@ final class SettingsFormBehaviourTest extends TestCase
                     $this->frame($tui);
 
                     $this->assertNotNull(
-                        $this->rowOf($this->screenGrid($tui, $terminal), '{not json'),
+                        $this->rowOf($this->screenGrid($tui, $terminal), needle: '{not json'),
                         'the text survived the refusal instead of snapping back',
                     );
                 },
@@ -256,15 +256,15 @@ final class SettingsFormBehaviourTest extends TestCase
                     // Tall enough for the whole page: its boxed controls are
                     // three rows each.
                     $rows = Paint::lines($form, new RenderContext(100, 40));
-                    $this->assertStringNotContainsString('●', $this->settingRow($rows, 'Sticky scroll'), 'a fresh project has changed nothing');
+                    $this->assertStringNotContainsString('●', $this->settingRow($rows, label: 'Sticky scroll'), 'a fresh project has changed nothing');
 
-                    $this->selectSettingRow($form, 'Sticky scroll');
+                    $this->selectSettingRow($form, label: 'Sticky scroll');
                     $tui->handleInput("\r"); // toggle it off its default
                     $this->frame($tui);
 
                     $rows = Paint::lines($form, new RenderContext(100, 40));
-                    $this->assertStringContainsString('●', $this->settingRow($rows, 'Sticky scroll'), 'the changed row is marked');
-                    $this->assertStringNotContainsString('●', $this->settingRow($rows, 'Indent guides'), 'and its neighbour is not');
+                    $this->assertStringContainsString('●', $this->settingRow($rows, label: 'Sticky scroll'), 'the changed row is marked');
+                    $this->assertStringNotContainsString('●', $this->settingRow($rows, label: 'Indent guides'), 'and its neighbour is not');
                 },
             ],
         );

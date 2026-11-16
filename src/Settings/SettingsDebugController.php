@@ -75,7 +75,7 @@ final readonly class SettingsDebugController
 
     private function changeAdapter(string $language, string $command): void
     {
-        $persisted = $this->writer->persistLanguageDebug($this->scope->current(), $language, 'adapter', $command);
+        $persisted = $this->writer->persistLanguageDebug($this->scope->current(), $language, key: 'adapter', value: $command);
         $this->adapters->set($language, $command, $this->adapters->launchOverrides($language));
 
         $shown = '' === $command ? $this->translator->trans('not configured') : $command;
@@ -102,7 +102,7 @@ final readonly class SettingsDebugController
             $launch = $decoded;
         }
 
-        $persisted = $this->writer->persistLanguageDebug($this->scope->current(), $language, 'launch', [] === $launch ? null : $launch);
+        $persisted = $this->writer->persistLanguageDebug($this->scope->current(), $language, key: 'launch', value: [] === $launch ? null : $launch);
         $this->adapters->set($language, $this->adapters->adapterCommand($language), $launch);
 
         $saved = SettingsFlash::savedSuffix($this->translator, $persisted);

@@ -77,9 +77,9 @@ final class CoreScreenshotsTest extends TestCase
                         $tui->handleInput("\x1b[B");
                     }
                     $tui->handleInput("\x1b[F"); // end
-                    self::type($tui, "\n\$order->");
+                    self::type($tui, text: "\n\$order->");
                     $this->await(static fn (): bool => Widgets::editor($tui)->isCompletionOpen(), what: 'the completion popup to open');
-                    $this->awaitPainted($tui, $terminal, 'isEmpty');
+                    $this->awaitPainted($tui, $terminal, needle: 'isEmpty');
                     $this->screenshot('completion', $tui, $terminal, $ide);
                 },
             ],
@@ -98,8 +98,8 @@ final class CoreScreenshotsTest extends TestCase
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitLspReady($tui, $terminal, ShopProject::SERVER);
                     $tui->handleInput("\x1b[97;6u"); // ctrl+shift+a
-                    self::type($tui, 'format');
-                    $this->awaitPainted($tui, $terminal, 'Format on Save');
+                    self::type($tui, text: 'format');
+                    $this->awaitPainted($tui, $terminal, needle: 'Format on Save');
                     $this->screenshot('find-action', $tui, $terminal, $ide);
                 },
             ],
@@ -118,8 +118,8 @@ final class CoreScreenshotsTest extends TestCase
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitLspReady($tui, $terminal, ShopProject::SERVER);
                     $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    self::type($tui, "total()\n");
-                    $this->awaitPainted($tui, $terminal, 'CheckoutController.php');
+                    self::type($tui, text: "total()\n");
+                    $this->awaitPainted($tui, $terminal, needle: 'CheckoutController.php');
                     $this->screenshot('find-in-project', $tui, $terminal, $ide);
                 },
             ],
@@ -138,7 +138,7 @@ final class CoreScreenshotsTest extends TestCase
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitLspReady($tui, $terminal, ShopProject::SERVER);
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $this->awaitPainted($tui, $terminal, 'Auto-pairs');
+                    $this->awaitPainted($tui, $terminal, needle: 'Auto-pairs');
                     $this->screenshot('settings', $tui, $terminal, $ide);
                 },
             ],
@@ -157,8 +157,8 @@ final class CoreScreenshotsTest extends TestCase
         // An empty dotdir: the reader's prompt, not the machine's that built the docs.
         // Read first, it turns off the machine's own files: Ubuntu's
         // /etc/zsh/zshrc runs compinit, which stops on a question.
-        $project->write('../zdotdir/.zshenv', "unsetopt GLOBAL_RCS\n");
-        $project->write('../zdotdir/.zshrc', "PROMPT='%1~ \$ '\n");
+        $project->write('../zdotdir/.zshenv', content: "unsetopt GLOBAL_RCS\n");
+        $project->write('../zdotdir/.zshrc', content: "PROMPT='%1~ \$ '\n");
         \putenv('ZDOTDIR='.\dirname($project->dir).'/zdotdir');
         $this->runIde(
             $project,
@@ -168,9 +168,9 @@ final class CoreScreenshotsTest extends TestCase
                     $this->awaitLspReady($tui, $terminal, ShopProject::SERVER);
                     Services::resolve($ide, CommandRegistry::class)->run('ide_terminal');
                     // Type at the prompt, not before the shell is up to echo it.
-                    $this->awaitPainted($tui, $terminal, '$ ');
-                    self::type($tui, "ls src/Order\n");
-                    $this->awaitPainted($tui, $terminal, 'OrderLine.php');
+                    $this->awaitPainted($tui, $terminal, needle: '$ ');
+                    self::type($tui, text: "ls src/Order\n");
+                    $this->awaitPainted($tui, $terminal, needle: 'OrderLine.php');
                     $this->screenshot('terminal', $tui, $terminal, $ide);
                 },
             ],
@@ -189,11 +189,11 @@ final class CoreScreenshotsTest extends TestCase
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitLspReady($tui, $terminal, ShopProject::SERVER);
-                    Widgets::editor($tui)->getDocument()->setCursor(32, 0); // the line that adds each subtotal
+                    Widgets::editor($tui)->getDocument()->setCursor(32, col: 0); // the line that adds each subtotal
                     $tui->handleInput("\x1b[19;5~"); // ctrl+f8: a breakpoint
                     $tui->handleInput("\x1b[20;2~"); // shift+f9: debug
                     // Locals are the last of the stop's round trips to land.
-                    $this->awaitPainted($tui, $terminal, '$x = 42');
+                    $this->awaitPainted($tui, $terminal, needle: '$x = 42');
                     $this->screenshot('debugger', $tui, $terminal, $ide);
                 },
             ],

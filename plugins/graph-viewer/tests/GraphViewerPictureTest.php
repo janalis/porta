@@ -32,9 +32,9 @@ final class GraphViewerPictureTest extends TestCase
     public function testShowsTheBitmapDotRenders(): void
     {
         $this->engine->nextResult = self::layout();
-        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $this->engine->nextPng = PngFixture::bytes(260, height: 36);
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
         $this->settle();
 
         $raw = \implode("\n", $widget->render(new RenderContext(80, 24)));
@@ -55,19 +55,19 @@ final class GraphViewerPictureTest extends TestCase
     {
         $layout = self::layout();
         $this->engine->nextResult = $layout;
-        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $this->engine->nextPng = PngFixture::bytes(260, height: 36);
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
         $this->settle();
         $widget->render(new RenderContext(80, 24));
-        $view = Probe::get($widget, 'view');
+        $view = Probe::get($widget, property: 'view');
         $this->assertInstanceOf(ZoomPanModel::class, $view);
 
         $differ = [];
         for ($row = 0; $row < 24; ++$row) {
             for ($col = 0; $col < 80; ++$col) {
-                $shown = GraphRenderer::nodeShownAt($layout, $view, 80, 24, $row, $col);
-                if ($shown !== GraphRenderer::nodeAt($layout, $view, 80, 24, $row, $col)) {
+                $shown = GraphRenderer::nodeShownAt($layout, $view, cols: 80, rows: 24, relRow: $row, relCol: $col);
+                if ($shown !== GraphRenderer::nodeAt($layout, $view, cols: 80, rows: 24, relRow: $row, relCol: $col)) {
                     $differ[] = [$row, $col, $shown];
                 }
             }
@@ -88,7 +88,7 @@ final class GraphViewerPictureTest extends TestCase
         $this->engine->nextResult = self::layout();
         $this->engine->nextPng = null; // dot has not answered yet
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
 
         $this->assertStringContainsString('┌', self::plain($widget->render(new RenderContext(80, 24))), 'never a blank pane');
     }
@@ -100,9 +100,9 @@ final class GraphViewerPictureTest extends TestCase
     public function testThePictureIsReadAtTheDensityItWasAskedFor(): void
     {
         $this->engine->nextResult = self::layout();
-        $this->engine->nextPng = PngFixture::bytes(260, 36, [200, 40, 40], right: [40, 40, 200]);
+        $this->engine->nextPng = PngFixture::bytes(260, height: 36, rgb: [200, 40, 40], right: [40, 40, 200]);
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
         $this->settle();
 
         $rows = $widget->render(new RenderContext(80, 24));
@@ -110,15 +110,15 @@ final class GraphViewerPictureTest extends TestCase
 
         $this->assertSame([72], $this->engine->renderDpis);
         $this->assertStringStartsWith("\x1b[38;2;200;40;40", $middle, 'the left half at the left edge');
-        $this->assertStringContainsString('38;2;40;40;200', AnsiUtils::sliceToWidth($middle, 70, 10), 'the right half at the right one');
+        $this->assertStringContainsString('38;2;40;40;200', AnsiUtils::sliceToWidth($middle, startCol: 70, length: 10), 'the right half at the right one');
     }
 
     /** PlantUML's 1:1 is 96 dpi, not graphviz's 72: read at 72, a third of its picture would be lost. */
     public function testAPlantUmlPictureIsReadAtItsOwnDensity(): void
     {
-        $this->plantUml->nextPng = PngFixture::bytes(260, 36, [200, 40, 40], right: [40, 40, 200]);
+        $this->plantUml->nextPng = PngFixture::bytes(260, height: 36, rgb: [200, 40, 40], right: [40, 40, 200]);
         $widget = $this->widget();
-        $widget->show('/p/seq.puml', '@startuml');
+        $widget->show('/p/seq.puml', payload: '@startuml');
         $this->settle();
 
         $rows = $widget->render(new RenderContext(80, 24));
@@ -126,8 +126,8 @@ final class GraphViewerPictureTest extends TestCase
         $middle = $rows[\intdiv(\count($rows), num2: 2)];
         $this->assertSame([96], $this->plantUml->renderDpis);
         // A slice re-opens the style in force at its start, so what counts is a colour a cell is DRAWN in.
-        $this->assertDoesNotMatchRegularExpression('/38;2;40;40;200[;0-9]*m▀/', AnsiUtils::sliceToWidth($middle, 0, 40), 'the halves meet mid-pane');
-        $this->assertDoesNotMatchRegularExpression('/38;2;200;40;40[;0-9]*m▀/', AnsiUtils::sliceToWidth($middle, 40, 40));
+        $this->assertDoesNotMatchRegularExpression('/38;2;40;40;200[;0-9]*m▀/', AnsiUtils::sliceToWidth($middle, startCol: 0, length: 40), 'the halves meet mid-pane');
+        $this->assertDoesNotMatchRegularExpression('/38;2;200;40;40[;0-9]*m▀/', AnsiUtils::sliceToWidth($middle, startCol: 40, length: 40));
     }
 
     public function testAFailedRenderKeepsTheCellsUnderABanner(): void
@@ -137,7 +137,7 @@ final class GraphViewerPictureTest extends TestCase
         $this->engine->nextPng = 'Format: "png" not recognized.';
         $this->engine->pngIsError = true;
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
         $this->settle();
 
         $screen = self::plain($widget->render(new RenderContext(60, 16)));
@@ -150,7 +150,7 @@ final class GraphViewerPictureTest extends TestCase
         $this->engine->nextResult = self::layout();
         $this->engine->nextPng = 'this is not a PNG';
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
         $this->settle();
 
         $screen = self::plain($widget->render(new RenderContext(60, 16)));
@@ -161,14 +161,14 @@ final class GraphViewerPictureTest extends TestCase
     public function testATabSwitchNeverPaintsThePreviousTabsPicture(): void
     {
         $this->engine->nextResult = self::layout();
-        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $this->engine->nextPng = PngFixture::bytes(260, height: 36);
         $widget = $this->widget();
-        $widget->show('/p/a.dot', 'digraph A { A -> B; }');
+        $widget->show('/p/a.dot', payload: 'digraph A { A -> B; }');
         $this->settle();
         $this->assertStringContainsString('▀', \implode("\n", $widget->render(new RenderContext(80, 24))));
 
         $this->engine->nextPng = null; // the new tab's picture has not arrived
-        $widget->show('/p/b.dot', 'digraph B { X -> Y; }');
+        $widget->show('/p/b.dot', payload: 'digraph B { X -> Y; }');
         $this->settle();
         $screen = self::plain($widget->render(new RenderContext(80, 24)));
 
@@ -180,14 +180,14 @@ final class GraphViewerPictureTest extends TestCase
         $this->engine->nextResult = self::layout();
         $this->engine->deferred = true;
         $widget = $this->widget();
-        $widget->show('/p/a.dot', 'digraph A { A -> B; }');
+        $widget->show('/p/a.dot', payload: 'digraph A { A -> B; }');
         ($this->engine->pendingDone)(self::layout()); // the layout lands, so a bitmap is requested
         $this->settle();
         $deliverA = $this->engine->pendingPng;
         $this->assertNotNull($deliverA);
 
-        $widget->show('/p/b.dot', 'digraph B { X -> Y; }'); // the tab moves on
-        $deliverA(PngFixture::bytes(260, 36)); // dot answers for the tab that left
+        $widget->show('/p/b.dot', payload: 'digraph B { X -> Y; }'); // the tab moves on
+        $deliverA(PngFixture::bytes(260, height: 36)); // dot answers for the tab that left
 
         $this->assertStringNotContainsString('▀', \implode("\n", $widget->render(new RenderContext(80, 24))), 'a stale picture never reaches the pane');
     }
@@ -195,9 +195,9 @@ final class GraphViewerPictureTest extends TestCase
     public function testAZoomStepAsksForASharperBitmap(): void
     {
         $this->engine->nextResult = self::layout();
-        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $this->engine->nextPng = PngFixture::bytes(260, height: 36);
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
         $this->settle();
         $widget->render(new RenderContext(80, 24));
         $this->assertSame([72], $this->engine->renderDpis);
@@ -219,9 +219,9 @@ final class GraphViewerPictureTest extends TestCase
     public function testAGlideBetweenTheRungsAsksForOneSharperBitmap(): void
     {
         $this->engine->nextResult = self::layout();
-        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $this->engine->nextPng = PngFixture::bytes(260, height: 36);
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
         $this->settle();
         $widget->render(new RenderContext(80, 24));
         $widget->handleInput('1'); // 100%, so a glide crosses into oversampling
@@ -230,7 +230,7 @@ final class GraphViewerPictureTest extends TestCase
 
         // A Ctrl+scroll burst: several fractional steps, one resolution.
         foreach (\range(1, end: 3) as $ignored) {
-            $widget->magnifyAt(1.08, 40, 12);
+            $widget->magnifyAt(1.08, relCol: 40, relRow: 12);
         }
         $this->assertSame('126%', $widget->zoomLabel(), 'the zoom itself is continuous');
         $this->settle();
@@ -240,14 +240,14 @@ final class GraphViewerPictureTest extends TestCase
     public function testAPanNeverAsksForANewBitmap(): void
     {
         $this->engine->nextResult = self::layout();
-        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $this->engine->nextPng = PngFixture::bytes(260, height: 36);
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
         $this->settle();
         $widget->render(new RenderContext(80, 24));
 
         $widget->handleInput("\x1b[C"); // right
-        $widget->scrollBy(0, 4);
+        $widget->scrollBy(0, dyHalfRows: 4);
 
         $this->assertSame([], $this->scheduler->scheduled, 'panning changes no resolution');
         $this->assertSame([72], $this->engine->renderDpis);
@@ -258,9 +258,9 @@ final class GraphViewerPictureTest extends TestCase
         // 20000 × 20000 points: at 72 dpi that is 400M pixels, 25× over the
         // decoder's ceiling, so the request is capped rather than refused.
         $this->engine->nextResult = new GraphLayout(20_000.0, 20_000.0, [], [], []);
-        $this->engine->nextPng = PngFixture::bytes(40, 40);
+        $this->engine->nextPng = PngFixture::bytes(40, height: 40);
         $widget = $this->widget();
-        $widget->show('/p/huge.dot', 'digraph Huge {}');
+        $widget->show('/p/huge.dot', payload: 'digraph Huge {}');
         $this->settle();
 
         $this->assertSame([14], $this->engine->renderDpis, '72 × sqrt(16M / 400M), floored');
@@ -270,7 +270,7 @@ final class GraphViewerPictureTest extends TestCase
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
         $this->assertNotSame([], $this->scheduler->scheduled, 'a render is pending');
 
         $widget->clear();
@@ -282,9 +282,9 @@ final class GraphViewerPictureTest extends TestCase
     public function testTheSelectionIsFramedOverTheBitmap(): void
     {
         $this->engine->nextResult = self::layout();
-        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $this->engine->nextPng = PngFixture::bytes(260, height: 36);
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
         $this->settle();
         $bare = \implode("\n", $widget->render(new RenderContext(80, 24)));
         $this->assertStringNotContainsString(Glyphs::FRAME_VERTICAL, $bare, 'nothing framed while nothing is selected');
@@ -299,22 +299,22 @@ final class GraphViewerPictureTest extends TestCase
             $this->assertSame(80, AnsiUtils::visibleWidth($line), 'splicing kept every line pane-wide');
         }
 
-        $widget->selectAt(0, 0); // deselect on empty space
+        $widget->selectAt(0, relCol: 0); // deselect on empty space
         $this->assertStringNotContainsString(Glyphs::FRAME_VERTICAL, \implode("\n", $widget->render(new RenderContext(80, 24))));
     }
 
     public function testAFramedNodeScrolledOutOfThePaneDrawsNothing(): void
     {
         $this->engine->nextResult = self::layout();
-        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $this->engine->nextPng = PngFixture::bytes(260, height: 36);
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
         $this->settle();
         $widget->render(new RenderContext(80, 24));
         $widget->handleInput('n'); // select A, the leftmost node
 
         $widget->handleInput('1'); // actual size, so the graph overflows the pane
-        $widget->scrollBy(400, 0); // pan far past it
+        $widget->scrollBy(400, dyHalfRows: 0); // pan far past it
         $lines = $widget->render(new RenderContext(80, 24));
 
         $this->assertStringNotContainsString(Glyphs::FRAME_VERTICAL, \implode("\n", $lines), 'an off-pane selection frames nothing');
@@ -326,9 +326,9 @@ final class GraphViewerPictureTest extends TestCase
     public function testTheRenderModeKeyFlipsBetweenThePictureAndTheCells(): void
     {
         $this->engine->nextResult = self::layout();
-        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $this->engine->nextPng = PngFixture::bytes(260, height: 36);
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
         $this->settle();
         $this->assertStringContainsString('▀', \implode("\n", $widget->render(new RenderContext(80, 24))));
 
@@ -344,9 +344,9 @@ final class GraphViewerPictureTest extends TestCase
     public function testThePersistedCellsDefaultNeverAsksDotForAPicture(): void
     {
         $this->engine->nextResult = self::layout();
-        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $this->engine->nextPng = PngFixture::bytes(260, height: 36);
         $widget = new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler, renderMode: 'cells');
-        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
         $widget->render(new RenderContext(80, 24));
 
         $this->assertSame([], $this->scheduler->scheduled, 'no bitmap is even scheduled');
@@ -364,9 +364,9 @@ final class GraphViewerPictureTest extends TestCase
         // The Settings page writes `renderMode`; the plugin pushes it here, so
         // the pane already on screen changes without a restart.
         $this->engine->nextResult = self::layout();
-        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $this->engine->nextPng = PngFixture::bytes(260, height: 36);
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
         $this->settle();
         $this->assertStringContainsString('▀', \implode("\n", $widget->render(new RenderContext(80, 24))), 'the picture, as configured');
 
@@ -383,9 +383,9 @@ final class GraphViewerPictureTest extends TestCase
         // A no-op must stay one: repainting and re-scheduling a refine on every
         // unrelated settings write would be work per keystroke on the page.
         $this->engine->nextResult = self::layout();
-        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $this->engine->nextPng = PngFixture::bytes(260, height: 36);
         $widget = new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler, renderMode: 'cells');
-        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
         $widget->render(new RenderContext(80, 24));
         $this->scheduler->scheduled = [];
 
@@ -397,9 +397,9 @@ final class GraphViewerPictureTest extends TestCase
     public function testAnUnknownRenderModeReadsAsThePicture(): void
     {
         $this->engine->nextResult = self::layout();
-        $this->engine->nextPng = PngFixture::bytes(260, 36);
+        $this->engine->nextPng = PngFixture::bytes(260, height: 36);
         $widget = new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler, renderMode: 'nonsense');
-        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
         $this->settle();
 
         $this->assertStringContainsString('▀', \implode("\n", $widget->render(new RenderContext(80, 24))));
@@ -409,7 +409,7 @@ final class GraphViewerPictureTest extends TestCase
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'dot');
+        $widget->show('/p/g.dot', payload: 'dot');
         $widget->render(new RenderContext(80, 24));
         $widget->refreshTheme(); // must not throw; repaint verified by the chrome sweep E2e
 
@@ -420,42 +420,42 @@ final class GraphViewerPictureTest extends TestCase
     {
         $mermaid = new FakeLayoutEngine();
         $mermaid->baseDpi = 96;
-        $mermaid->nextPng = PngFixture::bytes(120, 80);
+        $mermaid->nextPng = PngFixture::bytes(120, height: 80);
         $widget = new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler, renderMode: 'bitmap', mermaid: $mermaid);
-        $widget->show('/p/diagram.mmd', 'flowchart LR');
+        $widget->show('/p/diagram.mmd', payload: 'flowchart LR');
         $this->settle();
         $this->assertSame([96], $mermaid->renderDpis);
         $this->assertSame(0, $this->engine->layoutCalls);
         $this->assertStringContainsString('▀', \implode("\n", $widget->render(new RenderContext(80, 24))));
         $this->assertSame([], $widget->nodeChoices());
         $widget->handleInput('n');
-        $widget->selectAt(4, 4);
+        $widget->selectAt(4, relCol: 4);
         $this->assertSame('', $widget->statusInfo());
 
         $mermaid->pngIsError = true;
         $mermaid->nextPng = 'parse error at line 2';
-        $widget->show('/p/diagram.mmd', 'broken');
+        $widget->show('/p/diagram.mmd', payload: 'broken');
         $this->settle();
         $screen = $widget->render(new RenderContext(80, 24));
         $this->assertStringContainsString('parse error at line 2', self::plain($screen));
         $this->assertStringContainsString('▀', \implode("\n", $screen));
 
-        $oldView = Probe::get($widget, 'view');
+        $oldView = Probe::get($widget, property: 'view');
         $mermaid->pngIsError = false;
-        $mermaid->nextPng = PngFixture::bytes(240, 160);
-        $widget->show('/p/diagram.mmd', 'flowchart TD');
+        $mermaid->nextPng = PngFixture::bytes(240, height: 160);
+        $widget->show('/p/diagram.mmd', payload: 'flowchart TD');
         $this->settle();
         $this->assertStringNotContainsString('parse error', self::plain($widget->render(new RenderContext(80, 24))));
-        $view = Probe::get($widget, 'view');
+        $view = Probe::get($widget, property: 'view');
         $this->assertInstanceOf(ZoomPanModel::class, $view);
         $this->assertNotSame($oldView, $view, 'a larger successful edit replaces the old fit and pan bounds');
         $this->assertSame([240, 160], $view->dimensions());
         $widget->handleInput('1');
         $this->settle();
-        $mermaid->nextPng = PngFixture::bytes(480, 320);
+        $mermaid->nextPng = PngFixture::bytes(480, height: 320);
         $widget->handleInput('=');
         $this->settle();
-        $this->assertSame($view, Probe::get($widget, 'view'), 'resolution-only changes preserve zoom and logical geometry');
+        $this->assertSame($view, Probe::get($widget, property: 'view'), 'resolution-only changes preserve zoom and logical geometry');
         $this->assertSame([96, 96, 96, 192], $mermaid->renderDpis);
         $widget->clear();
     }
@@ -469,7 +469,7 @@ final class GraphViewerPictureTest extends TestCase
         $mermaid->pngIsError = true;
         $mermaid->nextPng = 'mmdc not found — install mermaid-cli, or set the "mermaidPath" setting';
         $widget = new GraphViewerWidget($this->engine, $translator, scheduler: $this->scheduler, mermaid: $mermaid);
-        $widget->show('/p/diagram.mmd', 'flowchart TD');
+        $widget->show('/p/diagram.mmd', payload: 'flowchart TD');
         $this->assertStringContainsString('mmdc introuvable', self::plain($widget->render(new RenderContext(100, 10))));
         $this->settle();
         $this->assertStringContainsString('mmdc introuvable', self::plain($widget->render(new RenderContext(100, 10))));
@@ -480,7 +480,7 @@ final class GraphViewerPictureTest extends TestCase
         $mermaid = new FakeLayoutEngine();
         $mermaid->binary = null;
         $widget = new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler, mermaid: $mermaid);
-        $widget->show('/p/diagram.mermaid', 'flowchart TD');
+        $widget->show('/p/diagram.mermaid', payload: 'flowchart TD');
         $screen = self::plain($widget->render(new RenderContext(100, 10)));
         $this->assertStringContainsString('mmdc not found', $screen);
         $this->assertStringContainsString('"mermaidPath" setting', $screen);
@@ -488,9 +488,9 @@ final class GraphViewerPictureTest extends TestCase
 
     public function testAPlantUmlTabIsThePictureAndNothingElse(): void
     {
-        $this->plantUml->nextPng = PngFixture::bytes(120, 80);
+        $this->plantUml->nextPng = PngFixture::bytes(120, height: 80);
         $widget = $this->widget();
-        $widget->show('/p/seq.puml', "@startuml\nBob -> Alice\n@enduml");
+        $widget->show('/p/seq.puml', payload: "@startuml\nBob -> Alice\n@enduml");
         $this->settle();
 
         $this->assertSame(0, $this->engine->layoutCalls, 'nothing to lay out — dot is not involved');
@@ -503,16 +503,16 @@ final class GraphViewerPictureTest extends TestCase
 
     public function testTheLayoutFedKeysAreInertOnAPlantUmlTab(): void
     {
-        $this->plantUml->nextPng = PngFixture::bytes(120, 80);
+        $this->plantUml->nextPng = PngFixture::bytes(120, height: 80);
         $widget = $this->widget();
-        $widget->show('/p/seq.puml', '@startuml');
+        $widget->show('/p/seq.puml', payload: '@startuml');
         $this->settle();
         $widget->render(new RenderContext(80, 24));
         $before = \implode("\n", $widget->render(new RenderContext(80, 24)));
 
         $widget->handleInput('n'); // select next node
         $widget->handleInput('p');
-        $widget->selectAt(4, 4); // click-select
+        $widget->selectAt(4, relCol: 4); // click-select
         $widget->handleInput('v'); // the cell rendering
 
         $this->assertSame($before, \implode("\n", $widget->render(new RenderContext(80, 24))), 'none of the geometry keys do anything');
@@ -521,9 +521,9 @@ final class GraphViewerPictureTest extends TestCase
 
     public function testAPlantUmlZoomReRendersAtTheHigherDpi(): void
     {
-        $this->plantUml->nextPng = PngFixture::bytes(120, 80);
+        $this->plantUml->nextPng = PngFixture::bytes(120, height: 80);
         $widget = $this->widget();
-        $widget->show('/p/seq.puml', '@startuml');
+        $widget->show('/p/seq.puml', payload: '@startuml');
         $this->settle();
         $widget->render(new RenderContext(80, 24));
         $widget->handleInput('1'); // actual size
@@ -531,7 +531,7 @@ final class GraphViewerPictureTest extends TestCase
         $this->assertSame([96], $this->plantUml->renderDpis, '1:1 is what the probe already produced');
 
         $widget->handleInput('='); // 200%
-        $this->plantUml->nextPng = PngFixture::bytes(240, 160);
+        $this->plantUml->nextPng = PngFixture::bytes(240, height: 160);
         $this->settle();
 
         $this->assertSame([96, 192], $this->plantUml->renderDpis, 'twice the resolution, in PlantUML units');
@@ -542,7 +542,7 @@ final class GraphViewerPictureTest extends TestCase
         $this->plantUml->nextPng = 'Syntax Error? (line 2)';
         $this->plantUml->pngIsError = true;
         $widget = $this->widget();
-        $widget->show('/p/seq.puml', "@startuml\nbroken");
+        $widget->show('/p/seq.puml', payload: "@startuml\nbroken");
         $this->settle();
 
         $this->assertStringContainsString('Syntax Error', self::plain($widget->render(new RenderContext(60, 12))));
@@ -551,9 +551,9 @@ final class GraphViewerPictureTest extends TestCase
     public function testWithoutPlantumlTheEngineStillDrawsThePicture(): void
     {
         $this->plantUml->binary = null;
-        $this->plantUml->nextPng = PngFixture::bytes(120, 80);
+        $this->plantUml->nextPng = PngFixture::bytes(120, height: 80);
         $widget = $this->widget();
-        $widget->show('/p/seq.puml', "@startuml\nBob -> Alice\n@enduml");
+        $widget->show('/p/seq.puml', payload: "@startuml\nBob -> Alice\n@enduml");
         $this->settle();
 
         $this->assertSame([96], $this->plantUml->renderDpis, 'the engine draws it natively, not the pane that refuses');
@@ -565,9 +565,9 @@ final class GraphViewerPictureTest extends TestCase
     public function testWithoutDotADotTabIsThePictureAlone(): void
     {
         $this->engine->binary = null;
-        $this->engine->nextPng = PngFixture::bytes(120, 80);
+        $this->engine->nextPng = PngFixture::bytes(120, height: 80);
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'digraph { A -> B }');
+        $widget->show('/p/g.dot', payload: 'digraph { A -> B }');
         $this->settle();
 
         $this->assertSame(0, $this->engine->layoutCalls, 'no geometry without dot');
@@ -585,13 +585,13 @@ final class GraphViewerPictureTest extends TestCase
 
     public function testADotTabAfterAPlantUmlOneStillLaysOut(): void
     {
-        $this->plantUml->nextPng = PngFixture::bytes(120, 80);
+        $this->plantUml->nextPng = PngFixture::bytes(120, height: 80);
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/seq.puml', '@startuml');
+        $widget->show('/p/seq.puml', payload: '@startuml');
         $this->settle();
 
-        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B; }');
         $this->assertSame(1, $this->engine->layoutCalls, 'the geometry path is untouched');
         $this->assertSame('3 nodes · 2 edges', $widget->statusInfo());
         $this->assertStringContainsString('┌', self::plain($widget->render(new RenderContext(80, 24))));

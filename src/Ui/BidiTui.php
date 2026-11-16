@@ -486,7 +486,7 @@ final class BidiTui extends Tui implements FrameHooks
         // 350ms paint. The middle one earned its own number the hard way: it
         // costs ~8ms at 226x67 and, counted as part of the write, read as a tty
         // that had stopped draining while `pendingBytes` said it had not.
-        $privates['requested']->setValue($this, false);
+        $privates['requested']->setValue($this, value: false);
 
         /** @var ContainerWidget $root */
         $root = $privates['root']->getValue($this);

@@ -128,7 +128,7 @@ final class SearchEverywhereControllerTest extends TestCase
         $controller->open();
 
         ($overlay->onQuery)('f');
-        $files->emits[0](self::hits(SearchCategory::Files, 8));
+        $files->emits[0](self::hits(SearchCategory::Files, count: 8));
 
         $this->assertSame(['f0', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7'], $this->labels($overlay->rows), 'all eight, and no grow row');
     }
@@ -142,7 +142,7 @@ final class SearchEverywhereControllerTest extends TestCase
         $controller->open();
 
         ($overlay->onQuery)('f');
-        $files->emits[0](self::hits(SearchCategory::Files, 100));
+        $files->emits[0](self::hits(SearchCategory::Files, count: 100));
 
         $labels = $this->labels($overlay->rows);
         $this->assertSame(SearchEverywhereController::SOLO_CAP, \count($labels) - 1);
@@ -167,7 +167,7 @@ final class SearchEverywhereControllerTest extends TestCase
         $this->assertSame(['Classes', '◌ Searching…', 'Text', '◌ Searching…'], $notes(), 'before the debounce even fires');
 
         $this->scheduled[0](); // the debounce: both asked
-        $classes->emits[0]([$this->hit(SearchCategory::Classes, 'Greeter')]);
+        $classes->emits[0]([$this->hit(SearchCategory::Classes, label: 'Greeter')]);
         $this->assertSame(['Classes', 'Text', '◌ Searching…'], $notes());
         $this->assertSame(['Greeter'], $this->labels($overlay->rows));
 
@@ -232,7 +232,7 @@ final class SearchEverywhereControllerTest extends TestCase
         $controller->open();
 
         ($overlay->onQuery)('f');
-        $files->emits[0](self::hits(SearchCategory::Files, 8));
+        $files->emits[0](self::hits(SearchCategory::Files, count: 8));
 
         $this->assertSame(['f0', 'f1', 'f2', 'f3', 'f4', '3 more results'], $this->labels($overlay->rows));
     }
@@ -244,7 +244,7 @@ final class SearchEverywhereControllerTest extends TestCase
         $controller = $this->controller($overlay, [$files], [], new BufferManager());
         $controller->open();
         ($overlay->onQuery)('f');
-        $files->emits[0](self::hits(SearchCategory::Files, 8));
+        $files->emits[0](self::hits(SearchCategory::Files, count: 8));
 
         // Picked the way any row is picked — the overlay does not know this one
         // is different.
@@ -263,7 +263,7 @@ final class SearchEverywhereControllerTest extends TestCase
         $controller = $this->controller($overlay, [$files], [], new BufferManager());
         $controller->open();
         ($overlay->onQuery)('f');
-        $files->emits[0](self::hits(SearchCategory::Files, 100));
+        $files->emits[0](self::hits(SearchCategory::Files, count: 100));
 
         ($overlay->onPick)(\array_last($overlay->rows)->hit);
 
@@ -280,7 +280,7 @@ final class SearchEverywhereControllerTest extends TestCase
         $controller->open();
 
         ($overlay->onQuery)('f');
-        $files->emits[0](self::hits(SearchCategory::Files, 6));
+        $files->emits[0](self::hits(SearchCategory::Files, count: 6));
 
         $this->assertContains('1 more result', $this->labels($overlay->rows));
     }
@@ -293,7 +293,7 @@ final class SearchEverywhereControllerTest extends TestCase
         $controller->open();
 
         ($overlay->onQuery)('f');
-        $files->emits[0](self::hits(SearchCategory::Files, 5));
+        $files->emits[0](self::hits(SearchCategory::Files, count: 5));
 
         $this->assertSame(['f0', 'f1', 'f2', 'f3', 'f4'], $this->labels($overlay->rows));
     }
@@ -307,11 +307,11 @@ final class SearchEverywhereControllerTest extends TestCase
         $controller = $this->controller($overlay, [$files], [], new BufferManager());
         $controller->open();
         ($overlay->onQuery)('f');
-        $files->emits[0](self::hits(SearchCategory::Files, 8));
+        $files->emits[0](self::hits(SearchCategory::Files, count: 8));
         ($overlay->onPick)(\array_last($overlay->rows)->hit);
 
         ($overlay->onQuery)('g');
-        $files->emits[1](self::hits(SearchCategory::Files, 8));
+        $files->emits[1](self::hits(SearchCategory::Files, count: 8));
 
         $this->assertSame(['f0', 'f1', 'f2', 'f3', 'f4', '3 more results'], $this->labels($overlay->rows));
     }
@@ -319,8 +319,8 @@ final class SearchEverywhereControllerTest extends TestCase
     public function testOpenSeedsRecentFilesAndOpensTheOverlay(): void
     {
         $buffers = new BufferManager();
-        $buffers->open('/proj/src/A.php', '');
-        $buffers->open('/proj/B.php', '');
+        $buffers->open('/proj/src/A.php', content: '');
+        $buffers->open('/proj/B.php', content: '');
         $overlay = new RecordingSearchOverlay();
 
         $this->controller($overlay, [], [], $buffers)->open();
@@ -350,7 +350,7 @@ final class SearchEverywhereControllerTest extends TestCase
         \unlink($project->path('Gone.php'));
 
         $buffers = new BufferManager();
-        $buffers->open($project->path('src/Open.php'), '');
+        $buffers->open($project->path('src/Open.php'), content: '');
         $overlay = new RecordingSearchOverlay();
 
         $this->controller($overlay, [], [], $buffers, $project->dir)->open();
@@ -378,12 +378,12 @@ final class SearchEverywhereControllerTest extends TestCase
         $this->assertCount(0, $classes->emits, 'async source waits for the debounce');
         $this->assertCount(1, $this->scheduled, 'the async debounce is scheduled');
 
-        $files->emits[0]([$this->hit(SearchCategory::Files, 'User.php')]);
+        $files->emits[0]([$this->hit(SearchCategory::Files, label: 'User.php')]);
         $this->assertSame(['User.php'], $this->labels($overlay->rows));
 
         $this->scheduled[0](); // fire the debounce
         $this->assertCount(1, $classes->emits, 'async source queried after the debounce');
-        $classes->emits[0]([$this->hit(SearchCategory::Classes, 'User')]);
+        $classes->emits[0]([$this->hit(SearchCategory::Classes, label: 'User')]);
 
         $this->assertSame(['User.php', 'User'], $this->labels($overlay->rows), 'Files then Classes, grouped by category order');
     }
@@ -397,10 +397,10 @@ final class SearchEverywhereControllerTest extends TestCase
         ($overlay->onQuery)('a'); // generation G1 → files->emits[0]
         ($overlay->onQuery)('b'); // generation G2 → files->emits[1]
 
-        $files->emits[0]([$this->hit(SearchCategory::Files, 'OLD')]); // stale
+        $files->emits[0]([$this->hit(SearchCategory::Files, label: 'OLD')]); // stale
         $this->assertNotContains('OLD', $this->labels($overlay->rows), 'the superseded response is dropped');
 
-        $files->emits[1]([$this->hit(SearchCategory::Files, 'NEW')]); // current
+        $files->emits[1]([$this->hit(SearchCategory::Files, label: 'NEW')]); // current
         $this->assertContains('NEW', $this->labels($overlay->rows));
     }
 
@@ -424,13 +424,13 @@ final class SearchEverywhereControllerTest extends TestCase
     public function testEmptyQueryShowsRecentFilesAgain(): void
     {
         $buffers = new BufferManager();
-        $buffers->open('/proj/A.php', '');
+        $buffers->open('/proj/A.php', content: '');
         $files = new RecordingSearchSource(SearchCategory::Files);
         $overlay = new RecordingSearchOverlay();
         $this->controller($overlay, [$files], [], $buffers)->open();
 
         ($overlay->onQuery)('x');
-        $files->emits[0]([$this->hit(SearchCategory::Files, 'match.php')]);
+        $files->emits[0]([$this->hit(SearchCategory::Files, label: 'match.php')]);
         $this->assertSame(['match.php'], $this->labels($overlay->rows));
 
         ($overlay->onQuery)(''); // back to recents

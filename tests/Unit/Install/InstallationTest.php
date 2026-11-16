@@ -47,7 +47,7 @@ final class InstallationTest extends TestCase
 
     public function testAPharIsResolvedThroughItsLinkSoTheSwapLandsOnTheFile(): void
     {
-        $installation = Installation::detect($this->disk->path('bin/my-porta'), '', []);
+        $installation = Installation::detect($this->disk->path('bin/my-porta'), packageDir: '', env: []);
 
         $this->assertSame(InstallMethod::Phar, $installation->method);
         $this->assertSame($this->at('Downloads/porta.phar'), $installation->path);
@@ -57,7 +57,7 @@ final class InstallationTest extends TestCase
 
     public function testAPharInHomebrewsCellarIsBrewsToUpgrade(): void
     {
-        $installation = Installation::detect($this->disk->path('bin/porta'), '', []);
+        $installation = Installation::detect($this->disk->path('bin/porta'), packageDir: '', env: []);
 
         $this->assertSame(InstallMethod::Homebrew, $installation->method);
         $this->assertSame($this->at('Cellar/porta/0.1.5/bin/porta'), $installation->path);
@@ -103,7 +103,7 @@ final class InstallationTest extends TestCase
         $this->assertFalse($installation->method->updatesItself());
 
         $before = $installation->fingerprint();
-        $this->disk->write('app/vendor/composer/installed.php', '<?php return [2];');
+        $this->disk->write('app/vendor/composer/installed.php', content: '<?php return [2];');
         $this->assertNotSame($before, $installation->fingerprint());
     }
 

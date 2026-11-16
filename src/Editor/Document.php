@@ -312,13 +312,13 @@ final class Document
     /** Clamp a line index into the document's bounds. */
     public function clampLine(int $line): int
     {
-        return IntMath::clamp($line, 0, \count($this->lines) - 1);
+        return IntMath::clamp($line, lo: 0, hi: \count($this->lines) - 1);
     }
 
     /** Clamp a byte column into the given line's bounds (the line is clamped too). */
     public function clampCol(int $line, int $col): int
     {
-        return IntMath::clamp($col, 0, \strlen($this->lines[$this->clampLine($line)]));
+        return IntMath::clamp($col, lo: 0, hi: \strlen($this->lines[$this->clampLine($line)]));
     }
 
     /** Byte column → UTF-16 code-unit column on the given line (for LSP positions). */
@@ -471,7 +471,7 @@ final class Document
 
     public function selectAll(): void
     {
-        $this->selection->set(0, 0);
+        $this->selection->set(0, col: 0);
         $this->cursorLine = \count($this->lines) - 1;
         $this->cursorCol = \strlen($this->lines[$this->cursorLine]);
         $this->goalCol = null;

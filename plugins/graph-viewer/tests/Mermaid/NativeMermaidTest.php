@@ -43,7 +43,7 @@ final class NativeMermaidTest extends TestCase
         foreach (['LR' => '▸', 'RL' => '◂', 'TB' => '▾', 'BT' => '▴'] as $direction => $glyph) {
             $graph = self::scene('graph '.$direction.'; A-->B')->graph;
             $view = new ZoomPanModel((int) $graph->width, (int) $graph->height, [1.0]);
-            $rows = GraphRenderer::render($graph, $view, null, 60, 30, Styles::dark());
+            $rows = GraphRenderer::render($graph, $view, selected: null, cols: 60, rows: 30, styles: Styles::dark());
             $this->assertStringContainsString($glyph, \implode("\n", $rows), $direction);
         }
     }

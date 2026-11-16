@@ -159,7 +159,7 @@ final class SearchUiWiringTest extends TestCase
         $handlers = new DockToolHandlers('plugin.tool', activate: static function (string $path, int $line) use (&$activated): void {
             $activated = [$path, $line];
         });
-        $this->dock->showTool($handlers, 'Plugin Tool', []);
+        $this->dock->showTool($handlers, title: 'Plugin Tool', rows: []);
 
         $wiring->onRowActivated(new ResultRowActivated('some/file.php', 3));
 
@@ -172,7 +172,7 @@ final class SearchUiWiringTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n// l2\n// l3\n"]);
         $wiring = $this->wiring($project->dir);
         $handlers = new DockToolHandlers('plugin.tool'); // no activate closure
-        $this->dock->showTool($handlers, 'Plugin Tool', []);
+        $this->dock->showTool($handlers, title: 'Plugin Tool', rows: []);
 
         $wiring->onRowActivated(new ResultRowActivated('a.php', 2));
 
@@ -187,8 +187,8 @@ final class SearchUiWiringTest extends TestCase
         // "a.php" relative to nothing.
         $project = new TempProject(['a.php' => "<?php\n"]);
         $wiring = $this->wiring($project->dir);
-        $tools = Probe::get($this->dock, 'tools');
-        $tab = $tools->openOrReuse(ResultsPanelMode::LspLog, 'LSP Log', ResultsPanelFields::resultsOnly());
+        $tools = Probe::get($this->dock, property: 'tools');
+        $tab = $tools->openOrReuse(ResultsPanelMode::LspLog, title: 'LSP Log', fields: ResultsPanelFields::resultsOnly());
         $this->dock->show($tab);
 
         $wiring->onRowActivated(new ResultRowActivated('a.php', 0));
@@ -215,7 +215,7 @@ final class SearchUiWiringTest extends TestCase
         $handlers = new DockToolHandlers('plugin.tool', rerun: static function () use (&$ran): void {
             $ran = true;
         });
-        $this->dock->showTool($handlers, 'Plugin Tool', []);
+        $this->dock->showTool($handlers, title: 'Plugin Tool', rows: []);
 
         $wiring->onRerunRequested(new ResultsRerunRequested());
 
@@ -228,7 +228,7 @@ final class SearchUiWiringTest extends TestCase
         $wiring = $this->wiring($project->dir);
         $handlers = new DockToolHandlers('plugin.tool'); // no rerun closure: F5 stays inert
 
-        $this->dock->showTool($handlers, 'Plugin Tool', []);
+        $this->dock->showTool($handlers, title: 'Plugin Tool', rows: []);
 
         // Must not throw calling the (missing) rerun closure.
         $wiring->onRerunRequested(new ResultsRerunRequested());
@@ -239,19 +239,19 @@ final class SearchUiWiringTest extends TestCase
     {
         $project = new TempProject(['a.php' => "<?php\n\$needle = 1;\n"]);
         $wiring = $this->wiring($project->dir);
-        $searchController = Probe::get($wiring, 'projectSearch');
+        $searchController = Probe::get($wiring, property: 'projectSearch');
         $searchController->search('needle');
         $searchController->promoteToPane(); // binds a real, active Search-mode dock tab
-        $this->await(static fn (): bool => 1 === \count(Probe::get($searchController, 'lastSearchResults')), what: 'the first run to answer');
-        $this->assertCount(1, Probe::get($searchController, 'lastSearchResults'), 'the query matched once before the rerun');
+        $this->await(static fn (): bool => 1 === \count(Probe::get($searchController, property: 'lastSearchResults')), what: 'the first run to answer');
+        $this->assertCount(1, Probe::get($searchController, property: 'lastSearchResults'), 'the query matched once before the rerun');
 
         // A new matching file appears on disk after the first run: a real
         // rerun must pick it up, proving it re-scanned rather than replayed.
-        $project->write('b.php', "<?php\n\$needle = 2;\n");
+        $project->write('b.php', content: "<?php\n\$needle = 2;\n");
         $wiring->onRerunRequested(new ResultsRerunRequested());
 
-        $this->await(static fn (): bool => 2 === \count(Probe::get($searchController, 'lastSearchResults')), what: 'the rerun to answer');
-        $this->assertCount(2, Probe::get($searchController, 'lastSearchResults'), 'the rerun re-scanned the project and found the new match too');
+        $this->await(static fn (): bool => 2 === \count(Probe::get($searchController, property: 'lastSearchResults')), what: 'the rerun to answer');
+        $this->assertCount(2, Probe::get($searchController, property: 'lastSearchResults'), 'the rerun re-scanned the project and found the new match too');
     }
 
     public function testExportRequestedWithNoResultsIsANoOp(): void
@@ -268,15 +268,15 @@ final class SearchUiWiringTest extends TestCase
     {
         $project = new TempProject();
         $wiring = $this->wiring($project->dir);
-        $searchController = Probe::get($wiring, 'projectSearch');
-        Probe::set($searchController, 'lastSearchQuery', 'needle');
-        Probe::set($searchController, 'lastSearchResults', [
+        $searchController = Probe::get($wiring, property: 'projectSearch');
+        Probe::set($searchController, property: 'lastSearchQuery', value: 'needle');
+        Probe::set($searchController, property: 'lastSearchResults', value: [
             ['path' => 'a.php', 'line' => 1, 'text' => '$needle = 1;', 'ranges' => []],
         ]);
 
         // Bound to a find-in-project tab, which is what an export is FOR. The
         // handler is routed by the tab, exactly as the rerun handler is.
-        $tab = $this->dock->showList(ResultsPanelMode::Search, 'Find', [], ResultsPanelFields::searchResults());
+        $tab = $this->dock->showList(ResultsPanelMode::Search, title: 'Find', rows: [], fields: ResultsPanelFields::searchResults());
         $tab->searchState = new SearchTabState('needle', new SearchOptions(), [], '', ScopeKind::Project);
 
         $wiring->onExportRequested(new ResultsExportRequested());
@@ -292,15 +292,15 @@ final class SearchUiWiringTest extends TestCase
         // last grep, closed the panel being read and opened that file over it.
         $project = new TempProject();
         $wiring = $this->wiring($project->dir);
-        $searchController = Probe::get($wiring, 'projectSearch');
-        Probe::set($searchController, 'lastSearchQuery', 'needle');
-        Probe::set($searchController, 'lastSearchResults', [
+        $searchController = Probe::get($wiring, property: 'projectSearch');
+        Probe::set($searchController, property: 'lastSearchQuery', value: 'needle');
+        Probe::set($searchController, property: 'lastSearchResults', value: [
             ['path' => 'a.php', 'line' => 1, 'text' => '$needle = 1;', 'ranges' => []],
         ]);
 
         // A grouped, non-search tab — no searchState, which is what says "this
         // panel has no results of its own to write".
-        $this->dock->showList(ResultsPanelMode::Problems, 'Problems', [], ResultsPanelFields::problemList());
+        $this->dock->showList(ResultsPanelMode::Problems, title: 'Problems', rows: [], fields: ResultsPanelFields::problemList());
 
         $wiring->onExportRequested(new ResultsExportRequested());
 
@@ -323,9 +323,9 @@ final class SearchUiWiringTest extends TestCase
 
         $modal->handleInput("\x1bs", $this->editor->getKeybindings());
 
-        $this->assertTrue(Probe::get($this->scopeList, 'open') && Probe::get($this->scopeList, 'listbox'), 'the list is open');
+        $this->assertTrue(Probe::get($this->scopeList, property: 'open') && Probe::get($this->scopeList, property: 'listbox'), 'the list is open');
         $this->scopeList->handleInput("\x1b[B");
         $this->scopeList->handleInput("\r");
-        $this->assertSame(1, Probe::get($this->search, 'scopeIndex'), 'the pick is the search\'s scope now');
+        $this->assertSame(1, Probe::get($this->search, property: 'scopeIndex'), 'the pick is the search\'s scope now');
     }
 }

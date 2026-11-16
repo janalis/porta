@@ -462,18 +462,18 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $kb = $this->getKeybindings();
         $pxRows = 2 * $this->lastRows;
         match (true) {
-            $kb->matches($data, 'graph_zoom_in') => $this->zoom(1),
-            $kb->matches($data, 'graph_zoom_out') => $this->zoom(-1),
-            $kb->matches($data, 'graph_zoom_fit') => $this->withView(static fn (ZoomPanModel $v) => $v->fit()),
-            $kb->matches($data, 'graph_zoom_actual') => $this->withView(fn (ZoomPanModel $v) => $v->actualSize($this->lastCols, $pxRows)),
-            $kb->matches($data, 'graph_pan_left') => $this->pan(-2, 0, $data),
-            $kb->matches($data, 'graph_pan_right') => $this->pan(2, 0, $data),
-            $kb->matches($data, 'graph_pan_up') => $this->pan(0, -4, $data),
-            $kb->matches($data, 'graph_pan_down') => $this->pan(0, 4, $data),
-            $kb->matches($data, 'graph_render_mode') => $this->toggleRenderMode(),
-            $kb->matches($data, 'graph_select_next') => $this->cycleSelection(1),
-            $kb->matches($data, 'graph_select_prev') => $this->cycleSelection(-1),
-            $kb->matches($data, 'graph_find_node') => $this->findNode(),
+            $kb->matches($data, action: 'graph_zoom_in') => $this->zoom(1),
+            $kb->matches($data, action: 'graph_zoom_out') => $this->zoom(-1),
+            $kb->matches($data, action: 'graph_zoom_fit') => $this->withView(static fn (ZoomPanModel $v) => $v->fit()),
+            $kb->matches($data, action: 'graph_zoom_actual') => $this->withView(fn (ZoomPanModel $v) => $v->actualSize($this->lastCols, $pxRows)),
+            $kb->matches($data, action: 'graph_pan_left') => $this->pan(-2, dy: 0, data: $data),
+            $kb->matches($data, action: 'graph_pan_right') => $this->pan(2, dy: 0, data: $data),
+            $kb->matches($data, action: 'graph_pan_up') => $this->pan(0, -4, $data),
+            $kb->matches($data, action: 'graph_pan_down') => $this->pan(0, dy: 4, data: $data),
+            $kb->matches($data, action: 'graph_render_mode') => $this->toggleRenderMode(),
+            $kb->matches($data, action: 'graph_select_next') => $this->cycleSelection(1),
+            $kb->matches($data, action: 'graph_select_prev') => $this->cycleSelection(-1),
+            $kb->matches($data, action: 'graph_find_node') => $this->findNode(),
             default => $this->tabKey($data),
         };
     }

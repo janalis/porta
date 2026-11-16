@@ -57,10 +57,10 @@ final class GitTest extends TestCase
     public function testCustomMergeTypesReplaceTheMergeRingAndEmptyGraphsRemainVisible(): void
     {
         $node = new GraphNode(0, 'commit', '', x: 4.0, y: 4.0, w: 4.0, h: 4.0, color: null, fillColor: null, dashed: false);
-        $this->assertCount(0, GitMarkers::points($node, 'MERGE', 'NORMAL'));
-        $this->assertCount(2, GitMarkers::points($node, 'MERGE', 'REVERSE'));
-        $this->assertCount(1, GitMarkers::points($node, 'MERGE', 'HIGHLIGHT'));
-        $this->assertCount(1, GitMarkers::points($node, 'MERGE', null));
+        $this->assertCount(0, GitMarkers::points($node, type: 'MERGE', custom: 'NORMAL'));
+        $this->assertCount(2, GitMarkers::points($node, type: 'MERGE', custom: 'REVERSE'));
+        $this->assertCount(1, GitMarkers::points($node, type: 'MERGE', custom: 'HIGHLIGHT'));
+        $this->assertCount(1, GitMarkers::points($node, type: 'MERGE', custom: null));
         $this->assertNotEmpty(NativeFixtureRows::render('gitGraph', width: 1)->rows);
     }
 

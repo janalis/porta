@@ -137,12 +137,12 @@ final class SettingsFormWidgetTest extends TestCase
         $rows = \explode("\n", $this->plain($widget->render(new RenderContext(24, 20))));
         $rowOf = static fn (string $needle): int => (int) \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, $needle)));
 
-        $this->assertNull($widget->tooltipAt($rowOf('Plain'), 3));
-        $long = $widget->tooltipAt($rowOf('Long'), 3);
+        $this->assertNull($widget->tooltipAt($rowOf('Plain'), col: 3));
+        $long = $widget->tooltipAt($rowOf('Long'), col: 3);
         $this->assertSame(['settings:long', 'a hint far too long to fit beside the field in a narrow pane', 0, 24], [$long?->key, $long?->text, $long?->colStart, $long?->colEnd]);
-        $this->assertSame('Changed from its default — r puts it back', $widget->tooltipAt($rowOf('Changed'), 3)?->text);
-        $this->assertNull($widget->tooltipAt(0, 3), 'the title is nobody\'s');
-        $this->assertNull($widget->tooltipAt(\count($rows) - 1, 3), 'nor the footer');
+        $this->assertSame('Changed from its default — r puts it back', $widget->tooltipAt($rowOf('Changed'), col: 3)?->text);
+        $this->assertNull($widget->tooltipAt(0, col: 3), 'the title is nobody\'s');
+        $this->assertNull($widget->tooltipAt(\count($rows) - 1, col: 3), 'nor the footer');
     }
 
     public function testActionRowRendersABoxedButtonAndActuatesForwardOnly(): void
@@ -168,7 +168,7 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertSame([], $changes, 'a button has no value to step back');
 
         $widget->handleInput("\r"); // Enter actuates
-        $widget->handleClick(3, 0); // so does a click on the selected item's label
+        $widget->handleClick(3, relCol: 0); // so does a click on the selected item's label
         $this->assertSame(
             [
                 ['pluginRemove:project:demo', 'Remove'],
@@ -382,12 +382,12 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = $this->widget($changes);
         $widget->render(new RenderContext(60, 20)); // a click lands on what was drawn
 
-        $widget->handleClick(12, 0); // Theme's label
+        $widget->handleClick(12, relCol: 0); // Theme's label
 
         $this->assertSame(3, Probe::object($widget, 'list')->selected(), 'the click moved the selection');
         $this->assertSame([], $changes, 'and changed nothing');
 
-        $widget->handleClick(12, 0); // the same row, now selected
+        $widget->handleClick(12, relCol: 0); // the same row, now selected
 
         $this->assertSame([['theme', 'light']], $changes, 'the second click actuates');
     }
@@ -403,23 +403,23 @@ final class SettingsFormWidgetTest extends TestCase
         $widget = $this->widget($changes);
         $widget->render(new RenderContext(60, 20));
 
-        $widget->handleClick(6, 0); // pane row 6 = the second setting's label, a checkbox's middle row
+        $widget->handleClick(6, relCol: 0); // pane row 6 = the second setting's label, a checkbox's middle row
 
         $this->assertSame(1, Probe::object($widget, 'list')->selected());
         $this->assertSame([['relativeLineNumbers', true]], $changes, 'selected and toggled at once');
 
-        $widget->handleClick(5, 25); // the box's own top border: every row of the box is its target
+        $widget->handleClick(5, relCol: 25); // the box's own top border: every row of the box is its target
         $this->assertCount(2, $changes);
     }
 
     public function testADisabledCheckboxIgnoresEveryClick(): void
     {
         $widget = $this->widget($changes);
-        $widget->setRows([new SettingsRow('sticky', 'Sticky scroll', SettingsRowKind::Bool, false, false, disabled: true)], 'T');
+        $widget->setRows([new SettingsRow('sticky', 'Sticky scroll', SettingsRowKind::Bool, false, false, disabled: true)], title: 'T');
         $screen = \array_map(AnsiUtils::stripAnsiCodes(...), $widget->render(new RenderContext(60, 8)));
 
-        $widget->handleClick(3, 0);
-        $widget->handleClick(3, 0);
+        $widget->handleClick(3, relCol: 0);
+        $widget->handleClick(3, relCol: 0);
 
         $this->assertSame([], $changes);
         $this->assertMatchesRegularExpression('/^\s+╭┄┄┄╮/u', $screen[2], 'and says so: its box is dashed');
@@ -430,8 +430,8 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $widget = $this->widget($changes);
 
-        $widget->handleClick(0, 0); // the title row
-        $widget->handleClick(99, 0); // past the last row
+        $widget->handleClick(0, relCol: 0); // the title row
+        $widget->handleClick(99, relCol: 0); // past the last row
 
         $this->assertSame(0, Probe::object($widget, 'list')->selected());
         $this->assertSame([], $changes);
@@ -544,7 +544,7 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $widget = $this->textWidget($changes);
         $widget->handleInput("\r"); // Enter starts editing row 0
-        $this->assertNotNull(Probe::get($widget, 'editing'));
+        $this->assertNotNull(Probe::get($widget, property: 'editing'));
 
         $widget->handleInput('-');
         $widget->handleInput('x');
@@ -552,7 +552,7 @@ final class SettingsFormWidgetTest extends TestCase
 
         $widget->handleInput("\x7f"); // backspace
         $widget->handleInput("\r"); // Enter commits
-        $this->assertNull(Probe::get($widget, 'editing'));
+        $this->assertNull(Probe::get($widget, property: 'editing'));
         $this->assertSame([['lspServer', 'phpactor-']], $changes);
     }
 
@@ -578,7 +578,7 @@ final class SettingsFormWidgetTest extends TestCase
         }
         $widget->handleInput("\r"); // commit → refused
 
-        $this->assertNotNull(Probe::get($widget, 'editing'), 'still editing');
+        $this->assertNotNull(Probe::get($widget, property: 'editing'), 'still editing');
         $this->assertStringContainsString('{bad', AnsiUtils::stripAnsiCodes(\implode('', $widget->render(new RenderContext(60, 5)))), 'and the typing survived');
     }
 
@@ -590,7 +590,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->handleInput('x');
         $widget->handleInput("\r");
 
-        $this->assertNull(Probe::get($widget, 'editing'), 'accepted, so the editor closed');
+        $this->assertNull(Probe::get($widget, property: 'editing'), 'accepted, so the editor closed');
         $this->assertSame([['lspServer', 'phpactorx']], $changes);
     }
 
@@ -600,7 +600,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->handleInput("\r"); // edit
         $widget->handleInput('z');
         $widget->handleInput("\x1b"); // Esc cancels
-        $this->assertNull(Probe::get($widget, 'editing'));
+        $this->assertNull(Probe::get($widget, property: 'editing'));
         $this->assertSame([], $changes);
     }
 
@@ -608,10 +608,10 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $widget = $this->textWidget($changes);
         $widget->render(new RenderContext(60, 10));
-        $widget->handleClick(6, 0); // pane row 6 = the empty text row's value row (title, blank, then boxes of three): selects it
-        $this->assertNull(Probe::get($widget, 'editing'), 'the first click only selects');
-        $widget->handleClick(5, 30); // the second, on its box's top border, opens the editor
-        $this->assertNotNull(Probe::get($widget, 'editing'));
+        $widget->handleClick(6, relCol: 0); // pane row 6 = the empty text row's value row (title, blank, then boxes of three): selects it
+        $this->assertNull(Probe::get($widget, property: 'editing'), 'the first click only selects');
+        $widget->handleClick(5, relCol: 30); // the second, on its box's top border, opens the editor
+        $this->assertNotNull(Probe::get($widget, property: 'editing'));
         $this->assertSame(1, Probe::object($widget, 'list')->selected());
 
         $widget->handleInput("\x1b[B"); // arrow ignored while editing
@@ -625,11 +625,11 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $widget = $this->textWidget();
         $widget->handleInput("\r");
-        $this->assertNotNull(Probe::get($widget, 'editing'));
+        $this->assertNotNull(Probe::get($widget, property: 'editing'));
         // The same key on another page — plugin pages share theirs — is not
         // the row being edited: the edit must not follow it there.
-        $widget->setRows([new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'x', restart: false)], 'Another page');
-        $this->assertNull(Probe::get($widget, 'editing'));
+        $widget->setRows([new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'x', restart: false)], title: 'Another page');
+        $this->assertNull(Probe::get($widget, property: 'editing'));
     }
 
     /** The same page re-reading itself — a version landing — keeps the edit and what was typed. */
@@ -645,7 +645,7 @@ final class SettingsFormWidgetTest extends TestCase
             new SettingsRow(key: 'other', label: 'Other', kind: SettingsRowKind::Text, value: '', restart: false, hint: 'auto: none 1.2.3'),
         ]);
 
-        $this->assertSame(2, Probe::get($widget, 'editing'), 'the edit follows its row to where it is now');
+        $this->assertSame(2, Probe::get($widget, property: 'editing'), 'the edit follows its row to where it is now');
         $this->assertSame(2, Probe::object($widget, 'list')->selected());
         $widget->handleInput("\r");
         $this->assertSame([['other', 'Z']], $changes, 'what was typed is what commits, to the row it was typed in');
@@ -659,7 +659,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->handleInput("\r");
         $widget->setRows([new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'phpactor', restart: false)]);
 
-        $this->assertNull(Probe::get($widget, 'editing'));
+        $this->assertNull(Probe::get($widget, property: 'editing'));
     }
 
     public function testEditingWithoutAChangeHandlerIsSafe(): void
@@ -679,7 +679,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->onInput(static fn (string $d): bool => true);
         $widget->handleInput('q'); // swallowed
         $widget->handleInput("\r"); // swallowed too, so no commit
-        $this->assertNotNull(Probe::get($widget, 'editing'));
+        $this->assertNotNull(Probe::get($widget, property: 'editing'));
         $this->assertSame([], $changes);
     }
 
@@ -724,7 +724,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->setRows([
             new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'phpactor', restart: false),
             new SettingsRow(key: 'other', label: 'Other', kind: SettingsRowKind::Text, value: '', restart: false),
-        ], 'Another page');
+        ], title: 'Another page');
 
         $widget->handleInput("\x1b[B"); // must navigate, not type into the stale editor
 
@@ -741,7 +741,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->handleInput('Z'); // mutate the (soon-to-be-stale) TextField
         $widget->setRows([
             new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'phpactor', restart: false),
-        ], 'Another page');
+        ], title: 'Another page');
 
         $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 6))[3]);
 
@@ -800,8 +800,8 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->setRows($rows);
         $widget->render(new RenderContext(60, 7)); // the title and its blank row, 4 rows of settings, the legend
 
-        $widget->handleClick(6, 0); // the legend
-        $widget->handleClick(6, 0); // again — on an already-selected row this ACTUATES
+        $widget->handleClick(6, relCol: 0); // the legend
+        $widget->handleClick(6, relCol: 0); // again — on an already-selected row this ACTUATES
 
         $this->assertSame(0, Probe::object($widget, 'list')->selected(), 'the legend is not a setting');
         $this->assertSame([], $changes, 'and clicking it writes no config');
@@ -814,7 +814,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->setRows([new SettingsRow(key: 'theme', label: 'Theme', kind: SettingsRowKind::Choice, value: 'dark', restart: false, options: ['dark', 'mid', 'light'])]);
 
         $widget->render(new RenderContext(60, 8)); // the clicks land on what was drawn
-        $widget->handleClick(3, 0); // the selected item's label row, left of the select: a click actuates it
+        $widget->handleClick(3, relCol: 0); // the selected item's label row, left of the select: a click actuates it
 
         $this->assertSame([['theme', 'mid']], $changes, 'a click steps by exactly one option, not two');
     }
@@ -896,17 +896,17 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->setRows($rows);
 
         // A ten-row pane: a title, its blank row, seven rows of settings and a footer.
-        $this->assertTrue($this->hasSettingRow($widget->render(new RenderContext(60, 10)), 'Setting 0'));
-        $this->assertFalse($this->hasSettingRow($widget->render(new RenderContext(60, 10)), 'Setting 20'), 'row 20 is below the fold to begin with');
+        $this->assertTrue($this->hasSettingRow($widget->render(new RenderContext(60, 10)), label: 'Setting 0'));
+        $this->assertFalse($this->hasSettingRow($widget->render(new RenderContext(60, 10)), label: 'Setting 20'), 'row 20 is below the fold to begin with');
 
         for ($i = 0; $i < 20; ++$i) {
             $widget->handleInput("\x1b[B");
         }
         $lines = $widget->render(new RenderContext(60, 10));
 
-        $this->assertTrue($this->hasSettingRow($lines, 'Setting 20'), 'the window followed the selection down');
-        $this->assertStringContainsString('Setting 20', $this->selectedSettingRow($widget, 60, 10), 'and it is the selected row, not merely visible');
-        $this->assertFalse($this->hasSettingRow($lines, 'Setting 0'), 'the top scrolled away');
+        $this->assertTrue($this->hasSettingRow($lines, label: 'Setting 20'), 'the window followed the selection down');
+        $this->assertStringContainsString('Setting 20', $this->selectedSettingRow($widget, columns: 60, rows: 10), 'and it is the selected row, not merely visible');
+        $this->assertFalse($this->hasSettingRow($lines, label: 'Setting 0'), 'the top scrolled away');
     }
 
     /** Every row must be reachable — the last one included. */
@@ -925,8 +925,8 @@ final class SettingsFormWidgetTest extends TestCase
             $widget->handleInput("\x1b[B");
         }
 
-        $this->assertStringContainsString('Setting 29', $this->selectedSettingRow($widget, 60, 10));
-        $this->assertTrue($this->hasSettingRow($widget->render(new RenderContext(60, 10)), 'Setting 29'));
+        $this->assertStringContainsString('Setting 29', $this->selectedSettingRow($widget, columns: 60, rows: 10));
+        $this->assertTrue($this->hasSettingRow($widget->render(new RenderContext(60, 10)), label: 'Setting 29'));
     }
 
     public function testRenderWithZeroRowsAndAZeroRowContextProducesNoLines(): void
@@ -1049,7 +1049,7 @@ final class SettingsFormWidgetTest extends TestCase
 
         $widget->handleInput("\x1b[D");
 
-        $this->assertNull(Probe::get($widget, 'editing'), 'a step-back key does not start an edit');
+        $this->assertNull(Probe::get($widget, property: 'editing'), 'a step-back key does not start an edit');
     }
 
     public function testRIsInertWhileTheInlineEditorHasTheKeys(): void
@@ -1223,7 +1223,7 @@ final class SettingsFormWidgetTest extends TestCase
     {
         $widget = new SettingsFormWidget(new Translator('he'));
         AttachedStyles::attach($widget);
-        $widget->setRows([new SettingsRow('preview', 'תצוגה מקדימה של Markdown', SettingsRowKind::Bool, true, false)], 'T');
+        $widget->setRows([new SettingsRow('preview', 'תצוגה מקדימה של Markdown', SettingsRowKind::Bool, true, false)], title: 'T');
 
         $shown = \implode("\n", \array_map(
             static fn (string $line): string => AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl)),
@@ -1248,7 +1248,7 @@ final class SettingsFormWidgetTest extends TestCase
         foreach (['en', 'he'] as $locale) {
             $widget = new SettingsFormWidget(new Translator($locale));
             AttachedStyles::attach($widget);
-            $widget->setRows([new SettingsRow('sticky', $label, SettingsRowKind::Bool, true, false)], 'T');
+            $widget->setRows([new SettingsRow('sticky', $label, SettingsRowKind::Bool, true, false)], title: 'T');
 
             $line = AnsiUtils::stripAnsiCodes($this->body($widget->render(new RenderContext(58, 5)))[0]);
             $control = \mb_strpos($line, needle: '✓', encoding: 'UTF-8');
@@ -1283,7 +1283,7 @@ final class SettingsFormWidgetTest extends TestCase
         }
         $widget = new SettingsFormWidget($translator);
         AttachedStyles::attach($widget);
-        $widget->setRows($rows, 'T');
+        $widget->setRows($rows, title: 'T');
 
         $columns = [];
         foreach ($this->body($widget->render(new RenderContext(56, 7))) as $i => $line) {
@@ -1305,7 +1305,7 @@ final class SettingsFormWidgetTest extends TestCase
         $translator = new Translator('he');
         $widget = new SettingsFormWidget($translator);
         AttachedStyles::attach($widget);
-        $widget->setRows([new SettingsRow('lsp', 'שרת LSP', SettingsRowKind::Bool, true, false)], 'T');
+        $widget->setRows([new SettingsRow('lsp', 'שרת LSP', SettingsRowKind::Bool, true, false)], title: 'T');
 
         $line = $this->body($widget->render(new RenderContext(56, 5)))[0];
         $mirrored = AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl));
@@ -1422,7 +1422,7 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertTrue($widget->hoverCrumb(14), 'off the link onto the page shown: the tint goes');
         $this->assertFalse($widget->hoverCrumb(15), 'still no link');
 
-        $widget->handleClick(0, 3);
+        $widget->handleClick(0, relCol: 3);
         $this->assertSame(['general'], $opened);
     }
 }

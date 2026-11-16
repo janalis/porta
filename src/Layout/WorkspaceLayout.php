@@ -97,9 +97,9 @@ final class WorkspaceLayout
         $this->editorPane = LayoutWidgets::container('editor-pane', new Style(flex: 1));
         $this->editorPane->add($tabBar)->add($this->editorBody);
 
-        $this->separator = LayoutWidgets::separator($this->styles, 'separator');
-        $this->topRule = LayoutWidgets::edgeRule($this->styles, $density, WorkspaceEdge::Top, 'top-rule');
-        $this->bottomRule = LayoutWidgets::edgeRule($this->styles, $density, WorkspaceEdge::Bottom, 'bottom-rule');
+        $this->separator = LayoutWidgets::separator($this->styles, id: 'separator');
+        $this->topRule = LayoutWidgets::edgeRule($this->styles, $density, WorkspaceEdge::Top, id: 'top-rule');
+        $this->bottomRule = LayoutWidgets::edgeRule($this->styles, $density, WorkspaceEdge::Bottom, id: 'bottom-rule');
         $this->main = LayoutWidgets::container('main', new Style(direction: Direction::Horizontal, gap: 0));
         $this->windowFrame = LayoutWidgets::container('window-frame', new Style());
         $this->windowHost = LayoutWidgets::container('window-host', new Style(hidden: true));

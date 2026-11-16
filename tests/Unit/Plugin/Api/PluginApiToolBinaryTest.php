@@ -30,12 +30,12 @@ final class PluginApiToolBinaryTest extends TestCase
         $store = new PluginSettings($this->project->dir, ['p' => $settings]);
         $locator = new ToolLocator($this->project->dir, $store->raw(...), static fn (): bool => true, null, static fn (): ?string => null);
 
-        return new PluginManager(new EventDispatcher(), $store)->api('p', $this->project->dir, $store, null, null, $locator, $declared);
+        return new PluginManager(new EventDispatcher(), $store)->api('p', $this->project->dir, $store, locator: $locator, declaredTools: $declared);
     }
 
     private function executable(string $relative): string
     {
-        $path = $this->project->write($relative, "#!/bin/sh\n");
+        $path = $this->project->write($relative, content: "#!/bin/sh\n");
         \chmod($path, permissions: 0o755);
 
         return $path;
@@ -46,7 +46,7 @@ final class PluginApiToolBinaryTest extends TestCase
         $dot = $this->executable('custom/dot');
         $api = $this->api(['dotPath' => $dot, 'binary' => '/nowhere'], new ToolRequirement('p', 'dot', 'dot', setting: 'dotPath'));
 
-        $this->assertSame($dot, $api->toolBinary('dot', 'binary'), 'the declaration\'s setting, not the caller\'s');
+        $this->assertSame($dot, $api->toolBinary('dot', setting: 'binary'), 'the declaration\'s setting, not the caller\'s');
     }
 
     public function testAnUndeclaredToolTakesTheCallersShape(): void
@@ -56,6 +56,6 @@ final class PluginApiToolBinaryTest extends TestCase
 
         $this->assertNull($this->api([])->toolBinary('demo'), 'PATH only by default');
         $this->assertSame($shim, $this->api([])->toolBinary('demo', lookup: BinarySearch::VendorBinThenPath));
-        $this->assertSame($custom, $this->api(['binary' => $custom])->toolBinary('demo', 'binary'));
+        $this->assertSame($custom, $this->api(['binary' => $custom])->toolBinary('demo', setting: 'binary'));
     }
 }

@@ -46,9 +46,9 @@ final readonly class FileMoveFollower
         $new = Uri::fromPath($event->to);
         $this->lsp->requestFor(
             $event->to,
-            'workspace/willRenameFiles',
-            ['files' => [['oldUri' => $old, 'newUri' => $new]]],
-            function (mixed $result, ?array $error) use ($event, $old, $new): void {
+            method: 'workspace/willRenameFiles',
+            params: ['files' => [['oldUri' => $old, 'newUri' => $new]]],
+            onResult: function (mixed $result, ?array $error) use ($event, $old, $new): void {
                 if (null !== $error) {
                     $this->notifier->warn($this->translator->trans('%file% moved; its references were not updated: %message%', [
                         '%file%' => \basename($event->to),
@@ -122,7 +122,7 @@ final readonly class FileMoveFollower
     private function registered(string $path): bool
     {
         /** @var array{fileOperations?: array{willRename?: array{filters?: list<array{pattern: array{glob: string, matches?: string}}>}}}|null $workspace LSP: WorkspaceServerCapabilities */
-        $workspace = $this->lsp->serverCapability($path, 'workspace');
+        $workspace = $this->lsp->serverCapability($path, name: 'workspace');
         $relative = $this->paths->relative($path);
 
         return \array_any(

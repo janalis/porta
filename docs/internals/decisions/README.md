@@ -298,3 +298,4 @@ its one-line row in [Settled questions](../decisions.md).
 - Pull diagnostics, and the 2026-09-02 probe re-run (2026-11-05)
 - Tests for the diff, by name (2026-11-06)
 - Three CI levers, measured side by side (2026-11-06)
+- symfony 8.2 betas, four tool bumps and mago 1.60, one commit each (2026-11-16)

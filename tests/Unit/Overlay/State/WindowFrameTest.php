@@ -24,7 +24,7 @@ final class WindowFrameTest extends TestCase
 
     private function place(WindowFrame $frame, WindowPlacement $placement = WindowPlacement::Centered): WindowGeometry
     {
-        return $frame->place(self::BOUNDS, 40, 10, $placement, minWidth: 20, minRows: 6);
+        return $frame->place(self::BOUNDS, width: 40, rows: 10, placement: $placement, minWidth: 20, minRows: 6);
     }
 
     private static function box(WindowGeometry $g): ModalBox
@@ -61,13 +61,13 @@ final class WindowFrameTest extends TestCase
     {
         $frame = new WindowFrame();
 
-        $small = $frame->place(self::BOUNDS, 5, 2, WindowPlacement::Centered, minWidth: 20, minRows: 6);
+        $small = $frame->place(self::BOUNDS, width: 5, rows: 2, placement: WindowPlacement::Centered, minWidth: 20, minRows: 6);
         $this->assertSame([20, 6], [$small->width, $small->rows], 'floored at the minimum');
 
-        $huge = $frame->place(self::BOUNDS, 500, 500, WindowPlacement::Centered, minWidth: 20, minRows: 6);
+        $huge = $frame->place(self::BOUNDS, width: 500, rows: 500, placement: WindowPlacement::Centered, minWidth: 20, minRows: 6);
         $this->assertSame([2, 0, 80, 20], [$huge->top, $huge->col, $huge->width, $huge->rows], 'capped at the bounds, and so placed at their corner');
 
-        $cramped = $frame->place([0, 0, 3, 10], 40, 10, WindowPlacement::Centered, minWidth: 20, minRows: 6);
+        $cramped = $frame->place([0, 0, 3, 10], width: 40, rows: 10, placement: WindowPlacement::Centered, minWidth: 20, minRows: 6);
         $this->assertSame([10, 3], [$cramped->width, $cramped->rows], 'bounds smaller than the floor win: nothing may paint outside them');
     }
 
@@ -76,24 +76,24 @@ final class WindowFrameTest extends TestCase
         $frame = new WindowFrame();
         $g = $this->place($frame);
 
-        $this->assertSame(WindowZone::Title, $frame->press(self::box($g), 7, 30));
-        $this->assertNotNull(Probe::get($frame, 'dragZone'));
-        $this->assertTrue($frame->dragTo(9, 25, release: false));
+        $this->assertSame(WindowZone::Title, $frame->press(self::box($g), row: 7, col: 30));
+        $this->assertNotNull(Probe::get($frame, property: 'dragZone'));
+        $this->assertTrue($frame->dragTo(9, col: 25, release: false));
         $moved = $this->place($frame);
 
         $this->assertSame([9, 15, 40, 10], [$moved->top, $moved->col, $moved->width, $moved->rows], 'two down, five left, same size');
-        $this->assertNotNull(Probe::get($frame, 'dragZone'), 'still held until the release');
+        $this->assertNotNull(Probe::get($frame, property: 'dragZone'), 'still held until the release');
         $this->assertNull($frame->hot(), 'a move lights no handle');
     }
 
     public function testAMovedBoxClampsIntoTheBoundsAndStaysWhereTheClampPutIt(): void
     {
         $frame = new WindowFrame();
-        $moved = $this->drag($frame, 7, 30, 500, 500);
+        $moved = $this->drag($frame, row: 7, col: 30, toRow: 500, toCol: 500);
 
         $this->assertSame([12, 40], [$moved->top, $moved->col], 'pinned to the bottom-right: 22 - 10, 80 - 40');
 
-        $narrower = $frame->place([2, 0, 22, 60], 40, 10, WindowPlacement::Centered, minWidth: 20, minRows: 6);
+        $narrower = $frame->place([2, 0, 22, 60], width: 40, rows: 10, placement: WindowPlacement::Centered, minWidth: 20, minRows: 6);
         $this->assertSame(20, $narrower->col, 'a narrower terminal pushed it in');
 
         $wider = $this->place($frame);
@@ -105,7 +105,7 @@ final class WindowFrameTest extends TestCase
         $frame = new WindowFrame();
         $this->place($frame);
 
-        $g = $frame->place([2, 0, 42, 120], 40, 10, WindowPlacement::Centered);
+        $g = $frame->place([2, 0, 42, 120], width: 40, rows: 10, placement: WindowPlacement::Centered);
 
         $this->assertSame([17, 40], [$g->top, $g->col], 're-centred in the larger bounds');
     }
@@ -139,31 +139,31 @@ final class WindowFrameTest extends TestCase
 
     public function testAResizeStopsAtTheFloorWithoutPushingTheFarEdge(): void
     {
-        $left = $this->drag(new WindowFrame(), 10, 20, 10, 500);
+        $left = $this->drag(new WindowFrame(), row: 10, col: 20, toRow: 10, toCol: 500);
         $this->assertSame([40, 20], [$left->col, $left->width], 'floored at 20 wide; the right edge (60) stays put');
 
-        $top = $this->drag(new WindowFrame(), 7, 20, 500, 20);
+        $top = $this->drag(new WindowFrame(), row: 7, col: 20, toRow: 500, toCol: 20);
         $this->assertSame([11, 6], [$top->top, $top->rows], 'floored at 6 rows; the bottom edge (17) stays put');
 
-        $right = $this->drag(new WindowFrame(), 10, 59, 10, -500);
+        $right = $this->drag(new WindowFrame(), row: 10, col: 59, toRow: 10, toCol: -500);
         $this->assertSame([20, 20], [$right->col, $right->width], 'floored at 20 wide; the left edge stays put');
 
-        $bottom = $this->drag(new WindowFrame(), 16, 30, -500, 30);
+        $bottom = $this->drag(new WindowFrame(), row: 16, col: 30, toRow: -500, toCol: 30);
         $this->assertSame([7, 6], [$bottom->top, $bottom->rows], 'floored at 6 rows; the top edge stays put');
     }
 
     public function testALeftOrTopResizeStopsAtTheBoundsWithoutPushingTheFarEdge(): void
     {
-        $left = $this->drag(new WindowFrame(), 10, 20, 10, -500);
+        $left = $this->drag(new WindowFrame(), row: 10, col: 20, toRow: 10, toCol: -500);
         $this->assertSame([0, 60], [$left->col, $left->width], 'grown to the left bound; the right edge (60) stays put');
 
-        $top = $this->drag(new WindowFrame(), 7, 20, -500, 20);
+        $top = $this->drag(new WindowFrame(), row: 7, col: 20, toRow: -500, toCol: 20);
         $this->assertSame([2, 15], [$top->top, $top->rows], 'grown to the top bound; the bottom edge (17) stays put');
     }
 
     public function testAResizePastTheFarBoundsIsCappedAtThem(): void
     {
-        $g = $this->drag(new WindowFrame(), 16, 59, 500, 500);
+        $g = $this->drag(new WindowFrame(), row: 16, col: 59, toRow: 500, toCol: 500);
 
         $this->assertSame([2, 0, 80, 20], [$g->top, $g->col, $g->width, $g->rows], 'the whole bounds, and no further');
     }
@@ -171,9 +171,9 @@ final class WindowFrameTest extends TestCase
     public function testAResizedSizeComesBackWhenTheBoundsDo(): void
     {
         $frame = new WindowFrame();
-        $this->drag($frame, 16, 59, 18, 69);
+        $this->drag($frame, row: 16, col: 59, toRow: 18, toCol: 69);
 
-        $cramped = $frame->place([2, 0, 12, 40], 40, 10, WindowPlacement::Centered, minWidth: 20, minRows: 6);
+        $cramped = $frame->place([2, 0, 12, 40], width: 40, rows: 10, placement: WindowPlacement::Centered, minWidth: 20, minRows: 6);
         $this->assertSame([40, 10], [$cramped->width, $cramped->rows], 'capped while the terminal is small');
 
         $roomy = $this->place($frame);
@@ -183,23 +183,23 @@ final class WindowFrameTest extends TestCase
     public function testTheReleaseEndsTheDragAndCancelDropsIt(): void
     {
         $frame = new WindowFrame();
-        $this->drag($frame, 7, 30, 8, 30);
-        $this->assertNull(Probe::get($frame, 'dragZone'));
-        $this->assertFalse($frame->dragTo(12, 12, release: false), 'nothing armed after the release');
+        $this->drag($frame, row: 7, col: 30, toRow: 8, toCol: 30);
+        $this->assertNull(Probe::get($frame, property: 'dragZone'));
+        $this->assertFalse($frame->dragTo(12, col: 12, release: false), 'nothing armed after the release');
 
-        $frame->press(self::box($this->place($frame)), 8, 30);
+        $frame->press(self::box($this->place($frame)), row: 8, col: 30);
         $frame->cancel();
-        $this->assertFalse($frame->dragTo(12, 12, release: false), 'a fresh press elsewhere disarmed it');
+        $this->assertFalse($frame->dragTo(12, col: 12, release: false), 'a fresh press elsewhere disarmed it');
     }
 
     public function testNothingIsArmedBeforeTheBoxIsPlaced(): void
     {
         $frame = new WindowFrame();
 
-        $zone = $frame->press(new ModalBox(7, 20, 40, 10, headerRows: 2, windowStart: 0, count: 6), 7, 30);
+        $zone = $frame->press(new ModalBox(7, 20, 40, 10, headerRows: 2, windowStart: 0, count: 6), row: 7, col: 30);
 
         $this->assertSame(WindowZone::Title, $zone, 'the zone is still answered');
-        $this->assertNull(Probe::get($frame, 'dragZone'), 'but with no placement there is nothing to move');
+        $this->assertNull(Probe::get($frame, property: 'dragZone'), 'but with no placement there is nothing to move');
     }
 
     /** @return iterable<string, array{int, int, WindowZone}> */
@@ -216,23 +216,23 @@ final class WindowFrameTest extends TestCase
         $frame = new WindowFrame();
 
         $this->assertSame($zone, $frame->press(self::box($this->place($frame)), $row, $col));
-        $this->assertNull(Probe::get($frame, 'dragZone'));
-        $this->assertFalse($frame->dragTo(12, 12, release: true));
+        $this->assertNull(Probe::get($frame, property: 'dragZone'));
+        $this->assertFalse($frame->dragTo(12, col: 12, release: true));
     }
 
     public function testResetForgetsThePositionTheSizeAndTheDrag(): void
     {
         $frame = new WindowFrame();
-        $this->drag($frame, 16, 59, 18, 69);
-        $this->drag($frame, 7, 30, 3, 20);
-        $frame->press(self::box($this->place($frame)), 3, 30);
-        $frame->hover(self::box($this->place($frame)), 3, 20);
+        $this->drag($frame, row: 16, col: 59, toRow: 18, toCol: 69);
+        $this->drag($frame, row: 7, col: 30, toRow: 3, toCol: 20);
+        $frame->press(self::box($this->place($frame)), row: 3, col: 30);
+        $frame->hover(self::box($this->place($frame)), row: 3, col: 20);
 
         $frame->reset();
 
         $g = $this->place($frame);
         $this->assertSame([7, 20, 40, 10], [$g->top, $g->col, $g->width, $g->rows], 'back to the default, centred');
-        $this->assertNull(Probe::get($frame, 'dragZone'));
+        $this->assertNull(Probe::get($frame, property: 'dragZone'));
         $this->assertNull($frame->hot());
     }
 
@@ -241,16 +241,16 @@ final class WindowFrameTest extends TestCase
         $frame = new WindowFrame();
         $box = self::box($this->place($frame));
 
-        $this->assertTrue($frame->hover($box, 7, 58), 'onto the ✖');
+        $this->assertTrue($frame->hover($box, row: 7, col: 58), 'onto the ✖');
         $this->assertSame(WindowZone::Close, $frame->hot());
-        $this->assertFalse($frame->hover($box, 7, 57), 'still on the ✖ zone: no change');
-        $this->assertTrue($frame->hover($box, 12, 59), 'onto the right edge');
+        $this->assertFalse($frame->hover($box, row: 7, col: 57), 'still on the ✖ zone: no change');
+        $this->assertTrue($frame->hover($box, row: 12, col: 59), 'onto the right edge');
         $this->assertSame(WindowZone::Right, $frame->hot());
-        $this->assertTrue($frame->hover($box, 7, 30), 'onto the title bar, which is not lit');
+        $this->assertTrue($frame->hover($box, row: 7, col: 30), 'onto the title bar, which is not lit');
         $this->assertNull($frame->hot());
-        $this->assertFalse($frame->hover($box, 10, 30), 'the content is not lit either');
-        $this->assertTrue($frame->hover($box, 16, 20), 'the bottom-left corner');
-        $this->assertTrue($frame->hover(null, 16, 20), 'no box: nothing lit');
+        $this->assertFalse($frame->hover($box, row: 10, col: 30), 'the content is not lit either');
+        $this->assertTrue($frame->hover($box, row: 16, col: 20), 'the bottom-left corner');
+        $this->assertTrue($frame->hover(null, row: 16, col: 20), 'no box: nothing lit');
         $this->assertNull($frame->hot());
     }
 
@@ -258,12 +258,12 @@ final class WindowFrameTest extends TestCase
     {
         $frame = new WindowFrame();
         $box = self::box($this->place($frame));
-        $frame->press($box, 16, 59);
-        $frame->hover($box, 0, 0);
+        $frame->press($box, row: 16, col: 59);
+        $frame->hover($box, row: 0, col: 0);
 
         $this->assertSame(WindowZone::BottomRight, $frame->hot(), 'the pointer outran the corner; the corner stays lit');
 
-        $frame->dragTo(18, 61, release: true);
+        $frame->dragTo(18, col: 61, release: true);
         $this->assertNull($frame->hot(), 'released: the hover decides again');
     }
 }

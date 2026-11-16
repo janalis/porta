@@ -63,7 +63,7 @@ final class ViewRegistrarTest extends TestCase
     private function registrar(array $views, ViewRegistry $registry, ViewRegions $regions): ViewRegistrar
     {
         $this->project = new TempProject();
-        $tui = TestTui::create(100, 24);
+        $tui = TestTui::create(100, rows: 24);
         $renderer = new Renderer(new StyleSheet());
         $translator = new Translator('en');
         $tree = new FileTreeWidget($this->project->dir);

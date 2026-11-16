@@ -36,20 +36,20 @@ final class PluginHighlighterTest extends TestCase
 
     private function api(PluginManager $manager, string $name): PluginApi
     {
-        return $manager->api($name, '/p', new PluginSettings('/p', []));
+        return $manager->api($name, rootDir: '/p', settings: new PluginSettings('/p', []));
     }
 
     public function testRegistersAndExposesABackendInLoadOrder(): void
     {
         $manager = $this->manager();
 
-        $one = $this->api($manager, 'one');
+        $one = $this->api($manager, name: 'one');
         $one->registerHighlighter('One', ['php'], static function (string $c, string $l, \Closure $d): void {
             $d('ONE:'.$c);
         });
         $manager->commit($one);
 
-        $two = $this->api($manager, 'two');
+        $two = $this->api($manager, name: 'two');
         $two->registerHighlighter('Two', ['rust'], static function (string $c, string $l, \Closure $d): void {
             $d('TWO:'.$c);
         });
@@ -61,7 +61,7 @@ final class PluginHighlighterTest extends TestCase
         $this->assertSame(['one', 'two'], \array_map(static fn (SyntaxHighlightProvider $p): string => $p->id, $providers));
         $this->assertTrue($providers[0]->supports('php'));
         $this->assertFalse($providers[0]->supports('rust'));
-        $this->assertSame('ONE:x', $this->markup($providers[0], 'x'));
+        $this->assertSame('ONE:x', $this->markup($providers[0], source: 'x'));
     }
 
     /** The id defaults to the plugin name, and can be overridden for selection. */
@@ -69,7 +69,7 @@ final class PluginHighlighterTest extends TestCase
     {
         $manager = $this->manager();
 
-        $api = $this->api($manager, 'mytool');
+        $api = $this->api($manager, name: 'mytool');
         $api->registerHighlighter('Default id', ['php'], static function (string $c, string $l, \Closure $d): void {
             $d($c);
         });
@@ -92,7 +92,7 @@ final class PluginHighlighterTest extends TestCase
         $manager = $this->manager();
         $claimed = ['php'];
 
-        $api = $this->api($manager, 'live');
+        $api = $this->api($manager, name: 'live');
         $api->registerHighlighter(
             'Live',
             static function () use (&$claimed): array {
@@ -115,7 +115,7 @@ final class PluginHighlighterTest extends TestCase
     public function testRejectsAnInvalidId(): void
     {
         $manager = $this->manager();
-        $api = $this->api($manager, 'bad');
+        $api = $this->api($manager, name: 'bad');
 
         $this->expectException(PluginException::class);
         $api->registerHighlighter(
@@ -131,7 +131,7 @@ final class PluginHighlighterTest extends TestCase
     public function testRejectsAnEmptyLanguageList(): void
     {
         $manager = $this->manager();
-        $api = $this->api($manager, 'bad');
+        $api = $this->api($manager, name: 'bad');
 
         $this->expectException(PluginException::class);
         $api->registerHighlighter('Bad', [], static function (string $c, string $l, \Closure $d): void {
@@ -146,7 +146,7 @@ final class PluginHighlighterTest extends TestCase
     public function testThrowingClaimListDeclinesAndReportsOnce(): void
     {
         $manager = $this->manager();
-        $api = $this->api($manager, 'boom');
+        $api = $this->api($manager, name: 'boom');
         $api->registerHighlighter('Boom', static fn (): array => throw new \RuntimeException('nope'), static function (string $c, string $l, \Closure $d): void {
             $d($c);
         });
@@ -169,7 +169,7 @@ final class PluginHighlighterTest extends TestCase
     public function testThrowingHighlightReportsOnceAndRethrows(): void
     {
         $manager = $this->manager();
-        $api = $this->api($manager, 'crash');
+        $api = $this->api($manager, name: 'crash');
         $api->registerHighlighter('Crash', ['php'], static function (): never {
             throw new \RuntimeException('parse failed');
         });
@@ -179,7 +179,7 @@ final class PluginHighlighterTest extends TestCase
 
         foreach (\range(1, end: 3) as $_) {
             try {
-                $this->markup($provider, 'x');
+                $this->markup($provider, source: 'x');
                 $this->fail('expected the throw to propagate');
             } catch (\RuntimeException $error) {
                 $this->assertSame('parse failed', $error->getMessage());
@@ -192,7 +192,7 @@ final class PluginHighlighterTest extends TestCase
     public function testDeactivateRemovesTheBackend(): void
     {
         $manager = $this->manager();
-        $api = $this->api($manager, 'gone');
+        $api = $this->api($manager, name: 'gone');
         $api->registerHighlighter('Gone', ['php'], static function (string $c, string $l, \Closure $d): void {
             $d($c);
         });

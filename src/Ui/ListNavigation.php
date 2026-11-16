@@ -17,10 +17,10 @@ final class ListNavigation
     {
         $moved = true;
         match (true) {
-            $kb->matches($keys, 'move_up') => $list->moveUp(),
-            $kb->matches($keys, 'move_down') => $list->moveDown($count),
-            $page > 0 && $kb->matches($keys, 'page_up') => $list->moveUp($page),
-            $page > 0 && $kb->matches($keys, 'page_down') => $list->moveDown($count, $page),
+            $kb->matches($keys, action: 'move_up') => $list->moveUp(),
+            $kb->matches($keys, action: 'move_down') => $list->moveDown($count),
+            $page > 0 && $kb->matches($keys, action: 'page_up') => $list->moveUp($page),
+            $page > 0 && $kb->matches($keys, action: 'page_down') => $list->moveDown($count, $page),
             default => $moved = false,
         };
 

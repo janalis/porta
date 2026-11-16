@@ -377,10 +377,10 @@ final class TextFieldTest extends TestCase
     public function testAMaskedPromptKeepsItsValueOffTheScreen(): void
     {
         $editor = new CodeEditorWidget();
-        $editor->openPrompt('Password', 'secret', static function (): void {}, echo: TextEcho::Masked);
+        $editor->openPrompt('Password', initial: 'secret', onSubmit: static function (): void {}, echo: TextEcho::Masked);
 
         /** @var array{value: TextField} $prompt */
-        $prompt = Probe::get(Probe::object($editor, 'overlayHost'), 'prompt');
+        $prompt = Probe::get(Probe::object($editor, 'overlayHost'), property: 'prompt');
         $this->assertSame('••••••', $prompt['value']->render(CaretVisibility::Hidden));
     }
 }

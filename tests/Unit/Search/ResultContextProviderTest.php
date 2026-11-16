@@ -17,7 +17,7 @@ final class ResultContextProviderTest extends TestCase
         $project = new TempProject(['a.php' => "0\n1\n2\n3\n4\n5\n"]);
         $provider = new ResultContextProvider(new BufferManager(), new ProjectPaths($project->dir));
 
-        $context = $provider->around('a.php', 2);
+        $context = $provider->around('a.php', line: 2);
 
         $this->assertSame(
             [['line' => 0, 'text' => '0'], ['line' => 1, 'text' => '1'], ['line' => 3, 'text' => '3'], ['line' => 4, 'text' => '4']],
@@ -30,10 +30,10 @@ final class ResultContextProviderTest extends TestCase
     {
         $project = new TempProject(['a.php' => "old0\nold1\nold2"]);
         $buffers = new BufferManager();
-        $buffers->open($project->path('a.php'), "new0\nnew1\nnew2");
+        $buffers->open($project->path('a.php'), content: "new0\nnew1\nnew2");
         $provider = new ResultContextProvider($buffers, new ProjectPaths($project->dir));
 
-        $context = $provider->around('a.php', 1);
+        $context = $provider->around('a.php', line: 1);
 
         $this->assertSame(['new0', 'new2'], \array_column($context, 'text'), 'unsaved buffer content wins over disk');
     }
@@ -46,10 +46,10 @@ final class ResultContextProviderTest extends TestCase
         // fallback finds the live buffer instead of falling through to disk.
         $project = new TempProject(['sub/a.php' => "x0\nx1\nx2"]);
         $buffers = new BufferManager();
-        $buffers->open((string) \realpath($project->path('sub/a.php')), "y0\ny1\ny2");
+        $buffers->open((string) \realpath($project->path('sub/a.php')), content: "y0\ny1\ny2");
         $provider = new ResultContextProvider($buffers, new ProjectPaths($project->dir));
 
-        $context = $provider->around('sub/../sub/a.php', 1);
+        $context = $provider->around('sub/../sub/a.php', line: 1);
 
         $this->assertSame(['y0', 'y2'], \array_column($context, 'text'), 'the realpath fallback finds the live buffer');
     }
@@ -59,7 +59,7 @@ final class ResultContextProviderTest extends TestCase
         $project = new TempProject(['a.php' => "0\n1\n2\n3"]);
         $provider = new ResultContextProvider(new BufferManager(), new ProjectPaths($project->dir));
 
-        $context = $provider->around('a.php', 0);
+        $context = $provider->around('a.php', line: 0);
 
         $this->assertSame([1, 2], \array_column($context, 'line'), 'no negative lines before the start');
     }
@@ -69,7 +69,7 @@ final class ResultContextProviderTest extends TestCase
         $project = new TempProject(['a.php' => "0\n1\n2\n3"]);
         $provider = new ResultContextProvider(new BufferManager(), new ProjectPaths($project->dir));
 
-        $context = $provider->around('a.php', 3);
+        $context = $provider->around('a.php', line: 3);
 
         $this->assertSame([1, 2], \array_column($context, 'line'), 'no lines requested past the last one');
     }
@@ -79,7 +79,7 @@ final class ResultContextProviderTest extends TestCase
         $project = new TempProject(['a.php' => "0  \n1\n2"]);
         $provider = new ResultContextProvider(new BufferManager(), new ProjectPaths($project->dir));
 
-        $context = $provider->around('a.php', 1);
+        $context = $provider->around('a.php', line: 1);
 
         $this->assertSame('0', $context[0]['text'], 'trailing whitespace is trimmed');
     }

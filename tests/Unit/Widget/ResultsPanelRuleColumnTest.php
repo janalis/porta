@@ -46,7 +46,7 @@ final class ResultsPanelRuleColumnTest extends TestCase
             'line' => 117,
             'text' => '▲ Name "Other" is imported but this file never references it anywhere',
             'tail' => 'worse.unused_import',
-        ]], 100);
+        ]], columns: 100);
 
         // The two-space gap is asserted with it: the rule sits BEHIND the
         // sentence, and run together they read as one word. Infection removed
@@ -57,7 +57,7 @@ final class ResultsPanelRuleColumnTest extends TestCase
     /** A row that fits is untouched: the reservation only spends width it has to. */
     public function testAShortProblemRowIsLeftExactlyAsItWas(): void
     {
-        $plain = $this->panelText([['path' => 'src/A.php', 'line' => 0, 'text' => '✗ boom', 'tail' => '1005']], 100);
+        $plain = $this->panelText([['path' => 'src/A.php', 'line' => 0, 'text' => '✗ boom', 'tail' => '1005']], columns: 100);
 
         $this->assertStringContainsString('✗ boom  1005', $plain);
         $this->assertStringNotContainsString(Glyphs::ELLIPSIS, $plain);
@@ -75,7 +75,7 @@ final class ResultsPanelRuleColumnTest extends TestCase
             'line' => 0,
             'text' => '▲ Name "Other" is imported but never used here',
             'tail' => 'worse.unused_import',
-        ]], 46);
+        ]], columns: 46);
 
         $this->assertStringContainsString('Name "Other"', $plain, 'the sentence keeps its opening');
         $this->assertStringNotContainsString('worse.unused_import', $plain, 'and the rule goes, as it always did');
@@ -84,7 +84,7 @@ final class ResultsPanelRuleColumnTest extends TestCase
     /** Search results carry no tail, and their highlight spans must still line up with the string. */
     public function testASearchRowWithoutATailIsUntouched(): void
     {
-        $plain = $this->panelText([['path' => 'src/A.php', 'line' => 0, 'text' => 'needle here', 'ranges' => [['start' => 0, 'length' => 6]]]], 100, mode: 'search');
+        $plain = $this->panelText([['path' => 'src/A.php', 'line' => 0, 'text' => 'needle here', 'ranges' => [['start' => 0, 'length' => 6]]]], columns: 100, mode: 'search');
 
         $this->assertStringContainsString('needle here', $plain);
     }

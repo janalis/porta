@@ -47,10 +47,10 @@ final class AdapterSetup
                 ? $this->api->notify(
                     $this->api->trans('php-debug %version% installed: Shift+F9 debugs the PHP file in front', ['%version%' => AdapterLocator::VERSION]),
                     ToastSeverity::Success,
-                    5.0,
-                    self::SLOT,
+                    seconds: 5.0,
+                    slot: self::SLOT,
                 )
-                : $this->api->notify($this->api->trans('The php-debug adapter was not installed: %reason%', ['%reason%' => $failure]), ToastSeverity::Error, 6.0, self::SLOT);
+                : $this->api->notify($this->api->trans('The php-debug adapter was not installed: %reason%', ['%reason%' => $failure]), ToastSeverity::Error, seconds: 6.0, slot: self::SLOT);
         });
     }
 }

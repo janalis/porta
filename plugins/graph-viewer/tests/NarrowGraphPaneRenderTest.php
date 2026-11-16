@@ -44,7 +44,7 @@ final class NarrowGraphPaneRenderTest extends TestCase
     {
         $scheduler = new FakeScheduler();
         $widget = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'), new FakeLayoutEngine(), scheduler: $scheduler);
-        $widget->show('/p/g.dot', 'digraph G { A -> B [label="calls"]; B -> C; }');
+        $widget->show('/p/g.dot', payload: 'digraph G { A -> B [label="calls"]; B -> C; }');
         if ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }

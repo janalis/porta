@@ -28,21 +28,21 @@ return new class('php-cs-fixer', 'php-cs-fixer') extends AbstractToolPlugin {
     public function activate(PluginApi $api): void
     {
         $this->registerBinarySetting($api);
-        $api->registerSetting('args', 'Extra fix arguments', 'text', '', hint: 'appended to the fix command');
-        $api->registerSetting('autoFormat', 'Format on save', 'bool', false);
+        $api->registerSetting('args', label: 'Extra fix arguments', kind: 'text', default: '', hint: 'appended to the fix command');
+        $api->registerSetting('autoFormat', label: 'Format on save', kind: 'bool', default: false);
 
         $api->registerCommand(
             'fix',
-            'PHP CS Fixer: Fix Current File',
-            function () use ($api): void {
+            label: 'PHP CS Fixer: Fix Current File',
+            handler: function () use ($api): void {
                 $file = $this->activeFileOrFlash($api);
                 if (null !== $file) {
                     $this->fix($api, $file);
                 }
             },
-            ['ctrl+alt+f'],
+            keys: ['ctrl+alt+f'],
         );
-        $this->registerToggle($api, 'toggle-on-save', 'PHP CS Fixer: Toggle Fix on Save', 'autoFormat', 'php-cs-fixer on save');
+        $this->registerToggle($api, id: 'toggle-on-save', label: 'PHP CS Fixer: Toggle Fix on Save', settingKey: 'autoFormat', phrase: 'php-cs-fixer on save');
 
         $api->addMenuItem('fix', $this->binaryAvailable($api));
         $api->addMenuItem('toggle-on-save');

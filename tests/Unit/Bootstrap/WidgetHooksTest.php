@@ -40,7 +40,7 @@ final class WidgetHooksTest extends TestCase
         // as a placeholder default — every group here being non-null is only
         // possible if WidgetHooks::wire()'s setCallbacks() call actually ran.
         $editor = Widgets::editor(Services::resolve($this->ide, Tui::class));
-        $callbacks = Probe::get($editor, 'callbacks');
+        $callbacks = Probe::get($editor, property: 'callbacks');
 
         $this->assertNotNull($callbacks->navigation);
         $this->assertNotNull($callbacks->file);
@@ -53,23 +53,23 @@ final class WidgetHooksTest extends TestCase
     {
         $helpViewer = Services::resolve($this->ide, HelpViewerWidget::class);
 
-        $this->assertNotNull(Probe::get($helpViewer, 'docsRoot'));
-        $this->assertNotNull(Probe::get($helpViewer, 'moreRoots'));
-        $this->assertNotNull(Probe::get($helpViewer, 'handler'));
+        $this->assertNotNull(Probe::get($helpViewer, property: 'docsRoot'));
+        $this->assertNotNull(Probe::get($helpViewer, property: 'moreRoots'));
+        $this->assertNotNull(Probe::get($helpViewer, property: 'handler'));
     }
 
     public function testTabBreadcrumbAndStatusStripsEachGetAContentProvider(): void
     {
         $layout = Services::resolve($this->ide, WorkspaceLayout::class);
-        $tabBar = Probe::get($layout, 'tabBar');
-        $editorBody = Probe::get($layout, 'editorBody');
+        $tabBar = Probe::get($layout, property: 'tabBar');
+        $editorBody = Probe::get($layout, property: 'editorBody');
         $breadcrumbs = \array_find($editorBody->all(), static fn (object $w): bool => $w instanceof BreadcrumbsWidget);
         $this->assertInstanceOf(BreadcrumbsWidget::class, $breadcrumbs, 'the editor body holds the breadcrumb strip');
         $statusBar = Services::resolve($this->ide, StatusBarWidget::class);
 
-        $this->assertIsCallable(Probe::get($tabBar, 'provider'));
-        $this->assertIsCallable(Probe::get($breadcrumbs, 'provider'));
-        $this->assertIsCallable(Probe::get($statusBar, 'provider'));
+        $this->assertIsCallable(Probe::get($tabBar, property: 'provider'));
+        $this->assertIsCallable(Probe::get($breadcrumbs, property: 'provider'));
+        $this->assertIsCallable(Probe::get($statusBar, property: 'provider'));
     }
 
     public function testDockPanelsAreWiredWithATabsProvider(): void
@@ -78,16 +78,16 @@ final class WidgetHooksTest extends TestCase
         // dock's tab strip its provider — the single cheapest observable
         // proof the whole wire() call ran, short of a full render.
         $panels = Services::resolve($this->ide, BottomDock::class);
-        $dockTabsWidget = Probe::get($panels, 'dockTabs');
+        $dockTabsWidget = Probe::get($panels, property: 'dockTabs');
 
-        $this->assertIsCallable(Probe::get($dockTabsWidget, 'provider'));
+        $this->assertIsCallable(Probe::get($dockTabsWidget, property: 'provider'));
     }
 
     public function testTerminalPanelForwardsInputToTheRunController(): void
     {
         $terminalPanel = Services::resolve($this->ide, TerminalPanelWidget::class);
 
-        $this->assertIsCallable(Probe::get($terminalPanel, 'onInputForward'));
+        $this->assertIsCallable(Probe::get($terminalPanel, property: 'onInputForward'));
     }
 
     public function testMenuBarAndContextMenuBothGetNavigateAndCloseHooks(): void
@@ -95,9 +95,9 @@ final class WidgetHooksTest extends TestCase
         $menuBar = Services::resolve($this->ide, MenuBarWidget::class);
         $contextMenu = Services::resolve($this->ide, ContextMenu::class);
 
-        $this->assertIsCallable(Probe::get($menuBar, 'onNavigate'));
-        $this->assertNotEmpty(Probe::get($menuBar, 'onClose'), 'menu bar close hook registered');
-        $this->assertIsCallable(Probe::get($contextMenu, 'onNavigate'));
-        $this->assertNotEmpty(Probe::get($contextMenu, 'onClose'), 'context menu close hook registered');
+        $this->assertIsCallable(Probe::get($menuBar, property: 'onNavigate'));
+        $this->assertNotEmpty(Probe::get($menuBar, property: 'onClose'), 'menu bar close hook registered');
+        $this->assertIsCallable(Probe::get($contextMenu, property: 'onNavigate'));
+        $this->assertNotEmpty(Probe::get($contextMenu, property: 'onClose'), 'context menu close hook registered');
     }
 }

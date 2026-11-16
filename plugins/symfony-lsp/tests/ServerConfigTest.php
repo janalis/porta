@@ -14,10 +14,10 @@ final class ServerConfigTest extends TestCase
     {
         $config = new ServerConfig();
 
-        $this->assertSame(['/opt/symfony-lsp'], $config->command('/opt/symfony-lsp', ['twig', 'yaml'], 'twig'));
-        $this->assertNull($config->command('/opt/symfony-lsp', ['twig', 'yaml'], 'php'), 'an unclaimed language stays unserved');
-        $this->assertInstanceOf(ServerNotFound::class, $config->command(null, ['twig'], 'twig'), 'claimed, no binary: not found');
-        $this->assertNull($config->command(null, [], 'twig'));
+        $this->assertSame(['/opt/symfony-lsp'], $config->command('/opt/symfony-lsp', ['twig', 'yaml'], language: 'twig'));
+        $this->assertNull($config->command('/opt/symfony-lsp', ['twig', 'yaml'], language: 'php'), 'an unclaimed language stays unserved');
+        $this->assertInstanceOf(ServerNotFound::class, $config->command(null, ['twig'], language: 'twig'), 'claimed, no binary: not found');
+        $this->assertNull($config->command(null, [], language: 'twig'));
     }
 
     public function testAStarClaimServesEveryRegisteredLanguage(): void
@@ -38,7 +38,7 @@ final class ServerConfigTest extends TestCase
 
     public function testInitializationOptionsCarryTheSettingsWithExplicitTrust(): void
     {
-        $options = new ServerConfig()->initializationOptions('php', 'dev', false);
+        $options = new ServerConfig()->initializationOptions('php', environment: 'dev', runtimeIndexing: false);
 
         $this->assertSame(
             ['phpCommand' => ['php'], 'environment' => 'dev', 'runtimeIndexing' => false, 'workspaceTrust' => false],
@@ -49,7 +49,7 @@ final class ServerConfigTest extends TestCase
 
     public function testRuntimeIndexingGrantsWorkspaceTrust(): void
     {
-        $options = new ServerConfig()->initializationOptions('php', 'test', true);
+        $options = new ServerConfig()->initializationOptions('php', environment: 'test', runtimeIndexing: true);
 
         $this->assertTrue($options['runtimeIndexing']);
         $this->assertTrue($options['workspaceTrust'], 'the setting is the trust decision');
@@ -60,10 +60,10 @@ final class ServerConfigTest extends TestCase
     {
         $config = new ServerConfig();
 
-        $this->assertSame(['symfony', 'php'], $config->initializationOptions('symfony php', 'dev', false)['phpCommand'], 'a multi-token command splits into argv');
-        $this->assertSame(['/opt/my php', '-d', 'x=1'], $config->initializationOptions('"/opt/my php" -d x=1', 'dev', false)['phpCommand'], 'quoting survives');
+        $this->assertSame(['symfony', 'php'], $config->initializationOptions('symfony php', environment: 'dev', runtimeIndexing: false)['phpCommand'], 'a multi-token command splits into argv');
+        $this->assertSame(['/opt/my php', '-d', 'x=1'], $config->initializationOptions('"/opt/my php" -d x=1', environment: 'dev', runtimeIndexing: false)['phpCommand'], 'quoting survives');
 
-        $blank = $config->initializationOptions('   ', "  \t", false);
+        $blank = $config->initializationOptions('   ', environment: "  \t", runtimeIndexing: false);
         $this->assertSame(['php'], $blank['phpCommand'], 'a blank command falls back to php');
         $this->assertSame('dev', $blank['environment'], 'a blank environment falls back to dev');
     }

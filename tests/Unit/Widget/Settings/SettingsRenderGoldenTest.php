@@ -80,7 +80,7 @@ final class SettingsRenderGoldenTest extends TestCase
             'every-kind-focused' => [
                 function (SettingsFormWidget $w): void {
                     $w->setFocused(true);
-                    $w->setRows($this->everyKind(), 'Interface');
+                    $w->setRows($this->everyKind(), title: 'Interface');
                 },
                 72,
                 10,
@@ -89,7 +89,7 @@ final class SettingsRenderGoldenTest extends TestCase
             'every-kind-unfocused' => [
                 function (SettingsFormWidget $w): void {
                     $w->setFocused(false);
-                    $w->setRows($this->everyKind(), 'Interface');
+                    $w->setRows($this->everyKind(), title: 'Interface');
                 },
                 72,
                 10,
@@ -99,7 +99,7 @@ final class SettingsRenderGoldenTest extends TestCase
             'selection-moved' => [
                 function (SettingsFormWidget $w): void {
                     $w->setFocused(true);
-                    $w->setRows($this->everyKind(), 'Interface');
+                    $w->setRows($this->everyKind(), title: 'Interface');
                     $w->handleInput("\x1b[B");
                     $w->handleInput("\x1b[B");
                 },
@@ -110,7 +110,7 @@ final class SettingsRenderGoldenTest extends TestCase
             'hovered-row' => [
                 function (SettingsFormWidget $w): void {
                     $w->setFocused(true);
-                    $w->setRows($this->everyKind(), 'Interface');
+                    $w->setRows($this->everyKind(), title: 'Interface');
                     $w->hoverRow(3);
                 },
                 72,
@@ -125,7 +125,7 @@ final class SettingsRenderGoldenTest extends TestCase
                     $w->setRows([
                         new SettingsRow(key: 'pluginRemove:project:demo', label: 'demo (project)', kind: SettingsRowKind::Action, value: 'Remove', restart: false, danger: true),
                         new SettingsRow(key: 'pluginRemove:project:other', label: 'other (project)', kind: SettingsRowKind::Action, value: 'Remove', restart: false),
-                    ], 'Plugins');
+                    ], title: 'Plugins');
                 },
                 72,
                 6,
@@ -140,7 +140,7 @@ final class SettingsRenderGoldenTest extends TestCase
                     $w->setFocused(true);
                     $w->setRows([
                         new SettingsRow(key: 'pluginInstallBinary', label: 'Install phpstan', kind: SettingsRowKind::Action, value: false, restart: false),
-                    ], 'phpstan');
+                    ], title: 'phpstan');
                 },
                 72,
                 5,
@@ -164,7 +164,7 @@ final class SettingsRenderGoldenTest extends TestCase
                             hint: 'Used for any language without its own choice below',
                         ),
                         new SettingsRow(key: 'maxBytes', label: 'Skip images larger than (bytes)', kind: SettingsRowKind::Int, value: 20_971_520, restart: false, hint: 'routing only'),
-                    ], 'image-viewer');
+                    ], title: 'image-viewer');
                 },
                 72,
                 7,
@@ -178,7 +178,7 @@ final class SettingsRenderGoldenTest extends TestCase
                         new SettingsRow(key: 'a', label: 'Theme', kind: SettingsRowKind::Choice, value: 'dark', restart: false, options: ['dark', 'light']),
                         new SettingsRow(key: 'b', label: 'Sticky scroll', kind: SettingsRowKind::Bool, value: true, restart: false),
                         new SettingsRow(key: 'c', label: 'Skip images larger than (bytes)', kind: SettingsRowKind::Int, value: 4, restart: false),
-                    ], 'General');
+                    ], title: 'General');
                 },
                 72,
                 7,
@@ -189,7 +189,7 @@ final class SettingsRenderGoldenTest extends TestCase
                     $w->setFocused(true);
                     $w->setRows([
                         new SettingsRow(key: 'runCommand', label: 'Run/debug command', kind: SettingsRowKind::Text, value: 'frankenphp php-cli', restart: true),
-                    ], 'PHP');
+                    ], title: 'PHP');
                 },
                 72,
                 5,
@@ -200,7 +200,7 @@ final class SettingsRenderGoldenTest extends TestCase
                     $w->setFocused(true);
                     $w->setRows([
                         new SettingsRow(key: 'long', label: 'A very long setting label that runs past the pane edge', kind: SettingsRowKind::Bool, value: true, restart: false),
-                    ], 'General');
+                    ], title: 'General');
                 },
                 30,
                 8,
@@ -211,7 +211,7 @@ final class SettingsRenderGoldenTest extends TestCase
                     $w->setFocused(true);
                     $w->setRows([
                         new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: '', restart: false, hint: 'auto-detect'),
-                    ], 'PHP');
+                    ], title: 'PHP');
                     $w->handleInput("\r"); // opens the inline editor
                     foreach (\str_split('my-ls') as $char) {
                         $w->handleInput($char);
@@ -229,7 +229,7 @@ final class SettingsRenderGoldenTest extends TestCase
                     for ($i = 0; $i < 20; ++$i) {
                         $rows[] = new SettingsRow(key: 'k'.$i, label: 'Setting '.$i, kind: SettingsRowKind::Bool, value: 0 === ($i % 2), restart: false);
                     }
-                    $w->setRows($rows, 'Long');
+                    $w->setRows($rows, title: 'Long');
                     for ($i = 0; $i < 12; ++$i) {
                         $w->handleInput("\x1b[B");
                     }
@@ -241,7 +241,7 @@ final class SettingsRenderGoldenTest extends TestCase
             'empty-page' => [
                 static function (SettingsFormWidget $w): void {
                     $w->setFocused(true);
-                    $w->setRows([], 'Nothing');
+                    $w->setRows([], title: 'Nothing');
                 },
                 72,
                 5,

@@ -18,7 +18,7 @@ final class ScreenSvgTest extends TestCase
     /** A forced frame: clear, home, the rows joined by CRLF. */
     private static function svg(string ...$rows): string
     {
-        return ScreenSvg::fromFrame("\x1b[2J\x1b[H".\implode("\r\n", $rows), 20, \max(1, \count($rows)));
+        return ScreenSvg::fromFrame("\x1b[2J\x1b[H".\implode("\r\n", $rows), columns: 20, rows: \max(1, \count($rows)));
     }
 
     /** @return list<array{string, string}> each `<text>`'s attributes and content */
@@ -124,11 +124,11 @@ final class ScreenSvgTest extends TestCase
 
     public function testAPlacedPictureIsDrawnOverItsPlaceholderCells(): void
     {
-        $png = PngFixture::bytes(2, 2);
+        $png = PngFixture::bytes(2, height: 2);
         $sent = "\x1b_Ga=t,f=100,t=d,i=7,q=2,m=0;".\base64_encode($png)."\x1b\\\x1b_Ga=p,U=1,i=7,p=1,c=2,r=1,q=2\x1b\\";
-        $row = 'ab'.KittyPlaceholders::expand(KittyPlaceholders::row(7, 0, 0, 2));
+        $row = 'ab'.KittyPlaceholders::expand(KittyPlaceholders::row(7, row: 0, firstColumn: 0, count: 2));
 
-        $svg = ScreenSvg::fromFrame("\x1b[H".$row, 10, 1, '', $sent);
+        $svg = ScreenSvg::fromFrame("\x1b[H".$row, columns: 10, rows: 1, title: '', before: $sent);
 
         $this->assertSame(['ab'], \array_column(self::texts($svg), 1), 'a placeholder is not text');
         $this->assertStringContainsString('<image clip-path="url(#picture-7)" x="28.8" y="40" width="16.8" height="18"', $svg);
@@ -137,14 +137,14 @@ final class ScreenSvgTest extends TestCase
 
     public function testAPlaceholderWithNothingSentDrawsNothing(): void
     {
-        $svg = ScreenSvg::fromFrame("\x1b[H".KittyPlaceholders::expand(KittyPlaceholders::row(7, 0, 0, 2)), 10, 1);
+        $svg = ScreenSvg::fromFrame("\x1b[H".KittyPlaceholders::expand(KittyPlaceholders::row(7, row: 0, firstColumn: 0, count: 2)), columns: 10, rows: 1);
 
         $this->assertStringNotContainsString('<image', $svg);
     }
 
     public function testTheWindowCarriesItsTitle(): void
     {
-        $svg = ScreenSvg::fromFrame("\x1b[Hx", 10, 1, 'acme — <Porta>');
+        $svg = ScreenSvg::fromFrame("\x1b[Hx", columns: 10, rows: 1, title: 'acme — <Porta>');
 
         $this->assertStringContainsString('>acme — &lt;Porta&gt;</text>', $svg);
         $this->assertNotFalse(\simplexml_load_string($svg));
@@ -154,6 +154,6 @@ final class ScreenSvgTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        ScreenSvg::fromFrame("\x1b[2Aabc", 10, 1);
+        ScreenSvg::fromFrame("\x1b[2Aabc", columns: 10, rows: 1);
     }
 }

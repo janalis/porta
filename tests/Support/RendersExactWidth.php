@@ -62,7 +62,7 @@ trait RendersExactWidth
         self::assertNotSame(
             [],
             $widget->render(new RenderContext($upTo, $paneRows)),
-            'the widget rendered nothing even at its widest, so this sweep would prove nothing',
+            message: 'the widget rendered nothing even at its widest, so this sweep would prove nothing',
         );
 
         foreach (\range(start: 1, end: $upTo) as $columns) {

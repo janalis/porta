@@ -125,7 +125,7 @@ final class ToolRequirementTest extends TestCase
 
         $this->assertCount(1, $tool->sources, 'only the last has a repo and rules a URL can be built from');
         $this->assertSame('janalis/custos', $tool->sources[0]->package);
-        $this->assertSame('x_darwin_arm64', $tool->sources[0]->asset?->assetFor('v1.0.0', 'Darwin', 'arm64'));
+        $this->assertSame('x_darwin_arm64', $tool->sources[0]->asset?->assetFor('v1.0.0', osFamily: 'Darwin', machine: 'arm64'));
     }
 
     public function testTheSearchFollowsTheSources(): void

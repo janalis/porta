@@ -20,10 +20,10 @@ final class JumpHistoryTest extends TestCase
         // Recent Locations lists this stack, so a folder rename left a screen
         // of rows that open nothing.
         $history = new JumpHistory();
-        $history->push('/p/olden/b.php', 1, 0);
-        $history->push('/p/old/deep/a.php', 2, 3);
+        $history->push('/p/olden/b.php', line: 1, col: 0);
+        $history->push('/p/old/deep/a.php', line: 2, col: 3);
 
-        $history->rename('/p/old', '/p/new');
+        $history->rename('/p/old', to: '/p/new');
 
         $this->assertSame(
             [
@@ -38,9 +38,9 @@ final class JumpHistoryTest extends TestCase
     public function testForgettingADirectoryDropsEveryEntryUnderIt(): void
     {
         $history = new JumpHistory();
-        $history->push('/p/keep/z.php', 0, 0);
-        $history->push('/p/old/a.php', 1, 0);
-        $history->push('/p/olden/c.php', 2, 0);
+        $history->push('/p/keep/z.php', line: 0, col: 0);
+        $history->push('/p/old/a.php', line: 1, col: 0);
+        $history->push('/p/olden/c.php', line: 2, col: 0);
 
         $history->forget('/p/old');
 

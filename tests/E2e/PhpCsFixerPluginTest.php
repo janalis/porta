@@ -128,7 +128,7 @@ final class PhpCsFixerPluginTest extends TestCase
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('php-cs-fixer:toggle-on-save');
-                    $this->awaitPainted($tui, $terminal, 'php-cs-fixer on save: on');
+                    $this->awaitPainted($tui, $terminal, needle: 'php-cs-fixer on save: on');
                     $this->assertStringContainsString('php-cs-fixer on save: on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertTrue((bool) (IdeConfig::load($project->dir)->plugins['php-cs-fixer']['autoFormat'] ?? false), 'the toggle persisted to .porta.json');
                     $tui->handleInput("\x13"); // ctrl+s → save → the hook runs the fixer

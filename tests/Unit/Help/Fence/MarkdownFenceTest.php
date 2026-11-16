@@ -19,7 +19,7 @@ final class MarkdownFenceTest extends TestCase
 {
     public function testResultKeepsBytesAndRelativeOrigins(): void
     {
-        $bytes = PngFixture::bytes(2, 3);
+        $bytes = PngFixture::bytes(2, height: 3);
         $image = FenceResult::png($bytes, error: 'renderer warning');
         $this->assertSame('renderer warning', $image->error);
         $this->assertSame($bytes, $image->png);
@@ -63,7 +63,7 @@ final class MarkdownFenceTest extends TestCase
         $registry = new MarkdownFenceRegistry();
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager(new EventDispatcher(), $settings, $registry);
-        $api = $manager->api('first', '/p', $settings);
+        $api = $manager->api('first', rootDir: '/p', settings: $settings);
         $changes = 0;
         $unsubscribe = $registry->onChange(static function () use (&$changes): void {
             ++$changes;
@@ -77,7 +77,7 @@ final class MarkdownFenceTest extends TestCase
         $this->assertSame($callback, $registry->renderer('MERMAID'));
         $this->assertSame($callback, $registry->renderer('dot'));
         $this->assertNull($registry->renderer('plantxml'));
-        $next = $manager->api('second', '/p', $settings);
+        $next = $manager->api('second', rootDir: '/p', settings: $settings);
         $next->registerMarkdownFence(['mermaid'], $second);
         $manager->commit($next);
         $this->assertSame($callback, $registry->renderer('mermaid'));
@@ -98,7 +98,7 @@ final class MarkdownFenceTest extends TestCase
     {
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager(new EventDispatcher(), $settings);
-        $api = $manager->api('demo', '/p', $settings);
+        $api = $manager->api('demo', rootDir: '/p', settings: $settings);
         $manager->commit($api);
         $this->expectException(PluginException::class);
         $api->registerMarkdownFence(['dot'], static fn (): \Closure => static function (): void {});
@@ -119,7 +119,7 @@ final class MarkdownFenceTest extends TestCase
     {
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager(new EventDispatcher(), $settings);
-        $api = $manager->api('demo', '/p', $settings);
+        $api = $manager->api('demo', rootDir: '/p', settings: $settings);
         $this->expectException(PluginException::class);
         $api->registerMarkdownFence($languages, static fn (): \Closure => static function (): void {});
     }

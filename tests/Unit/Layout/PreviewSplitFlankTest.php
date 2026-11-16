@@ -162,14 +162,14 @@ final class PreviewSplitFlankTest extends TestCase
         $this->assertInstanceOf(WidgetContext::class, $this->pane->getContext(), 'the pane stays beside the editor');
         $this->assertSame($this->editor, $this->tui->getFocus(), 'the editor takes the keys the flank had');
 
-        $this->terminal->simulateResize(30, 10);
+        $this->terminal->simulateResize(30, rows: 10);
         $this->frame($this->tui);
         $this->fit();
 
         $this->assertNull($this->pane->getContext(), 'then the pane');
         $this->assertInstanceOf(WidgetContext::class, $this->editor->getContext(), 'the editor stays');
 
-        $this->terminal->simulateResize(92, 10);
+        $this->terminal->simulateResize(92, rows: 10);
         $this->frame($this->tui);
         $this->fit();
         $this->fit();
@@ -182,10 +182,10 @@ final class PreviewSplitFlankTest extends TestCase
         $this->mounted();
         $this->tui->setFocus($this->pane);
 
-        $this->terminal->simulateResize(50, 10);
+        $this->terminal->simulateResize(50, rows: 10);
         $this->frame($this->tui);
         $this->fit();
-        $this->terminal->simulateResize(30, 10);
+        $this->terminal->simulateResize(30, rows: 10);
         $this->frame($this->tui);
         $this->fit();
 

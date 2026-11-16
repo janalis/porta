@@ -19,9 +19,9 @@ final class EditTrackingTest extends TestCase
     {
         $history = new EditHistory();
         $buffers = new BufferManager(editHistory: $history);
-        $document = $buffers->open('/a.php', "one\ntwo\nthree\n")->document;
+        $document = $buffers->open('/a.php', content: "one\ntwo\nthree\n")->document;
 
-        $document->setCursor(1, 3);
+        $document->setCursor(1, col: 3);
         $document->insert('!');
 
         $this->assertSame(['path' => '/a.php', 'line' => 1], $history->walkBack());
@@ -33,10 +33,10 @@ final class EditTrackingTest extends TestCase
         // file from top to bottom must not fill the list with every line.
         $history = new EditHistory();
         $buffers = new BufferManager(editHistory: $history);
-        $document = $buffers->open('/a.php', "one\ntwo\nthree\n")->document;
+        $document = $buffers->open('/a.php', content: "one\ntwo\nthree\n")->document;
 
-        $document->setCursor(2, 0);
-        $document->setCursor(0, 0);
+        $document->setCursor(2, col: 0);
+        $document->setCursor(0, col: 0);
 
         $this->assertNull($history->walkBack());
     }
@@ -45,8 +45,8 @@ final class EditTrackingTest extends TestCase
     {
         $history = new EditHistory();
         $buffers = new BufferManager(editHistory: $history);
-        $a = $buffers->open('/a.php', "one\n")->document;
-        $b = $buffers->open('/b.php', "two\n")->document;
+        $a = $buffers->open('/a.php', content: "one\n")->document;
+        $b = $buffers->open('/b.php', content: "two\n")->document;
 
         $a->insert('x');
         $b->insert('y');
@@ -62,7 +62,7 @@ final class EditTrackingTest extends TestCase
         $history = new EditHistory();
         $buffers = new BufferManager(editHistory: $history);
 
-        $buffers->openPane('/logo.png', 'image', payload: null)->document->insert('x');
+        $buffers->openPane('/logo.png', paneId: 'image', payload: null)->document->insert('x');
 
         $this->assertNull($history->walkBack());
     }
@@ -72,7 +72,7 @@ final class EditTrackingTest extends TestCase
         // The hook is optional on the same footing as the caret hooks: a
         // BufferManager built without one is what every unit test uses.
         $buffers = new BufferManager();
-        $document = $buffers->open('/a.php', "one\n")->document;
+        $document = $buffers->open('/a.php', content: "one\n")->document;
 
         $document->insert('x');
 

@@ -35,7 +35,7 @@ final class DockToolControllerTest extends TestCase
     /** @param list<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> $tools */
     private function controller(array $tools, string $rootDir = '/p'): DockToolController
     {
-        $this->tui = TestTui::create(100, 24);
+        $this->tui = TestTui::create(100, rows: 24);
         $this->results = new ResultsPanelWidget();
         $this->dock = TestBottomDock::create($this->tui, new TerminalPanelWidget(), $this->results, new DebugPanelWidget());
 
@@ -103,7 +103,7 @@ final class DockToolControllerTest extends TestCase
 
         $this->assertSame(
             [['path' => 'a.php', 'line' => 0, 'text' => 'second', 'ranges' => []]],
-            Probe::get($this->results, 'results'),
+            Probe::get($this->results, property: 'results'),
             'the bound panel is refreshed in place, not just the tab\'s own row copy',
         );
     }
@@ -205,7 +205,7 @@ final class DockToolControllerTest extends TestCase
     public function testACoreToolAndAContributedOneCoexist(): void
     {
         $controller = $this->controller(self::tool());
-        $this->dock->showList(ResultsPanelMode::Problems, 'Problems', [['path' => 'a.php', 'line' => 0, 'text' => 'boom']]);
+        $this->dock->showList(ResultsPanelMode::Problems, title: 'Problems', rows: [['path' => 'a.php', 'line' => 0, 'text' => 'boom']]);
         $controller->open('demo:todo', [['path' => 'a.php', 'line' => 1, 'text' => 'TODO']]);
 
         $this->assertCount(2, $this->dock->aliveTabs(), 'tools coexist — opening one never closes another');

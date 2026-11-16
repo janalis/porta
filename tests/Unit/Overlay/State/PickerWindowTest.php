@@ -63,7 +63,7 @@ final class PickerWindowTest extends TestCase
 
         $moved = self::box($host);
         $this->assertSame([$box->startRow + 3, $box->col - 10, $box->width, $box->rows], [$moved->startRow, $moved->col, $moved->width, $moved->rows]);
-        $this->assertNotNull(Probe::get($host, 'overlay'), 'a drag never dismisses it');
+        $this->assertNotNull(Probe::get($host, property: 'overlay'), 'a drag never dismisses it');
     }
 
     public function testAnEdgeResizesTheListAndItStillShrinksFromTheBottom(): void
@@ -103,16 +103,16 @@ final class PickerWindowTest extends TestCase
     public function testThePromptWidensButKeepsItsOneField(): void
     {
         $host = new OverlayHost(styles: Styles::dark());
-        $host->openPrompt('Go to line', '', static function (): void {});
+        $host->openPrompt('Go to line', initial: '', onSubmit: static function (): void {});
         $host->layout(self::BOUNDS);
-        $box = self::box($host, 'promptBox');
+        $box = self::box($host, slot: 'promptBox');
         $bottom = $box->startRow + $box->rows - 1;
 
         $host->pickerClickAt($bottom, $box->col + $box->width - 1);
         $host->continueDragTo($bottom + 5, $box->col + $box->width + 7, release: true);
         $host->layout(self::BOUNDS);
 
-        $resized = self::box($host, 'promptBox');
+        $resized = self::box($host, slot: 'promptBox');
         $this->assertSame([$box->width + 8, $box->rows], [$resized->width, $resized->rows], 'wider, never taller than its field');
     }
 
@@ -138,12 +138,12 @@ final class PickerWindowTest extends TestCase
 
         $host->cancelDrag();
 
-        $this->assertFalse($host->continueDragTo(5, 5, release: false));
+        $this->assertFalse($host->continueDragTo(5, col: 5, release: false));
     }
 
     public function testNothingIsDraggedWithNoPickerOpen(): void
     {
-        $this->assertFalse(new OverlayHost()->continueDragTo(5, 5, release: false));
+        $this->assertFalse(new OverlayHost()->continueDragTo(5, col: 5, release: false));
     }
 
     public function testOnMacOsTheRedButtonLeadsEveryPicker(): void
@@ -154,7 +154,7 @@ final class PickerWindowTest extends TestCase
 
         $this->assertStringStartsWith('╭'.Glyphs::WINDOW_CLOSE_MAC, AnsiUtils::stripAnsiCodes($placed[0]['rows'][0]));
         $this->assertTrue($host->pickerClickAt($box->startRow, $box->col + 1), 'a press on it');
-        $this->assertNull(Probe::get($host, 'overlay'), 'closes the list');
+        $this->assertNull(Probe::get($host, property: 'overlay'), 'closes the list');
     }
 
     public function testAResizeStopsAtTheFloors(): void
@@ -173,15 +173,15 @@ final class PickerWindowTest extends TestCase
     public function testThePromptIsFlooredAndNeverTallerThanItsField(): void
     {
         $host = new OverlayHost(styles: Styles::dark());
-        $host->openPrompt('Go to line', '', static function (): void {});
+        $host->openPrompt('Go to line', initial: '', onSubmit: static function (): void {});
         $host->layout(self::BOUNDS);
-        $box = self::box($host, 'promptBox');
+        $box = self::box($host, slot: 'promptBox');
 
         $host->pickerClickAt($box->startRow + $box->rows - 1, $box->col); // the bottom-left corner
         $host->continueDragTo($box->startRow - 5, $box->col + 90, release: true);
         $host->layout(self::BOUNDS);
 
-        $resized = self::box($host, 'promptBox');
+        $resized = self::box($host, slot: 'promptBox');
         $this->assertSame([24, $box->rows], [$resized->width, $resized->rows], 'floored at 20 inside; its one field, whatever the drag asked');
     }
 
@@ -190,29 +190,29 @@ final class PickerWindowTest extends TestCase
         $host = new OverlayHost(styles: Styles::dark());
         $host->openSearch('Search', static function (): void {}, static function (): void {}, static function (): void {});
         $host->layout(self::BOUNDS);
-        $search = self::box($host, 'searchBox');
+        $search = self::box($host, slot: 'searchBox');
         $host->pickerClickAt($search->startRow, $search->col + 4);
         $host->continueDragTo($search->startRow + 3, $search->col + 4, release: true);
         $host->openSearch('Search', static function (): void {}, static function (): void {}, static function (): void {});
         $host->layout(self::BOUNDS);
-        $this->assertSame($search->startRow, self::box($host, 'searchBox')->startRow, 'a fresh search opens where searches open');
+        $this->assertSame($search->startRow, self::box($host, slot: 'searchBox')->startRow, 'a fresh search opens where searches open');
 
-        $host->openPrompt('Rename', '', static function (): void {});
+        $host->openPrompt('Rename', initial: '', onSubmit: static function (): void {});
         $host->layout(self::BOUNDS);
-        $prompt = self::box($host, 'promptBox');
+        $prompt = self::box($host, slot: 'promptBox');
         $host->pickerClickAt($prompt->startRow, $prompt->col + 4);
         $host->continueDragTo($prompt->startRow + 2, $prompt->col + 4, release: true);
-        $host->openPrompt('Rename', '', static function (): void {});
+        $host->openPrompt('Rename', initial: '', onSubmit: static function (): void {});
         $host->layout(self::BOUNDS);
-        $this->assertSame($prompt->startRow, self::box($host, 'promptBox')->startRow, 'so does a fresh prompt');
+        $this->assertSame($prompt->startRow, self::box($host, slot: 'promptBox')->startRow, 'so does a fresh prompt');
 
         $host->pickerClickAt($prompt->startRow, $prompt->col + 4); // the prompt is topmost: arm its move
         $host->cancelDrag();
-        $this->assertFalse($host->continueDragTo(5, 5, release: false), 'the prompt\'s drag was dropped');
-        $host->pickerClickAt(0, 0); // a press outside the prompt closes it
+        $this->assertFalse($host->continueDragTo(5, col: 5, release: false), 'the prompt\'s drag was dropped');
+        $host->pickerClickAt(0, col: 0); // a press outside the prompt closes it
         $host->pickerClickAt($search->startRow, $search->col + 4);
         $host->cancelDrag();
-        $this->assertFalse($host->continueDragTo(5, 5, release: false), 'and the search\'s');
+        $this->assertFalse($host->continueDragTo(5, col: 5, release: false), 'and the search\'s');
     }
 
     /** A press on a handle resizes; it never reaches the list under it. */
@@ -222,11 +222,11 @@ final class PickerWindowTest extends TestCase
         $host->openList('Pick', self::items(40), static function (): void {});
         $host->layout(self::BOUNDS);
         $box = self::box($host);
-        $before = Probe::get($host, 'overlay')['selected'] ?? null;
+        $before = Probe::get($host, property: 'overlay')['selected'] ?? null;
 
         $host->pickerClickAt($box->startRow + $box->rows - 1, $box->col + 6); // the bottom border, over the ▼ cue's row
         $host->pickerClickAt($box->startRow + 4, $box->col + $box->width - 1); // the right rail
 
-        $this->assertSame($before, Probe::get($host, 'overlay')['selected'] ?? null, 'the selection did not page');
+        $this->assertSame($before, Probe::get($host, property: 'overlay')['selected'] ?? null, 'the selection did not page');
     }
 }

@@ -9,6 +9,6 @@ use Porta\Plugin\Api\PluginApi;
 return new class('acme-vendored') extends AbstractPlugin {
     public function activate(PluginApi $api): void
     {
-        $api->registerCommand('greet', 'Acme: Greet', static fn () => $api->flash(Acme\Vendored\Greeter::greet()));
+        $api->registerCommand('greet', label: 'Acme: Greet', handler: static fn () => $api->flash(Acme\Vendored\Greeter::greet()));
     }
 };

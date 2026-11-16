@@ -67,7 +67,7 @@ final class RemotePresenceBoard extends PresenceBoard
     public function publish(Beacon $beacon, \Closure $done): void
     {
         $this->made($done, function (RemoteTransport $transport) use ($beacon, $done): void {
-            $transport->put($this->path(self::file($beacon->id)), $beacon->toJson(), null, static function (RemoteStamp|string|null $stamp) use ($done): void {
+            $transport->put($this->path(self::file($beacon->id)), $beacon->toJson(), expected: null, done: static function (RemoteStamp|string|null $stamp) use ($done): void {
                 $done(\is_string($stamp) ? $stamp : null);
             });
         });
@@ -104,7 +104,7 @@ final class RemotePresenceBoard extends PresenceBoard
 
             return;
         }
-        $transport->remove($this->path(self::file($id)), false, static function () use ($done): void {
+        $transport->remove($this->path(self::file($id)), isDir: false, done: static function () use ($done): void {
             $done?->__invoke();
         });
     }

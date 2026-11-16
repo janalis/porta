@@ -34,21 +34,21 @@ final class PluginAutoloaderTest extends TestCase
         // of covering that branch, since the bootstrap always takes it first.
         $this->prefixes = self::registered();
         /** @var array<string, string> $classes */
-        $classes = Probe::getStatic(PluginAutoloader::class, 'classes');
+        $classes = Probe::getStatic(PluginAutoloader::class, member: 'classes');
         $this->classes = $classes;
-        Probe::setStatic(PluginAutoloader::class, 'prefixes', []);
-        Probe::setStatic(PluginAutoloader::class, 'classes', []);
+        Probe::setStatic(PluginAutoloader::class, property: 'prefixes', value: []);
+        Probe::setStatic(PluginAutoloader::class, property: 'classes', value: []);
         // …and the flag, so each test re-takes the first-registration branch.
         // The price is one extra (identical, inert) loader on the stack per
         // test, which is the same price the empty map used to cost.
-        Probe::setStatic(PluginAutoloader::class, 'registered', false);
+        Probe::setStatic(PluginAutoloader::class, property: 'registered', value: false);
     }
 
     protected function tearDown(): void
     {
-        Probe::setStatic(PluginAutoloader::class, 'prefixes', $this->prefixes);
-        Probe::setStatic(PluginAutoloader::class, 'classes', $this->classes);
-        Probe::setStatic(PluginAutoloader::class, 'registered', true);
+        Probe::setStatic(PluginAutoloader::class, property: 'prefixes', value: $this->prefixes);
+        Probe::setStatic(PluginAutoloader::class, property: 'classes', value: $this->classes);
+        Probe::setStatic(PluginAutoloader::class, property: 'registered', value: true);
     }
 
     private static function fixture(): string
@@ -60,7 +60,7 @@ final class PluginAutoloaderTest extends TestCase
     private static function registered(): array
     {
         /** @var array<string, list<string>> */
-        return Probe::getStatic(PluginAutoloader::class, 'prefixes');
+        return Probe::getStatic(PluginAutoloader::class, member: 'prefixes');
     }
 
     private static function vendored(): string
@@ -148,9 +148,9 @@ final class PluginAutoloaderTest extends TestCase
     public function testAClassAlreadyClaimedByAnEarlierPluginsClassmapKeepsItsFirstFile(): void
     {
         $project = new TempProject();
-        $project->write('a/vendor/composer/autoload_classmap.php', "<?php\nreturn ['Acme\\\\Shared\\\\Thing' => __DIR__.'/../../real.php'];\n");
-        $project->write('a/real.php', "<?php\nnamespace Acme\\Shared;\nfinal class Thing { public static function text(): string { return 'first-plugin-wins'; } }\n");
-        $project->write('b/vendor/composer/autoload_classmap.php', "<?php\nreturn ['Acme\\\\Shared\\\\Thing' => __DIR__.'/../../does-not-exist.php'];\n");
+        $project->write('a/vendor/composer/autoload_classmap.php', content: "<?php\nreturn ['Acme\\\\Shared\\\\Thing' => __DIR__.'/../../real.php'];\n");
+        $project->write('a/real.php', content: "<?php\nnamespace Acme\\Shared;\nfinal class Thing { public static function text(): string { return 'first-plugin-wins'; } }\n");
+        $project->write('b/vendor/composer/autoload_classmap.php', content: "<?php\nreturn ['Acme\\\\Shared\\\\Thing' => __DIR__.'/../../does-not-exist.php'];\n");
 
         PluginAutoloader::register(new PluginManifest('a', $project->path('a')));
         PluginAutoloader::register(new PluginManifest('b', $project->path('b')));
@@ -172,7 +172,7 @@ final class PluginAutoloaderTest extends TestCase
         $this->assertCount(1, $registered, 'and the numeric key claimed no prefix');
 
         /** @var array<string, string> $classes */
-        $classes = Probe::getStatic(PluginAutoloader::class, 'classes');
+        $classes = Probe::getStatic(PluginAutoloader::class, member: 'classes');
         $this->assertSame([], $classes, 'neither malformed classmap row was adopted');
     }
 }

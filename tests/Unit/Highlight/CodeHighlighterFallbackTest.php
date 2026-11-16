@@ -18,7 +18,7 @@ final class CodeHighlighterFallbackTest extends TestCase
         }));
         $highlighter->setFile('x.php');
 
-        $this->assertSame(['<?php', 'echo 1;'], $highlighter->highlight(['<?php', 'echo 1;'], 1));
+        $this->assertSame(['<?php', 'echo 1;'], $highlighter->highlight(['<?php', 'echo 1;'], version: 1));
     }
 
     public function testLineCountMismatchFallsBackToPlainLines(): void
@@ -26,7 +26,7 @@ final class CodeHighlighterFallbackTest extends TestCase
         $highlighter = new CodeHighlighter(new ClosureHighlightProvider(static fn (): string => 'one line no matter what'));
         $highlighter->setFile('x.php');
 
-        $this->assertSame(['a', 'b'], $highlighter->highlight(['a', 'b'], 1));
+        $this->assertSame(['a', 'b'], $highlighter->highlight(['a', 'b'], version: 1));
     }
 
     /**
@@ -47,7 +47,7 @@ final class CodeHighlighterFallbackTest extends TestCase
         $highlighter = new CodeHighlighter(new ClosureHighlightProvider(static fn (): string => $split));
         $highlighter->setFile('x.php');
 
-        $row = $highlighter->highlight([$source], 1)[0];
+        $row = $highlighter->highlight([$source], version: 1)[0];
 
         $this->assertSame($source, AnsiUtils::stripAnsiCodes((string) $row), 'the visible text is exactly the source');
         $this->assertStringContainsString("\x1b[38;5;117m", (string) $row, 'and it kept its colours');
@@ -64,7 +64,7 @@ final class CodeHighlighterFallbackTest extends TestCase
         $highlighter = new CodeHighlighter(new ClosureHighlightProvider(static fn (): string => $wrong));
         $highlighter->setFile('x.php');
 
-        $this->assertSame([$source], $highlighter->highlight([$source], 1));
+        $this->assertSame([$source], $highlighter->highlight([$source], version: 1));
     }
 
     public function testAMalformedEscapeWithNoREPAIRABLEShapeIsRenderedPlain(): void
@@ -75,7 +75,7 @@ final class CodeHighlighterFallbackTest extends TestCase
         $highlighter = new CodeHighlighter(new ClosureHighlightProvider(static fn (): string => "a\x1b[\x1b[32mbc"));
         $highlighter->setFile('x.php');
 
-        $this->assertSame([$source], $highlighter->highlight([$source], 1));
+        $this->assertSame([$source], $highlighter->highlight([$source], version: 1));
     }
 
     public function testONLYTheOffendingLineLosesItsColours(): void
@@ -90,7 +90,7 @@ final class CodeHighlighterFallbackTest extends TestCase
         $highlighter = new CodeHighlighter(new ClosureHighlightProvider(static fn (): string => $markup));
         $highlighter->setFile('x.php');
 
-        $rows = $highlighter->highlight([$good, $bad], 1);
+        $rows = $highlighter->highlight([$good, $bad], version: 1);
 
         $this->assertStringContainsString("\x1b[32m", (string) $rows[0], 'the sound line keeps its colours');
         $this->assertSame($bad, $rows[1], 'the broken one is plain, not garbled');
@@ -104,7 +104,7 @@ final class CodeHighlighterFallbackTest extends TestCase
         $highlighter = new CodeHighlighter(new ClosureHighlightProvider(static fn (): string => "\x1b[32mx\x1b[39m"));
         $highlighter->setFile('x.php');
 
-        $this->assertSame(['{+ x +}'], $highlighter->highlight(['{+ x +}'], 1));
+        $this->assertSame(['{+ x +}'], $highlighter->highlight(['{+ x +}'], version: 1));
     }
 
     public function testABrokenLinesCodesAreNotCarriedIntoTheNextLine(): void
@@ -115,7 +115,7 @@ final class CodeHighlighterFallbackTest extends TestCase
         $highlighter = new CodeHighlighter(new ClosureHighlightProvider(static fn (): string => $markup));
         $highlighter->setFile('x.php');
 
-        $rows = $highlighter->highlight(['first', 'second'], 1);
+        $rows = $highlighter->highlight(['first', 'second'], version: 1);
 
         $this->assertSame(['first', 'second'], $rows);
     }

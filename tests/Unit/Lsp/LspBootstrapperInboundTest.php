@@ -125,7 +125,7 @@ final class LspBootstrapperInboundTest extends TestCase
         );
         $bootstrapper->start();
         // Sessions start lazily — this is what launches one.
-        $pool->notifyDidOpen($root.'/a.php', "<?php\n", 'php', 1);
+        $pool->notifyDidOpen($root.'/a.php', text: "<?php\n", languageId: 'php', version: 1);
 
         return $pool;
     }
@@ -136,11 +136,11 @@ final class LspBootstrapperInboundTest extends TestCase
         $this->untrustProjects();
         $project = new TempProject(['a.php' => '<?php']);
 
-        $pool = $this->boot($project->dir, null);
+        $pool = $this->boot($project->dir, lspCommand: null);
 
         $this->assertSame(0, $this->launched, 'no session was launched');
         $this->assertSame('off — project not trusted', $pool->statusFor($project->dir.'/a.php'));
-        $this->assertSame('php-ls', $this->boot($project->dir, 'php-ls')->statusFor($project->dir.'/a.php'), 'one named for this run starts');
+        $this->assertSame('php-ls', $this->boot($project->dir, lspCommand: 'php-ls')->statusFor($project->dir.'/a.php'), 'one named for this run starts');
     }
 
     /** A server run elsewhere — assist's relay to the host — is the one an untrusted project still starts. */
@@ -149,7 +149,7 @@ final class LspBootstrapperInboundTest extends TestCase
         $this->untrustProjects();
         $project = new TempProject(['a.php' => '<?php']);
 
-        $pool = $this->boot($project->dir, null, ['php' => [['command' => ['porta', 'assist-lsp', 'php'], 'name' => 'assist']]]);
+        $pool = $this->boot($project->dir, lspCommand: null, relayed: ['php' => [['command' => ['porta', 'assist-lsp', 'php'], 'name' => 'assist']]]);
 
         $this->assertSame(1, $this->launched);
         $this->assertStringStartsWith('assist', $pool->statusFor($project->dir.'/a.php'));

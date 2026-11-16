@@ -46,29 +46,29 @@ final class NarrowDiffPaneRenderTest extends TestCase
     public static function diffWidgets(): iterable
     {
         $unified = new DiffViewWidget(new Translator('en'));
-        $unified->setDocument(DiffDocument::parse(self::RAW), 'src/demo.php');
+        $unified->setDocument(DiffDocument::parse(self::RAW), path: 'src/demo.php');
         yield 'diff (unified)' => [$unified];
 
         $split = new DiffViewWidget(new Translator('en'));
-        $split->setDocument(DiffDocument::parse(self::RAW), 'src/demo.php');
+        $split->setDocument(DiffDocument::parse(self::RAW), path: 'src/demo.php');
         $split->useSplitView();
         yield 'diff (split)' => [$split];
 
         // Wrapped, each row is several segments cut at a body width that a
         // narrow pane takes below one: the same gutters, more rows of them.
         $wrapped = new DiffViewWidget(new Translator('en'));
-        $wrapped->setDocument(DiffDocument::parse(self::RAW), 'src/demo.php');
+        $wrapped->setDocument(DiffDocument::parse(self::RAW), path: 'src/demo.php');
         $wrapped->useSoftWrap();
         yield 'diff (unified, wrapped)' => [$wrapped];
 
         $splitWrapped = new DiffViewWidget(new Translator('en'));
-        $splitWrapped->setDocument(DiffDocument::parse(self::RAW), 'src/demo.php');
+        $splitWrapped->setDocument(DiffDocument::parse(self::RAW), path: 'src/demo.php');
         $splitWrapped->useSplitView();
         $splitWrapped->useSoftWrap();
         yield 'diff (split, wrapped)' => [$splitWrapped];
 
         $empty = new DiffViewWidget(new Translator('en'));
-        $empty->setDocument(null, null);
+        $empty->setDocument(null, path: null);
         yield 'diff (no selection)' => [$empty];
     }
 

@@ -57,16 +57,16 @@ final class LspReconfigurerTest extends TestCase
     public function testIsOverriddenRequiresANonEmptyCommand(): void
     {
         $pool = new LspSessionPool('/tmp/proj', new FixedActiveFile(), new Translator('en'));
-        $this->assertFalse($this->reconfigurer($pool, null)->isOverridden(), 'no override at all');
-        $this->assertFalse($this->reconfigurer($pool, '')->isOverridden(), 'an empty string is not a real override');
-        $this->assertTrue($this->reconfigurer($pool, 'my-server --stdio')->isOverridden());
+        $this->assertFalse($this->reconfigurer($pool, lspCommand: null)->isOverridden(), 'no override at all');
+        $this->assertFalse($this->reconfigurer($pool, lspCommand: '')->isOverridden(), 'an empty string is not a real override');
+        $this->assertTrue($this->reconfigurer($pool, lspCommand: 'my-server --stdio')->isOverridden());
     }
 
     public function testReconfigureResolvesTheServersAndReopensBuffers(): void
     {
         $pool = new LspSessionPool('/tmp/proj', new FixedActiveFile(), new Translator('en'));
         $pool->configure([], static function (string $line): void {}, static function (array $params): void {}, static fn (array $edit): bool => false);
-        $reconfigurer = $this->reconfigurer($pool, 'my-server --stdio');
+        $reconfigurer = $this->reconfigurer($pool, lspCommand: 'my-server --stdio');
 
         $reconfigurer->reconfigure();
 
@@ -82,7 +82,7 @@ final class LspReconfigurerTest extends TestCase
         // never sees.
         $pool = new LspSessionPool('/tmp/proj', new FixedActiveFile(), new Translator('en'));
         $pool->configure([], static function (string $line): void {}, static function (array $params): void {}, static fn (array $edit): bool => false);
-        $reconfigurer = $this->reconfigurer($pool, 'my-server --stdio');
+        $reconfigurer = $this->reconfigurer($pool, lspCommand: 'my-server --stdio');
 
         $reconfigurer->reconfigure();
         $this->assertSame(1, $this->reopened, 'the first resolve applies');
@@ -106,7 +106,7 @@ final class LspReconfigurerTest extends TestCase
     {
         $pool = new LspSessionPool('/tmp/proj', new FixedActiveFile(), new Translator('en'));
         $pool->configure([], static function (string $line): void {}, static function (array $params): void {}, static fn (array $edit): bool => false);
-        $reconfigurer = $this->reconfigurer($pool, 'my-server --stdio');
+        $reconfigurer = $this->reconfigurer($pool, lspCommand: 'my-server --stdio');
 
         $reconfigurer->reconfigure();
         $this->assertSame(1, $this->reopened);
@@ -127,7 +127,7 @@ final class LspReconfigurerTest extends TestCase
         $pool = new LspSessionPool('/tmp/proj', new FixedActiveFile(), new Translator('en'));
         $pool->restrict();
         $pool->configure([], static function (string $line): void {}, static function (array $params): void {}, static fn (array $edit): bool => false);
-        $reconfigurer = $this->reconfigurer($pool, null);
+        $reconfigurer = $this->reconfigurer($pool, lspCommand: null);
 
         $this->relayed = ['php' => [['command' => ['porta', 'assist-lsp', 'php'], 'name' => 'assist']]];
         $reconfigurer->reconfigure();

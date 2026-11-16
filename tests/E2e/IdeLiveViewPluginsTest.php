@@ -149,7 +149,7 @@ final class IdeLiveViewPluginsTest extends TestCase
     /** @return list<string> the menu bar's top-level titles */
     private function menuTitles($tui): array
     {
-        return \array_column(Probe::get($tui->getById('menu'), 'menus'), 'title');
+        return \array_column(Probe::get($tui->getById('menu'), property: 'menus'), 'title');
     }
 
     public function testTogglingFromTheRealSettingsScreenBuildsAndRetractsTheView(): void
@@ -178,13 +178,13 @@ final class IdeLiveViewPluginsTest extends TestCase
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $this->frame($tui); // the view's widgets attach on the next frame
                     $tui->handleInput("\t"); // form → nav
-                    $this->selectSettingsSection($tui->getById('settings-nav'), 'plugin:demo');
+                    $this->selectSettingsSection($tui->getById('settings-nav'), id: 'plugin:demo');
                     $tui->handleInput("\t"); // nav → form, landing on the Enabled row
                     $this->frame($tui);
 
                     // Enter on the Enabled row is the whole gesture.
                     $tui->handleInput("\r");
-                    $this->awaitPainted($tui, $terminal, 'Plugin "demo" enabled');
+                    $this->awaitPainted($tui, $terminal, needle: 'Plugin "demo" enabled');
 
                     $this->assertNotNull($views->find('demo-view'), 'the view was built from the Settings screen');
                     $this->assertInstanceOf(ViewRegion::class, $regions->find('demo-view'), 'and its region minted');
@@ -205,10 +205,10 @@ final class IdeLiveViewPluginsTest extends TestCase
                     $settings();
                     $this->frame($tui);
                     $tui->handleInput("\t");
-                    $this->selectSettingsSection($tui->getById('settings-nav'), 'plugin:demo');
+                    $this->selectSettingsSection($tui->getById('settings-nav'), id: 'plugin:demo');
                     $tui->handleInput("\t");
                     $tui->handleInput("\r");
-                    $this->awaitPainted($tui, $terminal, 'Plugin "demo" disabled');
+                    $this->awaitPainted($tui, $terminal, needle: 'Plugin "demo" disabled');
 
                     $this->assertNull($views->find('demo-view'), 'and retracted from the same screen');
                     $this->assertNull($regions->find('demo-view'));
@@ -253,7 +253,7 @@ final class IdeLiveViewPluginsTest extends TestCase
                     // Open it: the region renders, which proves the layout
                     // recompiled — an unmounted region is a blank workspace.
                     $commands->run('demo:toggle_view');
-                    $this->awaitPainted($tui, $terminal, 'DEMO VIEW CONTENT');
+                    $this->awaitPainted($tui, $terminal, needle: 'DEMO VIEW CONTENT');
                     $this->assertTrue($views->isOpen('demo-view'));
 
                     // DISABLE while the view is open: the editor gets the main
@@ -271,7 +271,7 @@ final class IdeLiveViewPluginsTest extends TestCase
                     $this->assertNotNull($views->find('demo-view'));
                     $this->assertNotSame($firstRegion, $regions->find('demo-view'), 'a fresh region, not the dead one');
                     $commands->run('demo:toggle_view');
-                    $this->awaitPainted($tui, $terminal, 'DEMO VIEW CONTENT');
+                    $this->awaitPainted($tui, $terminal, needle: 'DEMO VIEW CONTENT');
                     $this->assertTrue($views->isOpen('demo-view'), 're-enable round-trips to a working view');
                 },
             ],
@@ -310,7 +310,7 @@ final class IdeLiveViewPluginsTest extends TestCase
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     Services::resolve($ide, PluginLifecycle::class)->enable('demo');
 
-                    $this->awaitPainted($tui, $terminal, 'Plugin "demo" failed');
+                    $this->awaitPainted($tui, $terminal, needle: 'Plugin "demo" failed');
                     $this->assertNull(Services::resolve($ide, ViewRegistry::class)->find('demo-view'));
                     $this->assertNull(Services::resolve($ide, ViewRegions::class)->find('demo-view'), 'the failed mint is rolled back');
                 },

@@ -41,10 +41,10 @@ final class ProblemCardsTest extends TestCase
     {
         $pool = FakeLspPool::create('/tmp/proj', new FixedActiveFile('/tmp/proj/a.php'), fn (): FakeLspClient => $this->client = new FakeLspClient(['codeActionProvider' => true]));
         $this->editor = new CodeEditorWidget();
-        $buffer = new BufferManager()->open('/tmp/proj/a.php', "<?php\n\$x = foo(\$y);\n");
+        $buffer = new BufferManager()->open('/tmp/proj/a.php', content: "<?php\n\$x = foo(\$y);\n");
         $this->editor->showDocument('/tmp/proj/a.php', $buffer->document);
         if ($server) {
-            $pool->notifyDidOpen('/tmp/proj/a.php', $buffer->document->getText(), 'php', 1);
+            $pool->notifyDidOpen('/tmp/proj/a.php', $buffer->document->getText(), languageId: 'php', version: 1);
         }
         $this->editor->decorations->setDiagnostics([
             1 => [
@@ -68,7 +68,11 @@ final class ProblemCardsTest extends TestCase
         $cards = $this->cards(server: false);
         $diags = $this->editor->decorations->diagnostics[1];
 
-        $body = $cards->body([$diags[1], $diags[0], ['severity' => DiagnosticSeverity::Hint, 'message' => 'h', 'col' => 0, 'code' => 7]], 1, static function (TooltipBody $body): void {});
+        $body = $cards->body(
+            [$diags[1], $diags[0], ['severity' => DiagnosticSeverity::Hint, 'message' => 'h', 'col' => 0, 'code' => 7]],
+            line: 1,
+            onUpdate: static function (TooltipBody $body): void {},
+        );
 
         $this->assertSame(['✗ Undefined function foo', '  phpantom · E1', '▲ Unused variable', '  phpstan', '· h', '  7'], self::texts($body));
         $this->assertSame(Role::DiagError, $body->lines[0]->leadRole, 'the glyph in its severity colour');
@@ -83,8 +87,8 @@ final class ProblemCardsTest extends TestCase
 
         $body = $cards->body(
             [['severity' => DiagnosticSeverity::Error, 'message' => "boom\x1b]52;c;eA==\x07", 'col' => 0, 'source' => "x\x1b[2J", 'code' => "c\x07"]],
-            1,
-            static function (TooltipBody $body): void {},
+            line: 1,
+            onUpdate: static function (TooltipBody $body): void {},
         );
 
         $this->assertStringNotContainsString("\x1b", $body->plain());
@@ -98,7 +102,7 @@ final class ProblemCardsTest extends TestCase
         $diags = $this->editor->decorations->diagnostics[1];
         $updated = null;
 
-        $body = $cards->body([$diags[1]], 1, static function (TooltipBody $body) use (&$updated): void {
+        $body = $cards->body([$diags[1]], line: 1, onUpdate: static function (TooltipBody $body) use (&$updated): void {
             $updated = $body;
         });
         $this->assertSame(['✗ Undefined function foo', '  phpantom · E1'], self::texts($body), 'nothing promised before a server answers');
@@ -118,7 +122,7 @@ final class ProblemCardsTest extends TestCase
         $this->editor->setKeybindings(new Keybindings(['apply_quick_fix' => ['ctrl+alt+f'], 'code_action' => []]));
         $updated = null;
 
-        $cards->body([$this->editor->decorations->diagnostics[1][1]], 1, static function (TooltipBody $body) use (&$updated): void {
+        $cards->body([$this->editor->decorations->diagnostics[1][1]], line: 1, onUpdate: static function (TooltipBody $body) use (&$updated): void {
             $updated = $body;
         });
         $this->scheduler->fire();
@@ -146,7 +150,7 @@ final class ProblemCardsTest extends TestCase
         $this->assertStringStartsWith('✗ Undefined function foo', (string) $both?->text);
 
         $this->assertNull($cards->tooltipAt(1, $gutter + 1, $this->editor->viewport(), $refresh), 'no squiggle, no card');
-        $this->assertNull($cards->tooltipAt(1, 1, $this->editor->viewport(), $refresh), 'not the gutter');
+        $this->assertNull($cards->tooltipAt(1, relCol: 1, vp: $this->editor->viewport(), refresh: $refresh), 'not the gutter');
     }
 
     public function testTheCardIsSaidAgainWhenItsFixArrives(): void

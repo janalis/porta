@@ -29,7 +29,7 @@ final class MermaidSvgIndex
             return null;
         }
         $index = new self($root->getAttribute('id'));
-        yield from $index->walk($root, SvgGeometry::viewBoxMatrix($root, $width, $height), 0);
+        yield from $index->walk($root, SvgGeometry::viewBoxMatrix($root, $width, $height), depth: 0);
 
         return $index;
     }

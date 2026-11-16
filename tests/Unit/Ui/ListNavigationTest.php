@@ -27,9 +27,9 @@ final class ListNavigationTest extends TestCase
         $list = new ListSelection();
         $kb = $this->keybindings();
 
-        $this->assertTrue(ListNavigation::handleKey("\x1b[B", $kb, $list, 3));
+        $this->assertTrue(ListNavigation::handleKey("\x1b[B", $kb, $list, count: 3));
         $this->assertSame(1, $list->selected());
-        $this->assertTrue(ListNavigation::handleKey("\x1b[A", $kb, $list, 3));
+        $this->assertTrue(ListNavigation::handleKey("\x1b[A", $kb, $list, count: 3));
         $this->assertSame(0, $list->selected());
     }
 
@@ -38,9 +38,9 @@ final class ListNavigationTest extends TestCase
         $list = new ListSelection();
         $kb = $this->keybindings();
 
-        $this->assertTrue(ListNavigation::handleKey("\x1b[6~", $kb, $list, 20, page: 5));
+        $this->assertTrue(ListNavigation::handleKey("\x1b[6~", $kb, $list, count: 20, page: 5));
         $this->assertSame(5, $list->selected());
-        $this->assertTrue(ListNavigation::handleKey("\x1b[5~", $kb, $list, 20, page: 5));
+        $this->assertTrue(ListNavigation::handleKey("\x1b[5~", $kb, $list, count: 20, page: 5));
         $this->assertSame(0, $list->selected());
     }
 
@@ -48,7 +48,7 @@ final class ListNavigationTest extends TestCase
     {
         $list = new ListSelection();
 
-        $this->assertFalse(ListNavigation::handleKey("\x1b[6~", $this->keybindings(), $list, 20));
+        $this->assertFalse(ListNavigation::handleKey("\x1b[6~", $this->keybindings(), $list, count: 20));
         $this->assertSame(0, $list->selected());
     }
 
@@ -56,7 +56,7 @@ final class ListNavigationTest extends TestCase
     {
         $list = new ListSelection();
 
-        $this->assertFalse(ListNavigation::handleKey('x', $this->keybindings(), $list, 3));
+        $this->assertFalse(ListNavigation::handleKey('x', $this->keybindings(), $list, count: 3));
         $this->assertSame(0, $list->selected());
     }
 }

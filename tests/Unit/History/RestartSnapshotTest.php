@@ -21,12 +21,12 @@ final class RestartSnapshotTest extends TestCase
     {
         $project = new TempProject(['a.php' => 'original', 'b.php' => 'second', 'image.png' => 'pixels']);
         $buffers = new BufferManager();
-        $first = $buffers->open($project->path('a.php'), 'original');
+        $first = $buffers->open($project->path('a.php'), content: 'original');
         $first->document->reload("\xEF\xBB\xBFchanged\r\ntext");
-        $first->document->setCursor(1, 2);
+        $first->document->setCursor(1, col: 2);
         $first->pinned = true;
-        $buffers->open($project->path('b.php'), 'second');
-        $buffers->openPane($project->path('image.png'), 'image', null);
+        $buffers->open($project->path('b.php'), content: 'second');
+        $buffers->openPane($project->path('image.png'), paneId: 'image', payload: null);
         $buffers->setActive($first->path);
         $store = new RestartSnapshot();
         $directory = $project->path('handoff');
@@ -52,7 +52,7 @@ final class RestartSnapshotTest extends TestCase
     {
         $project = new TempProject(['a.php' => 'old']);
         $buffers = new BufferManager();
-        $buffer = $buffers->open($project->path('a.php'), 'old');
+        $buffer = $buffers->open($project->path('a.php'), content: 'old');
         $buffer->document->replaceAll('unsaved');
         $store = new RestartSnapshot();
         $directory = $project->path('handoff');
@@ -69,8 +69,8 @@ final class RestartSnapshotTest extends TestCase
     {
         $project = new TempProject(['view.svg' => '<svg/>', 'notes.md' => 'notes']);
         $buffers = new BufferManager();
-        $buffers->openPane($project->path('view.svg'), 'image', 'payload');
-        $preview = $buffers->open($project->path('notes.md'), 'notes');
+        $buffers->openPane($project->path('view.svg'), paneId: 'image', payload: 'payload');
+        $preview = $buffers->open($project->path('notes.md'), content: 'notes');
         $preview->previewId = 'markdown';
         $preview->previewMode = PreviewMode::Preview;
         $store = new RestartSnapshot();
@@ -78,8 +78,8 @@ final class RestartSnapshotTest extends TestCase
         $this->assertTrue($store->save($directory, $project->dir, $buffers));
         $restored = new BufferManager();
         $this->assertSame([], $store->restore($directory, $project->dir, $restored, static fn (string $path, OpenAs $as): Buffer => OpenAs::Viewer === $as
-            ? $restored->openPane($path, 'image', 'new payload')
-            : $restored->open($path, 'notes')));
+            ? $restored->openPane($path, paneId: 'image', payload: 'new payload')
+            : $restored->open($path, content: 'notes')));
         $this->assertTrue($restored->get($project->path('view.svg'))?->isViewer());
         $this->assertSame(PreviewMode::Preview, $restored->active()?->previewMode);
     }
@@ -110,7 +110,7 @@ final class RestartSnapshotTest extends TestCase
     {
         $project = new TempProject(['a.php' => 'old']);
         $buffers = new BufferManager();
-        $buffers->open($project->path('a.php'), 'old')->document->replaceAll('');
+        $buffers->open($project->path('a.php'), content: 'old')->document->replaceAll('');
         $store = new RestartSnapshot();
         $directory = $project->path('handoff');
         $this->assertTrue($store->save($directory, $project->dir, $buffers));
@@ -118,7 +118,7 @@ final class RestartSnapshotTest extends TestCase
         $restored = new BufferManager();
         $this->assertSame([$project->path('a.php')], $store->restore($directory, $project->dir, $restored));
         $this->assertTrue($restored->active()?->document->isDirty());
-        $project->write('handoff/unrelated.txt', 'keep');
+        $project->write('handoff/unrelated.txt', content: 'keep');
         $this->assertFalse($store->acknowledge($directory));
         $this->assertSame('keep', \file_get_contents($directory.'/unrelated.txt'));
         \unlink($directory.'/unrelated.txt');
@@ -145,8 +145,8 @@ final class RestartSnapshotTest extends TestCase
     {
         $project = new TempProject(['text.php' => 'keep this text', 'image.png' => 'pixels']);
         $buffers = new BufferManager();
-        $buffers->open($project->path('text.php'), 'keep this text');
-        $buffers->openPane($project->path('image.png'), 'image', null);
+        $buffers->open($project->path('text.php'), content: 'keep this text');
+        $buffers->openPane($project->path('image.png'), paneId: 'image', payload: null);
         $store = new RestartSnapshot();
         $directory = $project->path('handoff');
         $this->assertTrue($store->save($directory, $project->dir, $buffers));

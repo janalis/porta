@@ -42,11 +42,11 @@ final class IdeGitToolLaunchTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $running) use (&$ide): void {
                     $ide = $running;
-                    $this->awaitPainted($tui, $terminal, 'right-hand side');
+                    $this->awaitPainted($tui, $terminal, needle: 'right-hand side');
                     $this->await(static fn (): bool => \in_array('Enable the git plugin to see the comparison', Toasts::all($running), strict: true), what: 'the reason there is no comparison');
                     $this->assertStringNotContainsString('Welcome', \implode("\n", $this->screenGrid($tui, $terminal)));
                 },
@@ -95,8 +95,8 @@ final class IdeGitToolLaunchTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $this->assertFileExists($project->path('answered'), 'the launch reached the listener');
                     $this->assertSame('left.php vs right.php', \file_get_contents($project->path('answered')));
@@ -122,8 +122,8 @@ final class IdeGitToolLaunchTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $running) use (&$ide): void {
                     $ide = $running;
                     $this->await(static fn (): bool => \in_array('Enable the git plugin to see the comparison', Toasts::all($running), strict: true), what: 'the reason there is no comparison');
@@ -144,11 +144,11 @@ final class IdeGitToolLaunchTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $running) use (&$ide): void {
                     $ide = $running;
-                    $this->awaitPainted($tui, $terminal, "echo 'theirs';");
+                    $this->awaitPainted($tui, $terminal, needle: "echo 'theirs';");
                 },
             ],
             tool: self::merge($project),
@@ -166,11 +166,11 @@ final class IdeGitToolLaunchTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $running) use (&$ide, $project): void {
                     $ide = $running;
-                    $this->awaitPainted($tui, $terminal, "echo 'theirs';");
+                    $this->awaitPainted($tui, $terminal, needle: "echo 'theirs';");
                     // Resolved and saved — as Alt+M then Ctrl+S would leave it.
                     \file_put_contents($project->path('m.php'), data: "<?php\necho 'ours';\necho 'theirs';\n");
                 },
@@ -192,11 +192,11 @@ final class IdeGitToolLaunchTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $running) use (&$ide, $project): void {
                     $ide = $running;
-                    $this->awaitPainted($tui, $terminal, "echo 'theirs';");
+                    $this->awaitPainted($tui, $terminal, needle: "echo 'theirs';");
                     \file_put_contents($project->path('m.php'), data: "<?php\necho 'ours';\n||||||| base\necho 'base';\n");
                 },
             ],
@@ -215,8 +215,8 @@ final class IdeGitToolLaunchTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 0 => static function (Tui $tui, VirtualTerminal $terminal, Ide $running) use (&$ide, $project): void {
                     $ide = $running;
                     \unlink($project->path('m.php'));

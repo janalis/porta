@@ -26,7 +26,7 @@ final class OverlayHostNavigationTest extends TestCase
     {
         $host = $this->host();
         $submitted = null;
-        $host->openPrompt('Rename', 'fooBar', static function (string $v) use (&$submitted): void {
+        $host->openPrompt('Rename', initial: 'fooBar', onSubmit: static function (string $v) use (&$submitted): void {
             $submitted = $v;
         });
         $kb = $this->editingKeys();
@@ -61,7 +61,7 @@ final class OverlayHostNavigationTest extends TestCase
         foreach (['z', 'b', 'e'] as $key) {
             $host->handleInput($key, $kb);
         }
-        $this->assertStringContainsString('no matches', \implode("\n", $this->canvas($host, 80, 24)), 'zbe matches nothing');
+        $this->assertStringContainsString('no matches', \implode("\n", $this->canvas($host, columns: 80, rows: 24)), 'zbe matches nothing');
 
         $host->handleInput("\x1b[H", $kb); // Home — even with nothing matching, the caret moves
         $host->handleInput("\x1b[3~", $kb); // Delete the z
@@ -82,26 +82,26 @@ final class OverlayHostNavigationTest extends TestCase
         });
         $host->layout([0, 0, 24, 80]);
         $kb = $this->editingKeys();
-        $page = Probe::get($host, 'overlayBox')->count;
+        $page = Probe::get($host, property: 'overlayBox')->count;
         $this->assertGreaterThan(1, $page);
 
         $host->handleInput("\x1b[6~", $kb);
-        $this->assertSame($page, Probe::get($host, 'overlay')['selected']);
+        $this->assertSame($page, Probe::get($host, property: 'overlay')['selected']);
         foreach (\range(1, end: 5) as $_) {
             $host->handleInput("\x1b[6~", $kb);
         }
-        $this->assertSame(29, Probe::get($host, 'overlay')['selected'], 'stops on the last row, no wrap');
+        $this->assertSame(29, Probe::get($host, property: 'overlay')['selected'], 'stops on the last row, no wrap');
         $host->handleInput("\x1b[5~", $kb);
-        $this->assertSame(29 - $page, Probe::get($host, 'overlay')['selected']);
+        $this->assertSame(29 - $page, Probe::get($host, property: 'overlay')['selected']);
         $host->closeList();
 
         $host->openSearch('S', static fn (): null => null, static fn (): null => null, static fn (): null => null);
         $host->setSearchRows($this->searchRows(static fn (): null => null));
         $host->layout([0, 0, 24, 80]);
         $host->handleSearchInput("\x1b[6~", $kb);
-        $this->assertSame(4, Probe::get($host, 'search')->selected, 'past the Actions header to the last hit');
+        $this->assertSame(4, Probe::get($host, property: 'search')->selected, 'past the Actions header to the last hit');
         $host->handleSearchInput("\x1b[5~", $kb);
-        $this->assertSame(1, Probe::get($host, 'search')->selected, 'back to the first hit, never a header');
+        $this->assertSame(1, Probe::get($host, property: 'search')->selected, 'back to the first hit, never a header');
     }
 
     /** Tab and Shift+Tab land on the first hit of the next and previous category, wrapping. */
@@ -114,19 +114,19 @@ final class OverlayHostNavigationTest extends TestCase
         $host->handleSearchInput("\x1b[B", $kb); // on b, still in Files
 
         $host->handleSearchInput("\t", $kb);
-        $this->assertSame(4, Probe::get($host, 'search')->selected, 'Actions: c');
+        $this->assertSame(4, Probe::get($host, property: 'search')->selected, 'Actions: c');
         $host->handleSearchInput("\t", $kb);
-        $this->assertSame(1, Probe::get($host, 'search')->selected, 'wraps to Files: a');
+        $this->assertSame(1, Probe::get($host, property: 'search')->selected, 'wraps to Files: a');
         $host->handleSearchInput("\x1b[Z", $kb);
-        $this->assertSame(4, Probe::get($host, 'search')->selected, 'Shift+Tab wraps back to Actions');
+        $this->assertSame(4, Probe::get($host, property: 'search')->selected, 'Shift+Tab wraps back to Actions');
         $host->handleSearchInput("\x1b[Z", $kb);
-        $this->assertSame(1, Probe::get($host, 'search')->selected);
-        $this->assertSame('', Probe::get($host, 'search')->query->value(), 'Tab typed nothing');
+        $this->assertSame(1, Probe::get($host, property: 'search')->selected);
+        $this->assertSame('', Probe::get($host, property: 'search')->query->value(), 'Tab typed nothing');
 
         $host->setSearchRows($this->consecutiveHits(3)); // no categories to walk
         $host->handleSearchInput("\x1b[B", $kb);
         $host->handleSearchInput("\t", $kb);
-        $this->assertSame(1, Probe::get($host, 'search')->selected, 'Tab stays put');
+        $this->assertSame(1, Probe::get($host, property: 'search')->selected, 'Tab stays put');
     }
 
     /** The query's caret keys: a move repaints only; a Delete or Ctrl+W that changes the query asks again. */
@@ -166,21 +166,29 @@ final class OverlayHostNavigationTest extends TestCase
         $host = $this->host();
         $host->openSearch('S', static fn (): null => null, static fn (): null => null, static fn (): null => null);
         $noop = static fn (): null => null;
-        $host->setSearchRows([SearchRow::header('Files'), SearchRow::hit($this->hit(SearchCategory::Files, 'a', $noop)), SearchRow::hit($this->hit(SearchCategory::Files, 'b', $noop))]);
+        $host->setSearchRows([
+            SearchRow::header('Files'),
+            SearchRow::hit($this->hit(SearchCategory::Files, label: 'a', activate: $noop)),
+            SearchRow::hit($this->hit(SearchCategory::Files, label: 'b', activate: $noop)),
+        ]);
         $host->handleSearchInput("\x1b[B", $this->editingKeys()); // b
 
         $host->setSearchRows([
             SearchRow::header('Classes'),
-            SearchRow::hit($this->hit(SearchCategory::Classes, 'K', $noop)),
+            SearchRow::hit($this->hit(SearchCategory::Classes, label: 'K', activate: $noop)),
             SearchRow::header('Files'),
-            SearchRow::hit($this->hit(SearchCategory::Files, 'a', $noop)),
-            SearchRow::hit($this->hit(SearchCategory::Files, 'b', $noop)),
+            SearchRow::hit($this->hit(SearchCategory::Files, label: 'a', activate: $noop)),
+            SearchRow::hit($this->hit(SearchCategory::Files, label: 'b', activate: $noop)),
         ]);
-        $this->assertSame(4, Probe::get($host, 'search')->selected, 'still b, three rows further down');
+        $this->assertSame(4, Probe::get($host, property: 'search')->selected, 'still b, three rows further down');
 
         $host->handleSearchInput('x', $this->editingKeys()); // a new query
-        $host->setSearchRows([SearchRow::header('Files'), SearchRow::hit($this->hit(SearchCategory::Files, 'a', $noop)), SearchRow::hit($this->hit(SearchCategory::Files, 'b', $noop))]);
-        $this->assertSame(1, Probe::get($host, 'search')->selected, 'a new query starts on its best match');
+        $host->setSearchRows([
+            SearchRow::header('Files'),
+            SearchRow::hit($this->hit(SearchCategory::Files, label: 'a', activate: $noop)),
+            SearchRow::hit($this->hit(SearchCategory::Files, label: 'b', activate: $noop)),
+        ]);
+        $this->assertSame(1, Probe::get($host, property: 'search')->selected, 'a new query starts on its best match');
     }
 
     /** The box is as wide as the widest row seen since it opened: narrower answers do not shrink it. */
@@ -192,7 +200,7 @@ final class OverlayHostNavigationTest extends TestCase
         $host->setSearchRows([SearchRow::header('Files'), SearchRow::hit(new SearchHit(SearchCategory::Files, \str_repeat('w', times: 40), 'dir', $noop))]);
         $wide = $host->layout([0, 0, 24, 100])[0]['width'];
 
-        $host->setSearchRows([SearchRow::header('Files'), SearchRow::hit($this->hit(SearchCategory::Files, 'a', $noop))]);
+        $host->setSearchRows([SearchRow::header('Files'), SearchRow::hit($this->hit(SearchCategory::Files, label: 'a', activate: $noop))]);
 
         $this->assertSame($wide, $host->layout([0, 0, 24, 100])[0]['width']);
         $this->assertGreaterThan(40, $wide);
@@ -206,7 +214,7 @@ final class OverlayHostNavigationTest extends TestCase
     public function testTheSearchBoxKeepsItsTopAsTheQueryNarrows(): void
     {
         $host = $this->host();
-        $host->openSearch('S', static fn (): null => null, static fn (): null => null, static fn (): null => null, 'no results');
+        $host->openSearch('S', static fn (): null => null, static fn (): null => null, static fn (): null => null, emptyMessage: 'no results');
         $host->setSearchRows($this->searchRows(static fn (): null => null));
         $tall = $host->layout([0, 0, 24, 100])[0];
 
@@ -225,24 +233,24 @@ final class OverlayHostNavigationTest extends TestCase
         $items = \array_map(static fn (int $i): array => ['label' => "item {$i}", 'hint' => '', 'value' => (string) $i], \range(0, end: 29));
         $host->openList('T', $items, static fn (): null => null);
         $host->layout([0, 0, 24, 80]);
-        $box = Probe::get($host, 'overlayBox');
+        $box = Probe::get($host, property: 'overlayBox');
         $page = $box->count;
 
         $this->assertTrue($host->clickAt($box->startRow + $box->rows - 2, $box->col + 5), '▼');
-        $this->assertSame($page, Probe::get($host, 'overlay')['selected']);
-        $this->assertNotNull(Probe::get($host, 'overlay'));
+        $this->assertSame($page, Probe::get($host, property: 'overlay')['selected']);
+        $this->assertNotNull(Probe::get($host, property: 'overlay'));
         $host->layout([0, 0, 24, 80]);
-        $box = Probe::get($host, 'overlayBox');
+        $box = Probe::get($host, property: 'overlayBox');
         $this->assertTrue($host->clickAt($box->startRow + 1, $box->col + 5), '▲');
-        $this->assertSame(0, Probe::get($host, 'overlay')['selected']);
+        $this->assertSame(0, Probe::get($host, property: 'overlay')['selected']);
         foreach (\range(1, end: 3) as $_) {
             $host->handleInput("\x1b[B", $this->keybindings());
         }
         $host->layout([0, 0, 24, 80]);
-        $box = Probe::get($host, 'overlayBox');
+        $box = Probe::get($host, property: 'overlayBox');
         $host->clickAt($box->startRow + 1, $box->col + 5);
-        $this->assertSame(3, Probe::get($host, 'overlay')['selected'], 'nothing above: the padding is only padding');
-        $this->assertNotNull(Probe::get($host, 'overlay'));
+        $this->assertSame(3, Probe::get($host, property: 'overlay')['selected'], 'nothing above: the padding is only padding');
+        $this->assertNotNull(Probe::get($host, property: 'overlay'));
     }
 
     public function testTheFrameCuesPageTheSearch(): void
@@ -252,14 +260,14 @@ final class OverlayHostNavigationTest extends TestCase
         $host->openSearch('S', $noop, $noop, $noop);
         $host->setSearchRows([SearchRow::header('Files'), ...\array_map(fn (int $i): SearchRow => SearchRow::hit($this->hit(SearchCategory::Files, "f{$i}", $noop)), \range(0, end: 29))]);
         $host->layout([0, 0, 24, 80]);
-        $box = Probe::get($host, 'searchBox');
+        $box = Probe::get($host, property: 'searchBox');
 
         $this->assertTrue($host->searchClickAt($box->startRow + $box->rows - 2, $box->col + 5));
-        $this->assertSame(1 + $box->count, Probe::get($host, 'search')->selected, 'a page of hits down');
+        $this->assertSame(1 + $box->count, Probe::get($host, property: 'search')->selected, 'a page of hits down');
         $host->layout([0, 0, 24, 80]);
-        $box = Probe::get($host, 'searchBox');
+        $box = Probe::get($host, property: 'searchBox');
         $this->assertTrue($host->searchClickAt($box->startRow + 1, $box->col + 5));
-        $this->assertSame(1, Probe::get($host, 'search')->selected);
+        $this->assertSame(1, Probe::get($host, property: 'search')->selected);
     }
 
     /**
@@ -276,7 +284,7 @@ final class OverlayHostNavigationTest extends TestCase
             ['label' => 'three', 'hint' => '', 'value' => '3'],
         ];
         $host->openList('T', $items, static fn (): null => null);
-        $selected = static fn (): int => Probe::get($host, 'overlay')['selected'];
+        $selected = static fn (): int => Probe::get($host, property: 'overlay')['selected'];
         $kb = $this->editingKeys();
 
         $this->assertSame(1, $selected(), 'opens on the first row that can be picked');
@@ -314,7 +322,7 @@ final class OverlayHostNavigationTest extends TestCase
         $host->openList('T', [['label' => 'a', 'hint' => '', 'value' => 'a', 'disabled' => true], ['label' => 'b', 'hint' => '', 'value' => 'b', 'disabled' => true]], static fn (): null => null);
         $host->handleInput("\x1b[B", $this->editingKeys());
 
-        $this->assertSame(1, Probe::get($host, 'overlay')['selected']);
+        $this->assertSame(1, Probe::get($host, property: 'overlay')['selected']);
     }
 
     /** A list of notes alone (problems with no fix) is read and closed, never run: Enter leaves it open. */
@@ -329,7 +337,7 @@ final class OverlayHostNavigationTest extends TestCase
         $host->handleInput("\r", $this->editingKeys());
 
         $this->assertSame([], $picked);
-        $this->assertNotNull(Probe::get($host, 'overlay'), 'the list stays up to be read');
+        $this->assertNotNull(Probe::get($host, property: 'overlay'), 'the list stays up to be read');
     }
 
     /**
@@ -361,14 +369,14 @@ final class OverlayHostNavigationTest extends TestCase
             },
         );
         $host->layout([0, 0, 24, 80]);
-        $box = Probe::get($host, 'overlayBox');
+        $box = Probe::get($host, property: 'overlayBox');
 
         for ($row = $box->startRow; $row < ($box->startRow + $box->rows) && 0 === $opened; ++$row) {
             $host->clickAt($row, $box->col + 4);
         }
 
         $this->assertSame(1, $opened, 'the click went there');
-        $this->assertNull(Probe::get($host, 'overlay'), 'and the list closed');
+        $this->assertNull(Probe::get($host, property: 'overlay'), 'and the list closed');
         $this->assertSame([], $picked, 'nothing was run');
     }
 
@@ -377,13 +385,13 @@ final class OverlayHostNavigationTest extends TestCase
         $host = $this->host();
         $host->openList('Quick Fixes', [['label' => '✗ boom', 'hint' => '', 'value' => '', 'note' => true]], static fn (): null => null);
         $host->layout([0, 0, 24, 80]);
-        $box = Probe::get($host, 'overlayBox');
+        $box = Probe::get($host, property: 'overlayBox');
 
         for ($row = $box->startRow + 1; $row < ($box->startRow + $box->rows - 1); ++$row) {
             $host->clickAt($row, $box->col + 4);
         }
 
-        $this->assertNotNull(Probe::get($host, 'overlay'));
+        $this->assertNotNull(Probe::get($host, property: 'overlay'));
     }
 
     /** In the search modal too, the selection starts on — and steps between — hits that can run. */
@@ -399,7 +407,7 @@ final class OverlayHostNavigationTest extends TestCase
             SearchRow::hit(new SearchHit(SearchCategory::Actions, 'Step Out', '', $noop, enabled: false)),
             SearchRow::hit(new SearchHit(SearchCategory::Actions, 'Close', '', $noop)),
         ]);
-        $selected = static fn (): int => Probe::get($host, 'search')->selected;
+        $selected = static fn (): int => Probe::get($host, property: 'search')->selected;
         $kb = $this->editingKeys();
 
         $this->assertSame(2, $selected(), 'Save, not the greyed Step Over');

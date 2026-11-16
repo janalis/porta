@@ -66,7 +66,7 @@ final class ArchitectureArtifactTest extends TestCase
         ]);
         $artifact = new ArchitectureArtifact($project->dir);
 
-        [$error, $path] = $this->generate($artifact, null);
+        [$error, $path] = $this->generate($artifact, command: null);
 
         $this->assertNull($error);
         $this->assertSame(\realpath($project->path('architecture.dot')), $path, 'the REALPATH, so a path-keyed tab reuse matches');
@@ -78,7 +78,7 @@ final class ArchitectureArtifactTest extends TestCase
         $project = new TempProject();
         $artifact = new ArchitectureArtifact($project->dir, 'docs/deep/arch');
 
-        [$error, $path] = $this->generate($artifact, "printf 'digraph { FromCommand }'");
+        [$error, $path] = $this->generate($artifact, command: "printf 'digraph { FromCommand }'");
 
         $this->assertNull($error);
         $this->assertSame('digraph { FromCommand }', (string) \file_get_contents((string) $path), 'stdout is the artifact');
@@ -90,11 +90,11 @@ final class ArchitectureArtifactTest extends TestCase
         $project = new TempProject();
         $artifact = new ArchitectureArtifact($project->dir);
 
-        [$error, $path] = $this->generate($artifact, '>&2 printf "no generator here"; exit 3');
+        [$error, $path] = $this->generate($artifact, command: '>&2 printf "no generator here"; exit 3');
         $this->assertNull($path);
         $this->assertStringContainsString('no generator here', (string) $error);
 
-        [$error, $path] = $this->generate($artifact, 'exit 0');
+        [$error, $path] = $this->generate($artifact, command: 'exit 0');
         $this->assertNull($path);
         $this->assertStringContainsString('produced no output', (string) $error);
         $this->assertFileDoesNotExist($project->path('architecture.dot'), 'nothing is written when there is nothing to write');
@@ -105,7 +105,7 @@ final class ArchitectureArtifactTest extends TestCase
         $project = new TempProject(['blocked' => 'a file where the directory should go']);
         $artifact = new ArchitectureArtifact($project->dir, 'blocked');
 
-        [$error, $path] = $this->generate($artifact, "printf 'digraph {}'");
+        [$error, $path] = $this->generate($artifact, command: "printf 'digraph {}'");
 
         $this->assertNull($path);
         $this->assertStringContainsString('Cannot write', (string) $error);
@@ -120,7 +120,7 @@ final class ArchitectureArtifactTest extends TestCase
         $artifact->generate("sleep 5; printf 'digraph { Slow }'", static function (?string $error, ?string $path) use (&$first): void {
             $first = [$error, $path];
         });
-        [$error, $path] = $this->generate($artifact, "printf 'digraph { Fast }'");
+        [$error, $path] = $this->generate($artifact, command: "printf 'digraph { Fast }'");
 
         $this->assertNull($error);
         $this->assertSame('digraph { Fast }', (string) \file_get_contents((string) $path));
@@ -136,7 +136,7 @@ final class ArchitectureArtifactTest extends TestCase
         // know about core, never the reverse.
         $this->assertSame(
             ArchitectureArtifact::FILENAME,
-            Probe::getStatic(BufferService::class, 'ARCHITECTURE_FILENAME'),
+            Probe::getStatic(BufferService::class, member: 'ARCHITECTURE_FILENAME'),
             'rename one and the tab silently loses its title',
         );
     }

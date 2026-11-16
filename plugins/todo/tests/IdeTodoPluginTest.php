@@ -66,7 +66,7 @@ final class IdeTodoPluginTest extends TestCase
                     $this->assertMatchesRegularExpression('~src/[AB]\.php$~', (string) Widgets::editor($tui)->getFilePath(), 'Enter took the default open-and-jump');
 
                     // F5 re-runs the tool's own rerun closure.
-                    $project->write('src/C.php', "<?php\n// TODO added later\n");
+                    $project->write('src/C.php', content: "<?php\n// TODO added later\n");
                     $tui->setFocus($tui->getById('results'));
                     $tui->handleInput("\x1b[15~");
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '3 results'));
@@ -84,7 +84,7 @@ final class IdeTodoPluginTest extends TestCase
         \putenv('PATH='.\PORTA_TEST_PRISTINE_PATH);
         $project = self::project(
             ['a.php' => "<?php\n// TODO rebound\n"],
-            '{"enabledPlugins":["todo"],"keymap":{"ide_todo":"f9"}}',
+            porta: '{"enabledPlugins":["todo"],"keymap":{"ide_todo":"f9"}}',
         );
 
         $this->runIde(
@@ -104,7 +104,7 @@ final class IdeTodoPluginTest extends TestCase
         // The state a third party's IDE is in before their plugin loads: the
         // key does nothing, the tool has no tab, and nothing else is disturbed.
         \putenv('PATH=/nonexistent');
-        $project = self::project(['a.php' => "<?php\n// TODO gone\n"], '{"enabledPlugins":[]}');
+        $project = self::project(['a.php' => "<?php\n// TODO gone\n"], porta: '{"enabledPlugins":[]}');
 
         $this->runIde(
             $project,
@@ -127,7 +127,7 @@ final class IdeTodoPluginTest extends TestCase
                     // from the spec alone would render "Show TODOs", carry the
                     // alt+8 label from the catalog's defaults, and do nothing.
                     /** @var list<\Porta\Workbench\Menu\Menu> $menus */
-                    $menus = Probe::get($tui->getById('menu'), 'menus');
+                    $menus = Probe::get($tui->getById('menu'), property: 'menus');
                     $view = null;
                     foreach ($menus as $candidate) {
                         if ('View' !== $candidate->title) {

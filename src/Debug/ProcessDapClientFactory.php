@@ -16,7 +16,7 @@ final readonly class ProcessDapClientFactory
         private string $rootDir,
         private ?OrphanGuard $guard = null,
     ) {
-        $this->log = DiagnosticLog::forRoot($this->rootDir, 'dap');
+        $this->log = DiagnosticLog::forRoot($this->rootDir, channel: 'dap');
     }
 
     /** @param list<string> $argv */

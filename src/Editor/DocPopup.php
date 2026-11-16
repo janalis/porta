@@ -43,10 +43,10 @@ final class DocPopup
     {
         $page = \max(1, ($this->drawn['rect'][3] ?? 3) - 2);
         $delta = match (true) {
-            $kb->matches($keys, 'cursor_up') => -1,
-            $kb->matches($keys, 'cursor_down') => 1,
-            $kb->matches($keys, 'page_up') => -$page,
-            $kb->matches($keys, 'page_down') => $page,
+            $kb->matches($keys, action: 'cursor_up') => -1,
+            $kb->matches($keys, action: 'cursor_down') => 1,
+            $kb->matches($keys, action: 'page_up') => -$page,
+            $kb->matches($keys, action: 'page_down') => $page,
             default => 0,
         };
         if (0 === $delta) {

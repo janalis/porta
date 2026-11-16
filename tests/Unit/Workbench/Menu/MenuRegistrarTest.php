@@ -54,7 +54,7 @@ final class MenuRegistrarTest extends TestCase
     public function testEveryContributionReachesTheModelWithItsViewSafeList(): void
     {
         $menus = new MenuContributions();
-        new MenuRegistrar($this->source([$this->contribution('git', 'Git'), $this->contribution('demo', 'Demo')]), $menus)->register();
+        new MenuRegistrar($this->source([$this->contribution('git', title: 'Git'), $this->contribution('demo', title: 'Demo')]), $menus)->register();
 
         $this->assertSame(['Git', 'Demo'], \array_map(static fn (MenuContribution $c): string => $c->title, $menus->all()), 'in load order');
         $this->assertSame(['git' => ['ide_quit'], 'demo' => ['ide_quit']], $menus->viewSafe(), 'and both halves travelled');
@@ -79,7 +79,7 @@ final class MenuRegistrarTest extends TestCase
         // reads as a rendering bug rather than a wiring one. The live path is
         // registerFor(), which is idempotent below.
         $menus = new MenuContributions();
-        $registrar = new MenuRegistrar($this->source([$this->contribution('git', 'Git')]), $menus);
+        $registrar = new MenuRegistrar($this->source([$this->contribution('git', title: 'Git')]), $menus);
 
         $registrar->register();
         $registrar->register();
@@ -92,7 +92,7 @@ final class MenuRegistrarTest extends TestCase
         // Forget-then-add is what makes a re-enable safe: without it, every
         // toggle would append a second copy of the same title.
         $menus = new MenuContributions();
-        $registrar = new MenuRegistrar($this->source([$this->contribution('git', 'Git'), $this->contribution('demo', 'Demo')]), $menus);
+        $registrar = new MenuRegistrar($this->source([$this->contribution('git', title: 'Git'), $this->contribution('demo', title: 'Demo')]), $menus);
 
         $registrar->registerFor('git');
         $registrar->registerFor('git');
@@ -103,7 +103,7 @@ final class MenuRegistrarTest extends TestCase
     public function testForgetRetractsThePluginsMenus(): void
     {
         $menus = new MenuContributions();
-        $registrar = new MenuRegistrar($this->source([$this->contribution('git', 'Git'), $this->contribution('demo', 'Demo')]), $menus);
+        $registrar = new MenuRegistrar($this->source([$this->contribution('git', title: 'Git'), $this->contribution('demo', title: 'Demo')]), $menus);
         $registrar->register();
 
         $registrar->forget('git');

@@ -91,7 +91,7 @@ final readonly class DiagnosticNavigation
         $wrapped = [] === $ahead;
         $target = $wrapped ? $lines[0] : $ahead[0];
 
-        $this->editor->jumpTo($target, 0);
+        $this->editor->jumpTo($target, utf16Col: 0);
         $text = self::problemText($buffer->diagnostics[$target], $target);
         $this->notifier->flash($wrapped ? $this->translator->trans('Wrapped to %problem%', ['%problem%' => $text]) : $text);
     }

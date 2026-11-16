@@ -35,13 +35,13 @@ final readonly class GutterClickRouter
         if ($col === $this->editor->viewport()->foldCol) {
             // `toggle_fold` works at the caret, so the caret lands on the line
             // first — which is what a fold click should do anyway.
-            $this->editor->jumpTo($docLine, 0);
+            $this->editor->jumpTo($docLine, utf16Col: 0);
             $this->editor->runAction('toggle_fold');
 
             return;
         }
         if ($this->editor->changeMarkAt($col, $docLine) && $this->commands->has(self::SHOW_CHANGE)) {
-            $this->editor->jumpTo($docLine, 0);
+            $this->editor->jumpTo($docLine, utf16Col: 0);
             $this->commands->run(self::SHOW_CHANGE);
 
             return;

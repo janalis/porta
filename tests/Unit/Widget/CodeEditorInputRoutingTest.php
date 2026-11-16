@@ -40,7 +40,7 @@ final class CodeEditorInputRoutingTest extends TestCase
     public function testHandleInputInsertsAPasteAndReturnsWithoutFallingThroughToKeybindings(): void
     {
         $editor = $this->editor("<?php\n");
-        $editor->getDocument()->setCursor(1, 0);
+        $editor->getDocument()->setCursor(1, col: 0);
 
         $editor->handleInput("\x1b[200~pasted\x1b[201~");
 
@@ -69,7 +69,7 @@ final class CodeEditorInputRoutingTest extends TestCase
     public function testHandleInputSwallowsAnEmptyChunkWhileBufferingAPasteWithoutFallingThroughToKeybindings(): void
     {
         $editor = $this->editor("<?php\n\n");
-        $editor->getDocument()->setCursor(1, 0);
+        $editor->getDocument()->setCursor(1, col: 0);
 
         $editor->handleInput("\x1b[200~partial"); // starts buffering, no end marker yet
         $before = $editor->getDocument()->getLine(1);
@@ -107,7 +107,7 @@ final class CodeEditorInputRoutingTest extends TestCase
 
         $editor->handleInput("\x1b"); // select_cancel's default binding
 
-        $this->assertNull(Probe::get($editor, 'caretPopups')->signature, 'Escape must clear the open signature hint');
+        $this->assertNull(Probe::get($editor, property: 'caretPopups')->signature, 'Escape must clear the open signature hint');
     }
 
     public function testHandleInputDispatchedActionRouterDoesNotAlsoRunTheEditingVerb(): void
@@ -137,14 +137,14 @@ final class CodeEditorInputRoutingTest extends TestCase
 
         $editor->cancelWindowDrags();
 
-        $this->assertFalse($editor->findModal->continueDragTo(10, 10, release: false), 'cancelWindowDrags must reach findModal->cancelDrag() and disarm the move');
+        $this->assertFalse($editor->findModal->continueDragTo(10, relCol: 10, release: false), 'cancelWindowDrags must reach findModal->cancelDrag() and disarm the move');
     }
 
     public function testClearSnippetSessionActuallyClearsIt(): void
     {
         $editor = $this->editor("<?php\n");
         $snippet = Probe::object($editor, 'completion', 'snippet');
-        $snippet->begin(0, 0, 'x', [new SnippetTabStop(1, 0, 1)]);
+        $snippet->begin(0, startCol: 0, text: 'x', rawStops: [new SnippetTabStop(1, 0, 1)]);
         $this->assertTrue($snippet->isActive(), 'sanity: snippet session active');
 
         $editor->clearSnippetSession();
@@ -168,16 +168,16 @@ final class CodeEditorInputRoutingTest extends TestCase
     {
         $editor = new CodeEditorWidget();
 
-        $editor->openFile('demo.php', 'x');
+        $editor->openFile('demo.php', content: 'x');
         $this->assertSame('//', $editor->commentSyntax()?->line);
         $this->assertSame(['/*', '*/'], $editor->commentSyntax()?->block);
 
         // The file the round was about: block-only, and null before it.
-        $editor->openFile('page.twig', 'x');
+        $editor->openFile('page.twig', content: 'x');
         $this->assertNull($editor->commentSyntax()?->line);
         $this->assertSame(['{#', '#}'], $editor->commentSyntax()?->block);
 
-        $editor->openFile('demo.unknownext', 'x');
+        $editor->openFile('demo.unknownext', content: 'x');
         $this->assertNull($editor->commentSyntax());
     }
 
@@ -195,13 +195,13 @@ final class CodeEditorInputRoutingTest extends TestCase
         }
         $lines .= "    public function tail(): void {}\n}\n";
         $editor = $this->editor($lines);
-        $editor->getDocument()->setCursor(38, 0);
+        $editor->getDocument()->setCursor(38, col: 0);
         $editor->render(new RenderContext(80, 10));
-        $scroll = Probe::get($editor, 'scroll');
-        $foldModel = Probe::get($editor, 'foldModel');
-        $stickyCount = \count(Probe::get($editor, 'stickyLines'));
+        $scroll = Probe::get($editor, property: 'scroll');
+        $foldModel = Probe::get($editor, property: 'foldModel');
+        $stickyCount = \count(Probe::get($editor, property: 'stickyLines'));
         $this->assertGreaterThan(0, $stickyCount, 'sanity: sticky header pinned');
-        $expectedRow = \max(0, $foldModel->screenRowFor($scroll->vScroll, 38)) + $stickyCount;
+        $expectedRow = \max(0, $foldModel->screenRowFor($scroll->vScroll, docLine: 38)) + $stickyCount;
 
         $editor->setSignatureHint('f(): void');
         $rendered = $editor->render(new RenderContext(80, 10));
@@ -226,15 +226,15 @@ final class CodeEditorInputRoutingTest extends TestCase
     public function testComposePopupsClearsAStaleCompletionBoxWhenThePopupCloses(): void
     {
         $editor = $this->editor("<?php\nfoo\n");
-        $editor->getDocument()->setCursor(1, 3);
-        Probe::get($editor, 'completion')->show([new CompletionItem(label: 'foo', insertText: 'foo', kind: 'fn', detail: '')]);
+        $editor->getDocument()->setCursor(1, col: 3);
+        Probe::get($editor, property: 'completion')->show([new CompletionItem(label: 'foo', insertText: 'foo', kind: 'fn', detail: '')]);
         $editor->render(new RenderContext(80, 10));
-        $this->assertNotNull(Probe::get(Probe::get($editor, 'completion'), 'box'), 'sanity: a box was set from the open popup');
+        $this->assertNotNull(Probe::get(Probe::get($editor, property: 'completion'), property: 'box'), 'sanity: a box was set from the open popup');
 
-        Probe::get($editor, 'completion')->show([]); // no matches: popupState() becomes null
+        Probe::get($editor, property: 'completion')->show([]); // no matches: popupState() becomes null
         $editor->render(new RenderContext(80, 10));
 
-        $this->assertNull(Probe::get(Probe::get($editor, 'completion'), 'box'), 'a closed popup must not leave a stale box for hit-testing');
+        $this->assertNull(Probe::get(Probe::get($editor, property: 'completion'), property: 'box'), 'a closed popup must not leave a stale box for hit-testing');
     }
 
     public function testComposePopupsAnchorColAccountsForHorizontalScrollAndWordWidth(): void
@@ -248,14 +248,14 @@ final class CodeEditorInputRoutingTest extends TestCase
         $editor = $this->editor("<?php\n{$prefix}fooBarBaz\n");
         $editor->getDocument()->setCursor(1, \strlen($prefix) + 9); // end of "fooBarBaz"
         $editor->render(new RenderContext(30, 10)); // narrow enough to force hScroll > 0
-        $scroll = Probe::get($editor, 'scroll');
+        $scroll = Probe::get($editor, property: 'scroll');
         $this->assertGreaterThan(0, $scroll->hScroll, 'sanity: horizontally scrolled');
         $this->assertSame('fooBarBaz', $editor->getDocument()->getWordBeforeCursor(), 'sanity: word boundary lands where expected');
 
-        Probe::get($editor, 'completion')->show([new CompletionItem(label: 'fooBarBazQux', insertText: 'fooBarBazQux', kind: 'fn', detail: '')]);
+        Probe::get($editor, property: 'completion')->show([new CompletionItem(label: 'fooBarBazQux', insertText: 'fooBarBazQux', kind: 'fn', detail: '')]);
         $editor->render(new RenderContext(30, 10));
 
-        $box = Probe::get(Probe::get($editor, 'completion'), 'box');
+        $box = Probe::get(Probe::get($editor, property: 'completion'), property: 'box');
         $this->assertNotNull($box);
         // Exact position pinned against this fixed, deterministic scenario
         // (60 x's + space + cursor at end of "fooBarBaz", 30-column pane):

@@ -71,24 +71,24 @@ final class LiveKeybindingsTest extends TestCase
         \putenv('PORTA_HOME='.$home->dir);
         [$live] = $this->live($project);
 
-        $this->assertTrue($live->matches("\x1b\x07", 'save_all'), 'the user file bound it at boot');
+        $this->assertTrue($live->matches("\x1b\x07", action: 'save_all'), 'the user file bound it at boot');
 
         $live->rebuild();
 
-        $this->assertTrue($live->matches("\x1b\x07", 'save_all'), 'and the rebuild did not drop the global layer');
-        $this->assertFalse($live->matches("\x1b\x07", 'save'), 'and bound the action the file named, not a neighbour');
+        $this->assertTrue($live->matches("\x1b\x07", action: 'save_all'), 'and the rebuild did not drop the global layer');
+        $this->assertFalse($live->matches("\x1b\x07", action: 'save'), 'and bound the action the file named, not a neighbour');
     }
 
     public function testRebuildPicksUpALiveActivatedPluginsDefaultKeys(): void
     {
         $project = new TempProject([]);
         [$live, $host] = $this->live($project);
-        $this->assertFalse($live->matches("\x1b\x02", 'keyed:boom'), 'no plugin yet: the key is unbound');
+        $this->assertFalse($live->matches("\x1b\x02", action: 'keyed:boom'), 'no plugin yet: the key is unbound');
 
         // The plugin lands after boot (a live install) and loads.
         $file = $project->write('.porta/plugins/keyed/porta.php', self::PLUGIN);
         $host->loader->loadFile($file, $host->manager);
-        $this->assertFalse($live->matches("\x1b\x02", 'keyed:boom'), 'the frozen map does not know the new keys yet');
+        $this->assertFalse($live->matches("\x1b\x02", action: 'keyed:boom'), 'the frozen map does not know the new keys yet');
 
         $live->rebuild();
         $this->assertSame(['ctrl+alt+b'], $live->getBindings('keyed:boom'), 'rebuild merged the live-activated defaults');

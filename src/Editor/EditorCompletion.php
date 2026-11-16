@@ -141,7 +141,7 @@ final class EditorCompletion
         $this->note = null;
         ($this->invalidate)();
 
-        return $kb->matches($keys, 'select_cancel');
+        return $kb->matches($keys, action: 'select_cancel');
     }
 
     /**
@@ -156,14 +156,14 @@ final class EditorCompletion
     public function expandTemplate(string $keys, Keybindings $kb, array $templates): bool
     {
         $doc = $this->document;
-        $found = $kb->matches($keys, 'indent') && !$this->open && !$doc->hasSelection()
+        $found = $kb->matches($keys, action: 'indent') && !$this->open && !$doc->hasSelection()
             ? TemplateExpander::at($doc->getLine($doc->cursorLine), $doc->cursorCol, $templates)
             : null;
         if (null === $found) {
             return false;
         }
 
-        $doc->replaceBeforeCursor($found['consume'], '');
+        $doc->replaceBeforeCursor($found['consume'], replacement: '');
         $startLine = $doc->cursorLine;
         $startCol = $doc->cursorCol;
         $parsed = SnippetParser::parse($found['snippet']);
@@ -198,7 +198,7 @@ final class EditorCompletion
         $closes =
             !$consumed
             && (
-                $kb->matches($keys, 'delete_char_backward')
+                $kb->matches($keys, action: 'delete_char_backward')
                     ? '' === $this->document->getWordBeforeCursor()
                     : !($this->isInsertable)($keys) || !\preg_match('/^[\w$]+$/u', $keys)
             );
@@ -219,20 +219,20 @@ final class EditorCompletion
     {
         $count = \count($filtered);
         $act = match (true) {
-            $kb->matches($keys, 'select_cancel') => function (): void {
+            $kb->matches($keys, action: 'select_cancel') => function (): void {
                 $this->close();
                 ($this->invalidate)();
             },
-            $kb->matches($keys, 'cursor_up') => fn () => $this->select(($this->selected - 1 + $count) % $count),
-            $kb->matches($keys, 'cursor_down') => fn () => $this->select(($this->selected + 1) % $count),
+            $kb->matches($keys, action: 'cursor_up') => fn () => $this->select(($this->selected - 1 + $count) % $count),
+            $kb->matches($keys, action: 'cursor_down') => fn () => $this->select(($this->selected + 1) % $count),
             // A page is what the popup shows; paging stops at the ends.
-            $kb->matches($keys, 'page_up') || $kb->matches($keys, 'page_down') => fn () => $this->select(
-                \max(0, \min($count - 1, $this->selected + (PopupMetrics::COMPLETION_ROWS * ($kb->matches($keys, 'page_up') ? -1 : 1)))),
+            $kb->matches($keys, action: 'page_up') || $kb->matches($keys, action: 'page_down') => fn () => $this->select(
+                \max(0, \min($count - 1, $this->selected + (PopupMetrics::COMPLETION_ROWS * ($kb->matches($keys, action: 'page_up') ? -1 : 1)))),
             ),
             // Ctrl+↓/↑ scroll the selected item's docblock, the rest of which is
             // otherwise only a hover away.
             "\x1b[1;5B" === $keys || "\x1b[1;5A" === $keys => fn () => $this->scrollDoc("\x1b[1;5B" === $keys ? 1 : -1),
-            $kb->matches($keys, 'accept_completion') || $kb->matches($keys, 'indent') => function () use ($filtered): void {
+            $kb->matches($keys, action: 'accept_completion') || $kb->matches($keys, action: 'indent') => function () use ($filtered): void {
                 $item = $filtered[$this->selected] ?? null;
                 if (null !== $item) {
                     $this->acceptItem($item);
@@ -419,7 +419,7 @@ final class EditorCompletion
     private function expandOrInsert(Document $doc, CompletionItem $item, ?string $snippet, string $prefix): void
     {
         if (null !== $snippet && '' !== $snippet) {
-            $doc->replaceBeforeCursor(\strlen($prefix), '');
+            $doc->replaceBeforeCursor(\strlen($prefix), replacement: '');
             $startLine = $doc->cursorLine;
             $startCol = $doc->cursorCol;
             $parsed = SnippetParser::parse($snippet);

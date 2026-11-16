@@ -55,8 +55,8 @@ final class FileDecorationsTest extends TestCase
     public function testACleanBufferDoesNotHideTheDirtyOneAfterIt(): void
     {
         [$decorations, $buffers] = $this->make();
-        $buffers->open('/p/clean.php', "<?php\n");
-        $dirty = $buffers->open('/p/dirty.php', "<?php\n");
+        $buffers->open('/p/clean.php', content: "<?php\n");
+        $dirty = $buffers->open('/p/dirty.php', content: "<?php\n");
         $dirty->document->insert('x');
 
         $snapshot = $decorations->snapshot();
@@ -77,7 +77,7 @@ final class FileDecorationsTest extends TestCase
     public function testADiagnosticBelowACleanLineIsStillFound(): void
     {
         [$decorations, $buffers] = $this->make();
-        $buffer = $buffers->open('/p/a.php', "<?php\n");
+        $buffer = $buffers->open('/p/a.php', content: "<?php\n");
         $buffer->diagnostics = [0 => [], 5 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'm', 'col' => 0]]];
 
         $snapshot = $decorations->snapshot();
@@ -89,7 +89,7 @@ final class FileDecorationsTest extends TestCase
     public function testAnUntouchedCleanBufferIsAbsentEntirely(): void
     {
         [$decorations, $buffers] = $this->make();
-        $buffers->open('/p/a.php', "<?php\n");
+        $buffers->open('/p/a.php', content: "<?php\n");
 
         $this->assertSame([], $decorations->snapshot(), 'a file with nothing to say must not cost the tree a mark');
     }
@@ -97,7 +97,7 @@ final class FileDecorationsTest extends TestCase
     public function testAnEditedBufferReportsDirty(): void
     {
         [$decorations, $buffers] = $this->make();
-        $buffer = $buffers->open('/p/a.php', "<?php\n");
+        $buffer = $buffers->open('/p/a.php', content: "<?php\n");
         $buffer->document->insert('x');
 
         $this->assertSame(['/p/a.php' => ['dirty' => true, 'severity' => null, 'status' => null, 'agents' => []]], $decorations->snapshot());
@@ -106,7 +106,7 @@ final class FileDecorationsTest extends TestCase
     public function testItReportsTheWorstSeverityAcrossEveryLine(): void
     {
         [$decorations, $buffers] = $this->make();
-        $buffer = $buffers->open('/p/a.php', "<?php\n");
+        $buffer = $buffers->open('/p/a.php', content: "<?php\n");
         // The error is NOT on the first line: a scan that stopped at the first
         // one it found would report the warning.
         $buffer->diagnostics = $this->diagnostics([2, 2, 1, 2]);
@@ -118,7 +118,7 @@ final class FileDecorationsTest extends TestCase
     public function testInfoAndHintDiagnosticsLeaveTheFileUnmarked(): void
     {
         [$decorations, $buffers] = $this->make();
-        $buffer = $buffers->open('/p/a.php', "<?php\n");
+        $buffer = $buffers->open('/p/a.php', content: "<?php\n");
         $buffer->diagnostics = $this->diagnostics([3, 4]);
 
         $this->assertSame([], $decorations->snapshot());
@@ -128,7 +128,7 @@ final class FileDecorationsTest extends TestCase
     public function testALineWhoseDiagnosticsClearedDoesNotMarkTheFile(): void
     {
         [$decorations, $buffers] = $this->make();
-        $buffer = $buffers->open('/p/a.php', "<?php\n");
+        $buffer = $buffers->open('/p/a.php', content: "<?php\n");
         $buffer->diagnostics = [3 => []];
 
         $this->assertSame([], $decorations->snapshot());
@@ -137,9 +137,9 @@ final class FileDecorationsTest extends TestCase
     public function testEveryOpenBufferIsReportedUnderItsOwnPath(): void
     {
         [$decorations, $buffers] = $this->make();
-        $buffers->open('/p/a.php', "<?php\n")->diagnostics = $this->diagnostics([2]);
-        $buffers->open('/p/b.php', "<?php\n")->document->insert('x');
-        $buffers->open('/p/c.php', "<?php\n");
+        $buffers->open('/p/a.php', content: "<?php\n")->diagnostics = $this->diagnostics([2]);
+        $buffers->open('/p/b.php', content: "<?php\n")->document->insert('x');
+        $buffers->open('/p/c.php', content: "<?php\n");
 
         $this->assertSame(
             [
@@ -171,7 +171,7 @@ final class FileDecorationsTest extends TestCase
     {
         [$decorations, $buffers, $statuses] = $this->make();
         $statuses->applyFileStatuses(['/p/a.php' => ChangeMarkKind::Added]);
-        $buffers->open('/p/a.php', "<?php\n")->document->insert('x');
+        $buffers->open('/p/a.php', content: "<?php\n")->document->insert('x');
 
         $this->assertSame(
             ['/p/a.php' => ['dirty' => true, 'severity' => null, 'status' => ChangeMarkKind::Added, 'agents' => []]],
@@ -192,7 +192,7 @@ final class FileDecorationsTest extends TestCase
     public function testAFileAnAgentIsAtWorkOnCarriesWhoAndWhatEvenUnopened(): void
     {
         [$decorations, $buffers] = $this->make();
-        $buffers->open('/p/a.php', "<?php\n")->document->insert('x');
+        $buffers->open('/p/a.php', content: "<?php\n")->document->insert('x');
         $this->agents->onAgentActivity(new AgentActivity('mcp-1', 'Claude', '/p/a.php', AgentActivityKind::Editing, 0, 0, 10.0));
         $this->agents->onAgentActivity(new AgentActivity('mcp-1', 'Claude', '/p/closed.php', AgentActivityKind::Reading, 0, 0, 10.0));
 

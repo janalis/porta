@@ -306,7 +306,7 @@ final class SettingsNavWidgetTest extends TestCase
         AttachedStyles::attach($widget);
 
         $this->assertSame(21, $widget->minWidth());
-        $this->assertContains('   Raccourcis clavier', $this->navRows($widget, 21));
+        $this->assertContains('   Raccourcis clavier', $this->navRows($widget, width: 21));
     }
 
     /**
@@ -367,7 +367,7 @@ final class SettingsNavWidgetTest extends TestCase
         $widget = $this->widget();
         $widget->setPluginEntries(['phpantom', 'mago', 'tempest', 'chroma', 'image-viewer', 'graph-viewer', 'local-history', 'git', 'symfony-lsp']);
 
-        $rows = $this->navRows($widget, 22, rows: 22);
+        $rows = $this->navRows($widget, width: 22, rows: 22);
 
         $this->assertSame('   General', $rows[0], 'nothing is clipped above yet: no ▲ row, and no blank one standing in for it');
         $this->assertStringContainsString(Glyphs::SCROLL_DOWN, \end($rows), 'and the bottom says there is more');
@@ -382,17 +382,17 @@ final class SettingsNavWidgetTest extends TestCase
     {
         $widget = $this->widget($selected);
         $widget->setPluginEntries(['phpantom', 'mago', 'tempest', 'chroma', 'image-viewer', 'graph-viewer', 'local-history', 'git', 'symfony-lsp']);
-        $before = $this->navRows($widget, 22, rows: 22);
+        $before = $this->navRows($widget, width: 22, rows: 22);
 
         $widget->handleClick(21); // ▼
-        $after = $this->navRows($widget, 22, rows: 22);
+        $after = $this->navRows($widget, width: 22, rows: 22);
         $this->assertCount(1, $selected, 'the entry it revealed was selected, and fired');
         $this->assertStringContainsString(Glyphs::SCROLL_UP, $after[0], 'the window moved: the top is clipped now');
-        $this->assertSame(20, $this->selectedLine($widget, 22, rows: 22), 'and the revealed entry is the last one drawn');
+        $this->assertSame(20, $this->selectedLine($widget, width: 22, rows: 22), 'and the revealed entry is the last one drawn');
         $this->assertNotContains($after[20], $before, 'which was hidden before');
 
         $widget->handleClick(0); // ▲
-        $this->navRows($widget, 22, rows: 22);
+        $this->navRows($widget, width: 22, rows: 22);
         $this->assertSame('interface', $widget->selectedId(), 'the nearest entry above the window');
     }
 
@@ -405,7 +405,7 @@ final class SettingsNavWidgetTest extends TestCase
             $widget->handleInput("\x1b[B"); // to the last entry, dragging the window with it
         }
 
-        $rows = $this->navRows($widget, 22, rows: 22);
+        $rows = $this->navRows($widget, width: 22, rows: 22);
 
         $this->assertStringContainsString(Glyphs::SCROLL_UP, $rows[0]);
         $this->assertSame('', \trim((string) \end($rows)), 'nothing below the last entry, so the bottom edge is blank');
@@ -420,9 +420,9 @@ final class SettingsNavWidgetTest extends TestCase
     public function testAListThatFitsToTheRowExactlyIsNotAnOverflow(): void
     {
         $widget = $this->widget();
-        $count = \count(Probe::get($widget, 'entries'));
+        $count = \count(Probe::get($widget, property: 'entries'));
 
-        $rows = $this->navRows($widget, 22, rows: $count);
+        $rows = $this->navRows($widget, width: 22, rows: $count);
 
         $this->assertStringNotContainsString(Glyphs::SCROLL_DOWN, \implode('', $rows));
         $this->assertSame('   General', $rows[0]);
@@ -432,7 +432,7 @@ final class SettingsNavWidgetTest extends TestCase
     private function lastEntryLabel(SettingsNavWidget $widget): string
     {
         /** @var list<array{id: string|null, label: string, kind: mixed}> $entries */
-        $entries = Probe::get($widget, 'entries');
+        $entries = Probe::get($widget, property: 'entries');
 
         return '   '.$entries[\count($entries) - 1]['label'];
     }
@@ -442,7 +442,7 @@ final class SettingsNavWidgetTest extends TestCase
     {
         $widget = $this->widget();
 
-        $rows = $this->navRows($widget, 22, rows: 40);
+        $rows = $this->navRows($widget, width: 22, rows: 40);
 
         $this->assertSame('   General', $rows[0], 'the first entry is on the first row');
         $this->assertStringNotContainsString(Glyphs::SCROLL_DOWN, \implode('', $rows));
@@ -569,9 +569,9 @@ final class SettingsNavWidgetTest extends TestCase
 
         $widget->handleClick(5); // the last row of a six-row pane: the ▼ itself
 
-        $rows = $this->navRows($widget, 24, rows: 6);
+        $rows = $this->navRows($widget, width: 24, rows: 6);
         $this->assertSame('plugins', $widget->selectedId(), 'the entry just past the window');
-        $this->assertSame(4, $this->selectedLine($widget, 24, rows: 6), 'drawn: the window followed it');
+        $this->assertSame(4, $this->selectedLine($widget, width: 24, rows: 6), 'drawn: the window followed it');
         $this->assertStringContainsString('Plugins', $rows[4]);
     }
 
@@ -627,15 +627,15 @@ final class SettingsNavWidgetTest extends TestCase
     {
         $widget = $this->navOnScreen(40, $selected);
 
-        $rows = $this->navRows($widget, 20, rows: 60);
+        $rows = $this->navRows($widget, width: 20, rows: 60);
 
         $this->assertSame(
             ['   General', \str_repeat('▀', times: 20), '   Interface', ''],
             \array_slice($rows, offset: 0, length: 4),
             'a transparent gap between rows, not a drawn line — but for the half of the selection under General (its upper half is the frame\'s, in the rule above)',
         );
-        $this->assertSame('    Dotenv', \rtrim($rows[2 * (\count(Probe::get($widget, 'entries')) - 1)]), 'the last row');
-        $this->assertSame('', $rows[(2 * \count(Probe::get($widget, 'entries'))) - 1], 'and nothing after it');
+        $this->assertSame('    Dotenv', \rtrim($rows[2 * (\count(Probe::get($widget, property: 'entries')) - 1)]), 'the last row');
+        $this->assertSame('', $rows[(2 * \count(Probe::get($widget, property: 'entries'))) - 1], 'and nothing after it');
 
         $widget->handleClick(1);
         $this->assertSame([], $selected, 'a gap is no row');
@@ -670,7 +670,7 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->render(new RenderContext(20, 30));
         $this->assertTrue($widget->hoverRow(1));
 
-        $drawn = \implode('', $this->navRows($widget, 20, rows: 30));
+        $drawn = \implode('', $this->navRows($widget, width: 20, rows: 30));
 
         $this->assertStringNotContainsString(Glyphs::HALF_UPPER, $drawn);
         $this->assertStringNotContainsString(Glyphs::HALF_LOWER, $drawn);
@@ -687,7 +687,7 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->render(new RenderContext(20, 60));
         $this->assertTrue($widget->hoverRow(4));
 
-        $rows = $this->navRows($widget, 20, rows: 60);
+        $rows = $this->navRows($widget, width: 20, rows: 60);
 
         $this->assertSame(\str_repeat('▀', times: 20), $rows[1], 'under the selection');
         $this->assertSame(['', ''], [$rows[3], $rows[5]], 'an underline has no shade to reach with');
@@ -697,7 +697,7 @@ final class SettingsNavWidgetTest extends TestCase
     {
         $widget = $this->navOnScreen(24);
 
-        $this->assertSame(['   General', '   Interface'], \array_slice($this->navRows($widget, 20, rows: 30), offset: 0, length: 2));
+        $this->assertSame(['   General', '   Interface'], \array_slice($this->navRows($widget, width: 20, rows: 30), offset: 0, length: 2));
     }
 
     /** Each row costs two lines with its rule, so the window counts rows, not lines. */
@@ -706,10 +706,10 @@ final class SettingsNavWidgetTest extends TestCase
         $widget = $this->navOnScreen(40);
         $widget->setActive('lang:twig');
 
-        $rows = $this->navRows($widget, 20, rows: 12);
+        $rows = $this->navRows($widget, width: 20, rows: 12);
 
         $this->assertStringContainsString(Glyphs::SCROLL_UP, $rows[0]);
-        $this->assertSame('    Twig', $rows[(int) $this->selectedLine($widget, 20, rows: 12)], 'the selection is drawn');
+        $this->assertSame('    Twig', $rows[(int) $this->selectedLine($widget, width: 20, rows: 12)], 'the selection is drawn');
         $this->assertCount(12, $rows);
         $this->assertStringContainsString(Glyphs::SCROLL_DOWN, \end($rows), 'Dotenv is still below');
     }
@@ -787,7 +787,7 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->setActive('lang:css');
 
         $this->assertSame('lang:css', $widget->selectedId());
-        $this->assertSame('    CSS', $this->navRows($widget, 24, rows: 30)[(int) $this->selectedLine($widget, 24, rows: 30)]);
+        $this->assertSame('    CSS', $this->navRows($widget, width: 24, rows: 30)[(int) $this->selectedLine($widget, width: 24, rows: 30)]);
     }
 
     public function testATrailNamesThePageAndWhereItLeads(): void
@@ -842,13 +842,13 @@ final class SettingsNavWidgetTest extends TestCase
     public function testARuledListOverflowsExactlyWhenItsLinesDoNotFit(): void
     {
         $widget = $this->navOnScreen(40);
-        $lines = (2 * \count(Probe::get($widget, 'entries'))) - 1;
+        $lines = (2 * \count(Probe::get($widget, property: 'entries'))) - 1;
 
-        $fits = $this->navRows($widget, 20, rows: $lines);
+        $fits = $this->navRows($widget, width: 20, rows: $lines);
         $this->assertStringNotContainsString(Glyphs::SCROLL_DOWN, \implode('', $fits));
         $this->assertSame('    Dotenv', \end($fits));
 
-        $over = $this->navRows($widget, 20, rows: $lines - 1);
+        $over = $this->navRows($widget, width: 20, rows: $lines - 1);
         $this->assertStringContainsString(Glyphs::SCROLL_DOWN, (string) \end($over));
     }
 
@@ -858,10 +858,10 @@ final class SettingsNavWidgetTest extends TestCase
         $widget = $this->navOnScreen(40);
         $widget->setActive('lang:twig');
 
-        $rows = $this->navRows($widget, 20, rows: 12);
+        $rows = $this->navRows($widget, width: 20, rows: 12);
 
         $this->assertSame('    Twig', $rows[9], 'the selection, the fifth row in the window');
-        $this->assertSame(9, $this->selectedLine($widget, 20, rows: 12));
+        $this->assertSame(9, $this->selectedLine($widget, width: 20, rows: 12));
         $this->assertSame('    SCSS', $rows[1], 'the first');
         $this->assertSame(\str_repeat('▀', times: 20), $rows[10], 'the gap under it carries the bottom half of its shade');
         $this->assertSame(\str_repeat('▄', times: 20), $rows[8], 'and the gap over it the top half');

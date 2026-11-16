@@ -114,7 +114,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertNull($modal->layout([0, 0, 24, 100], CaretVisibility::Shown, Density::Compact), 'closed → no layout');
 
         $modal->open('Find in Files');
-        $modal->setScopes(['Whole Project', 'Directory'], 0);
+        $modal->setScopes(['Whole Project', 'Directory'], index: 0);
         $modal->setOptions(['regex' => false, 'case' => true, 'word' => false, 'preserve' => false, 'tokens' => 'any']);
         $modal->setPreview($this->results());
 
@@ -301,7 +301,7 @@ final class FindInFilesModalTest extends TestCase
             },
         ));
         $modal->open('Find in Files');
-        $modal->setScopes(['Whole Project', 'Directory', 'Current File'], 0);
+        $modal->setScopes(['Whole Project', 'Directory', 'Current File'], index: 0);
 
         $modal->handleInput("\x1bs", $this->kb); // alt+s with no list to show → steps to scope 1
         $modal->handleInput("\x1br", $this->kb); // alt+r regex
@@ -382,9 +382,9 @@ final class FindInFilesModalTest extends TestCase
     public function testTheOptionTagsExplainThemselves(): void
     {
         $modal = $this->modal();
-        $this->assertNull($modal->tooltipAt(0, 0), 'closed: nothing');
+        $this->assertNull($modal->tooltipAt(0, col: 0), 'closed: nothing');
         $modal->open('Find in Files');
-        $this->assertNull($modal->tooltipAt(0, 0), 'no box yet');
+        $this->assertNull($modal->tooltipAt(0, col: 0), 'no box yet');
         $modal->setOptions(['regex' => false, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'in']);
         $this->compose($modal);
         $box = $modal->lastBox();
@@ -443,12 +443,12 @@ final class FindInFilesModalTest extends TestCase
         $modal = $this->modal();
 
         // Mouse on a closed modal is a no-op.
-        $this->assertFalse($modal->clickAt(0, 0));
-        $this->assertFalse($modal->hoverAt(0, 0));
+        $this->assertFalse($modal->clickAt(0, relCol: 0));
+        $this->assertFalse($modal->hoverAt(0, relCol: 0));
 
         $modal->open('Find in Files');
         $this->assertTrue($modal->isOpen());
-        $this->assertFalse($modal->hoverAt(0, 0), 'hover before the first composite (no box yet)');
+        $this->assertFalse($modal->hoverAt(0, relCol: 0), 'hover before the first composite (no box yet)');
         $modal->setMaskValue('*.php');
         $this->assertMatchesRegularExpression('/Mask +│ \*\.php/u', $this->screen($modal));
 
@@ -633,7 +633,7 @@ final class FindInFilesModalTest extends TestCase
         $box = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $box);
 
-        $this->assertFalse($modal->continueDragTo(0, 0, release: false), 'nothing armed yet');
+        $this->assertFalse($modal->continueDragTo(0, relCol: 0, release: false), 'nothing armed yet');
 
         // Press the bottom-right corner, drag right and down, release.
         $jumped = null;
@@ -658,7 +658,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertInstanceOf(ModalBox::class, $floor);
         $this->assertSame(48 + 4, $floor->width, 'inner width floored at 48 (+ chrome)');
         $this->assertSame(1, $floor->count, 'the preview floor');
-        $this->assertFalse($modal->continueDragTo(0, 0, release: false), 'the release disarmed the resize');
+        $this->assertFalse($modal->continueDragTo(0, relCol: 0, release: false), 'the release disarmed the resize');
 
         // A fresh open re-derives the size — overrides are session-only.
         $modal->open('Find in Files');
@@ -695,7 +695,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertInstanceOf(ModalBox::class, $pinned);
         $this->assertSame(0, $pinned->startRow, 'clamped to the pane top');
         $this->assertSame(0, $pinned->col, 'clamped to the pane left edge');
-        $this->assertFalse($modal->continueDragTo(5, 5, release: false), 'the release disarmed the move');
+        $this->assertFalse($modal->continueDragTo(5, relCol: 5, release: false), 'the release disarmed the move');
 
         // A fresh open recenters — the position is session-only.
         $modal->open('Find in Files');
@@ -716,11 +716,11 @@ final class FindInFilesModalTest extends TestCase
 
         $modal->clickAt($box->startRow + $box->rows - 1, $box->col + $box->width - 1); // arm the resize
         $modal->cancelDrag();
-        $this->assertFalse($modal->continueDragTo(10, 10, release: false), 'the resize was disarmed');
+        $this->assertFalse($modal->continueDragTo(10, relCol: 10, release: false), 'the resize was disarmed');
 
         $modal->clickAt($box->startRow, $box->col + 2); // arm a move
         $modal->cancelDrag();
-        $this->assertFalse($modal->continueDragTo(10, 10, release: false), 'the move was disarmed');
+        $this->assertFalse($modal->continueDragTo(10, relCol: 10, release: false), 'the move was disarmed');
     }
 
     public function testHoveringTheResizeCornerHeaviesIt(): void
@@ -788,7 +788,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertTrue($closed);
         // The ✖ press must not ALSO fall through into the title-bar-drag
         // press on the same row: nothing should be armed afterward.
-        $this->assertFalse($modal->continueDragTo(10, 10, release: false), 'the ✖ click armed no drag');
+        $this->assertFalse($modal->continueDragTo(10, relCol: 10, release: false), 'the ✖ click armed no drag');
     }
 
     public function testMouseClickFocusesFieldRows(): void
@@ -967,15 +967,15 @@ final class FindInFilesModalTest extends TestCase
         $modal->setPreview(self::fourteenHits());
         $modal->scrollPreview(12);
         $this->compose($modal); // windowStart only updates inside layout()
-        $this->assertGreaterThan(0, Probe::get($modal, 'windowStart'), 'sanity: windowStart genuinely moved before reopening');
+        $this->assertGreaterThan(0, Probe::get($modal, property: 'windowStart'), 'sanity: windowStart genuinely moved before reopening');
 
         $modal->open('Find in Files');
 
         // Read BEFORE any further layout(): windowStart's early-return (when
         // the (now-empty) list already fits) would otherwise recompute it to
         // 0 regardless, masking open()'s own reset.
-        $this->assertSame(0, Probe::get($modal, 'selected'), 'selection reset to 0, not -1');
-        $this->assertSame(0, Probe::get($modal, 'windowStart'), 'window reset to 0, not -1');
+        $this->assertSame(0, Probe::get($modal, property: 'selected'), 'selection reset to 0, not -1');
+        $this->assertSame(0, Probe::get($modal, property: 'windowStart'), 'window reset to 0, not -1');
 
         $screen = $this->screen($modal);
         $this->assertStringNotContainsString('Find: f', $screen, 'the query cleared');
@@ -992,7 +992,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->open('Find in Files');
         $this->assertSame(++$expected, $this->invalidateCount, 'open()');
 
-        $modal->setScopes(['Whole Project', 'Directory'], 0);
+        $modal->setScopes(['Whole Project', 'Directory'], index: 0);
         $this->assertSame(++$expected, $this->invalidateCount, 'setScopes()');
 
         $modal->setOptions(['regex' => true, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'any']);
@@ -1085,12 +1085,12 @@ final class FindInFilesModalTest extends TestCase
         $modal = $this->withFourteenHits();
         $modal->scrollPreview(12);
         $this->compose($modal); // windowStart only updates inside layout()
-        $this->assertGreaterThan(0, Probe::get($modal, 'windowStart'), 'sanity: windowStart genuinely moved before the reset');
+        $this->assertGreaterThan(0, Probe::get($modal, property: 'windowStart'), 'sanity: windowStart genuinely moved before the reset');
 
         $modal->setPreview([]);
 
-        $this->assertSame(0, Probe::get($modal, 'selected'), 'selected reset to 0, not -1');
-        $this->assertSame(0, Probe::get($modal, 'windowStart'), 'windowStart reset to 0, not -1');
+        $this->assertSame(0, Probe::get($modal, property: 'selected'), 'selected reset to 0, not -1');
+        $this->assertSame(0, Probe::get($modal, property: 'windowStart'), 'windowStart reset to 0, not -1');
     }
 
     public function testCycleScopeWithASingleLabelStaysAtZero(): void
@@ -1159,13 +1159,13 @@ final class FindInFilesModalTest extends TestCase
         $modal = $this->withFourteenHits(); // selected starts at display index 1
 
         $modal->scrollPreview(3);
-        $this->assertSame(4, Probe::get($modal, 'selected'), 'moved exactly 3 rows down, not 4');
+        $this->assertSame(4, Probe::get($modal, property: 'selected'), 'moved exactly 3 rows down, not 4');
 
         $modal->scrollPreview(1);
-        $this->assertSame(5, Probe::get($modal, 'selected'), 'moved exactly 1 row down');
+        $this->assertSame(5, Probe::get($modal, property: 'selected'), 'moved exactly 1 row down');
 
         $modal->scrollPreview(-1);
-        $this->assertSame(4, Probe::get($modal, 'selected'), 'moved exactly 1 row up');
+        $this->assertSame(4, Probe::get($modal, property: 'selected'), 'moved exactly 1 row up');
     }
 
     public function testJumpSelectedWithNoRowIsANoOpEvenWithAJumpCallbackWired(): void
@@ -1324,7 +1324,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertInstanceOf(ModalBox::class, $box);
 
         $modal->clickAt($box->startRow, $box->col + 2);
-        $modal->continueDragTo(1000, 1000, release: true);
+        $modal->continueDragTo(1000, relCol: 1000, release: true);
         $this->screen($modal);
         $pinned = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $pinned);
@@ -1510,8 +1510,8 @@ final class FindInFilesModalTest extends TestCase
     public function testOptionTagStartsUnhoveredNotHovered(): void
     {
         $styles = Styles::dark();
-        $offRegex = FieldBox::toggle('.*', OptionTagState::of(on: false, hovered: false), 1, $styles)[0];
-        $hoveredRegex = FieldBox::toggle('.*', OptionTagState::of(on: false, hovered: true), 1, $styles)[0];
+        $offRegex = FieldBox::toggle('.*', OptionTagState::of(on: false, hovered: false), rows: 1, styles: $styles)[0];
+        $hoveredRegex = FieldBox::toggle('.*', OptionTagState::of(on: false, hovered: true), rows: 1, styles: $styles)[0];
 
         $modal = $this->modal();
         $modal->open('Find in Files');
@@ -1592,7 +1592,7 @@ final class FindInFilesModalTest extends TestCase
 
         // No box laid out yet at all: the null-box branch must still close, not crash.
         $modal->open('Find in Files');
-        $this->assertTrue($modal->clickAt(0, 0));
+        $this->assertTrue($modal->clickAt(0, relCol: 0));
         $this->assertTrue($closed);
 
         $closed = false;
@@ -1649,7 +1649,7 @@ final class FindInFilesModalTest extends TestCase
 
         $modal->hoverAt($box->windowTop(), $box->col + 3); // i = 0, exactly the top edge
 
-        $this->assertSame($box->windowStart, Probe::get($modal, 'hoveredRow'), 'the top-most visible row (i=0) resolves to a real index, not null');
+        $this->assertSame($box->windowStart, Probe::get($modal, property: 'hoveredRow'), 'the top-most visible row (i=0) resolves to a real index, not null');
     }
 
     public function testWindowStartTernaryAndMinMaxTermsAreExact(): void
@@ -1669,8 +1669,8 @@ final class FindInFilesModalTest extends TestCase
         $modalA = $this->modal();
         $modalA->open('Find in Files');
         $modalA->setPreview($results);
-        Probe::set($modalA, 'selected', 7);
-        Probe::set($modalA, 'windowStart', 10);
+        Probe::set($modalA, property: 'selected', value: 7);
+        Probe::set($modalA, property: 'windowStart', value: 10);
         $modalA->layout([0, 0, 24, 100], CaretVisibility::Shown, Density::Compact);
         $this->assertSame(6, $modalA->lastBox()?->windowStart, 'true branch: top = selected - 1 = 6');
 
@@ -1680,8 +1680,8 @@ final class FindInFilesModalTest extends TestCase
         $modalB = $this->modal();
         $modalB->open('Find in Files');
         $modalB->setPreview($results);
-        Probe::set($modalB, 'selected', 20);
-        Probe::set($modalB, 'windowStart', 999);
+        Probe::set($modalB, property: 'selected', value: 20);
+        Probe::set($modalB, property: 'windowStart', value: 999);
         $modalB->layout([0, 0, 24, 100], CaretVisibility::Shown, Density::Compact);
         $this->assertSame(12, $modalB->lastBox()?->windowStart, 'count(22) - maxPreview(10) = 12 wins the min()');
 
@@ -1690,8 +1690,8 @@ final class FindInFilesModalTest extends TestCase
         $modalC = $this->modal();
         $modalC->open('Find in Files');
         $modalC->setPreview($results);
-        Probe::set($modalC, 'selected', 8);
-        Probe::set($modalC, 'windowStart', 15);
+        Probe::set($modalC, property: 'selected', value: 8);
+        Probe::set($modalC, property: 'windowStart', value: 15);
         $modalC->layout([0, 0, 24, 100], CaretVisibility::Shown, Density::Compact);
         $this->assertSame(8, $modalC->lastBox()?->windowStart, 'false branch: top = selected - 0 = 8 wins the min()');
     }
@@ -1714,7 +1714,7 @@ final class FindInFilesModalTest extends TestCase
                 $menus[] = [$labels, $current, $row, $col, $above, $width];
             },
         ));
-        $modal->setScopes(['Whole Project', 'Directory'], 0);
+        $modal->setScopes(['Whole Project', 'Directory'], index: 0);
         $modal->open('Find in Files');
         $lines = \array_map(AnsiUtils::stripAnsiCodes(...), $this->compose($modal));
         $box = $modal->lastBox();
@@ -1754,7 +1754,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->setCallbacks(new FindModalCallbacks(onScopeChosen: static function (int $i) use (&$chosen): void {
             $chosen[] = $i;
         }));
-        $modal->setScopes(['Whole Project', 'Directory'], 1);
+        $modal->setScopes(['Whole Project', 'Directory'], index: 1);
         $modal->open('Find in Files');
         $this->compose($modal);
         $box = $modal->lastBox();
@@ -1774,14 +1774,14 @@ final class FindInFilesModalTest extends TestCase
         $modal = $this->modal();
         $modal->open('Find in Files');
         $modal->handleInput("\x1b[200~one\ntwo\n\x1b[201~", $this->kb);
-        $this->assertSame("one\ntwo", Probe::get($modal, 'query')->value());
+        $this->assertSame("one\ntwo", Probe::get($modal, property: 'query')->value());
 
         $modal->handleInput("\t", $this->kb); // query → replace
         $modal->handleInput("\x1b[200~uno\ndos\x1b[201~", $this->kb);
-        $this->assertSame("uno\ndos", Probe::get($modal, 'replace')->value());
+        $this->assertSame("uno\ndos", Probe::get($modal, property: 'replace')->value());
 
         $modal->handleInput("\t", $this->kb); // replace → mask
         $modal->handleInput("\x1b[200~*.php\n*.twig\x1b[201~", $this->kb);
-        $this->assertSame('*.php *.twig', Probe::get($modal, 'mask')->value());
+        $this->assertSame('*.php *.twig', Probe::get($modal, property: 'mask')->value());
     }
 }

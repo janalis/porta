@@ -65,7 +65,7 @@ final class MermaidCliRendererTest extends TestCase
         $project = new TempProject();
         $engine = new MermaidEngine(self::support('fake-mmdc'));
         $renderer = new MermaidCliRenderer($engine, new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc'), nodePath: self::support('fake-mermaid-browser')));
-        [$picture, $error] = $this->render($renderer, "flowchart LR\nA[Alpha]\nB[Beta]\nA-->B", dpi: 192);
+        [$picture, $error] = $this->render($renderer, source: "flowchart LR\nA[Alpha]\nB[Beta]\nA-->B", dpi: 192);
         $this->assertNull($error);
         $this->assertSame([200, 100], PngDimensions::read($picture->png));
         $this->assertSame([100.0, 50.0], [$picture->scene->graph->width, $picture->scene->graph->height]);
@@ -79,7 +79,7 @@ final class MermaidCliRendererTest extends TestCase
         $this->assertFileDoesNotExist($options['--output']);
         $this->assertDirectoryDoesNotExist(\dirname($options['--output']));
         \unlink($this->fakeReports->path('mermaid-request.json'));
-        [$refined, $error] = $this->render($renderer, "flowchart LR\nA[Alpha]\nB[Beta]\nA-->B", dpi: 288);
+        [$refined, $error] = $this->render($renderer, source: "flowchart LR\nA[Alpha]\nB[Beta]\nA-->B", dpi: 288);
         $this->assertNull($error);
         $this->assertSame([300, 150], PngDimensions::read($refined->png));
         $this->assertSame($picture->elements[0]->polygon, $refined->elements[0]->polygon);
@@ -95,7 +95,7 @@ final class MermaidCliRendererTest extends TestCase
         $engine = new MermaidEngine(self::support('fake-mmdc'));
         $renderer = new MermaidCliRenderer($engine, new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc'), nodePath: self::support('fake-mermaid-browser')));
 
-        [$picture, $error] = $this->render($renderer, "flowchart LR\nA[Alpha]", dpi: 0);
+        [$picture, $error] = $this->render($renderer, source: "flowchart LR\nA[Alpha]", dpi: 0);
 
         $this->assertNull($error);
         $this->assertSame([1, 1], PngDimensions::read($picture->png), 'a hundred by fifty, at a 96th');
@@ -111,21 +111,21 @@ final class MermaidCliRendererTest extends TestCase
             return $tool;
         });
         $renderer = new MermaidCliRenderer($engine, new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc'), nodePath: self::support('fake-mermaid-browser')));
-        [$picture, $error] = $this->render($renderer, 'flowchart; A');
+        [$picture, $error] = $this->render($renderer, source: 'flowchart; A');
         $this->assertNull($error);
         $this->assertInstanceOf(MermaidScene::class, $picture->scene);
         \unlink($this->fakeReports->path('mermaid-request.json'));
         $tool = \dirname($tool).'/../Support/fake-mmdc';
-        $this->render($renderer, 'flowchart; A');
+        $this->render($renderer, source: 'flowchart; A');
         $this->assertFileExists($this->fakeReports->path('mermaid-request.json'), 'a live CLI path change cannot reuse the previous tool snapshot');
         \unlink($this->fakeReports->path('mermaid-request.json'));
-        $this->render($renderer, 'flowchart; B');
+        $this->render($renderer, source: 'flowchart; B');
         $this->assertFileExists($this->fakeReports->path('mermaid-request.json'), 'changed source cannot reuse a previous diagram snapshot');
 
         foreach ([96, 192] as $dpi) {
             // @noinspection DisconnectedForeachInstructionInspection -- Remove the preceding render's record each time to prove the next render invokes the CLI.
             \unlink($this->fakeReports->path('mermaid-request.json'));
-            [$picture, $error] = $this->render($renderer, 'flowchart; A[oversized-svg]', $dpi);
+            [$picture, $error] = $this->render($renderer, source: 'flowchart; A[oversized-svg]', dpi: $dpi);
             $this->assertNull($error);
             $this->assertNull($picture->scene);
             $this->assertFileExists($this->fakeReports->path('mermaid-request.json'), 'large SVGs are displayed without retaining a cached copy or hit map');
@@ -163,7 +163,7 @@ final class MermaidCliRendererTest extends TestCase
             new MermaidEngine(self::support('fake-mmdc')),
             new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc'), nodePath: self::support($converter)),
         );
-        [$picture, $error] = $this->render($renderer, 'flowchart; A');
+        [$picture, $error] = $this->render($renderer, source: 'flowchart; A');
         $this->assertNull($error);
         $this->assertSame([120, 80], PngDimensions::read($picture->png));
         $this->assertNull($picture->scene);
@@ -185,16 +185,16 @@ final class MermaidCliRendererTest extends TestCase
         \putenv('PATH='.$project->path('bin'));
         $engine = new MermaidEngine(self::support('fake-mmdc'));
         $renderer = new MermaidCliRenderer($engine, new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc')));
-        [$picture, $error] = $this->render($renderer, 'flowchart; A');
+        [$picture, $error] = $this->render($renderer, source: 'flowchart; A');
         $this->assertNull($error);
         $this->assertSame([120, 80], PngDimensions::read($picture->png));
         $this->assertNull($picture->scene);
         $renderer->cancel();
         $renderer = new MermaidCliRenderer($engine, new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc'), nodePath: self::support('fake-mermaid-browser')));
-        [$picture, $error] = $this->render($renderer, 'broken source');
+        [$picture, $error] = $this->render($renderer, source: 'broken source');
         $this->assertNull($picture);
         $this->assertStringContainsString('Mermaid parse error', $error);
-        [$picture, $error] = $this->render($renderer, 'empty-output');
+        [$picture, $error] = $this->render($renderer, source: 'empty-output');
         $this->assertNull($picture);
         $this->assertSame('mmdc produced no SVG', $error);
         $renderer->cancel();
@@ -209,7 +209,7 @@ final class MermaidCliRendererTest extends TestCase
         $widget = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'), scheduler: $scheduler, mermaid: $engine, cli: $cli);
         $handler = new RecordingViewerTabHandler();
         $widget->setHandler($handler);
-        $widget->show('/diagram.mmd', "flowchart LR\nA[Alpha]\nB[Beta]\nA-->B");
+        $widget->show('/diagram.mmd', payload: "flowchart LR\nA[Alpha]\nB[Beta]\nA-->B");
         $widget->render(new RenderContext(200, 60));
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
@@ -217,26 +217,26 @@ final class MermaidCliRendererTest extends TestCase
         $this->await(static fn (): bool => [] !== $widget->nodeChoices(), what: 'the mapped CLI picture');
         $widget->render(new RenderContext(200, 60));
         $this->assertSame(['Alpha', 'Beta'], \array_column($widget->nodeChoices(), 'label'));
-        $this->assertTrue(Probe::get($widget, 'nativeBitmap'));
-        $scene = Probe::get($widget, 'nativeScene');
+        $this->assertTrue(Probe::get($widget, property: 'nativeBitmap'));
+        $scene = Probe::get($widget, property: 'nativeScene');
         $node = $scene->graph->nodes[\array_key_first($scene->elements)];
-        $grid = new GraphCellGrid(200, 60, Probe::get($widget, 'view'), null);
+        $grid = new GraphCellGrid(200, 60, Probe::get($widget, property: 'view'), null);
         $handler->events = [];
         $widget->selectAt($grid->rowOf($node->y), $grid->colOf($node->x));
         $this->assertSame(['view', 'reveal:1:0'], $handler->events);
-        $previousBitmap = Probe::get($widget, 'bitmap');
+        $previousBitmap = Probe::get($widget, property: 'bitmap');
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
-        $this->await(static fn (): bool => $previousBitmap !== Probe::get($widget, 'bitmap'), what: 'the refined mapped picture');
-        $this->assertSame($node->id, Probe::get($widget, 'selected'), 'resolution-only refinement keeps semantic selection');
+        $this->await(static fn (): bool => $previousBitmap !== Probe::get($widget, property: 'bitmap'), what: 'the refined mapped picture');
+        $this->assertSame($node->id, Probe::get($widget, property: 'selected'), 'resolution-only refinement keeps semantic selection');
 
         $widget->setRenderMode('cells');
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
-        $this->assertFalse(Probe::get($widget, 'nativeBitmap'));
-        $this->assertNotSame($scene, Probe::get($widget, 'nativeScene'));
+        $this->assertFalse(Probe::get($widget, property: 'nativeBitmap'));
+        $this->assertNotSame($scene, Probe::get($widget, property: 'nativeScene'));
         $this->assertSame(['Alpha', 'Beta'], \array_column($widget->nodeChoices(), 'label'));
         $widget->setRenderMode('bitmap');
         while ([] !== $scheduler->scheduled) {

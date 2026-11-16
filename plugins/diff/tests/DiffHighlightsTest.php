@@ -18,7 +18,7 @@ final class DiffHighlightsTest extends TestCase
 
     public function testTheContextAndAddedLinesOfEveryHunkAreColouredAndKeyed(): void
     {
-        $out = new DiffHighlights()->of(DiffDocument::parse(self::RAW), 'a.php');
+        $out = new DiffHighlights()->of(DiffDocument::parse(self::RAW), path: 'a.php');
 
         // The deletion (0:1) and the marker (1:1) stay plain: they are not keyed.
         $this->assertSame(['0:0', '0:2', '1:0'], \array_keys($out));
@@ -31,21 +31,21 @@ final class DiffHighlightsTest extends TestCase
         $highlights = new DiffHighlights();
         $document = DiffDocument::parse(self::RAW);
 
-        $this->assertNotSame($highlights->of($document, 'a.php'), $highlights->of($document, 'a.txt'));
+        $this->assertNotSame($highlights->of($document, path: 'a.php'), $highlights->of($document, path: 'a.txt'));
     }
 
     public function testItColoursWithTheThemeItIsGivenAndFollowsASwitch(): void
     {
         $document = DiffDocument::parse(self::RAW);
-        $light = new DiffHighlights(new LightTerminalTheme())->of($document, 'a.php');
+        $light = new DiffHighlights(new LightTerminalTheme())->of($document, path: 'a.php');
         $theme = new SwitchableTerminalTheme(new DarkTerminalTheme());
         $highlights = new DiffHighlights($theme);
-        $dark = $highlights->of($document, 'a.php');
+        $dark = $highlights->of($document, path: 'a.php');
         $this->assertNotSame($light, $dark, 'the given theme, not the default');
 
         $theme->switchTo(new LightTerminalTheme());
         $highlights->refreshTheme();
 
-        $this->assertSame($light, $highlights->of($document, 'a.php'));
+        $this->assertSame($light, $highlights->of($document, path: 'a.php'));
     }
 }

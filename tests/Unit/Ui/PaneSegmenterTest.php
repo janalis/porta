@@ -41,7 +41,7 @@ final class PaneSegmenterTest extends TestCase
             ['rect' => new WidgetRect(row: 0, col: 10, columns: 10, rows: 5), 'ltr' => true], // code
         ];
 
-        $runs = PaneSegmenter::runsForRow($leaves, 0, 20);
+        $runs = PaneSegmenter::runsForRow($leaves, row: 0, columns: 20);
 
         $this->assertRuns(
             $runs,
@@ -57,7 +57,7 @@ final class PaneSegmenterTest extends TestCase
             ['rect' => new WidgetRect(row: 0, col: 5, columns: 6, rows: 1), 'ltr' => false], // painted on top
         ];
 
-        $runs = PaneSegmenter::runsForRow($leaves, 0, 20);
+        $runs = PaneSegmenter::runsForRow($leaves, row: 0, columns: 20);
 
         $this->assertRuns(
             $runs,
@@ -73,7 +73,7 @@ final class PaneSegmenterTest extends TestCase
             ['rect' => new WidgetRect(row: 0, col: 4, columns: 4, rows: 1), 'ltr' => false],
         ];
 
-        $runs = PaneSegmenter::runsForRow($leaves, 0, 12);
+        $runs = PaneSegmenter::runsForRow($leaves, row: 0, columns: 12);
 
         $this->assertRuns(
             $runs,
@@ -94,11 +94,11 @@ final class PaneSegmenterTest extends TestCase
         ];
 
         $this->assertRuns(
-            PaneSegmenter::runsForRow($leaves, 0, 20),
+            PaneSegmenter::runsForRow($leaves, row: 0, columns: 20),
             ['start' => 0, 'width' => 20, 'ltr' => true],
         );
         $this->assertRuns(
-            PaneSegmenter::regionRunsForRow([new DropdownRegion(0, 5, 5, 2)], 0, 20),
+            PaneSegmenter::regionRunsForRow([new DropdownRegion(0, 5, 5, 2)], row: 0, columns: 20),
             ['start' => 5, 'width' => 5, 'ltr' => false],
         );
     }
@@ -112,10 +112,10 @@ final class PaneSegmenterTest extends TestCase
     {
         $region = new DropdownRegion(0, 3, 11, 3, ltr: true, firstRow: [3, 10], lastRow: [4, 10]);
 
-        $this->assertSame([['start' => 3, 'width' => 10, 'ltr' => true, 'box' => [3, 11]]], PaneSegmenter::regionRunsForRow([$region], 0, 20));
-        $this->assertSame([['start' => 3, 'width' => 11, 'ltr' => true]], PaneSegmenter::regionRunsForRow([$region], 1, 20), 'a body row is its box');
-        $this->assertSame([['start' => 4, 'width' => 10, 'ltr' => true, 'box' => [3, 11]]], PaneSegmenter::regionRunsForRow([$region], 2, 20));
-        $this->assertSame([['start' => 4, 'width' => 8, 'ltr' => true, 'box' => [3, 9]]], PaneSegmenter::regionRunsForRow([$region], 2, 12), 'both clipped to the screen');
+        $this->assertSame([['start' => 3, 'width' => 10, 'ltr' => true, 'box' => [3, 11]]], PaneSegmenter::regionRunsForRow([$region], row: 0, columns: 20));
+        $this->assertSame([['start' => 3, 'width' => 11, 'ltr' => true]], PaneSegmenter::regionRunsForRow([$region], row: 1, columns: 20), 'a body row is its box');
+        $this->assertSame([['start' => 4, 'width' => 10, 'ltr' => true, 'box' => [3, 11]]], PaneSegmenter::regionRunsForRow([$region], row: 2, columns: 20));
+        $this->assertSame([['start' => 4, 'width' => 8, 'ltr' => true, 'box' => [3, 9]]], PaneSegmenter::regionRunsForRow([$region], row: 2, columns: 12), 'both clipped to the screen');
     }
 
     public function testARowOutsideAPaneIsNotOwnedByIt(): void
@@ -126,7 +126,7 @@ final class PaneSegmenterTest extends TestCase
 
         // Row 0 is above the pane → the whole row is an uncovered verbatim run.
         $this->assertRuns(
-            PaneSegmenter::runsForRow($leaves, 0, 10),
+            PaneSegmenter::runsForRow($leaves, row: 0, columns: 10),
             ['start' => 0, 'width' => 10, 'ltr' => true],
         );
     }
@@ -140,10 +140,10 @@ final class PaneSegmenterTest extends TestCase
 
         // Row 0 is above the dropdown → nothing floats here, and the pane is whole.
         $this->assertRuns(
-            PaneSegmenter::runsForRow($leaves, 0, 10),
+            PaneSegmenter::runsForRow($leaves, row: 0, columns: 10),
             ['start' => 0, 'width' => 10, 'ltr' => false],
         );
-        $this->assertSame([], PaneSegmenter::regionRunsForRow($regions, 0, 10));
+        $this->assertSame([], PaneSegmenter::regionRunsForRow($regions, row: 0, columns: 10));
     }
 
     /**
@@ -178,7 +178,7 @@ final class PaneSegmenterTest extends TestCase
         ];
 
         $this->assertRuns(
-            PaneSegmenter::runsForRow($leaves, 1, 10),
+            PaneSegmenter::runsForRow($leaves, row: 1, columns: 10),
             ['start' => 0, 'width' => 10, 'ltr' => false],
         );
     }
@@ -193,7 +193,7 @@ final class PaneSegmenterTest extends TestCase
 
         // Nothing of the first is on screen; the walk goes on to the second.
         $this->assertRuns(
-            PaneSegmenter::regionRunsForRow($regions, 0, 12),
+            PaneSegmenter::regionRunsForRow($regions, row: 0, columns: 12),
             ['start' => 2, 'width' => 3, 'ltr' => false],
         );
     }
@@ -211,11 +211,11 @@ final class PaneSegmenterTest extends TestCase
         // The region that misses the row is skipped; the one that covers it is
         // still found, and the pane beneath both stays whole.
         $this->assertRuns(
-            PaneSegmenter::regionRunsForRow($regions, 0, 12),
+            PaneSegmenter::regionRunsForRow($regions, row: 0, columns: 12),
             ['start' => 4, 'width' => 4, 'ltr' => false],
         );
         $this->assertRuns(
-            PaneSegmenter::runsForRow($leaves, 0, 12),
+            PaneSegmenter::runsForRow($leaves, row: 0, columns: 12),
             ['start' => 0, 'width' => 12, 'ltr' => true],
         );
     }
@@ -291,7 +291,7 @@ final class PaneSegmenterTest extends TestCase
             }
         });
 
-        $byRow = $segmenter->segment($root, 6, 2);
+        $byRow = $segmenter->segment($root, columns: 6, rows: 2);
 
         $this->assertSame([['start' => 0, 'width' => 6, 'ltr' => true]], $byRow[0]);
         $this->assertSame([['start' => 0, 'width' => 6, 'ltr' => true]], $byRow[1]);
@@ -316,8 +316,8 @@ final class PaneSegmenterTest extends TestCase
             }
         });
 
-        $panes = $segmenter->segment($root, 6, 2);
-        $regions = $segmenter->segmentRegions(6, 2);
+        $panes = $segmenter->segment($root, columns: 6, rows: 2);
+        $regions = $segmenter->segmentRegions(6, rows: 2);
 
         $this->assertSame([['start' => 0, 'width' => 6, 'ltr' => true]], $panes[0], 'the pane spans the row, undisturbed');
         $this->assertSame([['start' => 2, 'width' => 3, 'ltr' => false]], $regions[0], 'the surface is its own layer');
@@ -352,7 +352,7 @@ final class PaneSegmenterTest extends TestCase
             {
                 return [];
             }
-        })->segment(Probe::get($tui, 'root'), 10, 2);
+        })->segment(Probe::get($tui, property: 'root'), columns: 10, rows: 2);
 
         $this->assertSame([['start' => 0, 'width' => 10, 'ltr' => false]], $runs[0], 'the visible pane owns the row; the hidden code pane claims nothing');
     }

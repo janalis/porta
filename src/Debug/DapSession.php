@@ -262,9 +262,9 @@ final class DapSession
         $this->requestList(
             'stackTrace',
             ['threadId' => $this->threadId ?? 1],
-            'stackFrames',
+            key: 'stackFrames',
             // @mago-expect lint:prefer-arrow-function -- the body carries the @var narrowing of the wire shape, which an arrow fn cannot hold
-            static function (array $frame): array {
+            mapRow: static function (array $frame): array {
                 /** @var array{id?: int, name?: string, line?: int, source?: array{path?: string}} $frame */
                 return [
                     'id' => $frame['id'] ?? 0,
@@ -273,7 +273,7 @@ final class DapSession
                     'line' => \max(0, ($frame['line'] ?? 1) - 1),
                 ];
             },
-            $deliver,
+            deliver: $deliver,
         );
     }
 
@@ -287,13 +287,13 @@ final class DapSession
         $this->requestList(
             'scopes',
             ['frameId' => $frameId],
-            'scopes',
+            key: 'scopes',
             // @mago-expect lint:prefer-arrow-function -- the body carries the @var narrowing of the wire shape, which an arrow fn cannot hold
-            static function (array $scope): array {
+            mapRow: static function (array $scope): array {
                 /** @var array{name?: string, variablesReference?: int} $scope */
                 return ['name' => $scope['name'] ?? '?', 'variablesReference' => $scope['variablesReference'] ?? 0];
             },
-            $deliver,
+            deliver: $deliver,
         );
     }
 
@@ -307,9 +307,9 @@ final class DapSession
         $this->requestList(
             'variables',
             ['variablesReference' => $reference],
-            'variables',
+            key: 'variables',
             // @mago-expect lint:prefer-arrow-function -- the body carries the @var narrowing of the wire shape, which an arrow fn cannot hold
-            static function (array $variable): array {
+            mapRow: static function (array $variable): array {
                 /** @var array{name?: string, value?: string, variablesReference?: int} $variable */
                 return [
                     'name' => $variable['name'] ?? '?',
@@ -317,7 +317,7 @@ final class DapSession
                     'variablesReference' => $variable['variablesReference'] ?? 0,
                 ];
             },
-            $deliver,
+            deliver: $deliver,
         );
     }
 

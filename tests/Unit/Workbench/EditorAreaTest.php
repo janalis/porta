@@ -52,7 +52,7 @@ final class EditorAreaTest extends TestCase
     {
         $this->assertSame($this->editor, $this->area->widget(), 'empty workspace: the editor');
 
-        $this->buffers->open('/tmp/a.php', "<?php\n");
+        $this->buffers->open('/tmp/a.php', content: "<?php\n");
         $this->assertSame($this->editor, $this->area->widget(), 'text buffer: the editor');
     }
 
@@ -60,13 +60,13 @@ final class EditorAreaTest extends TestCase
     {
         $gd = \imagecreatetruecolor(2, height: 2);
         \assert(false !== $gd, description: 'the truecolor image handle was created');
-        $this->buffers->openPane('/tmp/a.png', 'image', new ImageData($gd, 2, 2, 10));
+        $this->buffers->openPane('/tmp/a.png', paneId: 'image', payload: new ImageData($gd, 2, 2, 10));
         $this->assertSame($this->imageViewer, $this->area->widget(), 'image tab: the image viewer');
 
-        $this->buffers->openPane('/tmp/help.md', 'help', '# Hi');
+        $this->buffers->openPane('/tmp/help.md', paneId: 'help', payload: '# Hi');
         $this->assertSame($this->helpViewer, $this->area->widget(), 'help tab: the help viewer');
 
-        $this->buffers->openPane('/tmp/arch.dot', 'graph', 'digraph {}');
+        $this->buffers->openPane('/tmp/arch.dot', paneId: 'graph', payload: 'digraph {}');
         $this->assertSame($this->graphViewer, $this->area->widget(), 'graph tab: the graph viewer');
     }
 
@@ -97,17 +97,17 @@ final class EditorAreaTest extends TestCase
     public function testFocusRequestsARender(): void
     {
         $this->tui->add($this->editor);
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
 
         $this->area->focus();
 
-        $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'));
+        $this->assertTrue((bool) Probe::get($this->tui, property: 'renderRequested'));
     }
 
     /** A markdown text buffer previewed by the graph test pane, in $mode. */
     private function previewed(PreviewMode $mode): void
     {
-        $buffer = $this->buffers->open('/tmp/README.md', '# hi');
+        $buffer = $this->buffers->open('/tmp/README.md', content: '# hi');
         $buffer->previewId = 'graph';
         $buffer->previewMode = $mode;
     }
@@ -149,7 +149,7 @@ final class EditorAreaTest extends TestCase
 
     public function testAViewerTabIsReachedWhateverHasTheKeys(): void
     {
-        $this->buffers->openPane('/tmp/arch.dot', 'graph', 'digraph {}');
+        $this->buffers->openPane('/tmp/arch.dot', paneId: 'graph', payload: 'digraph {}');
 
         $this->assertSame($this->graphViewer, $this->area->entry());
         $this->assertSame($this->graphViewer, $this->area->visiblePane());

@@ -27,7 +27,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testAddCaretBelowAndTypeAtAll(): void
     {
         $editor = $this->editor("aaa\nbbb\nccc\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
 
         $editor->handleInput("\x1b[1;7B"); // ctrl+alt+down
         $editor->handleInput("\x1b[1;7B");
@@ -41,7 +41,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testMultiCaretEditIsAtomicUndo(): void
     {
         $editor = $this->editor("aaa\nbbb\nccc\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->handleInput("\x1b[1;7B");
         $editor->handleInput("\x1b[1;7B");
         $editor->handleInput('X');
@@ -53,7 +53,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testUndoRestoresTheMultipleCarets(): void
     {
         $editor = $this->editor("aaa\nbbb\nccc\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->handleInput("\x1b[1;7B"); // add caret below
         $editor->handleInput("\x1b[1;7B");
         $this->assertCount(2, EditorState::multiCaret($editor)->carets(), '3 carets active');
@@ -75,7 +75,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testTabInsertsAtEveryCaretNotBlockIndent(): void
     {
         $editor = $this->editor("aa\nbb\ncc\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->handleInput("\x1b[1;7B"); // add caret below
         $editor->handleInput("\x1b[1;7B");
         $this->assertCount(2, EditorState::multiCaret($editor)->carets());
@@ -87,7 +87,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testAddCaretAbove(): void
     {
         $editor = $this->editor("aaa\nbbb\nccc\n");
-        $editor->getDocument()->setCursor(2, 0);
+        $editor->getDocument()->setCursor(2, col: 0);
 
         $editor->handleInput("\x1b[1;7A"); // ctrl+alt+up
         $this->assertCount(1, EditorState::multiCaret($editor)->carets());
@@ -98,7 +98,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testAddCaretAtDocumentEdgeIsIgnored(): void
     {
         $editor = $this->editor("only\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->handleInput("\x1b[1;7A"); // nothing above
         $this->assertFalse(EditorState::multiCaret($editor)->hasMultiple());
     }
@@ -106,7 +106,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testAddNextOccurrence(): void
     {
         $editor = $this->editor("foo bar foo baz foo\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
 
         $editor->handleInput("\x1bj"); // alt+j
         $editor->handleInput("\x1bj");
@@ -116,7 +116,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testAddNextOccurrenceWithNoWordIsNoOp(): void
     {
         $editor = $this->editor("   \n");
-        $editor->getDocument()->setCursor(0, 1);
+        $editor->getDocument()->setCursor(0, col: 1);
         $editor->handleInput("\x1bj");
         $this->assertFalse(EditorState::multiCaret($editor)->hasMultiple());
     }
@@ -124,7 +124,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testSelectAllOccurrences(): void
     {
         $editor = $this->editor("xy = xy + xy\n");
-        $editor->getDocument()->setCursor(0, 0); // on first "xy"
+        $editor->getDocument()->setCursor(0, col: 0); // on first "xy"
 
         $editor->handleInput("\x1b[106;8u"); // ctrl+alt+shift+j (CSI-u)
         $this->assertCount(2, EditorState::multiCaret($editor)->carets(), 'three occurrences -> primary + 2 extras');
@@ -141,7 +141,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testTypingOnAtEveryCaretOfOneLineKeepsThemInStep(): void
     {
         $editor = $this->editor("xy = xy + xy\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->handleInput("\x1b[106;8u"); // ctrl+alt+shift+j: every occurrence
 
         foreach (['a', 'b', 'c'] as $key) {
@@ -155,7 +155,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testANewLineAtEveryCaretKeepsTheLowerCaretsOnTheirLines(): void
     {
         $editor = $this->editor("aXb\naXb\n");
-        $editor->getDocument()->setCursor(0, 2);
+        $editor->getDocument()->setCursor(0, col: 2);
         $editor->handleInput("\x1b[1;7B"); // second caret at (1,2)
 
         $editor->handleInput("\r");
@@ -167,7 +167,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testSelectAllOccurrencesWithNoWordIsNoOp(): void
     {
         $editor = $this->editor("   \n");
-        $editor->getDocument()->setCursor(0, 1);
+        $editor->getDocument()->setCursor(0, col: 1);
         $editor->handleInput("\x1b[106;8u");
         $this->assertFalse(EditorState::multiCaret($editor)->hasMultiple());
     }
@@ -176,14 +176,14 @@ final class CodeEditorMultiCaretTest extends TestCase
     {
         $editor = $this->editor("aaa\nbbb\nccc\nddd\n");
         $editor->render(new RenderContext(80, 10)); // establish the gutter width (7)
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->handleInput("\x1b[1;7B"); // extra caret on line 0, primary → line 1
         $editor->handleInput("\x1b[1;7B"); // extras: lines 0 and 1, primary → line 2
         $this->assertCount(2, EditorState::multiCaret($editor)->carets());
 
         // Alt+click the second extra caret (line 1). Toggling it iterates past the
         // line-0 extra (a non-match → skipped) before removing the line-1 one.
-        $editor->addOrRemoveCaretAt(1, 6); // relRow 1 → line 1, relCol 6 → col 0
+        $editor->addOrRemoveCaretAt(1, relCol: 6); // relRow 1 → line 1, relCol 6 → col 0
         $extras = EditorState::multiCaret($editor)->carets();
         $this->assertCount(1, $extras, 'the middle caret was removed, the line-0 one stays');
         $this->assertSame(0, $extras[0]->line, 'the surviving extra is the line-0 caret the loop skipped over');
@@ -192,7 +192,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testMovementMovesAllCaretsAndDedupes(): void
     {
         $editor = $this->editor("abc\nabc\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->handleInput("\x1b[1;7B"); // caret on line 1 too
         $editor->handleInput("\x1b[C"); // right: both carets move to col 1
 
@@ -203,7 +203,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testEscapeCollapsesToSingleCaret(): void
     {
         $editor = $this->editor("aaa\nbbb\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->handleInput("\x1b[1;7B");
         $this->assertTrue(EditorState::multiCaret($editor)->hasMultiple());
 
@@ -214,7 +214,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testStrayInputLeavesCaretsIntact(): void
     {
         $editor = $this->editor("word here\nword there\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->handleInput("\x1b[1;7B");
         $this->assertTrue(EditorState::multiCaret($editor)->hasMultiple());
 
@@ -231,7 +231,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testMultiCaretNewlineDeleteAndPaste(): void
     {
         $editor = $this->editor("ab\nab\n");
-        $editor->getDocument()->setCursor(0, 1);
+        $editor->getDocument()->setCursor(0, col: 1);
         $editor->handleInput("\x1b[1;7B"); // second caret at (1,1)
 
         $editor->handleInput("\x7f"); // backspace at both -> "b\nb"
@@ -245,33 +245,33 @@ final class CodeEditorMultiCaretTest extends TestCase
     {
         // Newline at every caret.
         $editor = $this->editor("aXb\naXb\n");
-        $editor->getDocument()->setCursor(0, 2);
+        $editor->getDocument()->setCursor(0, col: 2);
         $editor->handleInput("\x1b[1;7B"); // caret at (1,2)
         $editor->handleInput("\r"); // split both lines before "b"
         $this->assertSame("aX\nb\naX\nb\n", $editor->getDocument()->getText());
 
         // Delete-forward at every caret.
         $editor = $this->editor("ab\nab\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->handleInput("\x1b[1;7B");
         $editor->handleInput("\x1b[3~"); // delete
         $this->assertSame("b\nb\n", $editor->getDocument()->getText());
 
         // Delete-word-backward at every caret.
         $editor = $this->editor("foo bar\nfoo bar\n");
-        $editor->getDocument()->setCursor(0, 7);
+        $editor->getDocument()->setCursor(0, col: 7);
         $editor->handleInput("\x1b[1;7B"); // caret at (1,7)
         $editor->handleInput("\x1b\x7f"); // alt+backspace (delete word)
         $this->assertSame("foo \nfoo \n", $editor->getDocument()->getText());
 
         // Paste at every caret.
         $editor = $this->editor("a\na\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->handleInput("\x1b[1;7B");
         // Prime the internal clipboard via a copy of a selection.
         $editor->getDocument()->selectAll();
         $editor->handleInput("\x03"); // ctrl+c copies "a\na\n"
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->clearExtraCarets();
         $editor->handleInput("\x1b[1;7B");
         $editor->handleInput("\x16"); // ctrl+v paste at both carets
@@ -281,7 +281,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testSecondaryCaretsRender(): void
     {
         $editor = $this->editor("aaa\nbbb\nccc\n");
-        $editor->getDocument()->setCursor(0, 1);
+        $editor->getDocument()->setCursor(0, col: 1);
         $editor->handleInput("\x1b[1;7B");
 
         $rendered = $editor->render(new RenderContext(40, 6));
@@ -354,7 +354,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testShiftArrowSelectsAtEveryCaret(): void
     {
         $editor = $this->editor("hello\nworld\nfudge\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->handleInput("\x1b[1;7B"); // ctrl+alt+down
         $editor->handleInput("\x1b[1;7B"); // carets on lines 0,1,2 at col 0
 
@@ -368,7 +368,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testShiftDownSelectsCrossLineAtEveryCaret(): void
     {
         $editor = $this->editor("aaaa\nbbbb\ncccc\ndddd\n");
-        $editor->getDocument()->setCursor(0, 1);
+        $editor->getDocument()->setCursor(0, col: 1);
         $editor->handleInput("\x1b[1;7B"); // carets: line 0 (extra) + line 1 (primary), col 1
 
         $editor->handleInput("\x1b[1;2B"); // shift+down at both -> cross-line selections
@@ -380,7 +380,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testStrayInputBetweenKeystrokesKeepsBroadcast(): void
     {
         $editor = $this->editor("one\ntwo\nthree\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->handleInput("\x1b[1;7B");
         $editor->handleInput("\x1b[1;7B"); // carets on lines 0,1,2
 
@@ -394,7 +394,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testEndOfLineCaretsStillRender(): void
     {
         $editor = $this->editor("ab\ncd\n");
-        $editor->getDocument()->setCursor(0, 2); // end of "ab"
+        $editor->getDocument()->setCursor(0, col: 2); // end of "ab"
         $editor->handleInput("\x1b[1;7B"); // extra at (0,2 EOL), primary at (1,2 EOL)
 
         $rendered = $editor->render(new RenderContext(30, 5));
@@ -410,7 +410,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testAllCaretsRenderUniformlyAndBarSuppressed(): void
     {
         $editor = $this->editor("aaa\nbbb\nccc\n");
-        $editor->getDocument()->setCursor(0, 1);
+        $editor->getDocument()->setCursor(0, col: 1);
         $editor->handleInput("\x1b[1;7B"); // 2 carets: line 0 (extra) + line 1 (primary)
 
         $rendered = $editor->render(new RenderContext(40, 6));
@@ -455,7 +455,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         // widget's. Left alone the next keystroke writes at a line that no
         // longer exists.
         $editor = $this->editor("one\ntwo\nthree\nfour\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->handleInput("\x1b[1;7B"); // ctrl+alt+down ×3 → extras on lines 0, 1, 2
         $editor->handleInput("\x1b[1;7B");
         $editor->handleInput("\x1b[1;7B");
@@ -475,7 +475,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         // The user's second cursor is still on that line; only the column moved
         // out from under it.
         $editor = $this->editor("aaaaaaaa\nbbbbbbbb\n");
-        $editor->getDocument()->setCursor(1, 8);
+        $editor->getDocument()->setCursor(1, col: 8);
         $editor->handleInput("\x1b[1;7B"); // the extra stays at line 1, column 8
         $this->assertSame(8, EditorState::multiCaret($editor)->carets()[0]->col);
 
@@ -492,7 +492,7 @@ final class CodeEditorMultiCaretTest extends TestCase
         // memo has to see BOTH kinds of change: the document moving under the
         // carets, and the caret set itself moving.
         $editor = $this->editor("aaaa\nbbbb\ncccc\n");
-        $editor->getDocument()->setCursor(1, 4);
+        $editor->getDocument()->setCursor(1, col: 4);
         $editor->handleInput("\x1b[1;7B"); // an extra at line 1, column 4
         $this->assertSame(4, EditorState::multiCaret($editor)->carets()[0]->col);
 
@@ -506,7 +506,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testAliveCacheServesTheSameResultOnAnUnchangedRepeatedRead(): void
     {
         $editor = $this->editor("aaaa\nbbbb\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->handleInput("\x1b[1;7B"); // one extra
 
         $first = EditorState::multiCaret($editor)->carets();
@@ -536,9 +536,9 @@ final class CodeEditorMultiCaretTest extends TestCase
     {
         $editor = $this->editor("aaaa\nbbbb\n"); // 2 lines
         EditorState::multiCaret($editor)->setExtras([
-            Caret::point(0, 0),
-            Caret::point(5, 0), // out of bounds, in the middle of the list
-            Caret::point(1, 0),
+            Caret::point(0, col: 0),
+            Caret::point(5, col: 0), // out of bounds, in the middle of the list
+            Caret::point(1, col: 0),
         ]);
 
         $this->assertCount(2, EditorState::multiCaret($editor)->carets(), 'both valid carets survive, before and after the invalid one');
@@ -562,7 +562,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testAddingACaretBelowTheLastLineIsANoOp(): void
     {
         $editor = $this->editor("aaa\nbbb\nccc\n");
-        $editor->getDocument()->setCursor($editor->getDocument()->getLineCount() - 1, 0); // the actual last line
+        $editor->getDocument()->setCursor($editor->getDocument()->getLineCount() - 1, col: 0); // the actual last line
 
         $editor->handleInput("\x1b[1;7B"); // ctrl+alt+down: nothing below the last line
 
@@ -572,7 +572,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testAddNextOccurrenceSkipsAnOccurrenceExactlyAtTheCursor(): void
     {
         $editor = $this->editor("foo foo\n");
-        $editor->getDocument()->setCursor(0, 4); // at the start of the second "foo"
+        $editor->getDocument()->setCursor(0, col: 4); // at the start of the second "foo"
 
         $editor->handleInput("\x1bj"); // alt+j: the only remaining occurrence sits at the cursor itself
 
@@ -583,8 +583,8 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testAddNextOccurrenceDedupesAgainstAPreExistingExtraAtTheSameSpot(): void
     {
         $editor = $this->editor("foo foo foo\n");
-        EditorState::multiCaret($editor)->setExtras([Caret::point(0, 3)]); // pre-seed an extra where the old primary will be kept: its word's end
-        $editor->getDocument()->setCursor(0, 0);
+        EditorState::multiCaret($editor)->setExtras([Caret::point(0, col: 3)]); // pre-seed an extra where the old primary will be kept: its word's end
+        $editor->getDocument()->setCursor(0, col: 0);
 
         $editor->handleInput("\x1bj"); // alt+j: old primary joins extras at (0,3), colliding with the pre-seeded one
 
@@ -594,7 +594,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testEscapeClearsThePrimarySelectionAsWellAsTheExtraCarets(): void
     {
         $editor = $this->editor("hello\nworld\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->handleInput("\x1b[1;7B"); // one extra
         $editor->handleInput("\x1b[1;2C"); // shift+right: primary now has a real selection too
 
@@ -613,7 +613,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testATerminalPasteGivesEachCaretItsOwnLine(): void
     {
         $editor = $this->editor("a\nb\nc\n");
-        $editor->getDocument()->setCursor(0, 1);
+        $editor->getDocument()->setCursor(0, col: 1);
         $editor->handleInput("\x1b[1;7B");
         $editor->handleInput("\x1b[1;7B"); // three carets, one per line end
 
@@ -621,7 +621,7 @@ final class CodeEditorMultiCaretTest extends TestCase
 
         $this->assertSame("a1\nb2\nc3\n", $editor->getDocument()->getText());
         $editor->handleInput("\x1b");
-        $editor->getDocument()->setCursor(3, 0);
+        $editor->getDocument()->setCursor(3, col: 0);
         $editor->handleInput("\x16"); // ctrl+v
         $this->assertSame("a1\nb2\nc3\n1\n2\n3", $editor->getDocument()->getText(), 'the paste joined the clipboard, so Ctrl+V repeats it');
     }
@@ -629,10 +629,10 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testPasteInsertsTheExactClipboardTextAtEveryCaret(): void
     {
         $editor = $this->editor("a\na\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->handleInput("\x1b[1;2C"); // shift+right selects the single char "a" (single caret, plain copy path)
         $editor->handleInput("\x03"); // ctrl+c copies exactly "a"
-        $editor->getDocument()->setCursor(0, 0); // collapse the selection
+        $editor->getDocument()->setCursor(0, col: 0); // collapse the selection
         $editor->handleInput("\x1b[1;7B"); // ctrl+alt+down: extra at (0,0), primary at (1,0)
 
         $editor->handleInput("\x16"); // ctrl+v paste at both carets
@@ -643,8 +643,8 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testMoveAllMovesEachCaretFromItsOwnPositionNotALeftoverOne(): void
     {
         $editor = $this->editor("abcdef\nab\n");
-        $editor->getDocument()->setCursor(0, 4);
-        EditorState::multiCaret($editor)->setExtras([Caret::point(1, 1)]);
+        $editor->getDocument()->setCursor(0, col: 4);
+        EditorState::multiCaret($editor)->setExtras([Caret::point(1, col: 1)]);
 
         $editor->handleInput("\x1b[C"); // right: each caret must move from ITS OWN position
 
@@ -658,8 +658,8 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testRebuildFromPositionsSortsBeforePickingTheNewPrimary(): void
     {
         $editor = $this->editor("aaaa\naaaa\naaaa\n");
-        $editor->getDocument()->setCursor(2, 0); // primary starts on the LOWEST line's caret is NOT this one
-        EditorState::multiCaret($editor)->setExtras([Caret::point(0, 0)]); // an extra above the primary
+        $editor->getDocument()->setCursor(2, col: 0); // primary starts on the LOWEST line's caret is NOT this one
+        EditorState::multiCaret($editor)->setExtras([Caret::point(0, col: 0)]); // an extra above the primary
 
         $editor->handleInput("\x1b[C"); // right: both move to column 1; the topmost must become the new primary
 
@@ -673,8 +673,8 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testConvergingCaretsCollapseToASingleCaretNotGhostDuplicates(): void
     {
         $editor = $this->editor("xxxxx\n");
-        $editor->getDocument()->setCursor(0, 5);
-        EditorState::multiCaret($editor)->setExtras([Caret::point(0, 2), Caret::point(0, 4)]);
+        $editor->getDocument()->setCursor(0, col: 5);
+        EditorState::multiCaret($editor)->setExtras([Caret::point(0, col: 2), Caret::point(0, col: 4)]);
 
         $editor->handleInput("\x1b[H"); // Home: every caret converges on column 0
 
@@ -684,10 +684,10 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testTogglingACaretExactlyAtThePrimaryPromotesTheFirstExtraAndMovesTheCursorToIt(): void
     {
         $editor = $this->editor("abc\ndef\n");
-        $editor->getDocument()->setCursor(0, 0);
-        EditorState::multiCaret($editor)->setExtras([Caret::point(1, 1)]);
+        $editor->getDocument()->setCursor(0, col: 0);
+        EditorState::multiCaret($editor)->setExtras([Caret::point(1, col: 1)]);
 
-        EditorState::multiCaret($editor)->toggleCaretAt(0, 0); // click on the primary's own spot
+        EditorState::multiCaret($editor)->toggleCaretAt(0, col: 0); // click on the primary's own spot
 
         $this->assertSame(1, $editor->getDocument()->cursorLine, 'the cursor moved to the promoted extra');
         $this->assertSame(1, $editor->getDocument()->cursorCol);
@@ -697,10 +697,10 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testTogglingOffOneExtraCaretLeavesItsNeighboursIntact(): void
     {
         $editor = $this->editor("aaa\nbbb\nccc\nddd\n");
-        $editor->getDocument()->setCursor(3, 0); // primary elsewhere, not an extra
-        EditorState::multiCaret($editor)->setExtras([Caret::point(0, 0), Caret::point(1, 0), Caret::point(2, 0)]);
+        $editor->getDocument()->setCursor(3, col: 0); // primary elsewhere, not an extra
+        EditorState::multiCaret($editor)->setExtras([Caret::point(0, col: 0), Caret::point(1, col: 0), Caret::point(2, col: 0)]);
 
-        EditorState::multiCaret($editor)->toggleCaretAt(1, 0); // remove only the middle one
+        EditorState::multiCaret($editor)->toggleCaretAt(1, col: 0); // remove only the middle one
 
         $carets = EditorState::multiCaret($editor)->carets();
         $this->assertCount(2, $carets, 'only the targeted caret was removed, not its neighbour too');
@@ -713,8 +713,8 @@ final class CodeEditorMultiCaretTest extends TestCase
         // Without the ':' separator in the dedupe key, (line=1, col=23) and
         // (line=12, col=3) both stringify to "123" and would wrongly collide.
         $editor = $this->editor(\str_repeat(string: \str_repeat(string: 'x', times: 30)."\n", times: 25));
-        EditorState::multiCaret($editor)->setExtras([Caret::point(1, 23), Caret::point(12, 3)]);
-        $editor->getDocument()->setCursor(20, 0);
+        EditorState::multiCaret($editor)->setExtras([Caret::point(1, col: 23), Caret::point(12, col: 3)]);
+        $editor->getDocument()->setCursor(20, col: 0);
 
         $editor->handleInput("\x1b[1;7B"); // ctrl+alt+down: pushes (20,0) into extras and runs dedupeCarets()
 
@@ -725,9 +725,9 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testDedupeRemovesAnExtraThatCoincidesWithTheNewPrimary(): void
     {
         $editor = $this->editor("aaa\nbbb\nccc\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         // Pre-seed an extra at exactly where ctrl+alt+down's new primary will land (1, 0).
-        EditorState::multiCaret($editor)->setExtras([Caret::point(1, 0)]);
+        EditorState::multiCaret($editor)->setExtras([Caret::point(1, col: 0)]);
 
         $editor->handleInput("\x1b[1;7B"); // ctrl+alt+down: old primary (0,0) also joins as an extra
 
@@ -740,7 +740,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testCurrentCaretWordCapturesTheFullWordNotJustTheLastCharacterBeforeTheCursor(): void
     {
         $editor = $this->editor("foobar xxxx foobar\n");
-        $editor->getDocument()->setCursor(0, 4); // mid-word, inside the first "foobar"
+        $editor->getDocument()->setCursor(0, col: 4); // mid-word, inside the first "foobar"
 
         $editor->handleInput("\x1bj"); // alt+j: must recognise the FULL word "foobar", not just "ob"
 
@@ -754,8 +754,8 @@ final class CodeEditorMultiCaretTest extends TestCase
         // Same "123" collision as the dedupeCarets test above, but exercised
         // through extendAll()/rebuildFromRecords() (shift+movement) instead.
         $editor = $this->editor(\str_repeat(string: \str_repeat(string: 'x', times: 30)."\n", times: 25));
-        EditorState::multiCaret($editor)->setExtras([Caret::point(1, 22), Caret::point(12, 2)]);
-        $editor->getDocument()->setCursor(20, 0);
+        EditorState::multiCaret($editor)->setExtras([Caret::point(1, col: 22), Caret::point(12, col: 2)]);
+        $editor->getDocument()->setCursor(20, col: 0);
 
         $editor->handleInput("\x1b[1;2C"); // shift+right: each caret becomes (1,23), (12,3), (20,1)
 
@@ -765,8 +765,8 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testRebuildFromRecordsKeepsTwoDistinctColumnsOnTheSameLineApart(): void
     {
         $editor = $this->editor(\str_repeat(string: \str_repeat(string: 'x', times: 30)."\n", times: 5));
-        EditorState::multiCaret($editor)->setExtras([Caret::point(1, 5)]);
-        $editor->getDocument()->setCursor(1, 0); // same line, different column
+        EditorState::multiCaret($editor)->setExtras([Caret::point(1, col: 5)]);
+        $editor->getDocument()->setCursor(1, col: 0); // same line, different column
 
         $editor->handleInput("\x1b[1;2C"); // shift+right: (1,1) and (1,6) — same line, must not collide
 
@@ -776,7 +776,7 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testCurrentCaretWordConcatenatesLeftBeforeRightNotReversed(): void
     {
         $editor = $this->editor("foobar xxx barfoo foobar\n");
-        $editor->getDocument()->setCursor(0, 3); // mid-word inside "foobar": left="foo", right="bar"
+        $editor->getDocument()->setCursor(0, col: 3); // mid-word inside "foobar": left="foo", right="bar"
 
         $editor->handleInput("\x1bj"); // alt+j: the word must be "foobar", not "barfoo"
 

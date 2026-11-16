@@ -98,7 +98,7 @@ final class JsonHighlightTest extends TestCase
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('t.json');
 
-        $lines = $highlighter->highlight(\explode("\n", $source), 1);
+        $lines = $highlighter->highlight(\explode("\n", $source), version: 1);
 
         $this->assertCount(4, $lines);
         $this->assertSame($source, \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $lines)));
@@ -113,7 +113,7 @@ final class JsonHighlightTest extends TestCase
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('t.json');
 
-        $lines = $highlighter->highlight(\explode("\n", string: "{\n  \"a\"\n  : 1\n}"), 1);
+        $lines = $highlighter->highlight(\explode("\n", string: "{\n  \"a\"\n  : 1\n}"), version: 1);
 
         $this->assertStringContainsString(self::KEY.'"a"', $lines[1]);
     }
@@ -177,7 +177,7 @@ final class JsonHighlightTest extends TestCase
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('a.jsonc');
 
-        $lines = $highlighter->highlight(\explode("\n", string: "{\n  /* one\n     two */\n  \"a\": 1\n}"), 1);
+        $lines = $highlighter->highlight(\explode("\n", string: "{\n  /* one\n     two */\n  \"a\": 1\n}"), version: 1);
 
         $this->assertStringContainsString(self::COMMENT, $lines[1]);
         $this->assertStringContainsString(self::COMMENT, $lines[2], 'color re-opened on the continuation line');
@@ -189,6 +189,6 @@ final class JsonHighlightTest extends TestCase
         $highlighter = new CodeHighlighter();
         $highlighter->setFile($file);
 
-        return $highlighter->highlight([$source], 1)[0];
+        return $highlighter->highlight([$source], version: 1)[0];
     }
 }

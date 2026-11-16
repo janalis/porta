@@ -12,7 +12,7 @@ final class SgrReads
     /** The background colour in effect at visible column $col (net of every SGR code up to it). */
     public static function backgroundAt(string $line, int $col): string
     {
-        $slice = AnsiUtils::sliceByColumn($line, $col, 1, true); // carries all prior SGR as pending
+        $slice = AnsiUtils::sliceByColumn($line, $col, length: 1, strict: true); // carries all prior SGR as pending
         $bg = 'default';
         $codes = [];
         if (\preg_match_all('/\x1b\[([0-9;]*)m/', $slice, $codes)) {

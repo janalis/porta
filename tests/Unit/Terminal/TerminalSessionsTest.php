@@ -23,9 +23,9 @@ final class TerminalSessionsTest extends TestCase
         $this->assertTrue($sessions->isEmpty());
         $this->assertNull($sessions->active());
 
-        $a = $sessions->create('shell:1', 'sh 1');
-        $b = $sessions->create('run:build', 'build');
-        $this->assertCount(2, Probe::get($sessions, 'sessions'));
+        $a = $sessions->create('shell:1', title: 'sh 1');
+        $b = $sessions->create('run:build', title: 'build');
+        $this->assertCount(2, Probe::get($sessions, property: 'sessions'));
         $this->assertSame($b, $sessions->active(), 'create activates the newest');
         $this->assertSame(1, $sessions->activeIndex);
         $this->assertSame($a, $sessions->find('shell:1'));
@@ -35,9 +35,9 @@ final class TerminalSessionsTest extends TestCase
     public function testNextPrevWrapAround(): void
     {
         $sessions = new TerminalSessions();
-        $a = $sessions->create('a', 'a');
-        $b = $sessions->create('b', 'b');
-        $c = $sessions->create('c', 'c'); // active
+        $a = $sessions->create('a', title: 'a');
+        $b = $sessions->create('b', title: 'b');
+        $c = $sessions->create('c', title: 'c'); // active
 
         $this->assertSame($a, $sessions->next(), 'wraps past the end');
         $this->assertSame($b, $sessions->next());
@@ -56,8 +56,8 @@ final class TerminalSessionsTest extends TestCase
     public function testActivateClampsAndMakeActiveByIdentity(): void
     {
         $sessions = new TerminalSessions();
-        $a = $sessions->create('a', 'a');
-        $sessions->create('b', 'b');
+        $a = $sessions->create('a', title: 'a');
+        $sessions->create('b', title: 'b');
 
         $this->assertSame($a, $sessions->activate(-5), 'clamped to the first');
         $this->assertSame('b', $sessions->activate(99)?->id, 'clamped to the last');
@@ -73,12 +73,12 @@ final class TerminalSessionsTest extends TestCase
     public function testCloseMovesActiveAndEmptiesToNull(): void
     {
         $sessions = new TerminalSessions();
-        $sessions->create('a', 'a');
-        $b = $sessions->create('b', 'b');
-        $c = $sessions->create('c', 'c'); // active at index 2
+        $sessions->create('a', title: 'a');
+        $b = $sessions->create('b', title: 'b');
+        $c = $sessions->create('c', title: 'c'); // active at index 2
 
         $this->assertSame($b, $sessions->close(2), 'closing the active pointer falls back to the neighbour');
-        $this->assertCount(2, Probe::get($sessions, 'sessions'));
+        $this->assertCount(2, Probe::get($sessions, property: 'sessions'));
         $this->assertSame($b, $sessions->close(9), 'an out-of-range close is a no-op returning the active');
         $this->assertSame($b, $sessions->active());
 
@@ -94,13 +94,13 @@ final class TerminalSessionsTest extends TestCase
         // Closing index 0 with two sessions still after it must not sweep up
         // its neighbour too — array_splice's length must be exactly 1.
         $sessions = new TerminalSessions();
-        $sessions->create('a', 'a');
-        $b = $sessions->create('b', 'b');
-        $c = $sessions->create('c', 'c');
+        $sessions->create('a', title: 'a');
+        $b = $sessions->create('b', title: 'b');
+        $c = $sessions->create('c', title: 'c');
 
         $sessions->close(0); // drop 'a', both 'b' and 'c' must survive
 
-        $remaining = Probe::get($sessions, 'sessions');
+        $remaining = Probe::get($sessions, property: 'sessions');
         $this->assertCount(2, $remaining);
         $this->assertSame([$b, $c], $remaining);
     }
@@ -108,31 +108,31 @@ final class TerminalSessionsTest extends TestCase
     public function testMoveReordersKeepingTheActivePointerOnItsSession(): void
     {
         $sessions = new TerminalSessions();
-        $sessions->create('a', 'a');
-        $b = $sessions->create('b', 'b');
-        $sessions->create('c', 'c');
-        $d = $sessions->create('d', 'd'); // active
+        $sessions->create('a', title: 'a');
+        $b = $sessions->create('b', title: 'b');
+        $sessions->create('c', title: 'c');
+        $d = $sessions->create('d', title: 'd'); // active
         $order = static fn (): array => \array_map(static fn (TerminalSession $s): string => $s->id, $sessions->sessions);
 
-        $sessions->move(9, 0);
+        $sessions->move(9, to: 0);
         $this->assertSame(['a', 'b', 'c', 'd'], $order(), 'an out-of-range source is a no-op');
-        $sessions->move(1, 1);
+        $sessions->move(1, to: 1);
         $this->assertSame(['a', 'b', 'c', 'd'], $order(), 'a same-slot move is a no-op');
 
-        $sessions->move(3, 0); // the active session itself moves
+        $sessions->move(3, to: 0); // the active session itself moves
         $this->assertSame(['d', 'a', 'b', 'c'], $order());
         $this->assertSame($d, $sessions->active(), 'the pointer follows the moved session');
 
-        $sessions->move(1, 99); // 'a' to the end (clamped); the active stays in front
+        $sessions->move(1, to: 99); // 'a' to the end (clamped); the active stays in front
         $this->assertSame(['d', 'b', 'c', 'a'], $order());
         $this->assertSame($d, $sessions->active());
 
         $sessions->makeActive($b);
-        $sessions->move(0, 2); // a session from before the active one passes it
+        $sessions->move(0, to: 2); // a session from before the active one passes it
         $this->assertSame(['b', 'c', 'd', 'a'], $order());
         $this->assertSame($b, $sessions->active());
 
-        $sessions->move(3, 0); // a session from behind lands in front
+        $sessions->move(3, to: 0); // a session from behind lands in front
         $this->assertSame(['a', 'b', 'c', 'd'], $order());
         $this->assertSame($b, $sessions->active());
     }
@@ -143,7 +143,7 @@ final class TerminalSessionsTest extends TestCase
             $this->markTestSkipped('no shell');
         }
         $sessions = new TerminalSessions();
-        $session = $sessions->create('shell:1', 'sh');
+        $session = $sessions->create('shell:1', title: 'sh');
         $process = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], __DIR__);
         $session->attach($process);
         $this->assertTrue($process->start());
@@ -153,7 +153,7 @@ final class TerminalSessionsTest extends TestCase
         $this->assertFalse($process->isRunning(), 'closing stopped the PTY');
 
         // stopAll over a fresh running session.
-        $s2 = $sessions->create('shell:2', 'sh');
+        $s2 = $sessions->create('shell:2', title: 'sh');
         $p2 = new PtyProcess(['/bin/sh', '-c', 'sleep 10'], __DIR__);
         $s2->attach($p2);
         $p2->start();

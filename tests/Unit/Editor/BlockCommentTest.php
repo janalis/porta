@@ -26,11 +26,11 @@ final class BlockCommentTest extends TestCase
     public function testTheLineVerbWrapsEachLineWhenTheLanguageHasNoLineForm(): void
     {
         $doc = new Document("{{ a }}\n{{ b }}\n");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $doc->beginSelect();
         // Not column 0: a selection ending there deliberately excludes the line.
-        $doc->setCursor(1, 7, SelectionMode::Keep);
-        $doc->toggleComment(CommentSyntax::blockOnly('{#', '#}'));
+        $doc->setCursor(1, col: 7, selection: SelectionMode::Keep);
+        $doc->toggleComment(CommentSyntax::blockOnly('{#', close: '#}'));
 
         $this->assertSame(['{# {{ a }} #}', '{# {{ b }} #}', ''], $doc->lines);
     }
@@ -38,10 +38,10 @@ final class BlockCommentTest extends TestCase
     public function testAndUnwrapsThemAgain(): void
     {
         $doc = new Document("{# {{ a }} #}\n{# {{ b }} #}\n");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $doc->beginSelect();
-        $doc->setCursor(1, 13, SelectionMode::Keep);
-        $doc->toggleComment(CommentSyntax::blockOnly('{#', '#}'));
+        $doc->setCursor(1, col: 13, selection: SelectionMode::Keep);
+        $doc->toggleComment(CommentSyntax::blockOnly('{#', close: '#}'));
 
         $this->assertSame(['{{ a }}', '{{ b }}', ''], $doc->lines);
     }
@@ -54,8 +54,8 @@ final class BlockCommentTest extends TestCase
     public function testTheIndentStaysOutsideTheDelimiters(): void
     {
         $doc = new Document("    a { b: c }\n");
-        $doc->setCursor(0, 0);
-        $doc->toggleComment(CommentSyntax::blockOnly('/*', '*/'));
+        $doc->setCursor(0, col: 0);
+        $doc->toggleComment(CommentSyntax::blockOnly('/*', close: '*/'));
 
         $this->assertSame('    /* a { b: c } */', $doc->getLine(0));
     }
@@ -71,8 +71,8 @@ final class BlockCommentTest extends TestCase
     public function testUncommentingRestoresTheIndentAheadOfTheContent(): void
     {
         $doc = new Document("    /* a { b: c } */\n");
-        $doc->setCursor(0, 0);
-        $doc->toggleComment(CommentSyntax::blockOnly('/*', '*/'));
+        $doc->setCursor(0, col: 0);
+        $doc->toggleComment(CommentSyntax::blockOnly('/*', close: '*/'));
 
         $this->assertSame('    a { b: c }', $doc->getLine(0));
     }
@@ -86,10 +86,10 @@ final class BlockCommentTest extends TestCase
     public function testAPartlyCommentedBlockCommentsRatherThanUncomments(): void
     {
         $doc = new Document("{# a #}\nb\n");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $doc->beginSelect();
-        $doc->setCursor(1, 1, SelectionMode::Keep);
-        $doc->toggleComment(CommentSyntax::blockOnly('{#', '#}'));
+        $doc->setCursor(1, col: 1, selection: SelectionMode::Keep);
+        $doc->toggleComment(CommentSyntax::blockOnly('{#', close: '#}'));
 
         $this->assertSame(['{# {# a #} #}', '{# b #}', ''], $doc->lines);
     }
@@ -97,10 +97,10 @@ final class BlockCommentTest extends TestCase
     public function testBlankLinesAreLeftAloneJustAsTheyAreForTheLineForm(): void
     {
         $doc = new Document("a\n\nb\n");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $doc->beginSelect();
-        $doc->setCursor(2, 1, SelectionMode::Keep);
-        $doc->toggleComment(CommentSyntax::blockOnly('<!--', '-->'));
+        $doc->setCursor(2, col: 1, selection: SelectionMode::Keep);
+        $doc->toggleComment(CommentSyntax::blockOnly('<!--', close: '-->'));
 
         $this->assertSame(['<!-- a -->', '', '<!-- b -->', ''], $doc->lines);
     }
@@ -114,11 +114,11 @@ final class BlockCommentTest extends TestCase
      */
     public function testADelimiterPairThatOverlapsIsNotAComment(): void
     {
-        $this->assertNull(LineOperations::blockUnwrapped('<!-->', '<!--', '-->'));
+        $this->assertNull(LineOperations::blockUnwrapped('<!-->', open: '<!--', close: '-->'));
 
         $doc = new Document("<!-->\n");
-        $doc->setCursor(0, 0);
-        $doc->toggleComment(CommentSyntax::blockOnly('<!--', '-->'));
+        $doc->setCursor(0, col: 0);
+        $doc->toggleComment(CommentSyntax::blockOnly('<!--', close: '-->'));
 
         $this->assertSame('<!-- <!--> -->', $doc->getLine(0));
     }
@@ -135,9 +135,9 @@ final class BlockCommentTest extends TestCase
      */
     public function testAnEmptyCommentUnwrapsAndAnUnterminatedOneDoesNot(): void
     {
-        $this->assertSame('', LineOperations::blockUnwrapped('/**/', '/*', '*/'), 'an empty comment is one');
-        $this->assertNull(LineOperations::blockUnwrapped('/* foo', '/*', '*/'), 'opened and never closed');
-        $this->assertNull(LineOperations::blockUnwrapped('foo */', '/*', '*/'), 'closed and never opened');
+        $this->assertSame('', LineOperations::blockUnwrapped('/**/', open: '/*', close: '*/'), 'an empty comment is one');
+        $this->assertNull(LineOperations::blockUnwrapped('/* foo', open: '/*', close: '*/'), 'opened and never closed');
+        $this->assertNull(LineOperations::blockUnwrapped('foo */', open: '/*', close: '*/'), 'closed and never opened');
     }
 
     // --- the BLOCK verb -----------------------------------------------------
@@ -149,10 +149,10 @@ final class BlockCommentTest extends TestCase
     public function testTheBlockVerbWrapsExactlyTheSelection(): void
     {
         $doc = new Document("foo(bar, baz)\n");
-        $doc->setCursor(0, 4);
+        $doc->setCursor(0, col: 4);
         $doc->beginSelect();
-        $doc->setCursor(0, 7, SelectionMode::Keep);
-        $doc->toggleBlockComment(CommentSyntax::both('//', '/*', '*/'));
+        $doc->setCursor(0, col: 7, selection: SelectionMode::Keep);
+        $doc->toggleBlockComment(CommentSyntax::both('//', open: '/*', close: '*/'));
 
         $this->assertSame('foo(/* bar */, baz)', $doc->getLine(0));
     }
@@ -160,8 +160,8 @@ final class BlockCommentTest extends TestCase
     public function testWithNoSelectionItTakesTheLinesContentAndNotItsIndent(): void
     {
         $doc = new Document("    return 1;\n");
-        $doc->setCursor(0, 8);
-        $doc->toggleBlockComment(CommentSyntax::both('//', '/*', '*/'));
+        $doc->setCursor(0, col: 8);
+        $doc->toggleBlockComment(CommentSyntax::both('//', open: '/*', close: '*/'));
 
         $this->assertSame('    /* return 1; */', $doc->getLine(0));
         $this->assertSame(19, $doc->cursorCol, 'the caret follows the insert; only an EMPTY comment pulls it back inside');
@@ -175,8 +175,8 @@ final class BlockCommentTest extends TestCase
     public function testTrailingWhitespaceIsNotSweptIntoTheComment(): void
     {
         $doc = new Document("    return 1;   \n");
-        $doc->setCursor(0, 8);
-        $doc->toggleBlockComment(CommentSyntax::both('//', '/*', '*/'));
+        $doc->setCursor(0, col: 8);
+        $doc->toggleBlockComment(CommentSyntax::both('//', open: '/*', close: '*/'));
 
         $this->assertSame('    /* return 1; */   ', $doc->getLine(0));
     }
@@ -192,8 +192,8 @@ final class BlockCommentTest extends TestCase
     public function testAnIndentedBlankLineKeepsItsIndent(): void
     {
         $doc = new Document("    \n");
-        $doc->setCursor(0, 4);
-        $doc->toggleBlockComment(CommentSyntax::both('//', '/*', '*/'));
+        $doc->setCursor(0, col: 4);
+        $doc->toggleBlockComment(CommentSyntax::both('//', open: '/*', close: '*/'));
 
         $this->assertSame('    /*  */', $doc->getLine(0));
         $this->assertSame(7, $doc->cursorCol, 'the caret sits between the delimiters, not at a fixed column');
@@ -208,8 +208,8 @@ final class BlockCommentTest extends TestCase
     public function testItComesOffAgainFromAnywhereOnTheLine(): void
     {
         $doc = new Document("    /* return 1; */\n");
-        $doc->setCursor(0, 12);
-        $doc->toggleBlockComment(CommentSyntax::both('//', '/*', '*/'));
+        $doc->setCursor(0, col: 12);
+        $doc->toggleBlockComment(CommentSyntax::both('//', open: '/*', close: '*/'));
 
         $this->assertSame('    return 1;', $doc->getLine(0));
     }
@@ -217,10 +217,10 @@ final class BlockCommentTest extends TestCase
     public function testItSpansSeveralLinesWithOnePair(): void
     {
         $doc = new Document("a\nb\nc\n");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $doc->beginSelect();
-        $doc->setCursor(2, 1, SelectionMode::Keep);
-        $doc->toggleBlockComment(CommentSyntax::both('//', '/*', '*/'));
+        $doc->setCursor(2, col: 1, selection: SelectionMode::Keep);
+        $doc->toggleBlockComment(CommentSyntax::both('//', open: '/*', close: '*/'));
 
         $this->assertSame(['/* a', 'b', 'c */', ''], $doc->lines);
     }
@@ -234,8 +234,8 @@ final class BlockCommentTest extends TestCase
     public function testOnABlankLineItOpensAnEmptyCommentAndPutsTheCaretInside(): void
     {
         $doc = new Document("\n");
-        $doc->setCursor(0, 0);
-        $doc->toggleBlockComment(CommentSyntax::both('//', '/*', '*/'));
+        $doc->setCursor(0, col: 0);
+        $doc->toggleBlockComment(CommentSyntax::both('//', open: '/*', close: '*/'));
 
         $this->assertSame('/*  */', $doc->getLine(0));
         $this->assertSame(3, $doc->cursorCol);
@@ -252,8 +252,8 @@ final class BlockCommentTest extends TestCase
     public function testEmptyingACommentRemovesItEntirely(): void
     {
         $doc = new Document("/*  */\n");
-        $doc->setCursor(0, 0);
-        $doc->toggleBlockComment(CommentSyntax::both('//', '/*', '*/'));
+        $doc->setCursor(0, col: 0);
+        $doc->toggleBlockComment(CommentSyntax::both('//', open: '/*', close: '*/'));
 
         $this->assertSame('', $doc->getLine(0));
     }
@@ -265,7 +265,7 @@ final class BlockCommentTest extends TestCase
     public function testTheBlockVerbFallsBackToTheLineFormWhenThereIsNoPair(): void
     {
         $doc = new Document("print(1)\n");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $doc->toggleBlockComment(CommentSyntax::lineOnly('#'));
 
         $this->assertSame('# print(1)', $doc->getLine(0));
@@ -279,10 +279,10 @@ final class BlockCommentTest extends TestCase
     public function testOneKeypressIsOneUndoStep(): void
     {
         $doc = new Document("foo(bar, baz)\n");
-        $doc->setCursor(0, 4);
+        $doc->setCursor(0, col: 4);
         $doc->beginSelect();
-        $doc->setCursor(0, 7, SelectionMode::Keep);
-        $doc->toggleBlockComment(CommentSyntax::both('//', '/*', '*/'));
+        $doc->setCursor(0, col: 7, selection: SelectionMode::Keep);
+        $doc->toggleBlockComment(CommentSyntax::both('//', open: '/*', close: '*/'));
         $this->assertSame('foo(/* bar */, baz)', $doc->getLine(0));
 
         $this->assertTrue($doc->undo());
@@ -298,11 +298,11 @@ final class BlockCommentTest extends TestCase
     public function testTheNextEditIsItsOwnUndoStep(): void
     {
         $doc = new Document("foo\n");
-        $doc->setCursor(0, 0);
-        $doc->toggleBlockComment(CommentSyntax::both('//', '/*', '*/'));
+        $doc->setCursor(0, col: 0);
+        $doc->toggleBlockComment(CommentSyntax::both('//', open: '/*', close: '*/'));
         $this->assertSame('/* foo */', $doc->getLine(0));
 
-        $doc->setCursor(0, 9);
+        $doc->setCursor(0, col: 9);
         $doc->insert('X');
         $this->assertTrue($doc->undo());
 

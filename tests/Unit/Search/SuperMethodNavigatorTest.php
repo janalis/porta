@@ -120,8 +120,8 @@ final class SuperMethodNavigatorTest extends TestCase
         // A mistyped hierarchy is a thing people have on screen while editing;
         // it must cost a keystroke, not a hang.
         $navigator = $this->navigator();
-        $this->project->write('src/A.php', "<?php\nnamespace App;\nclass A extends B\n{\n}\n");
-        $this->project->write('src/B.php', "<?php\nnamespace App;\nclass B extends A\n{\n}\n");
+        $this->project->write('src/A.php', content: "<?php\nnamespace App;\nclass A extends B\n{\n}\n");
+        $this->project->write('src/B.php', content: "<?php\nnamespace App;\nclass B extends A\n{\n}\n");
         $source = "<?php\nnamespace App;\nfinal class C extends A\n{\n    public function ghost(): void\n    {\n    }\n}\n";
 
         $this->assertNull($navigator->locate($source, caretLine: 4));
@@ -134,7 +134,7 @@ final class SuperMethodNavigatorTest extends TestCase
         $navigator = $this->navigator();
         $this->project->write(
             'src/Closures.php',
-            "<?php\nnamespace App;\nclass Closures\n{\n    public function build(): callable\n    {\n        return function (): int {\n            return 1;\n        };\n    }\n}\n",
+            content: "<?php\nnamespace App;\nclass Closures\n{\n    public function build(): callable\n    {\n        return function (): int {\n            return 1;\n        };\n    }\n}\n",
         );
         $source = "<?php\nnamespace App;\nfinal class Uses extends Closures\n{\n    public function build(): callable\n    {\n    }\n}\n";
 
@@ -161,7 +161,7 @@ final class SuperMethodNavigatorTest extends TestCase
         // A file caught mid-write ends wherever it ends: the last token can be
         // the `function` keyword itself, with no name after it to read.
         $navigator = $this->navigator();
-        $this->project->write('src/Half.php', "<?php\nnamespace App;\nclass Half\n{\n    public function");
+        $this->project->write('src/Half.php', content: "<?php\nnamespace App;\nclass Half\n{\n    public function");
         $source = "<?php\nnamespace App;\nfinal class Impl extends Half\n{\n    public function anything(): void\n    {\n    }\n}\n";
 
         $this->assertNull($navigator->locate($source, caretLine: 4));
@@ -173,7 +173,7 @@ final class SuperMethodNavigatorTest extends TestCase
         // matter are the ones on the type the caret is INSIDE, not every type
         // the file happens to declare.
         $navigator = $this->navigator();
-        $this->project->write('src/Other.php', "<?php\nnamespace App;\nabstract class Other\n{\n    public function deep(): void\n    {\n    }\n}\n");
+        $this->project->write('src/Other.php', content: "<?php\nnamespace App;\nabstract class Other\n{\n    public function deep(): void\n    {\n    }\n}\n");
         $source = "<?php\nnamespace App;\nfinal class First extends Other\n{\n}\n\nfinal class Second extends Mid\n{\n    public function deep(): void\n    {\n    }\n}\n";
 
         // The caret is in Second, whose chain is Mid → Top.

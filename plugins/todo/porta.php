@@ -28,8 +28,8 @@ use Porta\Todo\TodoTags;
 return new class('todo') extends AbstractPlugin {
     public function activate(PluginApi $api): void
     {
-        $api->registerSetting('tags', 'TODO tags to scan for', 'text', TodoTags::DEFAULT, hint: 'comma-separated; matched case-sensitively');
-        $api->registerListTool(TodoScan::TOOL, 'TODO', rerun: $this->scan($api));
+        $api->registerSetting('tags', label: 'TODO tags to scan for', kind: 'text', default: TodoTags::DEFAULT, hint: 'comma-separated; matched case-sensitively');
+        $api->registerListTool(TodoScan::TOOL, title: 'TODO', rerun: $this->scan($api));
         $api->adoptCommand('ide_todo', $this->scan($api));
     }
 

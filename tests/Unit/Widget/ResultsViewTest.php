@@ -20,7 +20,7 @@ final class ResultsViewTest extends TestCase
 
     public function testFlatModeIsOneMatchRowPerResult(): void
     {
-        $rows = ResultsView::build([$this->hit('a.php', 0), $this->hit('b.php', 1)], [], grouped: ResultLayout::Flat);
+        $rows = ResultsView::build([$this->hit('a.php', line: 0), $this->hit('b.php', line: 1)], [], grouped: ResultLayout::Flat);
 
         $this->assertCount(2, $rows);
         $this->assertNull($rows[0]->filePath, 'flat rows are all matches');
@@ -30,7 +30,7 @@ final class ResultsViewTest extends TestCase
 
     public function testGroupedModeInsertsFileHeadersWithCounts(): void
     {
-        $results = [$this->hit('a.php', 0), $this->hit('a.php', 5), $this->hit('b.php', 2)];
+        $results = [$this->hit('a.php', line: 0), $this->hit('a.php', line: 5), $this->hit('b.php', line: 2)];
         $rows = ResultsView::build($results, [], grouped: ResultLayout::Grouped);
 
         // file a (2) · match0 · match1 · file b (1) · match2
@@ -135,7 +135,7 @@ final class ResultsViewTest extends TestCase
 
     public function testNestedDirectoryHeaderReflectsItsOwnCollapsedState(): void
     {
-        $results = [$this->hit('src/A.php', 0)];
+        $results = [$this->hit('src/A.php', line: 0)];
         $rows = ResultsView::build($results, ['src' => true], grouped: ResultLayout::Grouped, grouping: ResultGrouping::Nested);
 
         $this->assertTrue($rows[0]->collapsed, 'a collapsed directory must render Collapsed, not Expanded');
@@ -143,7 +143,7 @@ final class ResultsViewTest extends TestCase
 
     public function testNestedFileHeaderReflectsItsOwnCollapsedState(): void
     {
-        $results = [$this->hit('src/A.php', 0)];
+        $results = [$this->hit('src/A.php', line: 0)];
         $rows = ResultsView::build($results, ['src/A.php' => true], grouped: ResultLayout::Grouped, grouping: ResultGrouping::Nested);
 
         // rows: dir header (not collapsed) · file header (collapsed)
@@ -153,7 +153,7 @@ final class ResultsViewTest extends TestCase
 
     public function testNestedCollapsedFileDoesNotAbortLaterFilesInTheSameDirectory(): void
     {
-        $results = [$this->hit('src/A.php', 0), $this->hit('src/B.php', 1)];
+        $results = [$this->hit('src/A.php', line: 0), $this->hit('src/B.php', line: 1)];
         $rows = ResultsView::build($results, ['src/A.php' => true], grouped: ResultLayout::Grouped, grouping: ResultGrouping::Nested);
 
         // dir header · A.php header (collapsed, no match row) · B.php header · its match
@@ -172,7 +172,7 @@ final class ResultsViewTest extends TestCase
 
     public function testCollapsedFileHidesItsMatchesButKeepsTheHeader(): void
     {
-        $results = [$this->hit('a.php', 0), $this->hit('a.php', 5), $this->hit('b.php', 2)];
+        $results = [$this->hit('a.php', line: 0), $this->hit('a.php', line: 5), $this->hit('b.php', line: 2)];
         $rows = ResultsView::build($results, ['a.php' => true], grouped: ResultLayout::Grouped);
 
         // file a (collapsed) · file b · match2

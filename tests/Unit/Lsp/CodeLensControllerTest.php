@@ -48,7 +48,7 @@ final class CodeLensControllerTest extends TestCase
     {
         $this->editor->showDocument($path, new Document("<?php\nclass A {}\nfunction b() {}\n"));
         $this->activeFile->set($path);
-        Probe::get($controller, 'lsp')->notifyDidOpen($path, "<?php\n", 'php', 1);
+        Probe::get($controller, property: 'lsp')->notifyDidOpen($path, text: "<?php\n", languageId: 'php', version: 1);
     }
 
     /** @param list<array<string, mixed>> $lenses */
@@ -79,7 +79,7 @@ final class CodeLensControllerTest extends TestCase
         $this->readyOn($controller);
 
         $controller->requestCodeLenses();
-        $this->answer([self::lens(1, '3 usages'), self::lens(2, '1 usage'), self::lens(1, '2 implementations')]);
+        $this->answer([self::lens(1, title: '3 usages'), self::lens(2, title: '1 usage'), self::lens(1, title: '2 implementations')]);
 
         $store = $this->editor->decorations;
         $this->assertSame(['3 usages', '2 implementations'], \array_column($store->codeLensesAt(1), 'title'), 'server order is kept within a line');
@@ -102,7 +102,7 @@ final class CodeLensControllerTest extends TestCase
             ['range' => ['start' => ['line' => 1]]],
             ['command' => ['title' => 'nowhere to go']],
             ['range' => ['start' => ['line' => -1]], 'command' => ['title' => 'before the file']],
-            self::lens(1, 'the real one'),
+            self::lens(1, title: 'the real one'),
         ]);
 
         $this->assertSame(['the real one'], \array_column($this->editor->decorations->codeLensesAt(1), 'title'));
@@ -119,7 +119,7 @@ final class CodeLensControllerTest extends TestCase
         $controller->requestCodeLenses();
 
         $this->editor->showDocument('/p/other.php', new Document("<?php\n"));
-        $this->answer([self::lens(1, '3 usages')]);
+        $this->answer([self::lens(1, title: '3 usages')]);
 
         $this->assertSame([], $this->editor->decorations->codeLensesAt(1));
     }
@@ -130,7 +130,7 @@ final class CodeLensControllerTest extends TestCase
         $controller = $this->controller();
         $this->readyOn($controller);
         $controller->requestCodeLenses();
-        $this->answer([self::lens(1, 'first')]);
+        $this->answer([self::lens(1, title: 'first')]);
 
         $controller->requestCodeLenses();
         \end($this->client->requests)['respond'](null, error: null);
@@ -200,9 +200,9 @@ final class CodeLensControllerTest extends TestCase
         $controller = $this->controller();
         $this->readyOn($controller);
         $controller->requestCodeLenses();
-        $this->answer([self::lens(1, '3 usages')]);
+        $this->answer([self::lens(1, title: '3 usages')]);
 
-        $controller->runCodeLens(1, 0);
+        $controller->runCodeLens(1, index: 0);
 
         $request = \end($this->client->requests);
         $this->assertSame('workspace/executeCommand', $request['method']);
@@ -210,7 +210,7 @@ final class CodeLensControllerTest extends TestCase
         $this->assertSame([1], $request['params']['arguments'], 'the arguments the server sent with it');
 
         $request['respond'](null, error: null);
-        $this->assertStringContainsString('Ran "3 usages"', $this->statusRow($this->status, 120));
+        $this->assertStringContainsString('Ran "3 usages"', $this->statusRow($this->status, columns: 120));
     }
 
     /** A failure names the lens and the reason rather than going quiet. */
@@ -219,12 +219,12 @@ final class CodeLensControllerTest extends TestCase
         $controller = $this->controller();
         $this->readyOn($controller);
         $controller->requestCodeLenses();
-        $this->answer([self::lens(1, '3 usages')]);
+        $this->answer([self::lens(1, title: '3 usages')]);
 
-        $controller->runCodeLens(1, 0);
+        $controller->runCodeLens(1, index: 0);
         \end($this->client->requests)['respond'](null, error: ['code' => -32_603, 'message' => 'no handler']);
 
-        $flashed = $this->statusRow($this->status, 120);
+        $flashed = $this->statusRow($this->status, columns: 120);
         $this->assertStringContainsString('3 usages', $flashed);
         $this->assertStringContainsString('no handler', $flashed);
     }
@@ -240,9 +240,9 @@ final class CodeLensControllerTest extends TestCase
         $controller->requestCodeLenses();
         $this->answer([['range' => ['start' => ['line' => 1]], 'command' => ['title' => 'just a count']]]);
 
-        $controller->runCodeLens(1, 0);
+        $controller->runCodeLens(1, index: 0);
 
-        $this->assertStringContainsString('nothing to run', $this->statusRow($this->status, 120));
+        $this->assertStringContainsString('nothing to run', $this->statusRow($this->status, columns: 120));
         $this->assertCount(1, $this->client->requests, 'and nothing was sent');
     }
 
@@ -252,7 +252,7 @@ final class CodeLensControllerTest extends TestCase
         $controller = $this->controller();
         $this->readyOn($controller);
 
-        $controller->runCodeLens(1, 3);
+        $controller->runCodeLens(1, index: 3);
 
         $this->assertSame([], $this->client->requests);
     }
@@ -292,7 +292,7 @@ final class CodeLensControllerTest extends TestCase
         $controller = new CodeLensController($pool, $this->editor, $this->editor->decorations, $tui, new Notifier($this->status = new StatusBarWidget(), $tui), new Translator('en'));
         $this->editor->showDocument('/p/a.php', new Document("<?php\nclass A {}\nfunction b() {}\n"));
         $this->activeFile->set('/p/a.php');
-        $pool->notifyDidOpen('/p/a.php', "<?php\n", 'php', 1);
+        $pool->notifyDidOpen('/p/a.php', text: "<?php\n", languageId: 'php', version: 1);
 
         return [$controller, $built];
     }
@@ -308,10 +308,10 @@ final class CodeLensControllerTest extends TestCase
         [$controller, $clients] = $this->twoServerController();
 
         $controller->requestCodeLenses();
-        $clients[0]->requests[0]['respond']([self::lens(1, '3 usages')], error: null);
+        $clients[0]->requests[0]['respond']([self::lens(1, title: '3 usages')], error: null);
         $this->assertSame(['3 usages'], \array_column($this->editor->decorations->codeLensesAt(1), 'title'), 'the first shows without waiting');
 
-        $clients[1]->requests[0]['respond']([self::lens(1, 'GET /home')], error: null);
+        $clients[1]->requests[0]['respond']([self::lens(1, title: 'GET /home')], error: null);
 
         $this->assertSame(['3 usages', 'GET /home'], \array_column($this->editor->decorations->codeLensesAt(1), 'title'));
     }
@@ -328,10 +328,10 @@ final class CodeLensControllerTest extends TestCase
         [$controller, $clients] = $this->twoServerController();
 
         $controller->requestCodeLenses();
-        $clients[0]->requests[0]['respond']([self::lens(2, 'later line')], error: null);
-        $clients[1]->requests[0]['respond']([self::lens(1, 'earlier line')], error: null);
+        $clients[0]->requests[0]['respond']([self::lens(2, title: 'later line')], error: null);
+        $clients[1]->requests[0]['respond']([self::lens(1, title: 'earlier line')], error: null);
 
-        $this->assertSame([1, 2], \array_keys(Probe::get($this->editor->decorations, 'codeLenses')));
+        $this->assertSame([1, 2], \array_keys(Probe::get($this->editor->decorations, property: 'codeLenses')));
     }
 
     /**
@@ -345,10 +345,10 @@ final class CodeLensControllerTest extends TestCase
     {
         [$controller, $clients] = $this->twoServerController();
         $controller->requestCodeLenses();
-        $clients[0]->requests[0]['respond']([self::lens(1, 'mine')], error: null);
-        $clients[1]->requests[0]['respond']([self::lens(1, 'theirs')], error: null);
+        $clients[0]->requests[0]['respond']([self::lens(1, title: 'mine')], error: null);
+        $clients[1]->requests[0]['respond']([self::lens(1, title: 'theirs')], error: null);
 
-        $controller->runCodeLens(1, 1); // the second lens, from the second server
+        $controller->runCodeLens(1, index: 1); // the second lens, from the second server
 
         $this->assertSame(['textDocument/codeLens'], \array_column($clients[0]->requests, 'method'), 'the other server was not asked');
         $this->assertSame(['textDocument/codeLens', 'workspace/executeCommand'], \array_column($clients[1]->requests, 'method'));
@@ -358,7 +358,7 @@ final class CodeLensControllerTest extends TestCase
     public function testOnlyServersThatAdvertiseLensesAreAsked(): void
     {
         [$controller, $clients] = $this->twoServerController();
-        Probe::set($clients[1], 'capabilities', []);
+        Probe::set($clients[1], property: 'capabilities', value: []);
 
         $controller->requestCodeLenses();
 

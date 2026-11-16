@@ -56,7 +56,7 @@ final class ContextMenuTest extends TestCase
         $width = $menu->panelWidth();
         $segments = $menu->segments($width);
 
-        $this->assertCount(3, Probe::get($menu, 'items'));
+        $this->assertCount(3, Probe::get($menu, property: 'items'));
         $this->assertCount(3, $segments);
         $this->assertFalse($segments[0]['separator']);
         $this->assertTrue($segments[1]['separator']);
@@ -78,7 +78,7 @@ final class ContextMenuTest extends TestCase
         $menu = new ContextMenu();
         $this->assertSame(0, $menu->panelWidth());
         $this->assertSame([], $menu->segments(20));
-        $this->assertCount(0, Probe::get($menu, 'items'));
+        $this->assertCount(0, Probe::get($menu, property: 'items'));
     }
 
     public function testOpenWithNoItemsIsNoOp(): void
@@ -158,13 +158,13 @@ final class ContextMenuTest extends TestCase
      */
     public function testUpMovesExactlyOneRowNotTwo(): void
     {
-        $this->assertSame(['b'], self::pickedAfter(2, "\x1b[A"), 'one row back from C is B, not A');
+        $this->assertSame(['b'], self::pickedAfter(2, key: "\x1b[A"), 'one row back from C is B, not A');
     }
 
     /** The down-arrow symmetric case: two rows would overshoot D onto the wrong row. */
     public function testDownMovesExactlyOneRowNotTwo(): void
     {
-        $this->assertSame(['c'], self::pickedAfter(1, "\x1b[B"), 'one row forward from B is C, not D');
+        $this->assertSame(['c'], self::pickedAfter(1, key: "\x1b[B"), 'one row forward from B is C, not D');
     }
 
     /**
@@ -349,7 +349,7 @@ final class ContextMenuTest extends TestCase
         $menu = $this->menu();
         $menu->handleInput("\x1b"); // close
 
-        $this->assertSame(0, Probe::get($menu, 'selected'));
+        $this->assertSame(0, Probe::get($menu, property: 'selected'));
     }
 
     public function testHandleInputOnAClosedMenuNeverActsOnTheKey(): void
@@ -400,24 +400,24 @@ final class ContextMenuTest extends TestCase
             });
         }
 
-        $menu->openListbox($options, 1, 30);
+        $menu->openListbox($options, current: 1, minWidth: 30);
 
-        $this->assertTrue(Probe::get($menu, 'open') && Probe::get($menu, 'listbox'));
+        $this->assertTrue(Probe::get($menu, property: 'open') && Probe::get($menu, property: 'listbox'));
         $this->assertSame(30, $menu->panelWidth(), 'as wide as the select, not just its longest option');
         $menu->handleInput("\r");
         $this->assertSame('light', $picked, 'Enter picks the option it opened on');
-        $this->assertFalse(Probe::get($menu, 'open') && Probe::get($menu, 'listbox'), 'picking closes it');
+        $this->assertFalse(Probe::get($menu, property: 'open') && Probe::get($menu, property: 'listbox'), 'picking closes it');
 
-        $menu->openListbox($options, 99, 0);
+        $menu->openListbox($options, current: 99, minWidth: 0);
         $menu->handleInput("\r");
         $this->assertSame('dark', $picked, 'an out-of-range current falls back to the first option');
 
         $menu->open($options);
-        $this->assertFalse(Probe::get($menu, 'open') && Probe::get($menu, 'listbox'), 'a plain menu is not a listbox');
+        $this->assertFalse(Probe::get($menu, property: 'open') && Probe::get($menu, property: 'listbox'), 'a plain menu is not a listbox');
         $this->assertSame(MenuPanel::width($options), $menu->panelWidth(), 'and keeps no minimum width');
 
-        $menu->openListbox([], 0, 30);
-        $this->assertFalse(Probe::get($menu, 'open') && Probe::get($menu, 'listbox'), 'an empty list opens nothing');
+        $menu->openListbox([], current: 0, minWidth: 30);
+        $this->assertFalse(Probe::get($menu, property: 'open') && Probe::get($menu, property: 'listbox'), 'an empty list opens nothing');
     }
 
     /** A menu item runs from its access letter: Cut takes C, so Copy takes o. */
@@ -455,14 +455,14 @@ final class ContextMenuTest extends TestCase
             });
         };
         $menu = new ContextMenu();
-        $menu->openListbox([$option('dark'), $option('light'), $option('dim')], 0, 10);
+        $menu->openListbox([$option('dark'), $option('light'), $option('dim')], current: 0, minWidth: 10);
 
         $menu->handleInput('d');
-        $this->assertSame(2, Probe::get($menu, 'selected'), 'dim, the next d after dark');
+        $this->assertSame(2, Probe::get($menu, property: 'selected'), 'dim, the next d after dark');
         $menu->handleInput('D');
-        $this->assertSame(0, Probe::get($menu, 'selected'), 'wrapping, case-folded');
+        $this->assertSame(0, Probe::get($menu, property: 'selected'), 'wrapping, case-folded');
         $menu->handleInput('x');
-        $this->assertSame(0, Probe::get($menu, 'selected'), 'no option starts with x');
+        $this->assertSame(0, Probe::get($menu, property: 'selected'), 'no option starts with x');
         $this->assertSame([], $picked, 'nothing was picked');
         $this->assertStringNotContainsString("\x1b[4m", \implode('', \array_column($menu->segments(20), 'segment')), 'and no access letter is drawn');
     }
@@ -497,7 +497,7 @@ final class ContextMenuTest extends TestCase
         $this->assertSame(0, $menu->dropdownScroll(4), 'a new menu starts at its top');
         $menu->moveSelection(6);
         $menu->dropdownScroll(4);
-        $menu->openListbox($items, 1, 10);
+        $menu->openListbox($items, current: 1, minWidth: 10);
         $this->assertSame(0, $menu->dropdownScroll(4), 'a select starts at the option it opened on');
     }
 }

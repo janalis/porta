@@ -38,8 +38,8 @@ final class IdePerfLogTest extends TestCase
             [
                 200 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     $watchdog = Services::resolve($ide, FreezeWatchdog::class);
-                    $this->assertSame(0.25, Probe::get($watchdog, 'interval'), 'the container tightened the heartbeat');
-                    $this->assertSame(0.5, Probe::get($watchdog, 'driftThreshold'), 'the container tightened the drift threshold');
+                    $this->assertSame(0.25, Probe::get($watchdog, property: 'interval'), 'the container tightened the heartbeat');
+                    $this->assertSame(0.5, Probe::get($watchdog, property: 'driftThreshold'), 'the container tightened the drift threshold');
 
                     $this->frame($tui); // a real frame, so widget rects exist for the wheel hit-test
                     $tui->handleInput("\x1b[<65;45;6M"); // wheel down over the editor
@@ -65,7 +65,7 @@ final class IdePerfLogTest extends TestCase
                     // wiring is the collector instance on the widget itself.
                     $this->assertSame(
                         Services::resolve($ide, PerfCollector::class),
-                        Probe::get($tui->getById('editor'), 'perf'),
+                        Probe::get($tui->getById('editor'), property: 'perf'),
                         'the container feeds the editor timer into the one collector',
                     );
                     $this->assertMatchesRegularExpression(

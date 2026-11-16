@@ -26,7 +26,7 @@ final class MenuOverlayHostTraitTest extends TestCase
 
             public function render(RenderContext $context): array
             {
-                return $this->withMenuOverlay(['..........', '..........'], 10);
+                return $this->withMenuOverlay(['..........', '..........'], width: 10);
             }
 
             public function handleInput(string $data): void {}

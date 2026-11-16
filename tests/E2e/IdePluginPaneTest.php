@@ -102,11 +102,11 @@ final class IdePluginPaneTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)->openFile($project->path('doc.demo'), OpenFocus::Editor);
-                    $this->awaitPainted($tui, $terminal, 'showing doc.demo');
+                    $this->awaitPainted($tui, $terminal, needle: 'showing doc.demo');
                     $pane = self::pane($ide);
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($pane);
                     $this->assertInstanceOf(WidgetRect::class, $rect);
@@ -121,7 +121,7 @@ final class IdePluginPaneTest extends TestCase
                     // by stamping the last notch ahead of the clock, not by two
                     // quick inputs, which a loaded box can space past 100ms.
                     $tui->handleInput(\sprintf("\x1b[<81;%d;%dM", $col, $row));
-                    Probe::set(Probe::object(Services::resolve($ide, InputDispatcher::class), 'mouseRouter', 'wheel', 'zoom'), 'lastTime', \microtime(true) + 60.0);
+                    Probe::set(Probe::object(Services::resolve($ide, InputDispatcher::class), 'mouseRouter', 'wheel', 'zoom'), property: 'lastTime', value: \microtime(true) + 60.0);
                     $tui->handleInput(\sprintf("\x1b[<80;%d;%dM", $col, $row));
                     $this->assertSame(['scroll:0,6', 'scroll:6,0', 'zoom:-1@5,2', 'magnify:1.08@5,2'], $pane->calls);
                     $pane->calls = [];
@@ -207,8 +207,8 @@ final class IdePluginPaneTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $service = Services::resolve($ide, BufferService::class);
                     $buffers = Services::resolve($ide, BufferManager::class);
@@ -216,17 +216,17 @@ final class IdePluginPaneTest extends TestCase
                     $service->openFile($path, OpenFocus::Editor);
                     $this->assertSame('first', $buffers->get($path)?->panePayload);
 
-                    self::rewrite($path, 'second', ahead: 5);
+                    self::rewrite($path, content: 'second', ahead: 5);
                     $service->openFile($path);
                     $this->assertSame('second', $buffers->get($path)?->panePayload, 'the re-open read it again');
 
-                    self::rewrite($path, 'boom', ahead: 10);
+                    self::rewrite($path, content: 'boom', ahead: 10);
                     $service->openFile($path);
                     $this->assertSame('second', $buffers->get($path)?->panePayload, 'a refusal on re-open keeps what the tab had');
                     $service->pollFilesystem();
                     $this->assertSame('second', $buffers->get($path)?->panePayload, 'and so does one on the poll');
 
-                    self::rewrite($path, 'third', ahead: 15);
+                    self::rewrite($path, content: 'third', ahead: 15);
                     $service->pollFilesystem();
                     $this->assertSame('third', $buffers->get($path)?->panePayload, 'the poll reads it once it reads again');
                     $this->assertSame('third', self::pane($ide)->shownPayload, 'and shows it');
@@ -248,15 +248,15 @@ final class IdePluginPaneTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)->openFile($project->path('doc.demo'), OpenFocus::Editor);
-                    $this->awaitPainted($tui, $terminal, 'showing doc.demo');
+                    $this->awaitPainted($tui, $terminal, needle: 'showing doc.demo');
 
                     Services::resolve($ide, SearchActions::class)->openProjectSearch();
 
-                    $this->awaitPainted($tui, $terminal, 'Not available in this view');
+                    $this->awaitPainted($tui, $terminal, needle: 'Not available in this view');
                     $this->assertTrue(Services::resolve($ide, BufferManager::class)->active()?->isViewer(), 'the pane tab stays active');
                 },
             ],
@@ -275,8 +275,8 @@ final class IdePluginPaneTest extends TestCase
 
         $this->runIde(
             $project,
-            null,
-            [
+            file: null,
+            steps: [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $buffers = Services::resolve($ide, BufferManager::class);
                     $path = (string) \realpath($project->path('architecture.dot'));
@@ -285,7 +285,7 @@ final class IdePluginPaneTest extends TestCase
 
                     Services::resolve($ide, CommandRegistry::class)->run('open_as_text');
 
-                    $this->awaitPainted($tui, $terminal, 'digraph G');
+                    $this->awaitPainted($tui, $terminal, needle: 'digraph G');
                     $this->assertFalse($buffers->get($path)?->isViewer(), 'the tab is a text buffer now');
                     $this->assertCount(1, $buffers->all(), 'in place of the viewer, not beside it');
                 },

@@ -78,13 +78,13 @@ final class SettingsGlobalScopeTest extends TestCase
                 Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
                 Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                 $nav = $this->settingsNav($tui);
-                $this->selectSettingsSection($nav, 'interface');
+                $this->selectSettingsSection($nav, id: 'interface');
                 $this->frame($tui);
             },
             500 => function (Tui $tui, $terminal) use ($key): void {
                 $form = $this->settingsForm($tui);
                 $tui->setFocus($form);
-                $this->selectSettingRow($form, 'Sticky scroll');
+                $this->selectSettingRow($form, label: 'Sticky scroll');
                 $tui->handleInput($key);
                 $this->frame($tui);
             },
@@ -106,7 +106,7 @@ final class SettingsGlobalScopeTest extends TestCase
                     Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $nav = $this->settingsNav($tui);
-                    $this->selectSettingsSection($nav, 'interface');
+                    $this->selectSettingsSection($nav, id: 'interface');
                     $this->frame($tui);
                 },
                 500 => function (Tui $tui, $terminal): void {
@@ -115,11 +115,11 @@ final class SettingsGlobalScopeTest extends TestCase
 
                     $this->assertStringContainsString(
                         '~/.porta/config.json',
-                        $this->settingRow(Paint::lines($form, new RenderContext(110, 22)), 'Save changes to'),
+                        $this->settingRow(Paint::lines($form, new RenderContext(110, 22)), label: 'Save changes to'),
                         'the screen says where this is about to go',
                     );
 
-                    $this->selectSettingRow($form, 'Sticky scroll');
+                    $this->selectSettingRow($form, label: 'Sticky scroll');
                     $tui->handleInput("\r"); // toggle it off its default
                     $this->frame($tui);
                 },
@@ -205,7 +205,7 @@ final class SettingsGlobalScopeTest extends TestCase
                     ));
                     $this->assertStringContainsString(
                         'overrides global',
-                        $this->settingRow($rows, 'Sticky scroll'),
+                        $this->settingRow($rows, label: 'Sticky scroll'),
                         'and the row says why the value did not move',
                     );
                     // The tag carries the fact; the toast carries the
@@ -250,13 +250,13 @@ final class SettingsGlobalScopeTest extends TestCase
                 300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $nav = $this->settingsNav($tui);
-                    $this->selectSettingsSection($nav, 'interface');
+                    $this->selectSettingsSection($nav, id: 'interface');
                     $this->frame($tui);
                 },
                 500 => function (Tui $tui, $terminal): void {
                     $form = $this->settingsForm($tui);
                     $tui->setFocus($form);
-                    $this->selectSettingRow($form, 'Sticky scroll');
+                    $this->selectSettingRow($form, label: 'Sticky scroll');
                     $tui->handleInput("\r");
                     $this->frame($tui);
                 },
@@ -463,7 +463,9 @@ final class SettingsGlobalScopeTest extends TestCase
         \putenv('PATH=/nonexistent');
         $this->home = new TempProject(['.porta/config.json' => \json_encode(['disabledPlugins' => ['zbase']], \JSON_THROW_ON_ERROR)]);
         $source =
-            static fn (string $name): string => "<?php\nreturn new class implements Porta\\Plugin\\Api\\PortaPlugin {\n    public function name(): string { return '{$name}'; }\n    public function activate(Porta\\Plugin\\Api\\PluginApi \$api): void {}\n};\n";
+            static fn (
+                string $name,
+            ): string => "<?php\nreturn new class implements Porta\\Plugin\\Api\\PortaPlugin {\n    public function name(): string { return '{$name}'; }\n    public function activate(Porta\\Plugin\\Api\\PluginApi \$api): void {}\n};\n";
         $this->project = new TempProject([
             'A.php' => "<?php\n",
             '.porta/plugins/zbase/porta.php' => $source('zbase'),
@@ -522,18 +524,18 @@ final class SettingsGlobalScopeTest extends TestCase
                 300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $nav = $this->settingsNav($tui);
-                    $this->selectSettingsSection($nav, 'lang:php');
+                    $this->selectSettingsSection($nav, id: 'lang:php');
                     $this->frame($tui);
                 },
                 500 => function (Tui $tui, $terminal): void {
                     $form = $this->settingsForm($tui);
                     $rows = Paint::lines($form, new RenderContext(120, 40)); // the whole page: its controls are boxes
 
-                    $this->assertStringContainsString('from global', $this->settingRow($rows, 'LSP server'));
-                    $this->assertStringContainsString('from global', $this->settingRow($rows, 'Debug adapter'));
+                    $this->assertStringContainsString('from global', $this->settingRow($rows, label: 'LSP server'));
+                    $this->assertStringContainsString('from global', $this->settingRow($rows, label: 'Debug adapter'));
                     $this->assertStringNotContainsString(
                         'from global',
-                        $this->settingRow($rows, 'Launch config'),
+                        $this->settingRow($rows, label: 'Launch config'),
                         'and a row nothing set stays untagged',
                     );
                 },
@@ -567,17 +569,17 @@ final class SettingsGlobalScopeTest extends TestCase
                     Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $nav = $this->settingsNav($tui);
-                    $this->selectSettingsSection($nav, 'keybindings');
+                    $this->selectSettingsSection($nav, id: 'keybindings');
                     $this->frame($tui);
                 },
                 500 => function (Tui $tui, $terminal): void {
                     // Through the real list: walk to the action, Enter to arm
                     // the capture, then the key it should take.
-                    $list = Widgets::byId($tui, 'settings-keys', KeybindingsListWidget::class);
+                    $list = Widgets::byId($tui, id: 'settings-keys', class: KeybindingsListWidget::class);
                     $this->assertInstanceOf(KeybindingsListWidget::class, $list, 'the keybindings page owns the list');
                     $tui->setFocus($list);
                     for ($i = 0; $i < 200; ++$i) {
-                        if ('save_all' === (Probe::get($list, 'rows')[Probe::object($list, 'list')->selected()] ?? null)?->action) {
+                        if ('save_all' === (Probe::get($list, property: 'rows')[Probe::object($list, 'list')->selected()] ?? null)?->action) {
                             break;
                         }
                         $list->handleInput("\x1b[B");
@@ -651,13 +653,13 @@ final class SettingsGlobalScopeTest extends TestCase
                     Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $nav = $this->settingsNav($tui);
-                    $this->selectSettingsSection($nav, 'plugin:noisy');
+                    $this->selectSettingsSection($nav, id: 'plugin:noisy');
                     $this->frame($tui);
                 },
                 500 => function (Tui $tui, $terminal): void {
                     $form = $this->settingsForm($tui);
                     $tui->setFocus($form);
-                    $this->selectSettingRow($form, 'Klaxon volume');
+                    $this->selectSettingRow($form, label: 'Klaxon volume');
                     $tui->handleInput("\x1b[C"); // step it up
                     $this->frame($tui);
                 },

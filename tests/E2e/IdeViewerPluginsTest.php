@@ -56,7 +56,7 @@ final class IdeViewerPluginsTest extends TestCase
             $project->path('g.dot'),
             [
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
-                    $this->awaitPainted($tui, $terminal, 'digraph G');
+                    $this->awaitPainted($tui, $terminal, needle: 'digraph G');
                     $this->assertSame('editor', $tui->getFocus()?->getId(), 'a .dot file opens in the TEXT editor when the graph viewer is off');
 
                     $buffers = Services::resolve($ide, BufferManager::class);
@@ -64,7 +64,7 @@ final class IdeViewerPluginsTest extends TestCase
                     Services::resolve($ide, BufferService::class)->openFile((string) \realpath($project->path('img.png')));
                     // The refusal FLASH is the positive; "still one buffer" is
                     // also true before the open has been refused at all.
-                    $this->awaitPainted($tui, $terminal, 'Not a UTF-8 text file');
+                    $this->awaitPainted($tui, $terminal, needle: 'Not a UTF-8 text file');
                     $this->assertCount(1, $buffers->all(), 'the image was refused');
 
                     $this->assertNull(Services::resolve($ide, CommandRegistry::class)->label('graph-viewer:architecture'), 'a disabled plugin registers no commands');
@@ -100,8 +100,8 @@ final class IdeViewerPluginsTest extends TestCase
                         $tui,
                         $terminal,
                         static fn (string $output): bool => [] !== \array_intersect(['┌', '▀'], \mb_str_split(AnsiUtils::stripAnsiCodes($output))),
-                        10.0,
-                        'the graph (cells or bitmap) to paint',
+                        timeout: 10.0,
+                        what: 'the graph (cells or bitmap) to paint',
                     );
 
                     $lifecycle = Services::resolve($ide, PluginLifecycle::class);
@@ -245,12 +245,12 @@ final class IdeViewerPluginsTest extends TestCase
 
                     // A RuntimeException is the pane's polite no: verbatim flash.
                     $service->openFile($project->path('polite.demo'));
-                    $this->awaitPainted($tui, $terminal, 'politely refused');
+                    $this->awaitPainted($tui, $terminal, needle: 'politely refused');
 
                     // Anything else is a BUG: generic words on screen, the
                     // internals only in error.log.
                     $service->openFile($project->path('buggy.demo'));
-                    $this->awaitPainted($tui, $terminal, 'Internal error');
+                    $this->awaitPainted($tui, $terminal, needle: 'Internal error');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringNotContainsString('secret internals', $screen, 'a TypeError-style message never reaches the status bar');
                     $this->assertStringContainsString('secret internals', (string) \file_get_contents($project->path('.porta/error.log')), 'the trace survives where a maintainer can read it');
@@ -381,7 +381,7 @@ final class IdeViewerPluginsTest extends TestCase
         // Canonical, as buffers are keyed; a missing file keeps its plain path.
         $path = static fn (string $name): string => false !== \realpath($project->path($name)) ? (string) \realpath($project->path($name)) : $project->path($name);
 
-        $this->runIde($project, null, [
+        $this->runIde($project, file: null, steps: [
             200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($path): void {
                 $service = Services::resolve($ide, BufferService::class);
                 $buffers = Services::resolve($ide, BufferManager::class);

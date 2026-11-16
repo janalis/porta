@@ -15,8 +15,8 @@ final class ProblemRowsTest extends TestCase
     public function testFlattensMarksAndSortsOpenBuffersDiagnostics(): void
     {
         $buffers = new BufferManager();
-        $b = $buffers->open('/p/src/B.php', "<?php\n");
-        $a = $buffers->open('/p/src/A.php', "<?php\n");
+        $b = $buffers->open('/p/src/B.php', content: "<?php\n");
+        $a = $buffers->open('/p/src/A.php', content: "<?php\n");
         $b->diagnostics = [
             0 => [
                 ['severity' => DiagnosticSeverity::Warning, 'message' => 'warn here', 'col' => 0, 'endCol' => 1],
@@ -57,7 +57,7 @@ final class ProblemRowsTest extends TestCase
         // plugins used to prefix it into the message by hand, which put it
         // between the reader and the sentence.
         $buffers = new BufferManager();
-        $buffer = $buffers->open('/p/src/A.php', "<?php\n");
+        $buffer = $buffers->open('/p/src/A.php', content: "<?php\n");
         $buffer->diagnostics = [
             0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'Name "Other" is imported but not used', 'col' => 0, 'endCol' => 1, 'code' => 'worse.unused_import']],
             1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'no rule given', 'col' => 0, 'endCol' => 1]],
@@ -79,7 +79,7 @@ final class ProblemRowsTest extends TestCase
         // The spec allows an integer code, and "1005" is as much a handle as
         // "worse.unused_import" — a numeric one must not be mistaken for absent.
         $buffers = new BufferManager();
-        $buffer = $buffers->open('/p/src/A.php', "<?php\n");
+        $buffer = $buffers->open('/p/src/A.php', content: "<?php\n");
         $buffer->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0, 'endCol' => 1, 'code' => 1005]]];
 
         // Cast where it is now observable: the field is a string, so a

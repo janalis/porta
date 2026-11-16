@@ -102,7 +102,7 @@ final readonly class ContextMenuOpener
             }
             if (null !== $crumb['line']) {
                 $this->tui->setFocus($this->editor);
-                $this->editor->jumpTo($crumb['line'], 0);
+                $this->editor->jumpTo($crumb['line'], utf16Col: 0);
             }
         }), $trail);
         $this->openAt($items, $rect->row + 1, $rect->col);
@@ -225,7 +225,7 @@ final readonly class ContextMenuOpener
         // under a right-to-left frame the menu, mirrored as a whole, must be
         // anchored where that cell was DRAWN — it opened across the screen
         // from the pointer, at the far edge.
-        $this->overlay->setContextAnchor($row, $this->tui->floatingColumn($row, $col, 1, MenuPanel::width($items) + PopupFrame::CHROME_COLS));
+        $this->overlay->setContextAnchor($row, $this->tui->floatingColumn($row, $col, span: 1, width: MenuPanel::width($items) + PopupFrame::CHROME_COLS));
         $this->contextMenu->open($items);
         $this->tui->requestRender();
     }

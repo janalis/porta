@@ -112,13 +112,13 @@ final class LspSessionTest extends TestCase
         $client->deferReady = true;
         $session = $this->session($client);
         $this->start($session);
-        $session->notifyDidOpen('/p/a.php', 'one', 'php', 1);
+        $session->notifyDidOpen('/p/a.php', text: 'one', languageId: 'php', version: 1);
         $document = new Document('one');
         foreach (['two', 'three', 'four'] as $text) {
             $document->replaceAll($text);
             $session->notifyFullChange('/p/a.php', $document);
         }
-        $session->notifyDidOpen('/p/b.php', 'b', 'php', 1);
+        $session->notifyDidOpen('/p/b.php', text: 'b', languageId: 'php', version: 1);
         $closed = new Document('gone soon');
         $session->notifyFullChange('/p/b.php', $closed);
         $session->notifyDidClose('/p/b.php');
@@ -142,12 +142,12 @@ final class LspSessionTest extends TestCase
         $client->deferReady = true;
         $session = $this->session($client);
         $this->start($session);
-        $session->notifyDidOpen('/p/a.php', 'one', 'php', 1);
+        $session->notifyDidOpen('/p/a.php', text: 'one', languageId: 'php', version: 1);
         $first = new Document('one');
         $first->replaceAll('two');
         $session->notifyFullChange('/p/a.php', $first);
         $session->notifyDidClose('/p/a.php');
-        $session->notifyDidOpen('/p/a.php', 'reopened', 'php', 1);
+        $session->notifyDidOpen('/p/a.php', text: 'reopened', languageId: 'php', version: 1);
         $second = new Document('reopened');
         $second->replaceAll('edited');
         $session->notifyFullChange('/p/a.php', $second);
@@ -232,7 +232,7 @@ final class LspSessionTest extends TestCase
         $session = $this->session($client);
         $this->start($session);
 
-        $session->notifyDidOpen('/porta-no-such-root/a b.php', "<?php\n", 'php', 1);
+        $session->notifyDidOpen('/porta-no-such-root/a b.php', text: "<?php\n", languageId: 'php', version: 1);
 
         $this->assertCount(1, $client->notifications);
         $sent = $client->notifications[0];
@@ -285,13 +285,13 @@ final class LspSessionTest extends TestCase
         // loop that stopped at the first miss instead of skipping it would
         // still close everything this asserts on. That mutant escaped a real
         // run of the first draft of this test.
-        $session->notifyDidOpen('/porta-no-such-root/other/d.php', 'd', 'php', 1);
-        $session->notifyDidOpen('/porta-no-such-root/old/a.php', 'a', 'php', 1);
+        $session->notifyDidOpen('/porta-no-such-root/other/d.php', text: 'd', languageId: 'php', version: 1);
+        $session->notifyDidOpen('/porta-no-such-root/old/a.php', text: 'a', languageId: 'php', version: 1);
         // A SIBLING whose path merely starts with the root's characters. The
         // boundary the naive str_starts_with() spelling gets wrong, and the
         // only reason this is a separate case from the one below.
-        $session->notifyDidOpen('/porta-no-such-root/oldish/c.php', 'c', 'php', 1);
-        $session->notifyDidOpen('/porta-no-such-root/old/deep/b.php', 'b', 'php', 1);
+        $session->notifyDidOpen('/porta-no-such-root/oldish/c.php', text: 'c', languageId: 'php', version: 1);
+        $session->notifyDidOpen('/porta-no-such-root/old/deep/b.php', text: 'b', languageId: 'php', version: 1);
         $client->notifications = [];
 
         $session->closeUnder('/porta-no-such-root/old');
@@ -312,7 +312,7 @@ final class LspSessionTest extends TestCase
         $client = new FakeLspClient();
         $session = $this->session($client);
         $this->start($session);
-        $session->notifyDidOpen('/porta-no-such-root/a.php', 'a', 'php', 1);
+        $session->notifyDidOpen('/porta-no-such-root/a.php', text: 'a', languageId: 'php', version: 1);
         $client->notifications = [];
 
         $session->closeUnder('/porta-no-such-root/a.php');
@@ -329,7 +329,7 @@ final class LspSessionTest extends TestCase
         $client = new FakeLspClient();
         $session = $this->session($client);
         $this->start($session);
-        $session->notifyDidOpen('/porta-no-such-root/a.php', 'a', 'php', 1);
+        $session->notifyDidOpen('/porta-no-such-root/a.php', text: 'a', languageId: 'php', version: 1);
         $client->notifications = [];
 
         $session->closeUnder('/porta-no-such-root/never-opened.php');
@@ -372,7 +372,7 @@ final class LspSessionTest extends TestCase
         $session->stop();
         $session->request('textDocument/hover', [], static function (): void {});
         $session->whenReady(static function (): void {});
-        $session->notifyDidOpen('/porta-no-such-root/x.php', 'text', 'php', 1);
+        $session->notifyDidOpen('/porta-no-such-root/x.php', text: 'text', languageId: 'php', version: 1);
         $session->notifyDidClose('/porta-no-such-root/x.php');
         $session->notifyDidSave('/porta-no-such-root/x.php');
         $session->notifyFullChange('/porta-no-such-root/x.php', new Document('x'));
@@ -454,7 +454,7 @@ final class LspSessionTest extends TestCase
         $session->scheduleDidChange(new Document('a'), static fn (): ?string => '/porta-no-such-root/project/a.php', static function (): void {});
 
         $session->notifyDidClose('/porta-no-such-root/project/a.php');
-        $session->flushPendingChange(null, null);
+        $session->flushPendingChange(null, document: null);
 
         $this->assertSame(['textDocument/didClose'], \array_column($client->notifications, 'method'));
     }
@@ -545,7 +545,7 @@ final class LspSessionTest extends TestCase
 
         $doc = new Document("<?php\necho 1;\n");
         $session->notifyFullChange('/porta-no-such-root/project/a.php', $doc); // baseline
-        $doc->setCursor(1, 6);
+        $doc->setCursor(1, col: 6);
         $doc->insert('2'); // "echo 12;"
 
         $session->scheduleDidChange($doc, static fn (): ?string => '/porta-no-such-root/project/a.php', static function (): void {});
@@ -641,7 +641,7 @@ final class LspSessionTest extends TestCase
         );
         $pulls = static fn (): array => \array_values(\array_filter($client->requests, static fn (array $r): bool => 'textDocument/diagnostic' === $r['method']));
 
-        $session->notifyDidOpen('/porta-no-such-root/project/a.php', "<?php\n", 'php', 1);
+        $session->notifyDidOpen('/porta-no-such-root/project/a.php', text: "<?php\n", languageId: 'php', version: 1);
         $this->assertCount(1, $pulls(), 'asked as it opens');
         $uri = 'file:///porta-no-such-root/project/a.php';
         $pulls()[0]['respond'](['kind' => 'full', 'items' => [['message' => 'Class not found']]]);
@@ -666,8 +666,8 @@ final class LspSessionTest extends TestCase
         $client = new FakeLspClient(['diagnosticProvider' => ['interFileDependencies' => true]]);
         $session = $this->session($client);
         $this->start($session);
-        $session->notifyDidOpen('/porta-no-such-root/project/a.php', "<?php\n", 'php', 1);
-        $session->notifyDidOpen('/porta-no-such-root/project/b.php', "<?php\n", 'php', 1);
+        $session->notifyDidOpen('/porta-no-such-root/project/a.php', text: "<?php\n", languageId: 'php', version: 1);
+        $session->notifyDidOpen('/porta-no-such-root/project/b.php', text: "<?php\n", languageId: 'php', version: 1);
 
         $session->notifyDidSave('/porta-no-such-root/project/a.php');
 
@@ -700,7 +700,7 @@ final class LspSessionTest extends TestCase
         $session = $this->session($client);
         $this->start($session);
 
-        $session->notifyDidOpen('/porta-no-such-root/project/a.php', "<?php\n", 'php', 1);
+        $session->notifyDidOpen('/porta-no-such-root/project/a.php', text: "<?php\n", languageId: 'php', version: 1);
         $session->notifyFullChange('/porta-no-such-root/project/a.php', new Document("<?php\n"));
         $client->notificationHandlers['workspace/diagnostic/refresh']([]);
         $session->notifyDidSave('/porta-no-such-root/project/a.php');

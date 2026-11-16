@@ -92,11 +92,11 @@ final class UpdateRecoveryTest extends TestCase
         $project = new TempProject(['a.php' => 'old', '.porta.json' => '{"enabledPlugins":[]}']);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $buffers = new BufferManager();
-        $buffers->open($project->path('a.php'), 'old')->document->replaceAll('unsaved');
+        $buffers->open($project->path('a.php'), content: 'old')->document->replaceAll('unsaved');
         $directory = $project->path('handoff');
         $this->assertTrue(new RestartSnapshot()->save($directory, $project->dir, $buffers));
-        $project->write('a.php', 'external');
-        $project->write('handoff/update-failed', '1');
+        $project->write('a.php', content: 'external');
+        $project->write('handoff/update-failed', content: '1');
         $terminal = new VirtualTerminal();
         $ide = new Ide($project->dir, terminal: $terminal, lspDisabled: true, restartDirectory: $directory);
         $tui = Services::resolve($ide, Tui::class);
@@ -117,17 +117,17 @@ final class UpdateRecoveryTest extends TestCase
     public function testUpdateSettingsApplyLiveAndInvalidCadencesFallBack(): void
     {
         $project = new TempProject(['.porta.json' => '{"enabledPlugins":[],"settings":{"ideUpdateCheck":"off"}}']);
-        $this->runIde($project, null, [0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+        $this->runIde($project, file: null, steps: [0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
             $settings = Services::resolve($ide, SettingsController::class);
             $updates = Services::resolve($ide, IdeUpdates::class);
-            $settings->changeSetting('ideUpdateCheck', 'weekly');
-            $this->assertSame('weekly', Probe::get($updates, 'cadence'));
-            $settings->changeSetting('ideUpdateCheck', 'invalid');
-            $this->assertSame('daily', Probe::get($updates, 'cadence'));
-            $settings->changeSetting('ideAutoUpdate', true);
-            $this->assertTrue(Probe::get($updates, 'auto'));
-            $settings->changeSetting('ideAutoUpdate', false);
-            $this->assertFalse(Probe::get($updates, 'auto'));
+            $settings->changeSetting('ideUpdateCheck', value: 'weekly');
+            $this->assertSame('weekly', Probe::get($updates, property: 'cadence'));
+            $settings->changeSetting('ideUpdateCheck', value: 'invalid');
+            $this->assertSame('daily', Probe::get($updates, property: 'cadence'));
+            $settings->changeSetting('ideAutoUpdate', value: true);
+            $this->assertTrue(Probe::get($updates, property: 'auto'));
+            $settings->changeSetting('ideAutoUpdate', value: false);
+            $this->assertFalse(Probe::get($updates, property: 'auto'));
         }]);
     }
 }

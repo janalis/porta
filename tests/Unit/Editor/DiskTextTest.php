@@ -21,8 +21,8 @@ final class DiskTextTest extends TestCase
         $sent = Document::BOM."one\r\ntwo\r\n";
 
         $this->assertSame($sent, DiskText::inShapeOf(DiskText::asHeld($sent), $sent), 'a CRLF file with a mark comes back byte for byte');
-        $this->assertSame("a\rb", DiskText::inShapeOf("a\nb", "x\ry"), 'a CR file keeps its CR');
-        $this->assertSame("a\nb", DiskText::inShapeOf("a\nb", 'no break at all'), 'no break in what was sent writes \n, and no mark appears');
+        $this->assertSame("a\rb", DiskText::inShapeOf("a\nb", bytes: "x\ry"), 'a CR file keeps its CR');
+        $this->assertSame("a\nb", DiskText::inShapeOf("a\nb", bytes: 'no break at all'), 'no break in what was sent writes \n, and no mark appears');
     }
 
     public function testADocumentIsWrittenWithTheEndingAndMarkItWasLoadedWith(): void

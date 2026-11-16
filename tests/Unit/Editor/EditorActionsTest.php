@@ -198,7 +198,7 @@ final class EditorActionsTest extends TestCase
     public function testRunCopyKeepsTheSelectionAndFiresTheOsc52Hook(): void
     {
         $actions = $this->actions();
-        $this->doc->setSelectionRange(0, 0, 0, 5);
+        $this->doc->setSelectionRange(0, startCol: 0, endLine: 0, endCol: 5);
         $actions->run('copy');
 
         $this->assertSame([['alpha']], $this->calls['fireCopy']);
@@ -210,7 +210,7 @@ final class EditorActionsTest extends TestCase
     public function testRunCutDeletesTheSelection(): void
     {
         $actions = $this->actions();
-        $this->doc->setSelectionRange(0, 0, 0, 6);
+        $this->doc->setSelectionRange(0, startCol: 0, endLine: 0, endCol: 6);
         $actions->run('cut');
 
         $this->assertSame([['alpha ']], $this->calls['fireCopy']);
@@ -270,9 +270,9 @@ final class EditorActionsTest extends TestCase
     public function testRunSortJoinAndToggleCaseLines(): void
     {
         $actions = $this->actions("banana\napple\ncherry\n");
-        $this->doc->setCursor(0, 0);
+        $this->doc->setCursor(0, col: 0);
         $this->doc->beginSelect();
-        $this->doc->setCursor(2, 6, selection: SelectionMode::Keep);
+        $this->doc->setCursor(2, col: 6, selection: SelectionMode::Keep);
         $actions->run('sort_lines');
         $this->assertSame("apple\nbanana\ncherry\n", $this->doc->getText());
 
@@ -305,7 +305,7 @@ final class EditorActionsTest extends TestCase
     public function testRunToggleFoldInvalidates(): void
     {
         $actions = $this->actions("if {\n  a\n}\n");
-        $this->doc->setCursor(1, 0); // unambiguously inside the block, not on a boundary line
+        $this->doc->setCursor(1, col: 0); // unambiguously inside the block, not on a boundary line
         $actions->run('toggle_fold');
         $this->assertSame(1, $this->count_('invalidate'));
         $this->assertNotNull($this->foldModel->foldEndAt(0), 'the fold model actually toggled a fold');
@@ -322,7 +322,7 @@ final class EditorActionsTest extends TestCase
     public function testRunExpandAndShrinkSelection(): void
     {
         $actions = $this->actions("(alpha beta)\n");
-        $this->doc->setCursor(0, 2);
+        $this->doc->setCursor(0, col: 2);
         $actions->run('expand_selection');
         $this->assertTrue($this->doc->hasSelection(), 'expanded to a syntactic range');
         $actions->run('shrink_selection');
@@ -332,7 +332,7 @@ final class EditorActionsTest extends TestCase
     public function testRunSurroundWithOpensTheListOverlay(): void
     {
         $actions = $this->actions();
-        $this->doc->setSelectionRange(0, 0, 0, 5);
+        $this->doc->setSelectionRange(0, startCol: 0, endLine: 0, endCol: 5);
         $actions->run('surround_with');
         $this->assertSame(1, $this->count_('openListOverlay'));
     }
@@ -340,13 +340,13 @@ final class EditorActionsTest extends TestCase
     public function testRunAddCaretAboveAndBelow(): void
     {
         $actions = $this->actions("one\ntwo\nthree\n");
-        $this->doc->setCursor(1, 0);
+        $this->doc->setCursor(1, col: 0);
         $actions->run('add_caret_below');
         $this->assertTrue($this->multiCaret->hasMultiple());
         $this->assertSame(2, $this->doc->cursorLine, 'the new caret is exactly one line below');
 
         $actions = $this->actions("one\ntwo\nthree\n");
-        $this->doc->setCursor(1, 0);
+        $this->doc->setCursor(1, col: 0);
         $actions->run('add_caret_above');
         $this->assertTrue($this->multiCaret->hasMultiple());
     }
@@ -371,7 +371,7 @@ final class EditorActionsTest extends TestCase
         // The invoke verb: signature help was auto-only, so once Escape closed
         // the popup there was no way to bring it back mid-argument-list.
         $actions = $this->actions();
-        $this->doc->setCursor(0, 3);
+        $this->doc->setCursor(0, col: 3);
 
         $actions->run('parameter_info');
 
@@ -403,7 +403,7 @@ final class EditorActionsTest extends TestCase
     public function testRunRenameSymbolPassesTheBareWord(): void
     {
         $actions = $this->actions("\$variable\n");
-        $this->doc->setCursor(0, 9);
+        $this->doc->setCursor(0, col: 9);
         $actions->run('rename_symbol');
 
         $this->assertSame([[0, 9, 'variable']], $this->calls['requestRename'], 'leading $ stripped');
@@ -428,7 +428,7 @@ final class EditorActionsTest extends TestCase
     /** Primary selection over line 0's 'foo', one extra caret selecting line 1's. */
     private function selectBothFoos(): void
     {
-        $this->doc->setSelectionRange(0, 0, 0, 3);
+        $this->doc->setSelectionRange(0, startCol: 0, endLine: 0, endCol: 3);
         $this->multiCaret->setExtras([new Caret(1, 3, 1, 0)]);
         $this->assertTrue($this->multiCaret->hasMultiple());
     }
@@ -495,7 +495,7 @@ final class EditorActionsTest extends TestCase
         $kb = new Keybindings(['indent' => ['tab']]);
 
         $actions = $this->actions("one\ntwo\n");
-        $this->doc->setSelectionRange(0, 0, 1, 3);
+        $this->doc->setSelectionRange(0, startCol: 0, endLine: 1, endCol: 3);
         $actions->handleKey("\t", $kb);
         $this->assertSame("    one\n    two\n", $this->doc->getText());
 
@@ -508,7 +508,7 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['delete_char_backward' => ['backspace']]);
         $actions = $this->actions("()\n");
-        $this->doc->setCursor(0, 1);
+        $this->doc->setCursor(0, col: 1);
         $actions->handleKey("\x7f", $kb);
         $this->assertSame("\n", $this->doc->getText());
         $this->assertSame(1, $this->count_('notifyChange'));
@@ -519,7 +519,7 @@ final class EditorActionsTest extends TestCase
         $kb = new Keybindings(['select_cancel' => ['escape']]);
 
         $actions = $this->actions("ab\n");
-        $this->doc->setSelectionRange(0, 0, 0, 2);
+        $this->doc->setSelectionRange(0, startCol: 0, endLine: 0, endCol: 2);
         $actions->handleKey("\x1b", $kb);
         $this->assertFalse($this->doc->hasSelection());
         $this->assertSame(1, $this->count_('invalidate'));
@@ -577,7 +577,7 @@ final class EditorActionsTest extends TestCase
     public function testRunFoldAllAndUnfoldAll(): void
     {
         $actions = $this->actions("class A {\n    fn() {\n        x;\n    }\n}\n");
-        $this->doc->setCursor(2, 0); // inside the inner block
+        $this->doc->setCursor(2, col: 0); // inside the inner block
 
         $actions->run('fold_all');
         $this->assertSame(4, $this->foldModel->foldEndAt(0), 'the outer block folded');
@@ -609,7 +609,7 @@ final class EditorActionsTest extends TestCase
     public function testRunGotoMatchingBracket(): void
     {
         $actions = $this->actions("fn(a, [b])\nend\n");
-        $this->doc->setCursor(0, 2); // on the opening paren
+        $this->doc->setCursor(0, col: 2); // on the opening paren
 
         $actions->run('goto_matching_bracket');
         $this->assertSame([0, 9], [$this->doc->cursorLine, $this->doc->cursorCol], 'jumped to the closing paren');
@@ -618,7 +618,7 @@ final class EditorActionsTest extends TestCase
         $actions->run('goto_matching_bracket');
         $this->assertSame([0, 2], [$this->doc->cursorLine, $this->doc->cursorCol], 'jumped back to the opener');
 
-        $this->doc->setCursor(1, 0); // no bracket anywhere near
+        $this->doc->setCursor(1, col: 0); // no bracket anywhere near
         $actions->run('goto_matching_bracket');
         $this->assertSame([1, 0], [$this->doc->cursorLine, $this->doc->cursorCol], 'no bracket → no move');
         $this->assertSame(2, $this->count_('invalidate'), 'no invalidate on the no-op');
@@ -633,7 +633,7 @@ final class EditorActionsTest extends TestCase
         // never reach it.
         $kb = new Keybindings(['toggle_fold' => ['q']]);
         $actions = $this->actions("if {\n  a\n}\n");
-        $this->doc->setCursor(1, 0); // unambiguously inside the block, not on a boundary line
+        $this->doc->setCursor(1, col: 0); // unambiguously inside the block, not on a boundary line
         $actions->handleKey('q', $kb);
 
         $this->assertNotNull($this->foldModel->foldEndAt(0), 'toggle_fold matched despite being last in the list');
@@ -680,7 +680,7 @@ final class EditorActionsTest extends TestCase
     public function testMultiCaretConsumedMovementStopsTheCascade(): void
     {
         $actions = $this->actions("xy\nxy\n");
-        $this->multiCaret->setExtras([Caret::point(1, 0)]);
+        $this->multiCaret->setExtras([Caret::point(1, col: 0)]);
 
         $kb = new Keybindings(['cursor_right' => ['q']]);
         $actions->handleKey('q', $kb);
@@ -692,7 +692,7 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['move_statement_up' => ['ctrl+shift+up']]);
         $actions = $this->actions("one\n\ntwo\n");
-        $this->doc->setCursor(2, 0);
+        $this->doc->setCursor(2, col: 0);
         $actions->handleKey("\x1b[1;6A", $kb);
 
         $this->assertSame("one\ntwo\n\n", $this->doc->getText(), 'the statement moved up over the blank-line gap');
@@ -713,7 +713,7 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['expand_selection' => ['q']]);
         $actions = $this->actions("(alpha)\n");
-        $this->doc->setCursor(0, 2);
+        $this->doc->setCursor(0, col: 2);
         $actions->handleKey('q', $kb);
 
         $this->assertTrue($this->doc->hasSelection(), 'expand_selection ran');
@@ -746,7 +746,7 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['cursor_right' => ['q']]);
         $actions = $this->actions("abcdef\n");
-        $this->doc->setSelectionRange(0, 0, 0, 3);
+        $this->doc->setSelectionRange(0, startCol: 0, endLine: 0, endCol: 3);
         $actions->handleKey('q', $kb);
 
         $this->assertSame(4, $this->doc->cursorCol, 'moved right exactly once from the selection end');
@@ -770,7 +770,7 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['page_down' => ['q']]);
         $actions = $this->actions(\str_repeat("line\n", times: 20));
-        $this->doc->setSelectionRange(0, 0, 0, 2);
+        $this->doc->setSelectionRange(0, startCol: 0, endLine: 0, endCol: 2);
         $actions->handleKey('q', $kb);
 
         $this->assertSame(5, $this->doc->cursorLine);
@@ -783,7 +783,7 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['indent' => ['q']]);
         $actions = $this->actions("one\ntwo\n");
-        $this->doc->setSelectionRange(0, 0, 1, 3);
+        $this->doc->setSelectionRange(0, startCol: 0, endLine: 1, endCol: 3);
         $actions->handleKey('q', $kb);
 
         $this->assertSame("    one\n    two\n", $this->doc->getText(), 'indented once, no fallthrough insert of the bound letter');
@@ -804,7 +804,7 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['delete_char_backward' => ['q']]);
         $actions = $this->actions("y()\n");
-        $this->doc->setCursor(0, 2); // between the empty pair
+        $this->doc->setCursor(0, col: 2); // between the empty pair
         $actions->handleKey('q', $kb);
 
         $this->assertSame("y\n", $this->doc->getText(), 'only the empty pair collapses, no extra backward delete');
@@ -815,7 +815,7 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['delete_char_backward' => ['ctrl+b']]);
         $actions = $this->actions("ab\n");
-        $this->doc->setCursor(0, 2);
+        $this->doc->setCursor(0, col: 2);
         $actions->handleKey("\x02", $kb);
 
         $this->assertSame("a\n", $this->doc->getText());
@@ -826,7 +826,7 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['delete_char_forward' => ['ctrl+d']]);
         $actions = $this->actions("ab\n");
-        $this->doc->setCursor(0, 0);
+        $this->doc->setCursor(0, col: 0);
         $actions->handleKey("\x04", $kb);
 
         $this->assertSame("b\n", $this->doc->getText());
@@ -836,7 +836,7 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['delete_word_backward' => ['ctrl+w']]);
         $actions = $this->actions("foo bar\n");
-        $this->doc->setCursor(0, 7);
+        $this->doc->setCursor(0, col: 7);
         $actions->handleKey("\x17", $kb);
 
         $this->assertSame("foo \n", $this->doc->getText());
@@ -846,7 +846,7 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['delete_to_line_end' => ['ctrl+k']]);
         $actions = $this->actions("foo bar\n");
-        $this->doc->setCursor(0, 3);
+        $this->doc->setCursor(0, col: 3);
         $actions->handleKey("\x0b", $kb);
 
         $this->assertSame("foo\n", $this->doc->getText());
@@ -856,7 +856,7 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['select_cancel' => ['q']]);
         $actions = $this->actions("ab\n");
-        $this->doc->setSelectionRange(0, 0, 0, 2);
+        $this->doc->setSelectionRange(0, startCol: 0, endLine: 0, endCol: 2);
         $actions->handleKey('q', $kb);
 
         $this->assertFalse($this->doc->hasSelection());
@@ -930,7 +930,7 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['surround_with' => ['q']]);
         $actions = $this->actions();
-        $this->doc->setSelectionRange(0, 0, 0, 5);
+        $this->doc->setSelectionRange(0, startCol: 0, endLine: 0, endCol: 5);
         $actions->handleKey('q', $kb);
 
         $this->assertSame(1, $this->count_('openListOverlay'), 'surround_with ran');
@@ -962,8 +962,8 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['document_start' => ['q']]);
         $actions = $this->actions("alpha beta\ngamma\n");
-        $this->doc->setCursor(1, 2);
-        $this->doc->setSelectionRange(1, 0, 1, 5);
+        $this->doc->setCursor(1, col: 2);
+        $this->doc->setSelectionRange(1, startCol: 0, endLine: 1, endCol: 5);
         $actions->handleKey('q', $kb);
 
         $this->assertFalse($this->doc->hasSelection(), 'the selection was cleared');
@@ -977,7 +977,7 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['document_end' => ['q']]);
         $actions = $this->actions("alpha beta\ngamma\n");
-        $this->doc->setSelectionRange(0, 0, 0, 5);
+        $this->doc->setSelectionRange(0, startCol: 0, endLine: 0, endCol: 5);
         $actions->handleKey('q', $kb);
 
         $this->assertFalse($this->doc->hasSelection(), 'the selection was cleared');
@@ -990,7 +990,7 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['page_down' => ['q']]);
         $actions = $this->actions(\str_repeat("line\n", times: 20));
-        $this->doc->setSelectionRange(0, 0, 0, 2);
+        $this->doc->setSelectionRange(0, startCol: 0, endLine: 0, endCol: 2);
         $actions->handleKey('q', $kb);
 
         $this->assertFalse($this->doc->hasSelection(), 'the selection was cleared before repositioning');
@@ -1000,7 +1000,7 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['new_line' => ['q']]);
         $actions = $this->actions("one\n");
-        $this->doc->setCursor(0, 3);
+        $this->doc->setCursor(0, col: 3);
         $actions->handleKey('q', $kb);
 
         $this->assertSame("one\n\n", $this->doc->getText(), 'a newline was inserted, no fallthrough insert of the bound letter');
@@ -1011,7 +1011,7 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['prev_tab_stop' => ['q']]);
         $actions = $this->actions("    one\n");
-        $this->doc->setCursor(0, 4);
+        $this->doc->setCursor(0, col: 4);
         $actions->handleKey('q', $kb);
 
         $this->assertSame("one\n", $this->doc->getText(), 'dedented once, no fallthrough insert of the bound letter');
@@ -1031,7 +1031,7 @@ final class EditorActionsTest extends TestCase
     {
         $kb = new Keybindings(['delete_char_backward' => ['q']]);
         $actions = $this->actions("ab\n");
-        $this->doc->setCursor(0, 0); // nothing before the cursor
+        $this->doc->setCursor(0, col: 0); // nothing before the cursor
         $actions->handleKey('q', $kb);
 
         $this->assertSame(0, $this->count_('notifyChange'), 'nothing changed, so no notification');

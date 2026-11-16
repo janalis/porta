@@ -17,7 +17,7 @@ final class TokenClassifierTest extends TestCase
         // Marked output "ab<cd>ef" → 'cd' spans source offsets [2, 4).
         $classifier = new TokenClassifier(static fn (string $content, string $language): string => "ab{$open}cd{$close}ef");
 
-        $this->assertSame([['start' => 2, 'end' => 4]], $classifier->commentStringSpans('abcdef', 'php'));
+        $this->assertSame([['start' => 2, 'end' => 4]], $classifier->commentStringSpans('abcdef', language: 'php'));
     }
 
     public function testNestedMarkersCollapseToASingleSpan(): void
@@ -27,7 +27,7 @@ final class TokenClassifierTest extends TestCase
         // Outer marks 'bcd', inner marks 'c' → one span [1, 4).
         $classifier = new TokenClassifier(static fn (string $c, string $l): string => "a{$open}b{$open}c{$close}d{$close}e");
 
-        $this->assertSame([['start' => 1, 'end' => 4]], $classifier->commentStringSpans('abcde', 'php'));
+        $this->assertSame([['start' => 1, 'end' => 4]], $classifier->commentStringSpans('abcde', language: 'php'));
     }
 
     public function testHighlighterFailureYieldsNoSpans(): void
@@ -36,14 +36,14 @@ final class TokenClassifierTest extends TestCase
             throw new \RuntimeException('boom');
         });
 
-        $this->assertSame([], $classifier->commentStringSpans('anything', 'php'));
+        $this->assertSame([], $classifier->commentStringSpans('anything', language: 'php'));
     }
 
     public function testRealPhpClassificationCoversCommentsAndStrings(): void
     {
         $classifier = new TokenClassifier();
         $src = "<?php\n\$needle = 1; // needle\n\$s = 'needle';\nfunction needle() {}\n";
-        $spans = $classifier->commentStringSpans($src, 'php');
+        $spans = $classifier->commentStringSpans($src, language: 'php');
 
         $inside = static fn (int $offset): bool => \array_any($spans, static fn (array $span): bool => $offset >= $span['start'] && $offset < $span['end']);
 
@@ -65,7 +65,7 @@ final class TokenClassifierTest extends TestCase
     {
         $classifier = new TokenClassifier();
         $src = "<?php\n/**\n * needle in a docblock\n */\nfunction f() {}\n";
-        $spans = $classifier->commentStringSpans($src, 'php');
+        $spans = $classifier->commentStringSpans($src, language: 'php');
 
         $offset = (int) \strpos($src, needle: 'needle');
         $inside = false;

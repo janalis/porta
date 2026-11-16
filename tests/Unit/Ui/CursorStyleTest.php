@@ -15,11 +15,11 @@ final class CursorStyleTest extends TestCase
     public function testDefaultsToTheBarAndSwitchesLive(): void
     {
         $style = new CursorStyle();
-        $this->assertSame(CursorShape::Bar, Probe::get($style, 'shape'));
+        $this->assertSame(CursorShape::Bar, Probe::get($style, property: 'shape'));
         $this->assertSame(AnsiUtils::cursorMarker(CursorShape::Bar), $style->marker());
 
         $style->switchTo(CursorShape::Block);
-        $this->assertSame(CursorShape::Block, Probe::get($style, 'shape'));
+        $this->assertSame(CursorShape::Block, Probe::get($style, property: 'shape'));
         $this->assertSame(AnsiUtils::cursorMarker(CursorShape::Block), $style->marker(), 'the marker follows the switch');
     }
 

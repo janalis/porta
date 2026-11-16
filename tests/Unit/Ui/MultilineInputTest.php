@@ -27,7 +27,7 @@ final class MultilineInputTest extends TestCase
         $input = new MultilineInput($style);
         $input->handleKey('a', new Keybindings());
 
-        $out = \implode('', $input->render(20, 3, cursor: CaretVisibility::Shown));
+        $out = \implode('', $input->render(20, rows: 3, cursor: CaretVisibility::Shown));
         $this->assertStringContainsString(AnsiUtils::cursorMarker(CursorShape::Underline), $out, 'the marker carries the holder shape');
     }
 
@@ -117,10 +117,10 @@ final class MultilineInputTest extends TestCase
         $input = new MultilineInput();
         $this->type($input, 'ab', "\r", 'cd', "\x1b[D");
 
-        $plain = $input->render(10, 3, cursor: CaretVisibility::Hidden);
+        $plain = $input->render(10, rows: 3, cursor: CaretVisibility::Hidden);
         $this->assertSame(['ab', 'cd'], $plain);
 
-        $withCursor = $input->render(10, 3, cursor: CaretVisibility::Shown);
+        $withCursor = $input->render(10, rows: 3, cursor: CaretVisibility::Shown);
         $this->assertStringContainsString('c', AnsiUtils::stripAnsiCodes($withCursor[1]));
         $this->assertNotSame('cd', $withCursor[1], 'cursor marker embedded in the caret line');
     }
@@ -135,7 +135,7 @@ final class MultilineInputTest extends TestCase
         $input = new MultilineInput();
         $this->type($input, 'l1', "\r", 'l2', "\r", 'l3', "\r", 'l4', "\r", 'l5'); // caret on line 4 (0-based)
 
-        $window = $input->render(10, 3, cursor: CaretVisibility::Shown);
+        $window = $input->render(10, rows: 3, cursor: CaretVisibility::Shown);
 
         $this->assertCount(3, $window, 'only the 3-row window is returned');
         $this->assertSame(['l3', 'l4', 'l5'], \array_map(AnsiUtils::stripAnsiCodes(...), $window), 'scrolled so the caret line shows');
@@ -149,7 +149,7 @@ final class MultilineInputTest extends TestCase
         $this->type($input, 'l1', "\r", 'l2', "\r", 'l3', "\r", 'l4');
         $this->type($input, "\x1b[A", "\x1b[A", "\x1b[A"); // caret back up to line 0
 
-        $window = $input->render(10, 3, cursor: CaretVisibility::Shown);
+        $window = $input->render(10, rows: 3, cursor: CaretVisibility::Shown);
 
         $this->assertSame(['l1', 'l2', 'l3'], \array_map(AnsiUtils::stripAnsiCodes(...), $window), 'window anchored at the top');
         $this->assertSame(1, $this->markers(...$window), 'the caret marker is still shown');
@@ -160,7 +160,7 @@ final class MultilineInputTest extends TestCase
     {
         $input = new MultilineInput();
 
-        $window = $input->render(10, 3, cursor: CaretVisibility::Shown);
+        $window = $input->render(10, rows: 3, cursor: CaretVisibility::Shown);
 
         $this->assertCount(1, $window);
         $this->assertSame(1, $this->markers(...$window), 'the caret marker shows on the empty line');
@@ -210,7 +210,7 @@ final class MultilineInputTest extends TestCase
         $input = new MultilineInput();
         $this->type($input, \str_repeat('x', times: 60)); // one 60-column line, caret at the end
 
-        $window = $input->render(10, 3, cursor: CaretVisibility::Shown);
+        $window = $input->render(10, rows: 3, cursor: CaretVisibility::Shown);
 
         $this->assertCount(1, $window);
         $this->assertSame(1, $this->markers(...$window), 'the caret marker survives horizontal overflow');

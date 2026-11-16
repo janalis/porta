@@ -20,7 +20,7 @@ final class UpdateRestartTest extends TestCase
     {
         $store = new StoreFixture();
         $buffers = new BufferManager();
-        $buffers->open($store->project->path('new.php'), 'unsaved')->document->insert('!');
+        $buffers->open($store->project->path('new.php'), content: 'unsaved')->document->insert('!');
         $restart = new UpdateRestart($store->project->dir, $buffers, new RestartSnapshot(), TestTui::create(), $store->notifier, $store->translator);
         $restart->attempt(static fn (): bool => false);
         $this->assertNull($restart->directory());
@@ -28,9 +28,9 @@ final class UpdateRestartTest extends TestCase
         $restart->core();
         $restart->plugins();
         $restart->start(static fn (): bool => true);
-        $timer = Probe::get($restart, 'timer');
+        $timer = Probe::get($restart, property: 'timer');
         $restart->start(static fn (): bool => false);
-        $this->assertSame($timer, Probe::get($restart, 'timer'));
+        $this->assertSame($timer, Probe::get($restart, property: 'timer'));
         try {
             $restart->attempt(static fn (): bool => true);
             $this->assertNull($restart->directory());
@@ -67,7 +67,7 @@ final class UpdateRestartTest extends TestCase
         $this->assertNull($restart->directory());
         $this->assertStringContainsString('restart postponed', $store->toast());
         $restart->attempt(static fn (): bool => false);
-        $this->assertFalse(Probe::get($restart, 'pending'));
+        $this->assertFalse(Probe::get($restart, property: 'pending'));
     }
 
     public function testAnUnwritableSnapshotNeverStopsTheSession(): void

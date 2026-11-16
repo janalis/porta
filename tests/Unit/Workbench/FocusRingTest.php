@@ -36,7 +36,7 @@ final class FocusRingTest extends TestCase
     private function ring(): FocusRing
     {
         $this->project = new TempProject(['a.php' => "<?php\n"]);
-        $this->tui = TestTui::create(100, 24);
+        $this->tui = TestTui::create(100, rows: 24);
         $this->tree = new FileTreeWidget($this->project->dir);
         $this->editor = new CodeEditorWidget();
         $this->terminal = new TerminalPanelWidget();
@@ -130,11 +130,11 @@ final class FocusRingTest extends TestCase
         // genuine no-op, so only cycle()'s own explicit call is left to prove.
         $ring = $this->ring();
         $this->tui->setFocus($this->editor); // already the ring's last member
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
 
         $ring->cycle(0);
 
         $this->assertSame($this->editor, $this->tui->getFocus(), 'sanity: still the same member');
-        $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'));
+        $this->assertTrue((bool) Probe::get($this->tui, property: 'renderRequested'));
     }
 }

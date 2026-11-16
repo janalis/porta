@@ -25,7 +25,7 @@ final class DiffRowHeightsTest extends TestCase
     {
         $document = DiffDocument::parse(self::RAW);
 
-        return DiffRowHeights::of($document, $document->rows(), 40, true);
+        return DiffRowHeights::of($document, $document->rows(), width: 40, wrap: true);
     }
 
     public function testALineTakesAsManyRowsAsItsTextBreaksInto(): void
@@ -40,7 +40,7 @@ final class DiffRowHeightsTest extends TestCase
     {
         $document = DiffDocument::parse(self::RAW);
         // 61 columns: each half's body 24 wide — the o's take 2, the n's 3.
-        $heights = DiffRowHeights::of($document, $document->splitRows(), 61, true);
+        $heights = DiffRowHeights::of($document, $document->splitRows(), width: 61, wrap: true);
 
         $this->assertSame(3, $heights->height(2), 'the changed pair: the n\'s three rows');
         $this->assertSame(1, $heights->height(1), 'the context pair');
@@ -49,7 +49,7 @@ final class DiffRowHeightsTest extends TestCase
     public function testAPairWithABlankHalfIsAsTallAsItsText(): void
     {
         $document = DiffDocument::parse("@@ -1,2 +1,1 @@\n-a\n-b\n+c\n");
-        $heights = DiffRowHeights::of($document, $document->splitRows(), 61, true);
+        $heights = DiffRowHeights::of($document, $document->splitRows(), width: 61, wrap: true);
 
         $this->assertSame(1, $heights->height(2), 'b beside nothing: the blank half adds no row');
     }
@@ -57,11 +57,11 @@ final class DiffRowHeightsTest extends TestCase
     public function testUnwrappedOrWithNoDiffEveryRowIsOne(): void
     {
         $document = DiffDocument::parse(self::RAW);
-        $unwrapped = DiffRowHeights::of($document, $document->rows(), 40, false);
+        $unwrapped = DiffRowHeights::of($document, $document->rows(), width: 40, wrap: false);
         $this->assertSame(1, $unwrapped->height(3));
-        $this->assertSame([3, 0], $unwrapped->at(0, 0, 3));
+        $this->assertSame([3, 0], $unwrapped->at(0, segment: 0, visual: 3));
 
-        $this->assertNull(DiffRowHeights::of(null, [], 40, true)->at(0, 0, 0), 'nothing to show');
+        $this->assertNull(DiffRowHeights::of(null, [], width: 40, wrap: true)->at(0, segment: 0, visual: 0), 'nothing to show');
     }
 
     /**
@@ -72,54 +72,54 @@ final class DiffRowHeightsTest extends TestCase
     {
         $document = DiffDocument::parse(self::RAW);
 
-        $this->assertSame(1, DiffRowHeights::of($document, $document->rows(), 12, true)->height(3));
+        $this->assertSame(1, DiffRowHeights::of($document, $document->rows(), width: 12, wrap: true)->height(3));
     }
 
     public function testAtWalksScreenRowsToTheRowAndSegmentTheyShow(): void
     {
         $heights = self::wrapped();
 
-        $this->assertSame([0, 0], $heights->at(0, 0, 0));
-        $this->assertSame([2, 1], $heights->at(0, 0, 3), 'the o\'s second row');
-        $this->assertSame([3, 2], $heights->at(0, 0, 6), 'the n\'s last row');
-        $this->assertSame([3, 0], $heights->at(2, 0, 2), 'scrolled two rows down');
-        $this->assertSame([3, 1], $heights->at(3, 1, 0), 'scrolled one row into the n\'s');
-        $this->assertNull($heights->at(3, 1, 2), 'past the last row, counted from inside one');
-        $this->assertNull($heights->at(0, 0, 7), 'past the last row');
-        $this->assertNull($heights->at(0, 0, -1), 'above the first');
+        $this->assertSame([0, 0], $heights->at(0, segment: 0, visual: 0));
+        $this->assertSame([2, 1], $heights->at(0, segment: 0, visual: 3), 'the o\'s second row');
+        $this->assertSame([3, 2], $heights->at(0, segment: 0, visual: 6), 'the n\'s last row');
+        $this->assertSame([3, 0], $heights->at(2, segment: 0, visual: 2), 'scrolled two rows down');
+        $this->assertSame([3, 1], $heights->at(3, segment: 1, visual: 0), 'scrolled one row into the n\'s');
+        $this->assertNull($heights->at(3, segment: 1, visual: 2), 'past the last row, counted from inside one');
+        $this->assertNull($heights->at(0, segment: 0, visual: 7), 'past the last row');
+        $this->assertNull($heights->at(0, segment: 0, visual: -1), 'above the first');
     }
 
     public function testRevealMovesAsLittleAsShowsTheCursor(): void
     {
         $heights = self::wrapped();
 
-        $this->assertSame([1, 0], $heights->reveal(3, 0, 1, 4), 'above: scroll up to it');
-        $this->assertSame([0, 0], $heights->reveal(0, 0, 2, 4), 'rows 0–2 take four: already shown');
-        $this->assertSame([2, 1], $heights->reveal(0, 0, 3, 4), 'the n\'s need three: down until their last row shows, the o\'s second above');
-        $this->assertSame([3, 0], $heights->reveal(0, 0, 3, 2), 'a row taller than the pane is shown from its top');
-        $this->assertSame([3, 0], $heights->reveal(3, 2, 3, 4), 'scrolled into the cursor\'s row: back to its top');
+        $this->assertSame([1, 0], $heights->reveal(3, segment: 0, cursor: 1, visible: 4), 'above: scroll up to it');
+        $this->assertSame([0, 0], $heights->reveal(0, segment: 0, cursor: 2, visible: 4), 'rows 0–2 take four: already shown');
+        $this->assertSame([2, 1], $heights->reveal(0, segment: 0, cursor: 3, visible: 4), 'the n\'s need three: down until their last row shows, the o\'s second above');
+        $this->assertSame([3, 0], $heights->reveal(0, segment: 0, cursor: 3, visible: 2), 'a row taller than the pane is shown from its top');
+        $this->assertSame([3, 0], $heights->reveal(3, segment: 2, cursor: 3, visible: 4), 'scrolled into the cursor\'s row: back to its top');
     }
 
     public function testScrolledMovesByScreenRowsAndStopsWhereThePaneIsFull(): void
     {
         $heights = self::wrapped();
 
-        $this->assertSame([2, 1], $heights->scrolled(0, 0, 10, 4), 'the n\'s three rows and the o\'s last fill four');
-        $this->assertSame([3, 1], $heights->scrolled(0, 0, 10, 2), 'a row taller than the pane scrolls through to its last screen row');
-        $this->assertSame([3, 0], $heights->scrolled(3, 1, -1, 2), 'one row up, inside the n\'s');
-        $this->assertSame([0, 0], $heights->scrolled(2, 1, -9, 4), 'never above the top');
-        $this->assertSame([0, 0], $heights->scrolled(0, 0, 5, 7), 'it all fits');
-        $this->assertSame([0, 0], DiffRowHeights::of(null, [], 40, true)->scrolled(0, 0, 3, 4), 'nothing shown: nothing to scroll');
+        $this->assertSame([2, 1], $heights->scrolled(0, segment: 0, by: 10, visible: 4), 'the n\'s three rows and the o\'s last fill four');
+        $this->assertSame([3, 1], $heights->scrolled(0, segment: 0, by: 10, visible: 2), 'a row taller than the pane scrolls through to its last screen row');
+        $this->assertSame([3, 0], $heights->scrolled(3, segment: 1, by: -1, visible: 2), 'one row up, inside the n\'s');
+        $this->assertSame([0, 0], $heights->scrolled(2, segment: 1, by: -9, visible: 4), 'never above the top');
+        $this->assertSame([0, 0], $heights->scrolled(0, segment: 0, by: 5, visible: 7), 'it all fits');
+        $this->assertSame([0, 0], DiffRowHeights::of(null, [], width: 40, wrap: true)->scrolled(0, segment: 0, by: 3, visible: 4), 'nothing shown: nothing to scroll');
     }
 
     public function testFittingCountsAPage(): void
     {
         $heights = self::wrapped();
 
-        $this->assertSame(3, $heights->fitting(0, 4), 'hunk, keep and the o\'s');
-        $this->assertSame(1, $heights->fitting(3, 2), 'at least one, though it does not fit');
-        $this->assertSame(3, $heights->fitting(3, 5), 'past the end each row counts one');
-        $this->assertSame(1, $heights->fitting(0, 0));
-        $this->assertSame(1, $heights->fitting(2, 4), 'the rows BELOW the scroll: the n\'s do not fit under the o\'s');
+        $this->assertSame(3, $heights->fitting(0, visible: 4), 'hunk, keep and the o\'s');
+        $this->assertSame(1, $heights->fitting(3, visible: 2), 'at least one, though it does not fit');
+        $this->assertSame(3, $heights->fitting(3, visible: 5), 'past the end each row counts one');
+        $this->assertSame(1, $heights->fitting(0, visible: 0));
+        $this->assertSame(1, $heights->fitting(2, visible: 4), 'the rows BELOW the scroll: the n\'s do not fit under the o\'s');
     }
 }

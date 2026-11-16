@@ -174,7 +174,7 @@ final class IdeTest extends TestCase
                     // The popup opens on the server's answer, not on the keystroke.
                     $this->await(static fn (): bool => $editor()->isCompletionOpen(), what: 'the completion popup to open');
                     $this->assertTrue($editor()->isCompletionOpen());
-                    $this->painted($tui, 'strlen');
+                    $this->painted($tui, needle: 'strlen');
                     $this->assertStringContainsString('str_replace', $screen());
                 },
                 1100 => static fn () => $tui->handleInput("\r") /* accept */,
@@ -189,7 +189,7 @@ final class IdeTest extends TestCase
                     $this->assertStringContainsString('strlen(', $doc->getText());
                     $this->assertStringContainsString('use function strlen;', $doc->getText());
                     $this->assertFalse($editor()->isCompletionOpen());
-                    $this->painted($tui, '✗ 1', because: 'diagnostic from mock server in status bar');
+                    $this->painted($tui, needle: '✗ 1', because: 'diagnostic from mock server in status bar');
                 },
 
                 // --- Save ---------------------------------------------------------
@@ -201,7 +201,7 @@ final class IdeTest extends TestCase
                         static fn (): bool => \str_contains((string) \file_get_contents($file), 'strlen('),
                         what: 'the save to reach disk',
                     );
-                    $this->painted($tui, 'Saved src/Demo.php');
+                    $this->painted($tui, needle: 'Saved src/Demo.php');
                     $this->assertStringContainsString('strlen(', (string) \file_get_contents($file));
                 },
 
@@ -227,7 +227,7 @@ final class IdeTest extends TestCase
                 2400 => function () use ($tui, $opened): void {
                     $opened('composer.json', what: 'the tree to open composer.json');
                     $this->assertSame('editor', $tui->getFocus()?->getId());
-                    $this->painted($tui, 'acme/demo');
+                    $this->painted($tui, needle: 'acme/demo');
                 },
 
                 // --- Buffers: tab bar, cycling, recent files ------------------------
@@ -242,7 +242,7 @@ final class IdeTest extends TestCase
                     $tui->handleInput("\x05"); // ctrl+e
                 },
                 2650 => function () use ($editor, $tui): void {
-                    $this->painted($tui, 'Recent Files');
+                    $this->painted($tui, needle: 'Recent Files');
                     $this->assertTrue(EditorState::pickerOpen($editor()));
                     $this->assertRecentFilesHintTheirDirectory();
                     $tui->handleInput("\r"); // pick previous (composer.json)
@@ -260,7 +260,7 @@ final class IdeTest extends TestCase
                     }
                 },
                 2900 => function () use ($screen, $editor, $tui): void {
-                    $this->painted($tui, '[1/2]', because: 'smart-case: lowercase query matches acme/demo and Acme\\');
+                    $this->painted($tui, needle: '[1/2]', because: 'smart-case: lowercase query matches acme/demo and Acme\\');
                     $this->assertStringContainsString('┃ acme ', $screen());
                     $doc = $editor()->getDocument();
                     $this->assertStringContainsString('acme', $doc->getLine($doc->cursorLine));
@@ -271,7 +271,7 @@ final class IdeTest extends TestCase
                     // Ctrl+R opens the find bar with the replace field (openFindReplace).
                     $tui->handleInput("\x12"); // ctrl+r
                     $this->assertSame('find-bar', $tui->getFocus()?->getId());
-                    $this->painted($tui, '╭ Replace ');
+                    $this->painted($tui, needle: '╭ Replace ');
                     $tui->handleInput("\x1b"); // esc
                 },
 
@@ -279,13 +279,13 @@ final class IdeTest extends TestCase
                 3050 => function () use ($tui, $editor): void {
                     $tui->handleInput("\x10"); // ctrl+p
                     $this->assertTrue(EditorState::searchOpen($editor()), 'Ctrl+P opens the centered go-to-file picker');
-                    $this->painted($tui, 'Go to File', because: 'the picker title');
+                    $this->painted($tui, needle: 'Go to File', because: 'the picker title');
                     foreach (\str_split('target') as $ch) {
                         $tui->handleInput($ch);
                     }
                 },
                 3150 => function () use ($tui): void {
-                    $this->painted($tui, 'Target.php');
+                    $this->painted($tui, needle: 'Target.php');
                     $tui->handleInput("\r");
                 },
                 3250 => static function () use ($tui, $opened): void {
@@ -305,7 +305,7 @@ final class IdeTest extends TestCase
                 3750 => function () use ($screen, $tui): void {
                     // The modal's live preview groups matches under a file header,
                     // behind a debounce and a search subprocess.
-                    $this->painted($tui, '1 result');
+                    $this->painted($tui, needle: '1 result');
                     $this->assertStringContainsString('src/Target.php', $screen(), 'grouped under its file header');
                     $tui->handleInput("\r"); // the first match is pre-selected → jump
                 },
@@ -318,8 +318,8 @@ final class IdeTest extends TestCase
                 // --- Hover quick-doc --------------------------------------------------------
                 3950 => static fn () => $tui->handleInput("\x1b[1;2P"), // F1
                 4050 => function () use ($editor, $tui): void {
-                    $this->painted($tui, 'greet(): string');
-                    $this->assertNotNull(Probe::get($editor(), 'caretPopups')->doc, 'in a popup at the caret, not a picker');
+                    $this->painted($tui, needle: 'greet(): string');
+                    $this->assertNotNull(Probe::get($editor(), property: 'caretPopups')->doc, 'in a popup at the caret, not a picker');
                     $this->assertFalse(EditorState::pickerOpen($editor()));
                     $tui->handleInput("\x1b");
                 },
@@ -327,7 +327,7 @@ final class IdeTest extends TestCase
                 // --- Go to line ---------------------------------------------------------------
                 4150 => static fn () => $tui->handleInput("\x07"), // ctrl+g
                 4220 => function () use ($tui): void {
-                    $this->painted($tui, 'Go to line');
+                    $this->painted($tui, needle: 'Go to line');
                     $tui->handleInput('1');
                     $tui->handleInput("\r");
                 },
@@ -341,21 +341,21 @@ final class IdeTest extends TestCase
                 },
                 4420 => function () use ($tui): void {
                     // prepareRename is a round trip: the prompt is not up on the keystroke.
-                    $this->awaitPainted($tui, $this->terminal, 'Rename to');
+                    $this->awaitPainted($tui, $this->terminal, needle: 'Rename to');
                     foreach (\str_split('Renamed') as $ch) {
                         $tui->handleInput($ch);
                     }
                     $tui->handleInput("\r");
                 },
                 4500 => function () use ($editor, $tui): void {
-                    $this->painted($tui, 'Renamed in 1 file');
+                    $this->painted($tui, needle: 'Renamed in 1 file');
                     $this->assertSame('class Renamed', $editor()->getDocument()->getLine(3));
                     $tui->handleInput("\x1b[18;3~"); // alt+f7 usages
                 },
 
                 // --- Find usages ----------------------------------------------------------------
                 4650 => function () use ($screen, $tui): void {
-                    $this->painted($tui, '2 results');
+                    $this->painted($tui, needle: '2 results');
                     $this->assertSame('results', $tui->getFocus()?->getId());
                     $this->assertStringContainsString('Usages', $screen());
                     $tui->handleInput("\x1b");
@@ -364,14 +364,14 @@ final class IdeTest extends TestCase
                 // --- Signature help ----------------------------------------------------------------
                 4750 => static fn () => $tui->handleInput('('),
                 4850 => function () use ($tui): void {
-                    $this->painted($tui, 'greet(string $name): string');
+                    $this->painted($tui, needle: 'greet(string $name): string');
                     $tui->handleInput("\x05"); // back to composer.json
                     $tui->handleInput("\r");
                 },
 
                 // --- Keymap override from .porta.json ----------------------------------------------
                 4950 => function () use ($editor, $tui): void {
-                    $editor()->getDocument()->setCursor(0, 0);
+                    $editor()->getDocument()->setCursor(0, col: 0);
                     $tui->handleInput("\x1b[19~"); // F8, rebound to duplicate_line
                     $doc = $editor()->getDocument();
                     $this->assertSame($doc->getLine(0), $doc->getLine(1), 'config-rebound key duplicates line');
@@ -380,7 +380,7 @@ final class IdeTest extends TestCase
                 // --- Quit: dirty warning, then confirm -----------------------------------------------
                 5050 => static fn () => $tui->handleInput("\x11"),
                 5150 => function () use ($tui): void {
-                    $this->painted($tui, 'Unsaved changes');
+                    $this->painted($tui, needle: 'Unsaved changes');
                     $tui->handleInput("\x11");
                 },
             ],
@@ -391,7 +391,7 @@ final class IdeTest extends TestCase
     /** The Recent Files hint is each file's directory — the label already names it — and nothing at the root. */
     private function assertRecentFilesHintTheirDirectory(): void
     {
-        $items = Probe::get(Services::resolve($this->ide, OverlayHost::class), 'overlay')['items'];
+        $items = Probe::get(Services::resolve($this->ide, OverlayHost::class), property: 'overlay')['items'];
         $hints = \array_column($items, column_key: 'hint', index_key: 'label');
         $this->assertSame('src', $hints['Target.php'] ?? null, 'the hint is the directory, not the name again');
         $this->assertSame('', $hints['composer.json'] ?? null, 'and nothing at the root');
@@ -415,7 +415,7 @@ final class IdeTest extends TestCase
                 500 => function () use ($screen, $tui, $editor): void {
                     $tui->handleInput("\x1b[101;6u"); // ctrl+shift+e
                     $this->assertTrue(EditorState::searchOpen($editor()));
-                    $this->awaitPainted($tui, $this->terminal, 'Search Everywhere');
+                    $this->awaitPainted($tui, $this->terminal, needle: 'Search Everywhere');
                     $s = $screen();
                     $this->assertStringContainsString('Search Everywhere', $s, 'the modal title');
                     $this->assertStringContainsString('Demo.php', $s, 'empty query shows recent files');
@@ -428,7 +428,7 @@ final class IdeTest extends TestCase
                     }
                 },
                 900 => function () use ($tui): void {
-                    $this->painted($tui, 'Target.php', because: 'Files result for the typed name');
+                    $this->painted($tui, needle: 'Target.php', because: 'Files result for the typed name');
                     $tui->handleInput("\r"); // pick → opens the file
                 },
                 1000 => function () use ($editor): void {
@@ -456,7 +456,7 @@ final class IdeTest extends TestCase
                     $host = Services::resolve($this->ide, OverlayHost::class);
                     $this->await(
                         static function () use ($host): bool {
-                            $rows = Probe::get($host, 'search')->rows ?? [];
+                            $rows = Probe::get($host, property: 'search')->rows ?? [];
 
                             return (
                                 \array_any($rows, static fn (SearchRow $row): bool => SearchCategory::Classes === $row->hit?->category)

@@ -95,9 +95,9 @@ final class EditorRenderGoldenTest extends TestCase
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
                     $doc = $e->getDocument();
-                    $doc->setCursor(2, 0);
+                    $doc->setCursor(2, col: 0);
                     $doc->beginSelect();
-                    $doc->setCursor(4, 8, selection: SelectionMode::Keep);
+                    $doc->setCursor(4, col: 8, selection: SelectionMode::Keep);
                 },
                 80,
                 10,
@@ -139,7 +139,7 @@ final class EditorRenderGoldenTest extends TestCase
                 static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
-                    $e->getDocument()->setCursor(2, 0);
+                    $e->getDocument()->setCursor(2, col: 0);
                     $e->handleInput("\x1b[1;7B"); // ctrl+alt+down: add caret below
                     $e->handleInput("\x1b[1;7B");
                 },
@@ -198,7 +198,7 @@ final class EditorRenderGoldenTest extends TestCase
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
                     $e->display->setLineNumbers(LineNumberMode::Relative);
-                    $e->getDocument()->setCursor(3, 0);
+                    $e->getDocument()->setCursor(3, col: 0);
                 },
                 80,
                 10,
@@ -206,9 +206,9 @@ final class EditorRenderGoldenTest extends TestCase
 
             'tabs-and-wide' => [
                 static function (CodeEditorWidget $e): void {
-                    $e->openFile('t.php', "<?php\n\tif (\$好 === '😀') {\n\t\techo \$好;\n\t}\n");
+                    $e->openFile('t.php', content: "<?php\n\tif (\$好 === '😀') {\n\t\techo \$好;\n\t}\n");
                     $e->setFocused(true);
-                    $e->getDocument()->setCursor(1, 1);
+                    $e->getDocument()->setCursor(1, col: 1);
                 },
                 60,
                 8,
@@ -218,7 +218,7 @@ final class EditorRenderGoldenTest extends TestCase
                 static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
-                    $e->getDocument()->setCursor(4, 11);
+                    $e->getDocument()->setCursor(4, col: 11);
                     $e->showCompletions([
                         new CompletionItem(label: 'greeting', insertText: 'greeting', kind: 'var', detail: 'string'),
                         new CompletionItem(label: 'greetLoudly', insertText: 'greetLoudly', kind: 'fn', detail: ''),
@@ -236,7 +236,7 @@ final class EditorRenderGoldenTest extends TestCase
                 static function (CodeEditorWidget $e) use ($php): void {
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
-                    $e->getDocument()->setCursor(4, 11);
+                    $e->getDocument()->setCursor(4, col: 11);
                     $e->setSignatureHint('greet(string $name): string');
                 },
                 80,
@@ -251,7 +251,7 @@ final class EditorRenderGoldenTest extends TestCase
                     }
                     $e->openFile('long.txt', \implode("\n", $lines)."\n");
                     $e->setFocused(true);
-                    $e->getDocument()->setCursor(30, 3); // forces vScroll > 0
+                    $e->getDocument()->setCursor(30, col: 3); // forces vScroll > 0
                 },
                 50,
                 8,

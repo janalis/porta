@@ -41,13 +41,13 @@ return new class('phpunit', 'phpunit') extends AbstractToolPlugin {
             $coverage,
         );
 
-        $api->registerListTool(TestRunner::TOOL, 'Tests', rerun: $runner->rerun(...));
-        $api->registerCommand('run_at_caret', 'PHPUnit: Run Test at Caret', $runner->runAtCaret(...), ['ctrl+shift+f10']);
-        $api->registerCommand('run_file', 'PHPUnit: Run Tests in File', $runner->runFile(...));
-        $api->registerCommand('run_all', 'PHPUnit: Run All Tests', $runner->runAll(...));
-        $api->registerCommand('rerun_failed', 'PHPUnit: Rerun Failed Tests', $runner->rerunFailed(...));
-        $api->registerCommand('run_with_coverage', 'PHPUnit: Run All Tests with Coverage', $runner->runWithCoverage(...));
-        $api->registerCommand('hide_coverage', 'PHPUnit: Hide Coverage', $coverage->hide(...));
+        $api->registerListTool(TestRunner::TOOL, title: 'Tests', rerun: $runner->rerun(...));
+        $api->registerCommand('run_at_caret', label: 'PHPUnit: Run Test at Caret', handler: $runner->runAtCaret(...), keys: ['ctrl+shift+f10']);
+        $api->registerCommand('run_file', label: 'PHPUnit: Run Tests in File', handler: $runner->runFile(...));
+        $api->registerCommand('run_all', label: 'PHPUnit: Run All Tests', handler: $runner->runAll(...));
+        $api->registerCommand('rerun_failed', label: 'PHPUnit: Rerun Failed Tests', handler: $runner->rerunFailed(...));
+        $api->registerCommand('run_with_coverage', label: 'PHPUnit: Run All Tests with Coverage', handler: $runner->runWithCoverage(...));
+        $api->registerCommand('hide_coverage', label: 'PHPUnit: Hide Coverage', handler: $coverage->hide(...));
 
         $available = $this->binaryAvailable($api);
         foreach (['run_at_caret', 'run_file', 'run_all', 'rerun_failed', 'run_with_coverage'] as $command) {

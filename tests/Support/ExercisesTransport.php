@@ -70,17 +70,17 @@ trait ExercisesTransport
     /** `src` moved into a directory that does not exist yet. */
     private function assertADirectoryIsMoved(RemoteTransport $transport, TempProject $server): void
     {
-        Assert::assertNull($this->answer(static fn (\Closure $done) => $transport->rename('src', 'lib/src', $done)));
+        Assert::assertNull($this->answer(static fn (\Closure $done) => $transport->rename('src', to: 'lib/src', done: $done)));
         Assert::assertFileExists($server->path('lib/src/App.php'));
     }
 
     /** A directory removed with the directories and files it holds, and a file on its own. */
     private function assertDirectoriesAreRemovedWithWhatTheyHold(RemoteTransport $transport, TempProject $server): void
     {
-        $server->write('deep/er/x.txt', 'x');
+        $server->write('deep/er/x.txt', content: 'x');
 
-        Assert::assertNull($this->answer(static fn (\Closure $done) => $transport->remove('deep', true, $done)));
-        Assert::assertNull($this->answer(static fn (\Closure $done) => $transport->remove('README.md', false, $done)));
+        Assert::assertNull($this->answer(static fn (\Closure $done) => $transport->remove('deep', isDir: true, done: $done)));
+        Assert::assertNull($this->answer(static fn (\Closure $done) => $transport->remove('README.md', isDir: false, done: $done)));
         Assert::assertDirectoryDoesNotExist($server->path('deep'));
         Assert::assertFileDoesNotExist($server->path('README.md'));
     }

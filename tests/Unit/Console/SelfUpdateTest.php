@@ -174,7 +174,7 @@ final class SelfUpdateTest extends TestCase
     {
         $dir = $this->installed();
 
-        new SelfUpdate($this->runner(), [])->install('v1.3.0', $dir->path('porta.phar'), '/usr/bin/php');
+        new SelfUpdate($this->runner(), [])->install('v1.3.0', $dir->path('porta.phar'), php: '/usr/bin/php');
 
         $this->assertSame('NEW PHAR', \file_get_contents($dir->path('porta.phar')));
         $this->assertSame(0o751, \fileperms($dir->path('porta.phar')) & 0o777);
@@ -186,7 +186,7 @@ final class SelfUpdateTest extends TestCase
     {
         $dir = $this->installed();
 
-        new SelfUpdate($this->runner(), [])->install('v1.3.0', $dir->path('porta.phar'), 'php');
+        new SelfUpdate($this->runner(), [])->install('v1.3.0', $dir->path('porta.phar'), php: 'php');
 
         $this->assertSame('NEW PHAR', \file_get_contents($dir->path('porta.phar')));
         $downloads = \array_filter($this->ran, static fn (array $call): bool => \in_array('-o', $call[0], strict: true));
@@ -224,7 +224,7 @@ final class SelfUpdateTest extends TestCase
         $dir = $this->installed();
 
         try {
-            new SelfUpdate($this->runner(), [])->install('v1.3.0', $dir->path('porta.phar'), 'php');
+            new SelfUpdate($this->runner(), [])->install('v1.3.0', $dir->path('porta.phar'), php: 'php');
             $this->fail('the update went through');
         } catch (\RuntimeException $e) {
             $this->assertStringContainsString($says, $e->getMessage());
@@ -238,7 +238,7 @@ final class SelfUpdateTest extends TestCase
         \mkdir($dir->path('.porta.phar.new')); // where the copy would go: taken
 
         try {
-            new SelfUpdate($this->runner(), [])->install('v1.3.0', $dir->path('porta.phar'), 'php');
+            new SelfUpdate($this->runner(), [])->install('v1.3.0', $dir->path('porta.phar'), php: 'php');
             $this->fail('the update went through');
         } catch (\RuntimeException $e) {
             $this->assertStringContainsString('could not be replaced (is the disk full?); nothing was changed.', $e->getMessage());
@@ -253,7 +253,7 @@ final class SelfUpdateTest extends TestCase
 
         try {
             $this->expectExceptionMessageIsOrContains('is not writable');
-            new SelfUpdate($this->runner(), [])->install('v1.3.0', $dir->path('porta.phar'), 'php');
+            new SelfUpdate($this->runner(), [])->install('v1.3.0', $dir->path('porta.phar'), php: 'php');
         } finally {
             \chmod($dir->path('porta.phar'), permissions: 0o644);
         }

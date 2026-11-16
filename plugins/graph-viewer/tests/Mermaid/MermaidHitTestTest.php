@@ -20,18 +20,18 @@ final class MermaidHitTestTest extends TestCase
 {
     public function testACellHitsADiamondWhereItsMiddleIsInside(): void
     {
-        $scene = self::scene([0 => self::node(0, 10.0, 10.0, 8.0)], [0 => 'diamond']);
+        $scene = self::scene([0 => self::node(0, x: 10.0, y: 10.0, size: 8.0)], [0 => 'diamond']);
 
         $this->assertSame(
             ['left of the middle' => 0, 'below the middle' => 0, 'above the middle' => 0, 'off the tip' => null],
             [
                 // (7.5, 9): 2.5 + 1 from the centre, of 4; the cell's left edge alone would be out.
-                'left of the middle' => self::hit($scene, 4, 7),
+                'left of the middle' => self::hit($scene, row: 4, col: 7),
                 // (10.5, 13): its lower half-row alone would be out.
-                'below the middle' => self::hit($scene, 6, 10),
+                'below the middle' => self::hit($scene, row: 6, col: 10),
                 // (10.5, 7): its upper half-row alone would be out.
-                'above the middle' => self::hit($scene, 3, 10),
-                'off the tip' => self::hit($scene, 2, 7),
+                'above the middle' => self::hit($scene, row: 3, col: 10),
+                'off the tip' => self::hit($scene, row: 2, col: 7),
             ],
         );
     }
@@ -39,9 +39,9 @@ final class MermaidHitTestTest extends TestCase
     /** Two markers on one cell, alike: the one drawn last, which is the one on top. */
     public function testTwoMarkersAlikeGoToTheOneDrawnLast(): void
     {
-        $scene = self::scene([0 => self::node(0, 10.0, 10.0, 2.0), 1 => self::node(1, 10.0, 10.0, 2.0)], [0 => 'point', 1 => 'point']);
+        $scene = self::scene([0 => self::node(0, x: 10.0, y: 10.0, size: 2.0), 1 => self::node(1, x: 10.0, y: 10.0, size: 2.0)], [0 => 'point', 1 => 'point']);
 
-        $this->assertSame(1, self::hit($scene, 5, 10));
+        $this->assertSame(1, self::hit($scene, row: 5, col: 10));
     }
 
     private static function node(int $id, float $x, float $y, float $size): GraphNode
@@ -61,8 +61,8 @@ final class MermaidHitTestTest extends TestCase
     private static function hit(MermaidScene $scene, int $row, int $col): ?int
     {
         $view = new ZoomPanModel(20, 20);
-        $view->actualSize(20, 20);
+        $view->actualSize(20, pxRows: 20);
 
-        return MermaidHitTest::nodeAt($scene, $view, 20, 10, $row, $col);
+        return MermaidHitTest::nodeAt($scene, $view, cols: 20, rows: 10, row: $row, col: $col);
     }
 }

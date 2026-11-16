@@ -136,7 +136,7 @@ final class StatementSyntaxTest extends TestCase
         // @mago-expect lint:inline-variable-return -- getConstant() returns
         // mixed, and the @var on the assignment is what gives the rows a shape.
         /** @var array<string, array{0: string|null, 1: array{0: string, 1: string|null}|null, 2: list<string>}> $constant */
-        $constant = Probe::getStatic(StatementSyntax::class, 'SYNTAX');
+        $constant = Probe::getStatic(StatementSyntax::class, member: 'SYNTAX');
 
         return $constant;
     }

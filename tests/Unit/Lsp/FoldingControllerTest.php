@@ -40,7 +40,7 @@ final class FoldingControllerTest extends TestCase
             $this->pool,
             $this->editor,
             $this->scheduler,
-            $this->tui = TestTui::create(80, 24),
+            $this->tui = TestTui::create(80, rows: 24),
         );
     }
 
@@ -69,7 +69,7 @@ final class FoldingControllerTest extends TestCase
 
     private function foldEndAt(int $line): ?int
     {
-        $foldModel = Probe::get($this->editor, 'foldModel');
+        $foldModel = Probe::get($this->editor, property: 'foldModel');
         $this->assertInstanceOf(FoldModel::class, $foldModel, 'the editor exposes a FoldModel for fold queries');
 
         return $foldModel->foldEndAt($line);
@@ -78,12 +78,12 @@ final class FoldingControllerTest extends TestCase
     public function testNoOpenFileIsANoOp(): void
     {
         $controller = $this->controller();
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
 
         $controller->foldAll();
 
         $this->assertSame([], $this->client->requests);
-        $this->assertFalse((bool) Probe::get($this->tui, 'renderRequested'), 'no file open — not even the brace-scan fallback runs');
+        $this->assertFalse((bool) Probe::get($this->tui, property: 'renderRequested'), 'no file open — not even the brace-scan fallback runs');
     }
 
     public function testNoReadyServerFoldsByBraceScan(): void
@@ -100,7 +100,7 @@ final class FoldingControllerTest extends TestCase
     {
         $controller = $this->controller();
         $doc = $this->showDocument();
-        $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), 'php', 1);
+        $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), languageId: 'php', version: 1);
 
         $controller->foldAll();
         $this->assertSame(
@@ -118,17 +118,17 @@ final class FoldingControllerTest extends TestCase
         $this->assertNull($this->foldEndAt(1), 'the brace region was superseded');
         $this->assertSame([], $this->scheduler->scheduled, 'the timeout was cancelled');
 
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
         $controller->unfoldAll();
         $this->assertNull($this->foldEndAt(0));
-        $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'), 'unfolding requests a render');
+        $this->assertTrue((bool) Probe::get($this->tui, property: 'renderRequested'), 'unfolding requests a render');
     }
 
     public function testMalformedRangesAreDroppedWithoutAbortingTheOnesAfterThem(): void
     {
         $controller = $this->controller();
         $doc = $this->showDocument();
-        $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), 'php', 1);
+        $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), languageId: 'php', version: 1);
 
         $controller->foldAll();
         $this->respond([
@@ -154,7 +154,7 @@ final class FoldingControllerTest extends TestCase
     {
         $controller = $this->controller();
         $doc = $this->showDocument();
-        $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), 'php', 1);
+        $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), languageId: 'php', version: 1);
 
         $controller->foldAll();
         $this->respond(null, ['code' => -32_601, 'message' => 'unsupported']);
@@ -165,7 +165,7 @@ final class FoldingControllerTest extends TestCase
     {
         $controller = $this->controller();
         $doc = $this->showDocument();
-        $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), 'php', 1);
+        $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), languageId: 'php', version: 1);
 
         $controller->foldAll();
         $this->scheduler->fire();
@@ -180,7 +180,7 @@ final class FoldingControllerTest extends TestCase
     {
         $controller = $this->controller();
         $doc = $this->showDocument();
-        $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), 'php', 1);
+        $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), languageId: 'php', version: 1);
 
         $controller->foldAll();
         $firstTimer = (string) \array_key_last($this->scheduler->scheduled);
@@ -193,7 +193,7 @@ final class FoldingControllerTest extends TestCase
     {
         $controller = $this->controller();
         $doc = $this->showDocument();
-        $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), 'php', 1);
+        $this->pool->notifyDidOpen('/tmp/proj/a.php', $doc->getText(), languageId: 'php', version: 1);
 
         $controller->foldAll();
         $doc->insert('x'); // version moves on

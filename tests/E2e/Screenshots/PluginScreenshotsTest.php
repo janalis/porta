@@ -74,7 +74,7 @@ final class PluginScreenshotsTest extends TestCase
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($plugin): void {
                     $this->awaitLspReady($tui, $terminal, ShopProject::SERVER);
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $this->awaitPainted($tui, $terminal, 'Auto-pairs');
+                    $this->awaitPainted($tui, $terminal, needle: 'Auto-pairs');
                     $this->selectSettingsSection($this->settingsNav($tui), 'plugin:'.$plugin);
                     $this->awaitPainted($tui, $terminal, 'Plugins › '.$plugin);
                     $this->screenshot('plugin-'.$plugin, $tui, $terminal, $ide);
@@ -96,7 +96,7 @@ final class PluginScreenshotsTest extends TestCase
             replace: "    public function count(): int\n    {\n        return \\count(\$this->lines);\n    }\n\n    public function isEmpty(): bool\n",
             subject: ShopProject::files()['src/Order/Order.php'],
         ));
-        $project->write('src/Order/Discount.php', "<?php\n\nnamespace Acme\\Shop\\Order;\n\nenum Discount: int\n{\n    case None = 0;\n    case Member = 10;\n}\n");
+        $project->write('src/Order/Discount.php', content: "<?php\n\nnamespace Acme\\Shop\\Order;\n\nenum Discount: int\n{\n    case None = 0;\n    case Member = 10;\n}\n");
         $this->runIde(
             $project,
             $project->path('src/Order/Order.php'),
@@ -104,11 +104,11 @@ final class PluginScreenshotsTest extends TestCase
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitLspReady($tui, $terminal, ShopProject::SERVER);
                     Services::resolve($ide, CommandRegistry::class)->run('ide_git');
-                    $this->awaitPainted($tui, $terminal, 'Discount.php');
+                    $this->awaitPainted($tui, $terminal, needle: 'Discount.php');
                     // Onto the first change, so the diff pane shows it.
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\x1b[A");
-                    $this->awaitPainted($tui, $terminal, 'count(): int');
+                    $this->awaitPainted($tui, $terminal, needle: 'count(): int');
                     $this->screenshot('plugin-git', $tui, $terminal, $ide);
                 },
             ],
@@ -132,8 +132,8 @@ final class PluginScreenshotsTest extends TestCase
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitLspReady($tui, $terminal, ShopProject::SERVER);
                     $tui->handleInput("\x1b8"); // alt+8
-                    $this->awaitPainted($tui, $terminal, 'round half to even');
-                    $this->awaitPainted($tui, $terminal, 'send the receipt');
+                    $this->awaitPainted($tui, $terminal, needle: 'round half to even');
+                    $this->awaitPainted($tui, $terminal, needle: 'send the receipt');
                     $this->screenshot('plugin-todo', $tui, $terminal, $ide);
                 },
             ],
@@ -190,10 +190,10 @@ final class PluginScreenshotsTest extends TestCase
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitLspReady($tui, $terminal, ShopProject::SERVER);
                     Services::resolve($ide, CommandRegistry::class)->run('phpunit:run_file');
-                    $this->awaitPainted($tui, $terminal, '1 of 2 tests failed');
+                    $this->awaitPainted($tui, $terminal, needle: '1 of 2 tests failed');
                     $tui->handleInput("\r"); // Enter on the failure, which leads the dock: to its assertion
-                    $this->awaitPainted($tui, $terminal, 'testAMemberGetsTenPercentOff(): void');
-                    $this->awaitPainted($tui, $terminal, '✓ test passed');
+                    $this->awaitPainted($tui, $terminal, needle: 'testAMemberGetsTenPercentOff(): void');
+                    $this->awaitPainted($tui, $terminal, needle: '✓ test passed');
                     $this->screenshot('plugin-phpunit', $tui, $terminal, $ide);
                 },
             ],
@@ -252,8 +252,8 @@ final class PluginScreenshotsTest extends TestCase
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('composer:outdated');
-                    $this->awaitPainted($tui, $terminal, '⇑ v8.0.1');
-                    $this->awaitPainted($tui, $terminal, 'phpunit/phpunit 12.4.0');
+                    $this->awaitPainted($tui, $terminal, needle: '⇑ v8.0.1');
+                    $this->awaitPainted($tui, $terminal, needle: 'phpunit/phpunit 12.4.0');
                     $this->screenshot('plugin-composer', $tui, $terminal, $ide);
                 },
             ],
@@ -273,22 +273,22 @@ final class PluginScreenshotsTest extends TestCase
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitLspReady($tui, $terminal, ShopProject::SERVER);
                     $document = Widgets::editor($tui)->getDocument();
-                    $document->setCursor(6, 0); // above the class
+                    $document->setCursor(6, col: 0); // above the class
                     $document->insert("/** An amount of money, in cents. */\n");
                     $tui->handleInput("\x13"); // ctrl+s: the older snapshot
                 },
                 200 => static function (Tui $tui): void {
                     $document = Widgets::editor($tui)->getDocument();
-                    $document->setCursor(41, 0); // after format()
+                    $document->setCursor(41, col: 0); // after format()
                     $document->insert("\n    public function isZero(): bool\n    {\n        return 0 === \$this->cents;\n    }\n");
                     $tui->handleInput("\x13"); // ctrl+s: the newer one
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('local-history:compare_snapshot');
-                    $this->awaitPainted($tui, $terminal, 'Compare with Snapshot');
+                    $this->awaitPainted($tui, $terminal, needle: 'Compare with Snapshot');
                     $tui->handleInput("\x1b[B"); // the older snapshot
                     $tui->handleInput("\r");
-                    $this->awaitPainted($tui, $terminal, 'Local History Diff');
+                    $this->awaitPainted($tui, $terminal, needle: 'Local History Diff');
                     $this->screenshot('plugin-local-history', $tui, $terminal, $ide);
                 },
             ],
@@ -305,7 +305,7 @@ final class PluginScreenshotsTest extends TestCase
             $project->path('assets/logo.png'),
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, '512 × 512');
+                    $this->awaitPainted($tui, $terminal, needle: '512 × 512');
                     $this->screenshot('plugin-image-viewer', $tui, $terminal, $ide);
                 },
             ],
@@ -324,7 +324,7 @@ final class PluginScreenshotsTest extends TestCase
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitLspReady($tui, $terminal, ShopProject::SERVER);
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
-                    $this->awaitPainted($tui, $terminal, 'Fit (');
+                    $this->awaitPainted($tui, $terminal, needle: 'Fit (');
                     $this->screenshot('plugin-graph-viewer', $tui, $terminal, $ide);
                 },
             ],
@@ -348,11 +348,11 @@ final class PluginScreenshotsTest extends TestCase
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitLspReady($tui, $terminal, ShopProject::SERVER);
-                    $this->awaitPainted($tui, $terminal, 'Split');
+                    $this->awaitPainted($tui, $terminal, needle: 'Split');
                     foreach (\range(1, end: 40) as $ignored) {
                         $tui->handleInput("\x1b[B"); // down past the conflict, so it scrolls into view
                     }
-                    $this->awaitPainted($tui, $terminal, 'feature/discounts');
+                    $this->awaitPainted($tui, $terminal, needle: 'feature/discounts');
                     $this->screenshot('plugin-diff', $tui, $terminal, $ide);
                 },
             ],
@@ -386,10 +386,10 @@ final class PluginScreenshotsTest extends TestCase
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitLspReady($tui, $terminal, ShopProject::SERVER);
                     Services::resolve($ide, CommandRegistry::class)->run('review:open');
-                    $this->awaitPainted($tui, $terminal, 'Review (2 open)');
+                    $this->awaitPainted($tui, $terminal, needle: 'Review (2 open)');
                     // Down from the conversation to the first thread, so its comment shows.
                     $tui->handleInput("\x1b[B");
-                    $this->awaitPainted($tui, $terminal, 'rather than a');
+                    $this->awaitPainted($tui, $terminal, needle: 'rather than a');
                     $this->screenshot('plugin-review', $tui, $terminal, $ide);
                 },
             ],

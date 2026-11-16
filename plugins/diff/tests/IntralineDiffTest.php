@@ -13,14 +13,14 @@ final class IntralineDiffTest extends TestCase
     public function testCommonPrefixAndSuffixBoundTheChange(): void
     {
         // '$count = 1;' -> '$count = 22;' — the change is the '1' vs '22' middle.
-        $ranges = IntralineDiff::changedRanges('$count = 1;', '$count = 22;');
+        $ranges = IntralineDiff::changedRanges('$count = 1;', new: '$count = 22;');
 
         $this->assertSame([[9, 10], [9, 11]], $ranges);
     }
 
     public function testPureInsertionInTheMiddle(): void
     {
-        $ranges = IntralineDiff::changedRanges('ab', 'aXb');
+        $ranges = IntralineDiff::changedRanges('ab', new: 'aXb');
 
         $this->assertSame([[1, 1], [1, 2]], $ranges, 'empty old range at the insertion point');
     }
@@ -29,20 +29,20 @@ final class IntralineDiffTest extends TestCase
     {
         // All of "aa" is both a prefix and a suffix of "aaa": the suffix may
         // only claim what the prefix left.
-        $this->assertSame([[2, 2], [2, 3]], IntralineDiff::changedRanges('aa', 'aaa'));
+        $this->assertSame([[2, 2], [2, 3]], IntralineDiff::changedRanges('aa', new: 'aaa'));
     }
 
     public function testIdenticalAndDisjointLinesCarryNoRange(): void
     {
-        $this->assertNull(IntralineDiff::changedRanges('same', 'same'));
-        $this->assertNull(IntralineDiff::changedRanges('abc', 'xyz'), 'nothing in common: no emphasis');
+        $this->assertNull(IntralineDiff::changedRanges('same', new: 'same'));
+        $this->assertNull(IntralineDiff::changedRanges('abc', new: 'xyz'), 'nothing in common: no emphasis');
     }
 
     public function testUtf8BoundariesAreNeverSplit(): void
     {
         // 'héllo' -> 'hállo': é (c3a9) vs á (c3a1) share the lead byte c3; the
         // prefix must back off to the char boundary.
-        $ranges = IntralineDiff::changedRanges("h\u{e9}llo", "h\u{e1}llo");
+        $ranges = IntralineDiff::changedRanges("h\u{e9}llo", new: "h\u{e1}llo");
 
         $this->assertNotNull($ranges);
         [$old, $new] = $ranges;
@@ -56,7 +56,7 @@ final class IntralineDiffTest extends TestCase
         // é (c3 a9) vs ĩ (c4 a9): the byte suffix 'a9' matches but sits inside
         // both chars — the backoff must retreat to the boundary, leaving
         // nothing in common (→ no emphasis).
-        $this->assertNull(IntralineDiff::changedRanges("\u{e9}", "\u{129}"));
+        $this->assertNull(IntralineDiff::changedRanges("\u{e9}", new: "\u{129}"));
     }
 
     public function testDiffDocumentPairsRunsAndStampsRanges(): void

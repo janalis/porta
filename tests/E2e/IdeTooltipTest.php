@@ -113,13 +113,13 @@ final class IdeTooltipTest extends TestCase
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use (&$cell): void {
                     $this->frame($tui);
-                    $cell = $this->cellOf($ide, $tui, 'find-bar', 'find:case');
+                    $cell = $this->cellOf($ide, $tui, id: 'find-bar', key: 'find:case');
                     self::moveTo($tui, $cell[0], $cell[1]);
                     $this->assertNull($this->shown($ide), 'the dwell first');
 
-                    $this->awaitPainted($tui, $terminal, 'Match case  Alt+C');
+                    $this->awaitPainted($tui, $terminal, needle: 'Match case  Alt+C');
                     $grid = $this->screenGrid($tui, $terminal);
-                    $card = $this->rowOf($grid, 'Match case');
+                    $card = $this->rowOf($grid, needle: 'Match case');
                     $this->assertNotNull($card);
                     $this->assertInstanceOf(Tooltip::class, $this->shown($ide));
                     // Flush under the toggle: its top border on the next row.
@@ -131,7 +131,7 @@ final class IdeTooltipTest extends TestCase
 
                     $tui->handleInput('x'); // typed into the find field
                     $this->assertNull($this->shown($ide), 'a key takes the card');
-                    $this->assertNull($this->rowOnScreen($tui, $terminal, 'Match case'), 'and it leaves the screen');
+                    $this->assertNull($this->rowOnScreen($tui, $terminal, needle: 'Match case'), 'and it leaves the screen');
                 },
             ],
         );
@@ -151,18 +151,18 @@ final class IdeTooltipTest extends TestCase
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    [$row, $col] = $this->cellOf($ide, $tui, 'find-bar', 'find:regex');
+                    [$row, $col] = $this->cellOf($ide, $tui, id: 'find-bar', key: 'find:regex');
                     self::moveTo($tui, $row, $col);
-                    $this->awaitPainted($tui, $terminal, 'Regular expression');
+                    $this->awaitPainted($tui, $terminal, needle: 'Regular expression');
 
-                    [$row, $col] = $this->cellOf($ide, $tui, 'find-bar', 'find:word');
+                    [$row, $col] = $this->cellOf($ide, $tui, id: 'find-bar', key: 'find:word');
                     self::moveTo($tui, $row, $col);
                     $this->assertSame('find:word', $this->shown($ide)?->key, 'at once: a card was up');
-                    $this->assertNotNull($this->rowOnScreen($tui, $terminal, 'Whole word  Alt+W'));
+                    $this->assertNotNull($this->rowOnScreen($tui, $terminal, needle: 'Whole word  Alt+W'));
 
-                    self::moveTo($tui, $row + 10, 5); // the code
+                    self::moveTo($tui, $row + 10, col: 5); // the code
                     $this->assertNull($this->shown($ide));
-                    $this->assertNull($this->rowOnScreen($tui, $terminal, 'Whole word'));
+                    $this->assertNull($this->rowOnScreen($tui, $terminal, needle: 'Whole word'));
                 },
             ],
         );
@@ -182,9 +182,9 @@ final class IdeTooltipTest extends TestCase
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    [$row, $col] = $this->cellOf($ide, $tui, 'find-bar', 'find:word');
+                    [$row, $col] = $this->cellOf($ide, $tui, id: 'find-bar', key: 'find:word');
                     self::moveTo($tui, $row, $col);
-                    $this->awaitPainted($tui, $terminal, 'Whole word');
+                    $this->awaitPainted($tui, $terminal, needle: 'Whole word');
 
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $row + 1));
                     $this->assertNull($this->shown($ide), 'the press took it — and toggled whole word');
@@ -201,11 +201,11 @@ final class IdeTooltipTest extends TestCase
     public function testAResizeKeepsTheCardOfTheElementStillUnderThePointer(): void
     {
         // Shorter: the toggle stays where it is.
-        $this->resizedUnderTheMatchCaseCard(160, 14, function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+        $this->resizedUnderTheMatchCaseCard(160, rows: 14, after: function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
             $this->frame($tui);
             $this->frame($tui); // the resized layout, then the frame that asks again
             $this->assertSame('find:case', $this->shown($ide)?->key);
-            $this->assertNotNull($this->rowOnScreen($tui, $terminal, 'Match case'), 'painted on the new screen');
+            $this->assertNotNull($this->rowOnScreen($tui, $terminal, needle: 'Match case'), 'painted on the new screen');
         });
     }
 
@@ -213,7 +213,7 @@ final class IdeTooltipTest extends TestCase
     public function testAResizeThatMovesTheElementAwayTakesTheCard(): void
     {
         // Narrow enough that the sidebar folds away and the toggle moves left with the editor.
-        $this->resizedUnderTheMatchCaseCard(60, 24, function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+        $this->resizedUnderTheMatchCaseCard(60, rows: 24, after: function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
             $this->await(
                 function () use ($tui, $ide): bool {
                     $this->frame($tui);
@@ -222,7 +222,7 @@ final class IdeTooltipTest extends TestCase
                 },
                 what: 'the card to leave with its toggle',
             );
-            $this->assertNull($this->rowOnScreen($tui, $terminal, 'Match case'));
+            $this->assertNull($this->rowOnScreen($tui, $terminal, needle: 'Match case'));
         });
     }
 
@@ -246,9 +246,9 @@ final class IdeTooltipTest extends TestCase
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($columns, $rows): void {
                     $this->frame($tui);
-                    [$row, $col] = $this->cellOf($ide, $tui, 'find-bar', 'find:case');
+                    [$row, $col] = $this->cellOf($ide, $tui, id: 'find-bar', key: 'find:case');
                     self::moveTo($tui, $row, $col);
-                    $this->awaitPainted($tui, $terminal, 'Match case');
+                    $this->awaitPainted($tui, $terminal, needle: 'Match case');
 
                     $terminal->simulateResize($columns, $rows);
                     $tui->requestRender();
@@ -269,11 +269,11 @@ final class IdeTooltipTest extends TestCase
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    [$row, $col] = $this->cellOf($ide, $tui, 'status', 'status:goto_line');
+                    [$row, $col] = $this->cellOf($ide, $tui, id: 'status', key: 'status:goto_line');
                     self::moveTo($tui, $row, $col);
-                    $this->awaitPainted($tui, $terminal, 'click to go to a line');
+                    $this->awaitPainted($tui, $terminal, needle: 'click to go to a line');
                     $this->assertSame('status:goto_line', $this->shown($ide)?->key);
-                    $this->assertLessThan($row, $this->rowOnScreen($tui, $terminal, 'click to go to a line') ?? \PHP_INT_MAX, 'the bottom row has no room below: the card sits above');
+                    $this->assertLessThan($row, $this->rowOnScreen($tui, $terminal, needle: 'click to go to a line') ?? \PHP_INT_MAX, 'the bottom row has no room below: the card sits above');
                 },
             ],
         );
@@ -298,9 +298,9 @@ final class IdeTooltipTest extends TestCase
 
                         return null !== $modal->lastBox();
                     }, what: 'the modal to lay out');
-                    [$row, $col] = self::screenCellOf($modal->tooltipAt(...), 'find-modal:preserve');
+                    [$row, $col] = self::screenCellOf($modal->tooltipAt(...), key: 'find-modal:preserve');
                     self::moveTo($tui, $row, $col);
-                    $this->awaitPainted($tui, $terminal, 'Preserve case when replacing');
+                    $this->awaitPainted($tui, $terminal, needle: 'Preserve case when replacing');
                     $this->assertSame('find-modal:preserve', $this->shown($ide)?->key);
                 },
             ],
@@ -317,16 +317,16 @@ final class IdeTooltipTest extends TestCase
             $project->path('a.php'),
             [
                 100 => static function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    Services::resolve($ide, Notifier::class)->notify('a note that stays a while', ToastSeverity::Info, 60.0);
+                    Services::resolve($ide, Notifier::class)->notify('a note that stays a while', ToastSeverity::Info, seconds: 60.0);
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, 'a note that stays a while');
+                    $this->awaitPainted($tui, $terminal, needle: 'a note that stays a while');
                     $toasts = Probe::object(Services::resolve($ide, Notifier::class), 'toasts');
                     $this->assertInstanceOf(ToastCenter::class, $toasts);
                     $translator = new Translator('en');
-                    [$row, $col] = self::screenCellOf(static fn (int $r, int $c): ?Tooltip => $toasts->tooltipAt($r, $c, $translator), 'toast:');
+                    [$row, $col] = self::screenCellOf(static fn (int $r, int $c): ?Tooltip => $toasts->tooltipAt($r, $c, $translator), key: 'toast:');
                     self::moveTo($tui, $row, $col);
-                    $this->awaitPainted($tui, $terminal, 'Dismiss');
+                    $this->awaitPainted($tui, $terminal, needle: 'Dismiss');
 
                     self::moveTo($tui, $row + 1, $col - 5); // the card's words
                     $this->assertNull($this->shown($ide), 'a card says itself, and hides what is under it');
@@ -352,10 +352,10 @@ final class IdeTooltipTest extends TestCase
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use (&$cell): void {
                     $this->frame($tui);
-                    $cell = $this->cellOf($ide, $tui, 'find-bar', 'find:regex');
+                    $cell = $this->cellOf($ide, $tui, id: 'find-bar', key: 'find:regex');
                     self::moveTo($tui, $cell[0], $cell[1]);
                     $this->assertSame('find:regex', $this->shown($ide)?->key, 'the control: with no dwell, at once');
-                    self::moveTo($tui, 20, 100);
+                    self::moveTo($tui, row: 20, col: 100);
 
                     Services::resolve($ide, CommandRegistry::class)->run('goto_file');
                 },
@@ -396,9 +396,9 @@ final class IdeTooltipTest extends TestCase
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    [$row, $col] = $this->cellOf($ide, $tui, 'settings-form', 'settings:autoPairs');
+                    [$row, $col] = $this->cellOf($ide, $tui, id: 'settings-form', key: 'settings:autoPairs');
                     self::moveTo($tui, $row, $col);
-                    $this->awaitPainted($tui, $terminal, 'Changed from its default');
+                    $this->awaitPainted($tui, $terminal, needle: 'Changed from its default');
                 },
             ],
         );
@@ -424,22 +424,22 @@ final class IdeTooltipTest extends TestCase
                     $editor->decorations->setInlayHints([1 => [new InlayHint(15, '46 references', null, padLeft: true)]]);
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, 'StatusTone 46 references');
+                    $this->awaitPainted($tui, $terminal, needle: 'StatusTone 46 references');
                     $editor = Widgets::editor($tui);
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
                     $this->assertInstanceOf(WidgetRect::class, $rect);
                     $cell = [$rect->row + 1, $rect->col + $editor->gutterWidth() + 7]; // on `StatusTone`
                     self::moveTo($tui, ...$cell);
-                    $this->assertNull(Probe::get(Services::resolve($ide, TooltipCenter::class), 'pending'), 'inline: the hint is in the line, no card is asked for');
+                    $this->assertNull(Probe::get(Services::resolve($ide, TooltipCenter::class), property: 'pending'), 'inline: the hint is in the line, no card is asked for');
 
                     $editor->display->setInlayHints(InlayHintMode::Tooltip);
                     self::moveTo($tui, $cell[0], $cell[1] + 1);
                     // The inline frame already carried the words: await the
                     // card itself, then read that it is painted.
                     $this->await(fn (): bool => 'inlay:1:5' === $this->shown($ide)?->key, what: 'the inlay card');
-                    $this->awaitPainted($tui, $terminal, 'StatusTone: string');
-                    $this->assertNotNull($this->rowOnScreen($tui, $terminal, '46 references'), 'the card says it');
-                    $this->assertNull($this->rowOnScreen($tui, $terminal, 'StatusTone 46'), 'and the line itself no longer does');
+                    $this->awaitPainted($tui, $terminal, needle: 'StatusTone: string');
+                    $this->assertNotNull($this->rowOnScreen($tui, $terminal, needle: '46 references'), 'the card says it');
+                    $this->assertNull($this->rowOnScreen($tui, $terminal, needle: 'StatusTone 46'), 'and the line itself no longer does');
                 },
             ],
         );
@@ -456,7 +456,7 @@ final class IdeTooltipTest extends TestCase
             [
                 100 => static function (Tui $tui): void {
                     $editor = Widgets::editor($tui);
-                    $editor->getDocument()->setCursor(1, 5);
+                    $editor->getDocument()->setCursor(1, col: 5);
                     $editor->showCompletions([new CompletionItem(label: 'Countable', insertText: 'Countable', kind: 'iface', detail: '')]);
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
@@ -465,9 +465,9 @@ final class IdeTooltipTest extends TestCase
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
                     $this->assertInstanceOf(WidgetRect::class, $rect);
                     $translator = new Translator('en');
-                    [$row, $col] = self::screenCellOf(static fn (int $r, int $c): ?Tooltip => $editor->completion->tooltipAt($r - $rect->row, $c - $rect->col, $translator), 'completion-kind:');
+                    [$row, $col] = self::screenCellOf(static fn (int $r, int $c): ?Tooltip => $editor->completion->tooltipAt($r - $rect->row, $c - $rect->col, $translator), key: 'completion-kind:');
                     self::moveTo($tui, $row, $col);
-                    $this->awaitPainted($tui, $terminal, 'Interface');
+                    $this->awaitPainted($tui, $terminal, needle: 'Interface');
                 },
             ],
         );

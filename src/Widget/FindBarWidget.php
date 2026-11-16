@@ -184,19 +184,19 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
         $kb = $this->getKeybindings();
 
         match (true) {
-            $kb->matches($data, 'close') => $this->close(),
-            $kb->matches($data, 'find_next') => $this->findNext(),
-            $kb->matches($data, 'history_prev') => $this->recallHistory(1),
-            $kb->matches($data, 'history_next') => $this->recallHistory(-1),
-            $kb->matches($data, 'find_prev') => $this->stepMatch(-1),
-            $kb->matches($data, 'switch_field') => $this->switchField(),
-            $kb->matches($data, 'toggle_regex') => $this->toggleRegex(),
-            $kb->matches($data, 'toggle_word') => $this->toggleWholeWord(),
-            $kb->matches($data, 'toggle_case') => $this->toggleMatchCase(),
-            $kb->matches($data, 'replace_one') => $this->replaceCurrent(),
-            $kb->matches($data, 'replace_all') => $this->replaceAll(),
-            $kb->matches($data, 'select_all_matches') => $this->selectAllMatches(),
-            $kb->matches($data, 'delete_char_backward') => $this->editActiveField(static fn (TextField $field): bool => $field->backspace()),
+            $kb->matches($data, action: 'close') => $this->close(),
+            $kb->matches($data, action: 'find_next') => $this->findNext(),
+            $kb->matches($data, action: 'history_prev') => $this->recallHistory(1),
+            $kb->matches($data, action: 'history_next') => $this->recallHistory(-1),
+            $kb->matches($data, action: 'find_prev') => $this->stepMatch(-1),
+            $kb->matches($data, action: 'switch_field') => $this->switchField(),
+            $kb->matches($data, action: 'toggle_regex') => $this->toggleRegex(),
+            $kb->matches($data, action: 'toggle_word') => $this->toggleWholeWord(),
+            $kb->matches($data, action: 'toggle_case') => $this->toggleMatchCase(),
+            $kb->matches($data, action: 'replace_one') => $this->replaceCurrent(),
+            $kb->matches($data, action: 'replace_all') => $this->replaceAll(),
+            $kb->matches($data, action: 'select_all_matches') => $this->selectAllMatches(),
+            $kb->matches($data, action: 'delete_char_backward') => $this->editActiveField(static fn (TextField $field): bool => $field->backspace()),
             default => $this->typeKey($data, $kb),
         };
     }

@@ -78,7 +78,7 @@ final class StoreArtTest extends TestCase
 
     public function testWhatThePackageListsWinsAndNoReadmeIsRead(): void
     {
-        $this->http->bodies = ['https://img.test/icon.png' => PngFixture::bytes(40, 40), 'https://img.test/shot.png' => PngFixture::bytes(320, 180)];
+        $this->http->bodies = ['https://img.test/icon.png' => PngFixture::bytes(40, height: 40), 'https://img.test/shot.png' => PngFixture::bytes(320, height: 180)];
         $art = self::resolve($this->art(), [self::entry(icon: 'https://img.test/icon.png', screenshots: ['https://img.test/shot.png', 'https://img.test/two.png'])])['acme/porta-rector'];
 
         $this->assertSame([40, 40], self::dimensions($art->icon));
@@ -91,11 +91,11 @@ final class StoreArtTest extends TestCase
     {
         $this->http->bodies = [
             self::README => "# Rector\n\n![logo](logo.png)\n![tiny](https://img.test/tiny.png)\n![wide](https://img.test/wide.png)\n![tall](https://img.test/tall.png)\n![later](https://img.test/later.png)\n",
-            'https://raw.githubusercontent.com/acme/porta-rector/abc/logo.png' => PngFixture::bytes(64, 60),
-            'https://img.test/tiny.png' => PngFixture::bytes(300, 20),
-            'https://img.test/wide.png' => PngFixture::bytes(400, 225),
-            'https://img.test/tall.png' => PngFixture::bytes(100, 400),
-            'https://img.test/later.png' => PngFixture::bytes(400, 225),
+            'https://raw.githubusercontent.com/acme/porta-rector/abc/logo.png' => PngFixture::bytes(64, height: 60),
+            'https://img.test/tiny.png' => PngFixture::bytes(300, height: 20),
+            'https://img.test/wide.png' => PngFixture::bytes(400, height: 225),
+            'https://img.test/tall.png' => PngFixture::bytes(100, height: 400),
+            'https://img.test/later.png' => PngFixture::bytes(400, height: 225),
         ];
         $art = self::resolve($this->art(), [self::entry()])['acme/porta-rector'];
 
@@ -109,8 +109,8 @@ final class StoreArtTest extends TestCase
     {
         $this->http->bodies = [
             self::README => "![gone](https://img.test/gone.png)\n![wide](https://img.test/wide.png)\n![square](https://img.test/square.png)\n",
-            'https://img.test/wide.png' => PngFixture::bytes(400, 225),
-            'https://img.test/square.png' => PngFixture::bytes(64, 64),
+            'https://img.test/wide.png' => PngFixture::bytes(400, height: 225),
+            'https://img.test/square.png' => PngFixture::bytes(64, height: 64),
         ];
         $art = self::resolve($this->art(), [self::entry(screenshots: ['https://img.test/listed.png'])])['acme/porta-rector'];
 
@@ -147,7 +147,7 @@ final class StoreArtTest extends TestCase
             self::README => '![p]('.$url.')',
             $url => PngFixture::bytes($width, $height),
             $tool => '![logo](https://img.test/logo.png)',
-            'https://img.test/logo.png' => PngFixture::bytes(48, 48),
+            'https://img.test/logo.png' => PngFixture::bytes(48, height: 48),
         ];
         $art = self::resolve($this->art(), [self::entry(tools: ['github:vendor/tool'])])['acme/porta-rector'];
 
@@ -157,7 +157,7 @@ final class StoreArtTest extends TestCase
     public function testWhatCouldNotBeReadIsNotKept(): void
     {
         $tool = 'https://raw.githubusercontent.com/vendor/tool/HEAD/README.md';
-        $this->http->bodies = ['https://img.test/logo.png' => PngFixture::bytes(40, 40)];
+        $this->http->bodies = ['https://img.test/logo.png' => PngFixture::bytes(40, height: 40)];
         $this->assertNull(self::resolve($this->art(), [self::entry(), self::entry('tooled', tools: ['github:vendor/tool'], readme: null)])['acme/porta-rector']->icon, 'offline: nothing');
 
         $this->http->bodies += [self::README => "![logo](https://img.test/logo.png)\n", $tool => "![logo](https://img.test/logo.png)\n"];
@@ -193,7 +193,7 @@ final class StoreArtTest extends TestCase
         $this->assertNull(self::resolve($art(), [self::entry()])['acme/porta-rector']->icon, 'no converter: no icon');
 
         $converter = static function (string $svg, int $width, \Closure $onPng): void {
-            $onPng(PngFixture::bytes(40, 40));
+            $onPng(PngFixture::bytes(40, height: 40));
         };
         $this->assertSame([40, 40], self::dimensions(self::resolve($art(), [self::entry()])['acme/porta-rector']->icon), 'the image viewer switched on: the next session draws it');
     }
@@ -206,7 +206,7 @@ final class StoreArtTest extends TestCase
             self::README => "![logo](https://img.test/logo.svg)\n",
             'https://img.test/logo.svg' => $svg,
             'https://raw.githubusercontent.com/acme/porta-plain/abc/README.md' => "![logo](https://img.test/plain.png)\n",
-            'https://img.test/plain.png' => PngFixture::bytes(40, 40),
+            'https://img.test/plain.png' => PngFixture::bytes(40, height: 40),
         ];
         $converter = null;
         $changes = 0;
@@ -224,7 +224,7 @@ final class StoreArtTest extends TestCase
         $this->assertNull(self::resolve($art, $entries)['acme/porta-rector']->icon);
 
         $converter = static function (string $svg, int $width, \Closure $onPng): void {
-            $onPng(PngFixture::bytes(40, 40));
+            $onPng(PngFixture::bytes(40, height: 40));
         };
         $this->assertNull(self::resolve($art, $entries)['acme/porta-rector']->icon, 'nothing changed: what this session found stands');
 
@@ -240,8 +240,8 @@ final class StoreArtTest extends TestCase
     {
         $this->http->bodies = [
             self::README => "![logo](https://img.test/logo.png)\n![wide](https://img.test/wide.png)\n",
-            'https://img.test/logo.png' => PngFixture::bytes(40, 40),
-            'https://img.test/wide.png' => PngFixture::bytes(400, 225),
+            'https://img.test/logo.png' => PngFixture::bytes(40, height: 40),
+            'https://img.test/wide.png' => PngFixture::bytes(400, height: 225),
         ];
         self::resolve($this->art(), [self::entry()]); // kept: every picture drawn
         $changes = 1; // plugins lent and took back converters before the store opened
@@ -252,7 +252,7 @@ final class StoreArtTest extends TestCase
         unset($this->http->bodies['https://img.test/logo.png']);
         $this->assertNull(self::resolve($art, [self::entry()])['acme/porta-rector']->icon, 'the kept icon did not come');
 
-        $this->http->bodies['https://img.test/logo.png'] = PngFixture::bytes(40, 40);
+        $this->http->bodies['https://img.test/logo.png'] = PngFixture::bytes(40, height: 40);
         $this->assertNull(self::resolve($art, [self::entry()])['acme/porta-rector']->icon, 'until the converters change, what this session found stands');
         ++$changes;
         $this->assertSame([40, 40], self::dimensions(self::resolve($art, [self::entry()])['acme/porta-rector']->icon));
@@ -262,15 +262,15 @@ final class StoreArtTest extends TestCase
     {
         $this->http->bodies = [
             self::README => "![gone](https://img.test/gone.png)\n![wide](https://img.test/wide.png)\n",
-            'https://img.test/wide.png' => PngFixture::bytes(400, 225),
+            'https://img.test/wide.png' => PngFixture::bytes(400, height: 225),
             'https://raw.githubusercontent.com/acme/porta-other/abc/README.md' => '![logo](https://img.test/logo.png)',
-            'https://img.test/logo.png' => PngFixture::bytes(40, 40),
+            'https://img.test/logo.png' => PngFixture::bytes(40, height: 40),
             \sprintf(PackagistMetadata::RELEASES, 'vendor/tool') => (string) \json_encode(
                 ['packages' => ['vendor/tool' => [['source' => ['url' => 'https://github.com/vendor/tool-repo.git']]]]],
                 \JSON_THROW_ON_ERROR,
             ),
             'https://raw.githubusercontent.com/vendor/tool-repo/HEAD/README.md' => '![logo](https://img.test/tool.png)',
-            'https://img.test/tool.png' => PngFixture::bytes(44, 44),
+            'https://img.test/tool.png' => PngFixture::bytes(44, height: 44),
         ];
         $art = $this->art();
         self::resolve($art, [self::entry()]);
@@ -302,9 +302,9 @@ final class StoreArtTest extends TestCase
             $tool => "<img src=\".github/img/logo.png\">\n\n## Sponsors\n\n![s](https://img.test/sponsor.png)\n",
             $named => "![logo](https://img.test/phpstan.png)\n",
             $github => "![logo](https://img.test/custos.png)\n",
-            'https://raw.githubusercontent.com/sebastianbergmann/phpunit/HEAD/.github/img/logo.png' => PngFixture::bytes(48, 48),
-            'https://img.test/phpstan.png' => PngFixture::bytes(50, 50),
-            'https://img.test/custos.png' => PngFixture::bytes(52, 52),
+            'https://raw.githubusercontent.com/sebastianbergmann/phpunit/HEAD/.github/img/logo.png' => PngFixture::bytes(48, height: 48),
+            'https://img.test/phpstan.png' => PngFixture::bytes(50, height: 50),
+            'https://img.test/custos.png' => PngFixture::bytes(52, height: 52),
         ];
         $found = self::resolve($this->art(), [
             self::entry('phpunit', tools: ['composer:phpunit/phpunit']),
@@ -327,9 +327,9 @@ final class StoreArtTest extends TestCase
         $this->http->bodies = [
             self::README => "![shot](https://img.test/shot.png)\n",
             $tool => "![logo](https://img.test/logo.png)\n![shot again](https://img.test/shot.png)\n![banner](https://img.test/banner.png)\n",
-            'https://img.test/shot.png' => PngFixture::bytes(400, 225),
-            'https://img.test/logo.png' => PngFixture::bytes(48, 48),
-            'https://img.test/banner.png' => PngFixture::bytes(600, 200),
+            'https://img.test/shot.png' => PngFixture::bytes(400, height: 225),
+            'https://img.test/logo.png' => PngFixture::bytes(48, height: 48),
+            'https://img.test/banner.png' => PngFixture::bytes(600, height: 200),
         ];
         $art = self::resolve($this->art(), [self::entry(tools: ['github:vendor/tool'])])['acme/porta-rector'];
 
@@ -342,7 +342,11 @@ final class StoreArtTest extends TestCase
     public function testAPluginsUnreadReadmeIsNotKeptForItsToolsSake(): void
     {
         $tool = 'https://raw.githubusercontent.com/vendor/tool/HEAD/README.md';
-        $this->http->bodies = [$tool => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(48, 48), 'https://img.test/shot.png' => PngFixture::bytes(400, 225)];
+        $this->http->bodies = [
+            $tool => "![logo](https://img.test/logo.png)\n",
+            'https://img.test/logo.png' => PngFixture::bytes(48, height: 48),
+            'https://img.test/shot.png' => PngFixture::bytes(400, height: 225),
+        ];
         $this->assertSame([], self::resolve($this->art(), [self::entry(tools: ['github:vendor/tool'])])['acme/porta-rector']->shots);
 
         $this->http->bodies[self::README] = "![shot](https://img.test/shot.png)\n";
@@ -356,8 +360,8 @@ final class StoreArtTest extends TestCase
         $this->http->bodies = [
             self::README => "![shot](https://img.test/shot.png)\n",
             $tool => "![wordmark](https://img.test/wordmark.png)\n",
-            'https://img.test/shot.png' => PngFixture::bytes(400, 225),
-            'https://img.test/wordmark.png' => PngFixture::bytes(300, 80),
+            'https://img.test/shot.png' => PngFixture::bytes(400, height: 225),
+            'https://img.test/wordmark.png' => PngFixture::bytes(300, height: 80),
         ];
         $this->assertSame([300, 80], self::dimensions(self::resolve($this->art(), [self::entry(tools: ['github:vendor/tool'])])['acme/porta-rector']->icon));
         $this->assertSame([400, 225], self::dimensions(self::resolve($this->art(), [self::entry('plain')])['acme/porta-plain']->icon), 'no tool: its own first picture');
@@ -367,7 +371,7 @@ final class StoreArtTest extends TestCase
     public function testWhatWasFoundIsKeptByTheToolsItDrives(): void
     {
         $tool = 'https://raw.githubusercontent.com/vendor/tool/HEAD/README.md';
-        $this->http->bodies = [self::README => "# Rector\n", $tool => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(48, 48)];
+        $this->http->bodies = [self::README => "# Rector\n", $tool => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(48, height: 48)];
         $this->assertNull(self::resolve($this->art(), [self::entry()])['acme/porta-rector']->icon);
         $this->assertSame([48, 48], self::dimensions(self::resolve($this->art(), [self::entry(tools: ['github:vendor/tool'])])['acme/porta-rector']->icon));
     }
@@ -376,7 +380,11 @@ final class StoreArtTest extends TestCase
     public function testTheFallbackIconIsOneThatWasDrawn(): void
     {
         $tool = 'https://raw.githubusercontent.com/vendor/tool/HEAD/README.md';
-        $this->http->bodies = [self::README => "![shot](https://img.test/shot.png)\n", $tool => "![gone](https://img.test/gone.png)\n", 'https://img.test/shot.png' => PngFixture::bytes(400, 225)];
+        $this->http->bodies = [
+            self::README => "![shot](https://img.test/shot.png)\n",
+            $tool => "![gone](https://img.test/gone.png)\n",
+            'https://img.test/shot.png' => PngFixture::bytes(400, height: 225),
+        ];
         $this->assertSame([400, 225], self::dimensions(self::resolve($this->art(), [self::entry(tools: ['github:vendor/tool'])])['acme/porta-rector']->icon));
     }
 
@@ -389,7 +397,7 @@ final class StoreArtTest extends TestCase
             'https://formulae.brew.sh/api/formula/site.json' => '{"homepage": "https://chroma.test"}',
             'https://formulae.brew.sh/api/formula/junk.json' => 'not json',
             'https://raw.githubusercontent.com/alecthomas/chroma/HEAD/README.md' => "![logo](https://img.test/chroma.png)\n",
-            'https://img.test/chroma.png' => PngFixture::bytes(48, 48),
+            'https://img.test/chroma.png' => PngFixture::bytes(48, height: 48),
         ];
         $art = self::resolve($this->art(), [self::entry(tools: ['brew:site', 'brew:junk', 'brew:chroma'])])['acme/porta-rector'];
         $this->assertSame([48, 48], self::dimensions($art->icon), 'a home page off GitHub, or no page at all, lends nothing');
@@ -405,10 +413,10 @@ final class StoreArtTest extends TestCase
         $this->http->bodies = [
             self::README => "![shot](https://img.test/shot.png)\n![square](https://img.test/square.png)\n",
             $tool => "![banner](https://img.test/banner.png)\n![logo](https://img.test/logo.png)\n",
-            'https://img.test/shot.png' => PngFixture::bytes(400, 225),
-            'https://img.test/square.png' => PngFixture::bytes(64, 64),
-            'https://img.test/banner.png' => PngFixture::bytes(600, 200),
-            'https://img.test/logo.png' => PngFixture::bytes(48, 48),
+            'https://img.test/shot.png' => PngFixture::bytes(400, height: 225),
+            'https://img.test/square.png' => PngFixture::bytes(64, height: 64),
+            'https://img.test/banner.png' => PngFixture::bytes(600, height: 200),
+            'https://img.test/logo.png' => PngFixture::bytes(48, height: 48),
         ];
         $this->assertSame(
             [600, 200],
@@ -419,7 +427,7 @@ final class StoreArtTest extends TestCase
 
     public function testWhatWasFoundIsKeptForAWeekPerVersion(): void
     {
-        $this->http->bodies = [self::README => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(40, 40)];
+        $this->http->bodies = [self::README => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(40, height: 40)];
         $art = $this->art();
         $first = self::resolve($art, [self::entry()]);
         $batches = \count($this->http->batches);
@@ -446,9 +454,9 @@ final class StoreArtTest extends TestCase
     /** What an older Porta concluded, by older rules, is not read as this one's: the store looks again. */
     public function testAVerdictKeptByOlderRulesIsLookedAtAgain(): void
     {
-        $this->http->bodies = [self::README => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(40, 40)];
-        $this->home->write('art/'.\sha1('acme/porta-rector@1.0').'.json', '{"icon": null, "shots": []}');
-        $this->home->write('art/'.\sha1('acme/porta-rector@1.0#1').'.json', '{"icon": null, "shots": []}');
+        $this->http->bodies = [self::README => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(40, height: 40)];
+        $this->home->write('art/'.\sha1('acme/porta-rector@1.0').'.json', content: '{"icon": null, "shots": []}');
+        $this->home->write('art/'.\sha1('acme/porta-rector@1.0#1').'.json', content: '{"icon": null, "shots": []}');
 
         $this->assertSame([40, 40], self::dimensions(self::resolve($this->art(), [self::entry()])['acme/porta-rector']->icon));
         $this->assertFileExists($this->home->path('art/'.\sha1('acme/porta-rector@1.0#3').'.json'), 'kept under these rules');
@@ -456,11 +464,11 @@ final class StoreArtTest extends TestCase
 
     public function testAKeptFileThatIsNotWhatWasFoundIsLookedAtAgain(): void
     {
-        $this->http->bodies = [self::README => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(40, 40)];
-        $this->home->write('art/'.\sha1('acme/porta-rector@1.0#3').'.json', '{"shots": []}');
+        $this->http->bodies = [self::README => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(40, height: 40)];
+        $this->home->write('art/'.\sha1('acme/porta-rector@1.0#3').'.json', content: '{"shots": []}');
         $this->assertNotNull(self::resolve($this->art(), [self::entry()])['acme/porta-rector']->icon);
 
-        $this->home->write('art/'.\sha1('acme/porta-rector@1.0#3').'.json', '{"icon": 7, "shots": "x"}');
+        $this->home->write('art/'.\sha1('acme/porta-rector@1.0#3').'.json', content: '{"icon": 7, "shots": "x"}');
         $kept = self::resolve($this->art(), [self::entry()])['acme/porta-rector'];
         $this->assertNull($kept->icon, 'what is not an address is no icon');
         $this->assertSame([], $kept->shots);
@@ -468,7 +476,7 @@ final class StoreArtTest extends TestCase
 
     public function testAnEntryBeingLookedAtIsLookedAtOnce(): void
     {
-        $this->http->bodies = [self::README => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(40, 40)];
+        $this->http->bodies = [self::README => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(40, height: 40)];
         $this->http->hold = true;
         $art = $this->art();
         $first = [];
@@ -486,11 +494,11 @@ final class StoreArtTest extends TestCase
 
     public function testNowhereToKeepStillFinds(): void
     {
-        $this->http->bodies = [self::README => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(40, 40)];
+        $this->http->bodies = [self::README => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(40, height: 40)];
         $fetch = $this->http->fetch();
         $this->assertNotNull(self::resolve(new StoreArt($fetch, new StoreAssets($fetch, null), null), [self::entry()])['acme/porta-rector']->icon);
 
-        $this->home->write('blocked', '');
+        $this->home->write('blocked', content: '');
         $this->assertNotNull(self::resolve(new StoreArt($fetch, new StoreAssets($fetch, null), $this->home->path('blocked')), [self::entry()])['acme/porta-rector']->icon);
     }
 

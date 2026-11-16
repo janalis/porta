@@ -27,7 +27,7 @@ final class PngRasterTest extends TestCase
 
     public function testFittedRowsAndHeaderValidation(): void
     {
-        $bytes = PngFixture::bytes(4, 4);
+        $bytes = PngFixture::bytes(4, height: 4);
         $this->assertSame([4, 4], PngDimensions::read($bytes));
         $this->assertNull(PngDimensions::read('not PNG'));
         $this->assertNull(PngDimensions::read(\str_replace('IHDR', replace: 'nope', subject: $bytes)));
@@ -40,7 +40,7 @@ final class PngRasterTest extends TestCase
         $this->assertNull(new PngRaster()->rows('not PNG', columns: 2, rows: 1));
         $this->assertNull(new PngRaster()->rows(\substr($bytes, offset: 0, length: 24), columns: 2, rows: 1));
         $this->assertNull(new PngRaster()->rows($bytes.\str_repeat(' ', 20 * 1024 * 1024), columns: 2, rows: 1));
-        $this->assertNull(new PngRaster()->rows(PngFixture::bytes(4001, 4000), columns: 2, rows: 1));
+        $this->assertNull(new PngRaster()->rows(PngFixture::bytes(4001, height: 4000), columns: 2, rows: 1));
     }
 
     public function testTransparentPixelsBlendOnTheCheckerboard(): void

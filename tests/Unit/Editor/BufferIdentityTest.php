@@ -44,8 +44,8 @@ final class BufferIdentityTest extends TestCase
             $this->markTestSkipped('this filesystem is case-sensitive, so the two names are two files');
         }
 
-        $manager->open($stored, "<?php\n// one\n");
-        $manager->open($lowered, "<?php\n// one\n");
+        $manager->open($stored, content: "<?php\n// one\n");
+        $manager->open($lowered, content: "<?php\n// one\n");
 
         $this->assertCount(1, $manager->all(), 'one file, one buffer');
         $this->assertSame($stored, $manager->all()[0]->path, 'and it keeps the spelling it was opened with first');
@@ -64,8 +64,8 @@ final class BufferIdentityTest extends TestCase
         $linked = $this->project->dir.'/Linked.php';
         \link($stored, $linked);
 
-        $manager->open($stored, "<?php\n// one\n");
-        $manager->open($linked, "<?php\n// one\n");
+        $manager->open($stored, content: "<?php\n// one\n");
+        $manager->open($linked, content: "<?php\n// one\n");
 
         $this->assertCount(1, $manager->all(), 'one inode, one buffer');
         $this->assertSame($stored, $manager->all()[0]->path);
@@ -77,8 +77,8 @@ final class BufferIdentityTest extends TestCase
         $this->project = new TempProject(['a.php' => "<?php\n", 'b.php' => "<?php\n"]);
         $manager = new BufferManager();
 
-        $manager->open($this->project->path('a.php'), "<?php\n");
-        $manager->open($this->project->path('b.php'), "<?php\n");
+        $manager->open($this->project->path('a.php'), content: "<?php\n");
+        $manager->open($this->project->path('b.php'), content: "<?php\n");
 
         $this->assertCount(2, $manager->all());
     }
@@ -89,8 +89,8 @@ final class BufferIdentityTest extends TestCase
         $this->project = new TempProject(['real.php' => "<?php\n"]);
         $manager = new BufferManager();
 
-        $manager->open($this->project->path('real.php'), "<?php\n");
-        $manager->open($this->project->dir.'/not-created-yet.php', '');
+        $manager->open($this->project->path('real.php'), content: "<?php\n");
+        $manager->open($this->project->dir.'/not-created-yet.php', content: '');
 
         $this->assertCount(2, $manager->all());
     }

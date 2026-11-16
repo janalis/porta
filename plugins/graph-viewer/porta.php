@@ -49,18 +49,18 @@ return new class('graph-viewer') extends AbstractPlugin implements DisposablePlu
 
     public function activate(PluginApi $api): void
     {
-        $api->registerSetting('mermaid', 'Preview Mermaid beside its source', 'bool', true);
-        $api->registerSetting('mermaidPath', 'Mermaid CLI path', hint: 'empty = discover on PATH');
-        $api->registerSetting('plantuml', 'Preview PlantUML beside its source', 'bool', true);
+        $api->registerSetting('mermaid', label: 'Preview Mermaid beside its source', kind: 'bool', default: true);
+        $api->registerSetting('mermaidPath', label: 'Mermaid CLI path', hint: 'empty = discover on PATH');
+        $api->registerSetting('plantuml', label: 'Preview PlantUML beside its source', kind: 'bool', default: true);
         // The three tool knobs were CORE settings until this plugin owned
         // them (the git-keys precedent): `dotPath`, `graphRender` and the
         // core `plantuml` PATH — renamed, since this plugin's `plantuml` was
         // already the bool above. All three apply live: the two paths are read
         // per spawn through the closures below, and `renderMode` is pushed
         // into the standing pane by the onSettingChanged hook.
-        $api->registerSetting('dotPath', 'Graphviz dot path', hint: 'empty = discover on PATH');
-        $api->registerSetting('renderMode', 'Graph rendering', 'choice', 'bitmap', ['bitmap', 'cells']);
-        $api->registerSetting('plantumlPath', 'PlantUML path (or .jar)', hint: 'empty = discover');
+        $api->registerSetting('dotPath', label: 'Graphviz dot path', hint: 'empty = discover on PATH');
+        $api->registerSetting('renderMode', label: 'Graph rendering', kind: 'choice', default: 'bitmap', options: ['bitmap', 'cells']);
+        $api->registerSetting('plantumlPath', label: 'PlantUML path (or .jar)', hint: 'empty = discover');
         // A diagram is its SOURCE: it opens in the editor with the drawing
         // beside it, re-laid-out as it is edited. The viewer claim keeps a
         // file too large for the editor, which the preview claim declines.
@@ -169,8 +169,8 @@ return new class('graph-viewer') extends AbstractPlugin implements DisposablePlu
                 return $dot;
             },
         );
-        $api->registerSetting('command', 'Architecture command (stdout = DOT)', hint: 'empty = built-in PHP namespace scanner');
-        $api->registerSetting('outputDir', 'Architecture output directory', hint: 'empty = project root; relative paths resolve from it');
+        $api->registerSetting('command', label: 'Architecture command (stdout = DOT)', hint: 'empty = built-in PHP namespace scanner');
+        $api->registerSetting('outputDir', label: 'Architecture output directory', hint: 'empty = project root; relative paths resolve from it');
 
         // What makes all three tool knobs live. A write under this plugin's own
         // key retires whatever a pre-move core key was still answering — that
@@ -187,12 +187,12 @@ return new class('graph-viewer') extends AbstractPlugin implements DisposablePlu
         $this->api = $api;
         $api->onShutdown($this->deactivate(...));
 
-        $api->registerCommand('architecture', 'Project Architecture', static function () use ($api): void {
+        $api->registerCommand('architecture', label: 'Project Architecture', handler: static function () use ($api): void {
             $command = (string) $api->setting('command');
             $outputDir = (string) $api->setting('outputDir');
             new ArchitectureArtifact($api->projectRoot(), $outputDir)->generate('' === $command ? null : $command, static function (?string $error, ?string $path) use ($api): void {
                 if (null !== $error) {
-                    $api->flash($error, 5.0);
+                    $api->flash($error, seconds: 5.0);
 
                     return;
                 }
@@ -201,7 +201,7 @@ return new class('graph-viewer') extends AbstractPlugin implements DisposablePlu
         });
         $api->addMenuItem('architecture');
 
-        $api->registerCommand('find-node', 'Graph: Find Node', $findNode);
+        $api->registerCommand('find-node', label: 'Graph: Find Node', handler: $findNode);
         $this->registerExports($api, $setting, $exports, $plantUml, $diagram);
     }
 
@@ -226,7 +226,7 @@ return new class('graph-viewer') extends AbstractPlugin implements DisposablePlu
             $done = static function (?string $error) use ($api, $out): void {
                 null === $error
                     ? $api->flash($api->trans('Exported %file%', ['%file%' => basename($out)]))
-                    : $api->flash($api->trans('Export failed: %error%', ['%error%' => $error]), 5.0);
+                    : $api->flash($api->trans('Export failed: %error%', ['%error%' => $error]), seconds: 5.0);
             };
             if (DiagramKind::Mermaid === $kind) {
                 $exports->export($api->openBuffers()->text($file) ?? (string) file_get_contents($file), $format, $out, $done);

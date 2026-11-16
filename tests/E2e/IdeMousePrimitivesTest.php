@@ -97,7 +97,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + 3, $rect->row + 3));
                 },
                 280 => function (Tui $tui, $terminal, Ide $ide): void {
-                    $tree = Widgets::byId($tui, 'tree', FileTreeWidget::class);
+                    $tree = Widgets::byId($tui, id: 'tree', class: FileTreeWidget::class);
                     $line = Paint::lines($tree, new RenderContext(30, 24))[2];
                     $this->assertStringContainsString("\x1b[48;5;236m", $line, 'hovered tree row is highlighted');
                     // Move off the tree into the editor → the hover clears.
@@ -106,7 +106,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $editorRect->col + 5, $editorRect->row + 3));
                 },
                 360 => function (Tui $tui): void {
-                    $tree = Widgets::byId($tui, 'tree', FileTreeWidget::class);
+                    $tree = Widgets::byId($tui, id: 'tree', class: FileTreeWidget::class);
                     $joined = \implode('', Paint::lines($tree, new RenderContext(30, 24)));
                     $this->assertStringNotContainsString("\x1b[48;5;236m", $joined, 'hover cleared after leaving the tree');
                 },
@@ -173,7 +173,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     );
                     // Wheel over the tree scrolls it (feeds arrow keys): the
                     // selection moves down a notch and comes back up with the next.
-                    $tree = Widgets::byId($tui, 'tree', FileTreeWidget::class);
+                    $tree = Widgets::byId($tui, id: 'tree', class: FileTreeWidget::class);
                     $before = $tree->selectedNode()?->path;
                     $tui->handleInput("\x1b[<65;6;7M");
                     $this->assertNotSame($before, $tree->selectedNode()?->path, 'a wheel-down over the tree moved its selection');
@@ -267,11 +267,11 @@ final class IdeMousePrimitivesTest extends TestCase
                     $rect = Widgets::rectIn($ide, $editor);
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 12, $rect->row + 3));
                     $this->frame($tui);
-                    $menu = Widgets::byId($tui, 'context-menu', ContextMenu::class);
+                    $menu = Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class);
                     $this->assertTrue($menu->isOpen(), 'the right-click opened the context menu');
-                    $before = Probe::get($menu, 'selected');
+                    $before = Probe::get($menu, property: 'selected');
                     $wheelInside($tui, $overlay->contextMenuDropdown(), $rect);
-                    $this->assertNotSame($before, Probe::get($menu, 'selected'), 'the notch moved the menu selection');
+                    $this->assertNotSame($before, Probe::get($menu, property: 'selected'), 'the notch moved the menu selection');
                     $this->assertSame(0, $scroll->vScroll, 'and did not scroll the editor behind it');
                     $tui->handleInput("\x1b"); // close it
                     $this->frame($tui);
@@ -280,11 +280,11 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput("\x1b[21~"); // F10 arms the bar
                     $tui->handleInput("\x1b[B"); // ↓ drops File
                     $this->frame($tui);
-                    $bar = Widgets::byId($tui, 'menu', MenuBarWidget::class);
+                    $bar = Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class);
                     $this->assertTrue($bar->isOpen(), 'F10 opened the menu dropdown');
-                    $before = Probe::get($bar, 'selected');
+                    $before = Probe::get($bar, property: 'selected');
                     $wheelInside($tui, $overlay->menuDropdown(), $rect);
-                    $this->assertNotSame($before, Probe::get($bar, 'selected'), 'the notch moved the dropdown selection');
+                    $this->assertNotSame($before, Probe::get($bar, property: 'selected'), 'the notch moved the dropdown selection');
                     $this->assertSame(0, $scroll->vScroll, 'and did not scroll the editor behind it');
                     $tui->handleInput("\x1b");
                     $this->frame($tui);
@@ -331,7 +331,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     \assert(null !== $rect, description: 'the editor was painted');
                     Services::resolve($ide, CommandRegistry::class)->run('ide_search_everywhere');
                     $this->frame($tui);
-                    $box = Probe::get(Services::resolve($ide, OverlayHost::class), 'searchBox');
+                    $box = Probe::get(Services::resolve($ide, OverlayHost::class), property: 'searchBox');
                     $this->assertInstanceOf(ModalBox::class, $box, 'the search modal is open');
 
                     $inside = [$box->startRow + $box->rows - 2, $box->col + 3];
@@ -371,7 +371,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput("\x1b[<0;45;4m"); // release
                     $tui->handleInput("\x1b[<64;1;24M"); // wheel over the status bar
                     $this->assertSame($before, Widgets::editor($tui)->getDocument()->cursorLine);
-                    $this->assertFalse(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen());
+                    $this->assertFalse(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen());
                 },
             ],
         );
@@ -590,8 +590,8 @@ final class IdeMousePrimitivesTest extends TestCase
                 540 => function (Tui $tui, $terminal, $ide): void {
                     $editor = Widgets::editor($tui);
                     $this->assertTrue(EditorState::pickerOpen($editor));
-                    $host = Probe::get($editor, 'overlayHost');
-                    $box = Probe::get($host, 'overlayBox');
+                    $host = Probe::get($editor, property: 'overlayHost');
+                    $box = Probe::get($host, property: 'overlayBox');
                     // Hover then click item index 1 ("Discard & Close"): the
                     // box is SCREEN-space now (the picker floats over the
                     // workspace); items start below its header rows — the
@@ -655,7 +655,7 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 200 => function (Tui $tui): void {
                     $editor = Widgets::editor($tui);
-                    $editor->getDocument()->setCursor(1, 0);
+                    $editor->getDocument()->setCursor(1, col: 0);
                     $editor->showCompletions([
                         new CompletionItem(label: 'alpha', insertText: 'alpha', kind: 'fn', detail: ''),
                     ]);
@@ -670,8 +670,8 @@ final class IdeMousePrimitivesTest extends TestCase
                     // Hover then click the suggestion itself (through the
                     // router's editor-relative completion branch): the box is
                     // the INNER item box, one row below the frame's top border.
-                    $completion = Probe::get($editor, 'completion');
-                    $box = Probe::get($completion, 'box');
+                    $completion = Probe::get($editor, property: 'completion');
+                    $box = Probe::get($completion, property: 'box');
                     Assert::assertInstanceOf(CompletionBox::class, $box, 'the completion overlay laid out its box');
                     $x = $rect->col + $box->col + 2;
                     $y = $rect->row + $box->startRow;
@@ -720,7 +720,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<16;%d;%dM", $rect->col + 3, $rect->row + 4));
                 },
                 300 => function (Tui $tui): void {
-                    $tree = Widgets::byId($tui, 'tree', FileTreeWidget::class);
+                    $tree = Widgets::byId($tui, id: 'tree', class: FileTreeWidget::class);
                     $this->assertSame(
                         ['a.php', 'c.php'],
                         \array_map(basename(...), $tree->selectedPaths()),
@@ -736,7 +736,7 @@ final class IdeMousePrimitivesTest extends TestCase
                 500 => function (Tui $tui): void {
                     $this->assertSame(
                         ['b.php', 'c.php'],
-                        \array_map(basename(...), Widgets::byId($tui, 'tree', FileTreeWidget::class)->selectedPaths()),
+                        \array_map(basename(...), Widgets::byId($tui, id: 'tree', class: FileTreeWidget::class)->selectedPaths()),
                         'the shift-click took the range from the ctrl-clicked row, dropping the one outside it',
                     );
                 },
@@ -761,9 +761,9 @@ final class IdeMousePrimitivesTest extends TestCase
                 300 => function (Tui $tui): void {
                     $editor = Widgets::editor($tui);
                     $editor->decorations->setVcsMarks([1 => ChangeMarkKind::Modified]);
-                    $this->assertTrue($editor->changeMarkAt(0, 1), 'the strip column, on a marked line');
-                    $this->assertFalse($editor->changeMarkAt(0, 0), 'not on an unmarked one');
-                    $this->assertFalse($editor->changeMarkAt(1, 1), 'nor in another column');
+                    $this->assertTrue($editor->changeMarkAt(0, docLine: 1), 'the strip column, on a marked line');
+                    $this->assertFalse($editor->changeMarkAt(0, docLine: 0), 'not on an unmarked one');
+                    $this->assertFalse($editor->changeMarkAt(1, docLine: 1), 'nor in another column');
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;32;5M"); // the strip, line 1
                     $tui->handleInput("\x1b[<0;32;5m");
@@ -825,7 +825,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $editor = Widgets::editor($tui);
                     $this->assertSame(1, $editor->decorations->gutterHover['line'] ?? null);
                     // The card follows the dwell; the status bar no longer says it.
-                    $this->awaitPainted($tui, $terminal, 'Breakpoint · click to remove');
+                    $this->awaitPainted($tui, $terminal, needle: 'Breakpoint · click to remove');
                     $this->assertStringNotContainsString('Breakpoint', AnsiUtils::stripAnsiCodes(\implode('', Paint::lines($tui->getById('status'), new RenderContext(160, 1)))));
                     $this->assertStringContainsString("\x1b[4m", \implode("\n", Paint::lines($editor, new RenderContext(80, 10))), 'the mark underlined');
                     $terminal->clearOutput();
@@ -835,7 +835,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $editor = Widgets::editor($tui);
                     $this->assertSame(['line' => 0, 'part' => GutterPart::Change], $editor->decorations->gutterHover);
                     // A card was just up, so the next one follows at once.
-                    $this->awaitPainted($tui, $terminal, 'Modified');
+                    $this->awaitPainted($tui, $terminal, needle: 'Modified');
                     $this->assertStringNotContainsString('click to see', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'no git plugin: no "click to see"');
                     $tui->handleInput("\x1b[<35;60;4M"); // the code
                 },
@@ -876,7 +876,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $this->assertNotNull($editor->decorations->stripeHover);
                     $cell = Paint::lines($editor, new RenderContext(129, 22))[$editor->decorations->stripeHover];
                     $this->assertMatchesRegularExpression('/\e\[[0-9;]*4[0-9;]*m[^\e]*(\e\[[0-9;]*m)*◈/u', $cell, 'the mark underlined');
-                    $this->awaitPainted($tui, $terminal, 'Bookmark · line 41');
+                    $this->awaitPainted($tui, $terminal, needle: 'Bookmark · line 41');
                 },
             ],
         );

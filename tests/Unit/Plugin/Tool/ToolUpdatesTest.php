@@ -65,7 +65,7 @@ final class ToolUpdatesTest extends TestCase
     /** A brew-installed tool "x" of plugin "p" that says it is $version. */
     private function brewTool(string $name, string $version): void
     {
-        $bin = $this->project->write('Cellar/'.$name.'/'.$version.'/bin/'.$name, "#!/bin/sh\n");
+        $bin = $this->project->write('Cellar/'.$name.'/'.$version.'/bin/'.$name, content: "#!/bin/sh\n");
         \chmod($bin, permissions: 0o755);
         $this->path[$name] = $bin;
     }
@@ -73,7 +73,7 @@ final class ToolUpdatesTest extends TestCase
     /** @param list<array<string, mixed>> $tools */
     private function plugin(array $tools, string $name = 'p'): void
     {
-        $this->project->write('.porta/plugins/'.$name.'/porta.php', "<?php\n");
+        $this->project->write('.porta/plugins/'.$name.'/porta.php', content: "<?php\n");
         $this->project->write('.porta/plugins/'.$name.'/composer.json', (string) \json_encode(['extra' => ['porta' => ['tools' => $tools]]], \JSON_THROW_ON_ERROR));
         $this->lifecycle->names[] = $name;
     }
@@ -86,7 +86,7 @@ final class ToolUpdatesTest extends TestCase
             $this->project->dir,
             new PluginInstaller($this->project->dir, null, new Translator('en'), null),
             new PluginManager(new EventDispatcher(), $settings),
-            new Notifier($this->status, TestTui::create(160, 24)),
+            new Notifier($this->status, TestTui::create(160, rows: 24)),
             $this->lifecycle,
             path: $this->path,
             run: function (array $argv, string $cwd, \Closure $onExit): void {
@@ -111,32 +111,32 @@ final class ToolUpdatesTest extends TestCase
 
     private function toast(): string
     {
-        return $this->statusRow($this->status, 160);
+        return $this->statusRow($this->status, columns: 160);
     }
 
     public function testANewerVersionIsSaidOnceForEveryOutdatedTool(): void
     {
         $this->plugin([['name' => 'dot', 'sources' => [['brew', 'dot']]], ['name' => 'gh', 'sources' => [['brew', 'gh']]], ['name' => 'jq', 'sources' => [['brew', 'jq']]]]);
-        $this->brewTool('dot', '1.0.0');
-        $this->brewTool('gh', '2.0.0');
-        $this->brewTool('jq', '1.7.0');
+        $this->brewTool('dot', version: '1.0.0');
+        $this->brewTool('gh', version: '2.0.0');
+        $this->brewTool('jq', version: '1.7.0');
         $this->latest = ['dot' => '1.1.0', 'gh' => '2.0.0'];
         $tools = $this->tools();
 
         $tools->updates->start();
-        EventLoop::cancel((string) Probe::get(Probe::object($tools->updates, 'hourly'), 'timer'));
+        EventLoop::cancel((string) Probe::get(Probe::object($tools->updates, 'hourly'), property: 'timer'));
 
         $this->assertStringContainsString('Updates available: dot 1.1.0 — run "Plugins: Update Tools"', $this->toast(), 'gh is current; jq could not be asked');
-        $dot = $tools->catalog->status(self::tool($tools, 'dot'));
+        $dot = $tools->catalog->status(self::tool($tools, name: 'dot'));
         $this->assertSame('1.1.0', $tools->updates->newer($dot), 'kept for the Settings row');
-        $this->assertNull($tools->updates->newer($tools->catalog->status(self::tool($tools, 'gh'))));
+        $this->assertNull($tools->updates->newer($tools->catalog->status(self::tool($tools, name: 'gh'))));
         $this->assertSame(['p/dot' => '1.1.0', 'p/gh' => '2.0.0'], new ToolUpdateCheck(new Filesystem(), $this->home->path('.porta'))->latest());
     }
 
     public function testACheckMadeTodayIsNotMadeAgain(): void
     {
         $this->plugin([['name' => 'dot', 'sources' => [['brew', 'dot']]]]);
-        $this->brewTool('dot', '1.0.0');
+        $this->brewTool('dot', version: '1.0.0');
         $this->latest = ['dot' => '1.0.0'];
         $tools = $this->tools();
         $tools->updates->checkIfDue();
@@ -155,7 +155,7 @@ final class ToolUpdatesTest extends TestCase
     public function testOffChecksNothingAndWeeklyWaitsAWeek(): void
     {
         $this->plugin([['name' => 'dot', 'sources' => [['brew', 'dot']]]]);
-        $this->brewTool('dot', '1.0.0');
+        $this->brewTool('dot', version: '1.0.0');
         $tools = $this->tools('off');
 
         $tools->updates->checkIfDue();
@@ -177,10 +177,10 @@ final class ToolUpdatesTest extends TestCase
     public function testOnlyToolsPortaCouldUpdateOfEnabledPluginsAreAsked(): void
     {
         $this->plugin([['name' => 'sys', 'sources' => [['brew', 'sys']]], ['name' => 'absent', 'sources' => [['brew', 'absent']]]]);
-        $this->plugin([['name' => 'off', 'sources' => [['brew', 'off']]]], 'q');
+        $this->plugin([['name' => 'off', 'sources' => [['brew', 'off']]]], name: 'q');
         $this->lifecycle->disabledNames = ['q'];
         $this->path['sys'] = '/usr/bin/sys';
-        $this->brewTool('off', '1.0.0');
+        $this->brewTool('off', version: '1.0.0');
         $tools = $this->tools();
 
         $tools->updates->checkIfDue();
@@ -198,7 +198,7 @@ final class ToolUpdatesTest extends TestCase
             TestTools::bare($this->project->dir)->catalog,
             new LatestVersions(),
             $this->lifecycle,
-            new Notifier($this->status, TestTui::create(80, 24)),
+            new Notifier($this->status, TestTui::create(80, rows: 24)),
             new Translator('en'),
             new ToolUpdateCheck(new Filesystem(), null),
         );
@@ -212,12 +212,12 @@ final class ToolUpdatesTest extends TestCase
     {
         $tools = $this->tools();
         $tools->updates->start();
-        $timer = Probe::get(Probe::object($tools->updates, 'hourly'), 'timer');
+        $timer = Probe::get(Probe::object($tools->updates, 'hourly'), property: 'timer');
         $tools->updates->start();
 
         try {
             $this->assertIsString($timer);
-            $this->assertSame($timer, Probe::get(Probe::object($tools->updates, 'hourly'), 'timer'), 'a second start adds no second timer');
+            $this->assertSame($timer, Probe::get(Probe::object($tools->updates, 'hourly'), property: 'timer'), 'a second start adds no second timer');
             $this->assertFalse(EventLoop::isReferenced($timer));
         } finally {
             EventLoop::cancel((string) $timer);
@@ -230,13 +230,13 @@ final class ToolUpdatesTest extends TestCase
         $tools = $this->tools();
         $tools->updates->stop();
         $tools->updates->start();
-        $timer = (string) Probe::get(Probe::object($tools->updates, 'hourly'), 'timer');
+        $timer = (string) Probe::get(Probe::object($tools->updates, 'hourly'), property: 'timer');
 
         $tools->updates->stop();
         $tools->updates->stop();
 
         $this->assertNotContains($timer, EventLoop::getIdentifiers(), 'the timer is gone with the IDE');
-        $this->assertNull(Probe::get(Probe::object($tools->updates, 'hourly'), 'timer'), 'so a later start arms a new one');
+        $this->assertNull(Probe::get(Probe::object($tools->updates, 'hourly'), property: 'timer'), 'so a later start arms a new one');
     }
 
     private static function tool(TestTools $tools, string $name): ToolRequirement

@@ -685,7 +685,7 @@ final class LayoutController
     /** Clamp a bottom-panel height so the editor keeps room above it. */
     private function clampPanel(int $height, int $rows, int $chrome): int
     {
-        return IntMath::clamp($height, 3, $rows - 8 - $this->chromeRows($rows) - $chrome);
+        return IntMath::clamp($height, lo: 3, hi: $rows - 8 - $this->chromeRows($rows) - $chrome);
     }
 
     /**

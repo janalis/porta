@@ -25,7 +25,7 @@ final class DebugPanelWidgetTest extends TestCase
     {
         $panel = new DebugPanelWidget(events: $events);
         $panel->open('a.php');
-        $panel->setSessionState(DebugState::Paused, 'src/a.php:5');
+        $panel->setSessionState(DebugState::Paused, location: 'src/a.php:5');
         $panel->setFrames([
             ['id' => 1, 'name' => '{main}', 'path' => 'src/a.php', 'line' => 4],
             ['id' => 2, 'name' => 'require', 'path' => 'src/b.php', 'line' => 0],
@@ -57,11 +57,11 @@ final class DebugPanelWidgetTest extends TestCase
         $this->assertSame('a.php', $panel->getTitle(), 'the launched file names the dock tab');
         $this->assertSame([], $this->screen($panel), 'no frames yet: only the dock strip shows');
         $this->assertStringContainsString('starting…', $panel->statusText());
-        $panel->setSessionState(DebugState::Running, null);
+        $panel->setSessionState(DebugState::Running, location: null);
         $this->assertStringContainsString('running…', $panel->statusText());
-        $panel->setSessionState(DebugState::Paused, 'src/a.php:5');
+        $panel->setSessionState(DebugState::Paused, location: 'src/a.php:5');
         $this->assertStringContainsString('paused at src/a.php:5', $panel->statusText());
-        $panel->setSessionState(DebugState::Terminated, null);
+        $panel->setSessionState(DebugState::Terminated, location: null);
         $this->assertStringContainsString('terminated', $panel->statusText());
         $this->assertStringContainsString('F8 over', $panel->statusText(), 'the step legend rides in the status');
     }
@@ -70,7 +70,7 @@ final class DebugPanelWidgetTest extends TestCase
     {
         $panel = new DebugPanelWidget();
         $panel->open('a.php');
-        $panel->setSessionState(DebugState::Paused, 'src/a.php:5');
+        $panel->setSessionState(DebugState::Paused, location: 'src/a.php:5');
         // The second scope has no variablesReference (<= 0): it is not marked
         // expanded, but still renders as a (leaf) scope header.
         $panel->setScopes([
@@ -103,11 +103,11 @@ final class DebugPanelWidgetTest extends TestCase
         $panel->setVisibleRows(4);
 
         $panel->handleInput("\x1b[6~");
-        $this->assertSame(4, Probe::get($panel, 'list')->selected());
+        $this->assertSame(4, Probe::get($panel, property: 'list')->selected());
         $panel->handleInput("\x1b[6~");
-        $this->assertSame(6, Probe::get($panel, 'list')->selected(), 'the seventh and last row, not past it');
+        $this->assertSame(6, Probe::get($panel, property: 'list')->selected(), 'the seventh and last row, not past it');
         $panel->handleInput("\x1b[5~");
-        $this->assertSame(2, Probe::get($panel, 'list')->selected());
+        $this->assertSame(2, Probe::get($panel, property: 'list')->selected());
     }
 
     /** A key the panel has no binding for moves nothing and runs nothing. */
@@ -118,7 +118,7 @@ final class DebugPanelWidgetTest extends TestCase
 
         $panel->handleInput('x');
 
-        $this->assertSame(1, Probe::get($panel, 'list')->selected());
+        $this->assertSame(1, Probe::get($panel, property: 'list')->selected());
     }
 
     /** A frame row names the file it stopped in, for its right-click; a scope, a variable or a heading names none. */
@@ -143,11 +143,11 @@ final class DebugPanelWidgetTest extends TestCase
         $panel = $this->panel();
         $panel->onInput(static fn (string $keys): bool => true);
         $panel->handleInput("\x1b[B");
-        $this->assertSame(0, Probe::get($panel, 'list')->selected(), 'the hook took the key');
+        $this->assertSame(0, Probe::get($panel, property: 'list')->selected(), 'the hook took the key');
 
         $panel->onInput(static fn (string $keys): bool => false);
         $panel->handleInput("\x1b[B");
-        $this->assertSame(1, Probe::get($panel, 'list')->selected(), 'a key the hook declines reaches the list');
+        $this->assertSame(1, Probe::get($panel, property: 'list')->selected(), 'a key the hook declines reaches the list');
     }
 
     public function testEditKeyOnAVariableFiresWithItsContainerNameAndValue(): void
@@ -285,12 +285,12 @@ final class DebugPanelWidgetTest extends TestCase
     public function testLeavingPauseDropsTheStackAndPanelRowsResize(): void
     {
         $panel = $this->panel();
-        $panel->setSessionState(DebugState::Running, null);
+        $panel->setSessionState(DebugState::Running, location: null);
         $screen = \implode("\n", $this->screen($panel));
         $this->assertStringNotContainsString('Frames', $screen, 'resuming clears the stale stack');
 
         $panel->setVisibleRows(4);
-        $this->assertSame(4, Probe::get($panel, 'visibleRows'));
+        $this->assertSame(4, Probe::get($panel, property: 'visibleRows'));
     }
 
     public function testWatchesSectionPendingResultErrorAndStaleIndex(): void
@@ -302,22 +302,22 @@ final class DebugPanelWidgetTest extends TestCase
         $this->assertStringContainsString('Watches', $screen);
         $this->assertStringContainsString('$x = …', $screen, 'unevaluated watches render pending');
 
-        $panel->setWatchResult(0, '42', 0);
-        $panel->setWatchResult(1, '', 0, 'cannot evaluate');
-        $panel->setWatchResult(5, 'ghost', 0); // stale index after a removal: ignored
+        $panel->setWatchResult(0, value: '42', ref: 0);
+        $panel->setWatchResult(1, value: '', ref: 0, error: 'cannot evaluate');
+        $panel->setWatchResult(5, value: 'ghost', ref: 0); // stale index after a removal: ignored
         $screen = \implode("\n", $this->screen($panel));
         $this->assertStringContainsString('$x = 42', $screen);
         $this->assertStringContainsString('$boom = cannot evaluate', $screen);
         $this->assertStringNotContainsString('ghost', $screen);
 
         // Leaving pause resets values to pending but keeps the expressions.
-        $panel->setSessionState(DebugState::Running, null);
+        $panel->setSessionState(DebugState::Running, location: null);
         $screen = \implode("\n", $this->screen($panel));
         $this->assertStringContainsString('$x = …', $screen);
         $this->assertStringNotContainsString('42', $screen);
 
         // Ended: no stop is coming to fill a value, so none is promised.
-        $panel->setSessionState(DebugState::Terminated, null);
+        $panel->setSessionState(DebugState::Terminated, location: null);
         $screen = \implode("\n", $this->screen($panel));
         $this->assertStringContainsString('$x', $screen);
         $this->assertStringNotContainsString('$x =', $screen);
@@ -329,7 +329,7 @@ final class DebugPanelWidgetTest extends TestCase
         $panel = new DebugPanelWidget();
 
         $this->assertSame(['list'], $panel->getStyleClasses());
-        $this->assertSame(10, Probe::get($panel, 'visibleRows'));
+        $this->assertSame(10, Probe::get($panel, property: 'visibleRows'));
     }
 
     private static function shippedKeys(): Keybindings
@@ -365,7 +365,7 @@ final class DebugPanelWidgetTest extends TestCase
     {
         $panel = new DebugPanelWidget(ideKeys: self::shippedKeys());
         $panel->open('a.php');
-        $panel->setSessionState(DebugState::Running, null);
+        $panel->setSessionState(DebugState::Running, location: null);
 
         $this->assertSame('running…  Ctrl+F9 pause · Ctrl+F2 stop', $panel->statusText());
     }
@@ -388,7 +388,7 @@ final class DebugPanelWidgetTest extends TestCase
         $panel->handleInput("\x1b[B"); // move selection off row 0
 
         $panel->open('b.php'); // a second session, before any new data arrives
-        $this->assertSame(0, Probe::get(Probe::get($panel, 'list'), 'selected'), 'selection snaps back to the top');
+        $this->assertSame(0, Probe::get(Probe::get($panel, property: 'list'), property: 'selected'), 'selection snaps back to the top');
         $this->assertSame([], $panel->render(new RenderContext(80, 14)), 'the previous session\'s rows do not linger');
     }
 
@@ -396,11 +396,11 @@ final class DebugPanelWidgetTest extends TestCase
     {
         $panel = $this->panel();
         $panel->setWatches(['$arr']);
-        $panel->setWatchResult(0, 'array(2)', 2000); // now expandable
+        $panel->setWatchResult(0, value: 'array(2)', ref: 2000); // now expandable
 
-        $panel->setSessionState(DebugState::Running, null); // leaving pause
+        $panel->setSessionState(DebugState::Running, location: null); // leaving pause
 
-        $panel->setSessionState(DebugState::Paused, 'src/a.php:5'); // re-enter to re-render watches
+        $panel->setSessionState(DebugState::Paused, location: 'src/a.php:5'); // re-enter to re-render watches
         $panel->setWatches(['$arr']); // same expr, reset ref should be 0 not stale
         $screen = \implode("\n", $this->screen($panel));
         $this->assertStringNotContainsString('▸ $arr', $screen, 'a reset watch does not carry over the old expandable ref');
@@ -410,7 +410,7 @@ final class DebugPanelWidgetTest extends TestCase
     {
         $panel = new DebugPanelWidget();
         $panel->open('a.php');
-        $panel->setSessionState(DebugState::Paused, 'src/a.php:5');
+        $panel->setSessionState(DebugState::Paused, location: 'src/a.php:5');
         // The zero-ref scope comes FIRST: a `continue`-turned-`break` mutant
         // would stop the loop here and leave the second, real scope unmarked.
         $panel->setScopes([
@@ -542,7 +542,7 @@ final class DebugPanelWidgetTest extends TestCase
             },
         ));
         $panel->open('a.php');
-        $panel->setSessionState(DebugState::Paused, 'src/a.php:5');
+        $panel->setSessionState(DebugState::Paused, location: 'src/a.php:5');
         $panel->setScopes([['name' => 'Locals', 'variablesReference' => 1000]]);
         $panel->setVariables(1000, [['name' => '$arr', 'value' => 'array(1)', 'variablesReference' => 1001]]);
 
@@ -573,9 +573,9 @@ final class DebugPanelWidgetTest extends TestCase
             },
         ));
         $panel->open('a.php');
-        $panel->setSessionState(DebugState::Paused, 'src/a.php:5');
+        $panel->setSessionState(DebugState::Paused, location: 'src/a.php:5');
         $panel->setWatches(['$w']);
-        $panel->setWatchResult(0, 'v', 3000);
+        $panel->setWatchResult(0, value: 'v', ref: 3000);
         $panel->handleInput("\x1b[B");
         $panel->handleInput("\r"); // expand $w
 
@@ -601,11 +601,11 @@ final class DebugPanelWidgetTest extends TestCase
         for ($i = 0; $i < 6; ++$i) {
             $panel->handleInput("\x1b[B"); // drive selection to the last row
         }
-        $selectedBefore = Probe::get(Probe::get($panel, 'list'), 'selected');
+        $selectedBefore = Probe::get(Probe::get($panel, property: 'list'), property: 'selected');
 
         $panel->setFrames([]); // rows shrink drastically
 
-        $selectedAfter = Probe::get(Probe::get($panel, 'list'), 'selected');
+        $selectedAfter = Probe::get(Probe::get($panel, property: 'list'), property: 'selected');
         $this->assertLessThan($selectedBefore, $selectedAfter, 'selection is clamped to the new, shorter row list');
     }
 
@@ -614,7 +614,7 @@ final class DebugPanelWidgetTest extends TestCase
         $events = new EventDispatcher();
         $panel = $this->panel($events);
         $panel->setWatches(['$arr']);
-        $panel->setWatchResult(0, 'array(2)', 2000);
+        $panel->setWatchResult(0, value: 'array(2)', ref: 2000);
         $expanded = [];
         $removed = [];
         $events->addListener(DebugWatchRemovalRequested::class, static function (DebugWatchRemovalRequested $event) use (&$removed): void {

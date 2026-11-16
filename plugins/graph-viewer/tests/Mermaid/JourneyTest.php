@@ -59,7 +59,7 @@ final class JourneyTest extends TestCase
         $arrow = \array_find($scene->graph->edges, static fn ($edge): bool => 0.4 === $edge->strokeWidth);
         $this->assertSame([15.0, 94.6], [$arrow?->points[0][0], $arrow?->arrowTip[0]]);
         $view = new ZoomPanModel(124, (int) $scene->graph->height, [1.0]);
-        $this->assertNotEmpty(GraphRenderer::render($scene->graph, $view, null, 124, (int) \ceil($scene->graph->height / 2), Styles::dark()));
+        $this->assertNotEmpty(GraphRenderer::render($scene->graph, $view, selected: null, cols: 124, rows: (int) \ceil($scene->graph->height / 2), styles: Styles::dark()));
 
         $this->assertSame('1. Wake | score: 5/5 | actors: ["Me","Cat"]', $scene->legend[4]['text']);
         $this->assertSame(6, $scene->legend[4]['origin']);

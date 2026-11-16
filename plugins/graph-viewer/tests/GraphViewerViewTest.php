@@ -31,26 +31,26 @@ final class GraphViewerViewTest extends TestCase
      */
     public function testEachKeyMovesTheViewExactlyAsTheModelWould(): void
     {
-        $widget = $this->shown(40, 6);
+        $widget = $this->shown(40, rows: 6);
         $view = self::view($widget);
         $offCorner = static function () use ($view): void {
             $view->fit();
-            $view->actualSize(40, 12);
-            $view->panBy(60, 4, 40, 12);
+            $view->actualSize(40, pxRows: 12);
+            $view->panBy(60, dyHalfRows: 4, cols: 40, pxRows: 12);
         };
 
         $keys = [
-            "\x1b[D" => static fn (ZoomPanModel $v) => $v->panBy(-2, 0, 40, 12),
-            "\x1b[C" => static fn (ZoomPanModel $v) => $v->panBy(2, 0, 40, 12),
-            "\x1b[A" => static fn (ZoomPanModel $v) => $v->panBy(0, -4, 40, 12),
-            "\x1b[B" => static fn (ZoomPanModel $v) => $v->panBy(0, 4, 40, 12),
-            "\x1b[1;2D" => static fn (ZoomPanModel $v) => $v->panBy(-10, 0, 40, 12),
-            "\x1b[1;2C" => static fn (ZoomPanModel $v) => $v->panBy(10, 0, 40, 12),
-            "\x1b[1;2A" => static fn (ZoomPanModel $v) => $v->panBy(0, -20, 40, 12),
-            "\x1b[1;2B" => static fn (ZoomPanModel $v) => $v->panBy(0, 20, 40, 12),
-            '=' => static fn (ZoomPanModel $v) => $v->zoomIn(40, 12),
-            '+' => static fn (ZoomPanModel $v) => $v->zoomIn(40, 12),
-            '-' => static fn (ZoomPanModel $v) => $v->zoomOut(40, 12),
+            "\x1b[D" => static fn (ZoomPanModel $v) => $v->panBy(-2, dyHalfRows: 0, cols: 40, pxRows: 12),
+            "\x1b[C" => static fn (ZoomPanModel $v) => $v->panBy(2, dyHalfRows: 0, cols: 40, pxRows: 12),
+            "\x1b[A" => static fn (ZoomPanModel $v) => $v->panBy(0, -4, cols: 40, pxRows: 12),
+            "\x1b[B" => static fn (ZoomPanModel $v) => $v->panBy(0, dyHalfRows: 4, cols: 40, pxRows: 12),
+            "\x1b[1;2D" => static fn (ZoomPanModel $v) => $v->panBy(-10, dyHalfRows: 0, cols: 40, pxRows: 12),
+            "\x1b[1;2C" => static fn (ZoomPanModel $v) => $v->panBy(10, dyHalfRows: 0, cols: 40, pxRows: 12),
+            "\x1b[1;2A" => static fn (ZoomPanModel $v) => $v->panBy(0, -20, cols: 40, pxRows: 12),
+            "\x1b[1;2B" => static fn (ZoomPanModel $v) => $v->panBy(0, dyHalfRows: 20, cols: 40, pxRows: 12),
+            '=' => static fn (ZoomPanModel $v) => $v->zoomIn(40, pxRows: 12),
+            '+' => static fn (ZoomPanModel $v) => $v->zoomIn(40, pxRows: 12),
+            '-' => static fn (ZoomPanModel $v) => $v->zoomOut(40, pxRows: 12),
             'f' => static fn (ZoomPanModel $v) => $v->fit(),
         ];
         foreach ($keys as $key => $same) {
@@ -66,7 +66,7 @@ final class GraphViewerViewTest extends TestCase
 
         $view->fit();
         $expected = clone $view;
-        $expected->actualSize(40, 12);
+        $expected->actualSize(40, pxRows: 12);
         $widget->handleInput('1');
         $this->assertSame($expected->stateKey(), $view->stateKey(), '1 is the size of the pane it was pressed in');
     }
@@ -74,12 +74,12 @@ final class GraphViewerViewTest extends TestCase
     /** The node picked is brought to the middle of the pane, as near as the clamp allows. */
     public function testFocusingANodeCentresIt(): void
     {
-        $widget = $this->shown(40, 12);
+        $widget = $this->shown(40, rows: 12);
         $widget->handleInput('1'); // 100%: one point a column, one a half-row
 
         $widget->focusNode(2); // C, at (232.75, 18)
 
-        $rect = self::view($widget)->visibleRect(40, 24);
+        $rect = self::view($widget)->visibleRect(40, pxRows: 24);
         // 232.75 less half the pane's 40 columns, rounded; 18 less half its 24 half-rows.
         $this->assertSame([213, 6], [$rect['srcX'], $rect['srcY']]);
     }
@@ -87,16 +87,16 @@ final class GraphViewerViewTest extends TestCase
     /** Zoomed in, the same: the node's centre lands mid-pane, to within the point a cell spans. */
     public function testFocusingANodeCentresItAtAnyZoom(): void
     {
-        $widget = $this->shown(40, 12);
+        $widget = $this->shown(40, rows: 12);
         $widget->handleInput('1');
         $widget->handleInput('=');
         $view = self::view($widget);
-        $scale = $view->effectiveScale(40, 24);
+        $scale = $view->effectiveScale(40, pxRows: 24);
         $this->assertGreaterThan(1.0, $scale, 'the premise: zoomed past 1:1');
 
         $widget->focusNode(2); // C, at (232.75, 18)
 
-        $rect = $view->visibleRect(40, 24);
+        $rect = $view->visibleRect(40, pxRows: 24);
         $this->assertEqualsWithDelta(232.75, $rect['srcX'] + (20 / $scale), 1.0, 'across');
         $this->assertEqualsWithDelta(18.0, $rect['srcY'] + (12 / $scale), 1.0, 'down');
     }
@@ -104,7 +104,7 @@ final class GraphViewerViewTest extends TestCase
     /** `p` with nothing selected starts from the far end, `n` from the near one. */
     public function testThePreviousKeyWithNothingSelectedPicksTheLastNode(): void
     {
-        $widget = $this->shown(80, 24);
+        $widget = $this->shown(80, rows: 24);
 
         $widget->handleInput('p');
         $this->assertSame('3 nodes · 2 edges · C', $widget->statusInfo());
@@ -116,7 +116,7 @@ final class GraphViewerViewTest extends TestCase
     {
         $this->engine->nextResult = self::layout('clustered.json');
         $widget = $this->widget();
-        $widget->show('/p/arch.dot', 'clustered');
+        $widget->show('/p/arch.dot', payload: 'clustered');
 
         $hints = \array_column($widget->nodeChoices(), 'hint', 'label');
 
@@ -132,16 +132,16 @@ final class GraphViewerViewTest extends TestCase
         $json['bb'] = '0,0,259.25,36.25';
         $this->engine->nextResult = DotJsonParser::parse(\json_encode($json, \JSON_THROW_ON_ERROR));
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'dot');
+        $widget->show('/p/g.dot', payload: 'dot');
 
         $this->assertSame([260, 37], self::view($widget)->dimensions());
     }
 
     public function testTheLayoutHintIsTheWholeTopRow(): void
     {
-        $widget = $this->shown(30, 8);
+        $widget = $this->shown(30, rows: 8);
         $this->engine->deferred = true;
-        $widget->show('/p/g.dot', 'dot v2');
+        $widget->show('/p/g.dot', payload: 'dot v2');
 
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $widget->render(new RenderContext(30, 8)));
 
@@ -153,10 +153,10 @@ final class GraphViewerViewTest extends TestCase
     /** The tool's own failure is the picture's to say even beside the text, and on the top row. */
     public function testAToolFailureIsBanneredOnTheTopRowEvenBesideTheText(): void
     {
-        $widget = $this->shown(40, 10);
+        $widget = $this->shown(40, rows: 10);
         $widget->textBeside(true);
         $this->engine->nextResult = 'dot produced invalid JSON';
-        $widget->show('/p/g.dot', 'broken');
+        $widget->show('/p/g.dot', payload: 'broken');
 
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $widget->render(new RenderContext(40, 10)));
 
@@ -167,7 +167,7 @@ final class GraphViewerViewTest extends TestCase
     /** With no tab handler, the editor's keys are simply nobody's. */
     public function testTheEditorsKeysWithoutAHandlerDoNothing(): void
     {
-        $widget = $this->shown(40, 10);
+        $widget = $this->shown(40, rows: 10);
         $before = self::view($widget)->stateKey();
 
         foreach (["\x1b[1;5C", "\x1b[1;5D", "\x1bw", "\x10", "\x1b\x13"] as $key) {
@@ -197,7 +197,7 @@ final class GraphViewerViewTest extends TestCase
         $widget = $this->widget();
         $handler = new RecordingViewerTabHandler();
         $widget->setHandler($handler);
-        $widget->show('/p/g.dot', 'dot');
+        $widget->show('/p/g.dot', payload: 'dot');
         $revision = $widget->getRenderRevision();
 
         $done = $this->engine->pendingDone;
@@ -210,11 +210,11 @@ final class GraphViewerViewTest extends TestCase
 
     public function testALateFailureRepaintsAndTellsTheTab(): void
     {
-        $widget = $this->shown(40, 10);
+        $widget = $this->shown(40, rows: 10);
         $handler = new RecordingViewerTabHandler();
         $widget->setHandler($handler);
         $this->engine->deferred = true;
-        $widget->show('/p/g.dot', 'dot v2');
+        $widget->show('/p/g.dot', payload: 'dot v2');
         $revision = $widget->getRenderRevision();
 
         $error = $this->engine->pendingError;
@@ -227,7 +227,7 @@ final class GraphViewerViewTest extends TestCase
 
     public function testTheTextMovingBesideThePaneAndAThemeSwitchRepaint(): void
     {
-        $widget = $this->shown(40, 10);
+        $widget = $this->shown(40, rows: 10);
 
         $revision = $widget->getRenderRevision();
         $widget->textBeside(true);
@@ -242,7 +242,7 @@ final class GraphViewerViewTest extends TestCase
     {
         $this->engine->nextResult = self::layout();
         $widget = $this->widget();
-        $widget->show('/p/g.dot', 'dot');
+        $widget->show('/p/g.dot', payload: 'dot');
         $widget->render(new RenderContext($cols, $rows));
 
         return $widget;
@@ -250,7 +250,7 @@ final class GraphViewerViewTest extends TestCase
 
     private static function view(GraphViewerWidget $widget): ZoomPanModel
     {
-        $view = Probe::get($widget, 'view');
+        $view = Probe::get($widget, property: 'view');
         self::assertInstanceOf(ZoomPanModel::class, $view);
 
         return $view;

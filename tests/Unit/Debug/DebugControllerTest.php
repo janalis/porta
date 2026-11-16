@@ -74,7 +74,7 @@ final class DebugControllerTest extends TestCase
     {
         $pool = FakeLspPool::create('/p', $active = new FixedActiveFile(), fn (): FakeLspClient => $this->lspClient = new FakeLspClient($capabilities));
         $active->set('/p/prog.php');
-        $pool->notifyDidOpen('/p/prog.php', "<?php\n", 'php', 1);
+        $pool->notifyDidOpen('/p/prog.php', text: "<?php\n", languageId: 'php', version: 1);
 
         return $pool;
     }
@@ -157,10 +157,10 @@ final class DebugControllerTest extends TestCase
     /** Clears the flag first: a caller checks whether ITS action requested a render, not a stale one. */
     private function requestedRenderSince(callable $action): bool
     {
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
         $action();
 
-        return (bool) Probe::get($this->tui, 'renderRequested');
+        return (bool) Probe::get($this->tui, property: 'renderRequested');
     }
 
     /** @param array<string, mixed> $capabilities extra initialize capabilities to advertise */
@@ -216,7 +216,7 @@ final class DebugControllerTest extends TestCase
     public function testExpandVariableCallbackIsInertWithoutASession(): void
     {
         $this->controller(); // wires the panel callbacks; never starts a session
-        $callbacks = Probe::get($this->panel, 'callbacks');
+        $callbacks = Probe::get($this->panel, property: 'callbacks');
 
         $delivered = 'untouched';
         $requested = $this->requestedRenderSince(static function () use ($callbacks, &$delivered): void {
@@ -234,7 +234,7 @@ final class DebugControllerTest extends TestCase
         $controller = $this->controller();
 
         $requested = $this->requestedRenderSince(static function () use ($controller): void {
-            $controller->toggleBreakpoint('/p/prog.php', 1);
+            $controller->toggleBreakpoint('/p/prog.php', line: 1);
         });
 
         $this->assertTrue($requested);
@@ -324,7 +324,7 @@ final class DebugControllerTest extends TestCase
 
         $controller = $this->controller();
         $controller->startForCurrentFile();
-        $this->client->respond('initialize', [], 'bad handshake');
+        $this->client->respond('initialize', [], error: 'bad handshake');
         $this->assertStringContainsString('Could not start the debug adapter — initialize failed: bad handshake', $this->statusRow($this->statusBar));
         $this->assertFalse($controller->isActive());
         $this->assertStringContainsString('terminated', $this->panel->statusText(), 'onError delegates to onTerminated to reset the panel too');
@@ -365,7 +365,7 @@ final class DebugControllerTest extends TestCase
         $this->assertGreaterThan(1, $debugSession->buffer->lineCount(), 'output landed in the buffer');
 
         // Another tab steals activation in between: relaunch must claim it back.
-        $shell = $this->sessions->create('shell:1', 'shell');
+        $shell = $this->sessions->create('shell:1', title: 'shell');
         $this->sessions->makeActive($shell);
 
         // A second watch is added between sessions, so a skipped re-seed
@@ -643,9 +643,9 @@ final class DebugControllerTest extends TestCase
     {
         $controller = $this->controller();
         $this->pauseAtBreakpoint($controller); // the file was shown the ordinary way: nothing hands the debugger its lines
-        $controller->toggleBreakpoint('/p/prog.php', 2); // `// l3`
+        $controller->toggleBreakpoint('/p/prog.php', line: 2); // `// l3`
         $document = $this->editor->getDocument();
-        $document->setCursor(3, 0);
+        $document->setCursor(3, col: 0);
 
         $document->applyEditsKeepingCursor([['range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 0]], 'newText' => "use App\\Foo;\n"]]);
         $this->editor->notifyChange();
@@ -667,7 +667,7 @@ final class DebugControllerTest extends TestCase
         $controller->continueRun();
         $this->client->respond('stackTrace', $frames);
 
-        $this->assertSame(DebugState::Running, Probe::get($this->panel, 'state'), 'still running, as the program is');
+        $this->assertSame(DebugState::Running, Probe::get($this->panel, property: 'state'), 'still running, as the program is');
 
         // Stopped again before the first answer came: that answer is the old stop's.
         $this->client->emit('stopped', ['reason' => 'step', 'threadId' => 1]);
@@ -675,9 +675,9 @@ final class DebugControllerTest extends TestCase
         $old = $frames;
         $old['stackFrames'][0]['line'] = 1;
         $this->client->respond('stackTrace', $old);
-        $this->assertNotSame('prog.php:1', Probe::get($this->panel, 'location'), "the earlier stop's line is not painted");
+        $this->assertNotSame('prog.php:1', Probe::get($this->panel, property: 'location'), "the earlier stop's line is not painted");
         $this->client->respond('stackTrace', $frames);
-        $this->assertSame('prog.php:3', Probe::get($this->panel, 'location'), 'the latest is');
+        $this->assertSame('prog.php:3', Probe::get($this->panel, property: 'location'), 'the latest is');
     }
 
     public function testBreakpointTogglesSyncTheLiveSessionAndOtherFiles(): void
@@ -685,11 +685,11 @@ final class DebugControllerTest extends TestCase
         $controller = $this->controller();
         $this->pauseAtBreakpoint($controller);
 
-        $controller->toggleBreakpoint('/p/prog.php', 1);
+        $controller->toggleBreakpoint('/p/prog.php', line: 1);
         $this->assertSame([['line' => 2]], $this->client->argumentsOf('setBreakpoints')['breakpoints'], 'live session got the 1-based line');
         $this->assertStringContainsString('●', \implode("\n", $this->editor->render(new RenderContext(80, 8))));
 
-        $controller->toggleBreakpoint('/p/elsewhere.php', 5);
+        $controller->toggleBreakpoint('/p/elsewhere.php', line: 5);
         $this->assertSame('/p/elsewhere.php', $this->client->argumentsOf('setBreakpoints')['source']['path'], 'other files sync without touching the editor');
 
         // Re-applying decorations for another file clears this file's marks.
@@ -701,7 +701,7 @@ final class DebugControllerTest extends TestCase
     {
         $controller = $this->controller();
         $this->pauseAtBreakpoint($controller);
-        $this->editor->jumpTo(1, 0); // off the stopped line — its ▶ outranks the breakpoint glyphs
+        $this->editor->jumpTo(1, utf16Col: 0); // off the stopped line — its ▶ outranks the breakpoint glyphs
 
         $controller->editBreakpointAtCaret();
         $this->assertSame($this->editor, $this->tui->getFocus(), 'the prompt is drivable even from a focused dock panel');
@@ -749,7 +749,7 @@ final class DebugControllerTest extends TestCase
     {
         $controller = $this->controller();
         $this->pauseAtBreakpoint($controller);
-        $this->editor->jumpTo(1, 0); // off the stopped line
+        $this->editor->jumpTo(1, utf16Col: 0); // off the stopped line
 
         $controller->editBreakpointAtCaret();
         $this->editor->handleInput("\r"); // no condition
@@ -780,7 +780,7 @@ final class DebugControllerTest extends TestCase
             'supportsHitConditionalBreakpoints' => true,
             'supportsLogPoints' => true,
         ]);
-        $this->editor->jumpTo(1, 0);
+        $this->editor->jumpTo(1, utf16Col: 0);
 
         // Padded-but-meaningful values must be stored trimmed.
         $controller->editBreakpointAtCaret();
@@ -1062,28 +1062,28 @@ final class DebugControllerTest extends TestCase
         $this->assertInstanceOf(TerminalSession::class, $debugSession);
         $linesBefore = $debugSession->buffer->lineCount();
 
-        Probe::set($this->terminalPanel, 'scrollBack', 3);
+        Probe::set($this->terminalPanel, property: 'scrollBack', value: 3);
         $requested = $this->requestedRenderSince(function (): void {
             $this->client->emit('output', ['category' => 'stdout', 'output' => "more\n"]);
         });
         $this->assertTrue($requested);
         $this->assertGreaterThan($linesBefore, $debugSession->buffer->lineCount(), 'the output landed in the debug session buffer');
-        $this->assertSame(0, Probe::get($this->terminalPanel, 'scrollBack'), 'output while the debug session is active snaps the panel back to the bottom');
+        $this->assertSame(0, Probe::get($this->terminalPanel, property: 'scrollBack'), 'output while the debug session is active snaps the panel back to the bottom');
 
         // Switch to another session: further output for the (still running, but
         // no longer active) debug session must not touch the visible panel.
-        $shell = $this->sessions->create('shell:1', 'shell');
+        $shell = $this->sessions->create('shell:1', title: 'shell');
         $this->sessions->makeActive($shell);
-        Probe::set($this->terminalPanel, 'scrollBack', 3);
+        Probe::set($this->terminalPanel, property: 'scrollBack', value: 3);
         $this->client->emit('output', ['category' => 'stdout', 'output' => "ignored\n"]);
-        $this->assertSame(3, Probe::get($this->terminalPanel, 'scrollBack'), 'a background session refreshing does not move the visible panel');
+        $this->assertSame(3, Probe::get($this->terminalPanel, property: 'scrollBack'), 'a background session refreshing does not move the visible panel');
 
         // Closing the debug tab outright: output must still be harmless (no session to feed).
         $this->sessions->makeActive($debugSession);
         $index = \array_search($debugSession, $this->sessions->sessions, strict: true);
         $this->sessions->close($index);
         $this->client->emit('output', ['category' => 'stdout', 'output' => "gone\n"]);
-        $this->assertSame(3, Probe::get($this->terminalPanel, 'scrollBack'), 'no session — the panel is untouched');
+        $this->assertSame(3, Probe::get($this->terminalPanel, property: 'scrollBack'), 'no session — the panel is untouched');
     }
 
     public function testAddingAWatchWhileNotPausedDefersEvaluation(): void
@@ -1132,7 +1132,7 @@ final class DebugControllerTest extends TestCase
         $this->assertStringContainsString('Run to cursor needs a paused debugger', $this->statusRow($this->statusBar));
 
         $this->pauseAtBreakpoint($controller, line: 2);
-        $this->editor->getDocument()->setCursor(3, 0);
+        $this->editor->getDocument()->setCursor(3, col: 0);
         $controller->runToCursor();
         $this->assertSame([['line' => 4]], $this->client->argumentsOf('setBreakpoints')['breakpoints'], 'the one-shot went to the wire');
         $this->assertContains('continue', $this->client->commands());
@@ -1143,7 +1143,7 @@ final class DebugControllerTest extends TestCase
         $controller = $this->controller();
         $this->pauseAtBreakpoint($controller);
         // The buffers were all closed while paused: the editor has no path.
-        Probe::set($this->editor, 'filePath', null);
+        Probe::set($this->editor, property: 'filePath', value: null);
 
         $controller->runToCursor();
         $this->assertStringContainsString('Nothing to debug', $this->statusRow($this->statusBar));

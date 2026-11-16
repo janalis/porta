@@ -22,7 +22,7 @@ final class MermaidFontTest extends TestCase
     {
         $project = new TempProject();
         $archive = new \PharData($project->path('font.tar'));
-        $archive->addFile(Font::FILE, 'font.ttf');
+        $archive->addFile(Font::FILE, localName: 'font.ttf');
         $source = 'phar://'.$project->path('font.tar').'/font.ttf';
         $font = new Font($source);
         $path = $font->path();
@@ -47,7 +47,7 @@ final class MermaidFontTest extends TestCase
     {
         $project = new TempProject();
         $archive = new \PharData($project->path('font.tar'));
-        $archive->addFile(Font::FILE, 'font.ttf');
+        $archive->addFile(Font::FILE, localName: 'font.ttf');
         $font = new Font('phar://'.$project->path('font.tar').'/font.ttf');
         $path = $font->path();
         $scheduler = new FakeScheduler();
@@ -80,7 +80,7 @@ final class MermaidFontTest extends TestCase
     {
         $project = new TempProject();
         $archive = new \PharData($project->path('font.tar'));
-        $archive->addFile(Font::FILE, 'font.ttf');
+        $archive->addFile(Font::FILE, localName: 'font.ttf');
         $files = new class extends Filesystem {
             public function tempnam(string $dir, string $prefix, string $suffix = ''): string
             {

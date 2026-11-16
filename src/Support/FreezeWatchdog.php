@@ -74,7 +74,7 @@ final class FreezeWatchdog
         private readonly bool $signalsAvailable = true,
         ?\Closure $monotonic = null,
     ) {
-        $this->log = DiagnosticLog::forRoot($rootDir, 'freeze', $clock);
+        $this->log = DiagnosticLog::forRoot($rootDir, channel: 'freeze', clock: $clock);
         $this->monotonic = $monotonic ?? static fn (): float => \hrtime(as_number: true) / 1_000_000_000;
     }
 

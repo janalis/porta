@@ -44,7 +44,7 @@ final class EditorScrollTest extends TestCase
 
     public function testAWheelScrollPreservesTheSelection(): void
     {
-        $this->document->setSelectionRange(0, 0, 1, 3);
+        $this->document->setSelectionRange(0, startCol: 0, endLine: 1, endCol: 3);
 
         $this->scroll->scrollBy(30);
 
@@ -67,7 +67,7 @@ final class EditorScrollTest extends TestCase
         $this->scroll->scrollBy(30);
         $this->settle();
 
-        $this->document->setCursor(1, 0);
+        $this->document->setCursor(1, col: 0);
         $this->settle();
 
         $this->assertSame(1, $this->scroll->vScroll);
@@ -79,7 +79,7 @@ final class EditorScrollTest extends TestCase
         $this->scroll->scrollBy(30);
         $this->settle();
 
-        $this->document->setCursor(0, 3);
+        $this->document->setCursor(0, col: 3);
         $this->settle();
 
         $this->assertSame(0, $this->scroll->vScroll);
@@ -146,7 +146,7 @@ final class EditorScrollTest extends TestCase
 
     public function testAnAttachedViewportKeepsClampingWhenTheViewportShrinks(): void
     {
-        $this->document->setCursor(30, 0);
+        $this->document->setCursor(30, col: 0);
         $this->settle(); // 24 rows: vScroll lands at 7 to show line 30
 
         // The pane shrinks with a parked caret: an ATTACHED viewport must
@@ -188,9 +188,9 @@ final class EditorScrollTest extends TestCase
     {
         $this->scroll->rowsForLine = static fn (int $line): int => 99 === $line ? 2 : 1;
         $this->foldModel->setRegions([[3, 5]], $this->document->version);
-        $this->document->setCursor(3, 0);
+        $this->document->setCursor(3, col: 0);
         $this->foldModel->toggle();
-        $this->document->setCursor(0, 0);
+        $this->document->setCursor(0, col: 0);
 
         $this->scroll->scrollRows(4);
         $this->assertSame([6, 0], $this->top(), '0, 1, 2, 3 — then past the folded 4 and 5');
@@ -232,9 +232,9 @@ final class EditorScrollTest extends TestCase
         $this->scroll->rowsForLine = static fn (int $line): int => \in_array($line, [3, 4], strict: true) ? 4 : 1;
         $this->scroll->scrollRows(2);
         $this->foldModel->setRegions([[3, 5]], $this->document->version);
-        $this->document->setCursor(3, 0);
+        $this->document->setCursor(3, col: 0);
         $this->foldModel->toggle();
-        $this->document->setCursor(0, 0);
+        $this->document->setCursor(0, col: 0);
         $this->settle();
         $this->assertSame([3, 0], $this->top(), 'folded into line 3: from its first row, not line 4\'s third');
     }
@@ -247,7 +247,7 @@ final class EditorScrollTest extends TestCase
         $this->scroll->scrollRows(7);
         $this->scroll->rowsForLine = null;
 
-        $this->document->setCursor(6, 0); // on screen, below the top
+        $this->document->setCursor(6, col: 0); // on screen, below the top
         $this->settle();
 
         $this->assertSame([4, 0], $this->top());
