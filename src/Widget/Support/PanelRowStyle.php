@@ -6,7 +6,6 @@ namespace Porta\Widget\Support;
 
 use Porta\Support\AnsiText;
 use Porta\Ui\Role;
-use Porta\Ui\Sgr;
 use Porta\Widget\Render\SelectionBar;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\Style;
@@ -41,21 +40,15 @@ trait PanelRowStyle
      * Shade a built row: the selection rule, else the hover tint, else the row
      * as built.
      *
-     * The selection's foreground is re-armed after every inner default-colour
-     * reset. {@see Style::apply()} re-arms only a background, so a span tinted
-     * inside the row — a field's rail, a dimmed detail — used to hand what
-     * followed it the terminal's default colour instead of the selection's:
-     * the value after a text field's rail lost its bright-on-blue.
+     * A span tinted inside the row — a field's rail, a dimmed detail — closes
+     * with a default-colour reset; {@see Style::apply()} re-opens the row's
+     * own foreground after it (symfony/tui 8.2, "restore inherited styles
+     * after a styled sub-element"), so the value after a text field's rail
+     * keeps the selection's bright-on-blue.
      */
     private function shadeRow(string $text, bool $selected, bool $hovered): string
     {
-        $shade = $this->rowShade($selected, $hovered);
-
-        return match (true) {
-            null === $shade => $text,
-            $selected => self::withForeground($shade, $text),
-            default => $shade->apply($text),
-        };
+        return $this->rowShade($selected, $hovered)?->apply($text) ?? $text;
     }
 
     /** The row's resolved Style, for panels that build spans; the resting shade is the toolbar's. */
@@ -72,12 +65,5 @@ trait PanelRowStyle
             $hovered => $this->styles->of(Role::RowHighlightBg),
             default => null,
         };
-    }
-
-    private static function withForeground(Style $style, string $text): string
-    {
-        $foreground = $style->getColor()?->toForegroundCode();
-
-        return $style->apply(null === $foreground ? $text : \str_replace(Sgr::DEFAULT_FG, Sgr::DEFAULT_FG.$foreground, $text));
     }
 }

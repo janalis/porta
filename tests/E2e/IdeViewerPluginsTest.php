@@ -92,8 +92,17 @@ final class IdeViewerPluginsTest extends TestCase
                     $aPath = (string) \realpath($project->path('a.dot'));
                     $this->assertSame('graph', $buffers->get($aPath)?->previewId, 'default-enabled: the initial file opened with the graph beside it');
                     // Painted, not merely output: on a timeout the screen says whether
-                    // the layout failed, never came, or came and was not drawn.
-                    $this->awaitPainted($tui, $terminal, '┌');
+                    // the layout failed, never came, or came and was not drawn. Either
+                    // form counts: the cell rendering's box corner, or the half-block
+                    // bitmap that replaces it — on a loaded box the PNG can land before
+                    // a frame ever shows the cells, so `┌` alone timed out there.
+                    $this->awaitOnScreen(
+                        $tui,
+                        $terminal,
+                        static fn (string $output): bool => [] !== \array_intersect(['┌', '▀'], \mb_str_split(AnsiUtils::stripAnsiCodes($output))),
+                        10.0,
+                        'the graph (cells or bitmap) to paint',
+                    );
 
                     $lifecycle = Services::resolve($ide, PluginLifecycle::class);
                     $lifecycle->disable('graph-viewer');
