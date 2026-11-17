@@ -33,6 +33,9 @@ the project root:
 - `loop blocked ≥ Ns, backtrace: …` — the loop is blocked *right now*; the
   backtrace names the exact call. A hard hang writes one entry every N
   seconds until the process dies, so even a kill -9 leaves the culprit named.
+  **Not on a thread-safe (ZTS) PHP** (`php -v` says `ZTS`, as Homebrew's
+  `php-zts` does): there the alarm behind these lines could crash Porta, so it
+  is off, and a hard hang leaves only the `stalled` line once it lets go.
 
 A freeze with a **clean** freeze.log means the loop is alive but input is
 being swallowed upstream — see the known vendor issues below.
