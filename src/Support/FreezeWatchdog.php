@@ -36,6 +36,18 @@ use Revolt\EventLoop;
  * Logging is best-effort by design: the watchdog must never break the app.
  * `$signalsAvailable` is the test seam — a unit test passes false so it never
  * leaves a live SIGALRM handler behind.
+ *
+ * It defaults to off on a thread-safe (ZTS) PHP, where the alarm itself broke
+ * the app. `alarm()` signals the PROCESS, and macOS may hand it to any thread
+ * that does not block it — a libdispatch worker, say. ext-pcntl's C handler
+ * reads its thread-local globals unguarded, so on that thread it dereferences
+ * nothing or someone else's memory: a SIGSEGV in `pcntl_signal_handler` on
+ * thread #2 (caught in lldb), or the main thread's heap left corrupt —
+ * `zend_mm_heap corrupted`, or a hash chain looping forever. A 1s alarm
+ * crashed 4 of 15 runs of the settings golden test under pcov, 0 of 14 with the
+ * alarm off; NTS PHP, whose globals are process-wide, never crashed under a
+ * signal storm (docs/internals/decisions/history-08.md, 2026-11-17). Drift
+ * logging needs no signal and stays on.
  */
 #[AsIdeService]
 final class FreezeWatchdog
@@ -71,7 +83,7 @@ final class FreezeWatchdog
         private readonly float $interval = 1.0,
         private readonly float $driftThreshold = 3.0,
         private readonly int $alarmSeconds = 5,
-        private readonly bool $signalsAvailable = true,
+        private readonly bool $signalsAvailable = !\PHP_ZTS,
         ?\Closure $monotonic = null,
     ) {
         $this->log = DiagnosticLog::forRoot($rootDir, channel: 'freeze', clock: $clock);

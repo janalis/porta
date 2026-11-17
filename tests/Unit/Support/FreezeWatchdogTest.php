@@ -156,16 +156,6 @@ final class FreezeWatchdogTest extends TestCase
         $this->assertSame(8, $left, 'the 7.6s still to run, in whole seconds rounded up');
     }
 
-    public function testSignalsArmByDefault(): void
-    {
-        $project = new TempProject();
-        $watchdog = new FreezeWatchdog($project->dir, new MockClock(), alarmSeconds: 30);
-
-        $watchdog->start(); // ext-pcntl is a hard requirement, so the default arms the alarm
-        $this->assertGreaterThan(0, \pcntl_alarm(0), 'the alarm was armed by default');
-        $watchdog->stop();
-    }
-
     public function testLogFailuresAreSilent(): void
     {
         $project = new TempProject(['blocker' => 'a regular file where .porta should go']);
@@ -213,6 +203,37 @@ final class FreezeWatchdogTest extends TestCase
         $log = (string) \file_get_contents(Probe::object($watchdog, 'log')->path());
         $this->assertStringContainsString('loop blocked ≥ 1s', $log);
         $this->assertStringContainsString('sleep', $log, 'the backtrace names the blocking call');
+    }
+
+    /**
+     * On a ZTS PHP the process alarm can land on a thread ext-pcntl cannot
+     * handle it on, and corrupt the heap (the class docblock), so by default
+     * the watchdog never takes SIGALRM there. CI runs NTS and pins the other
+     * half: the default still arms it where it is safe.
+     */
+    public function testTheAlarmIsOnByDefaultOnlyWherePcntlCanTakeItSafely(): void
+    {
+        $project = new TempProject();
+        $before = \pcntl_signal_get_handler(\SIGALRM);
+        $outer = \pcntl_alarm(0); // PHPUnit's time limit, set aside so it cannot read as ours
+        $watchdog = new FreezeWatchdog($project->dir, new NativeClock());
+
+        $watchdog->start();
+        $during = \pcntl_signal_get_handler(\SIGALRM);
+        $pending = \pcntl_alarm(0);
+        $watchdog->stop();
+        if ($outer > 0) {
+            \pcntl_alarm($outer);
+        }
+
+        if (\PHP_ZTS) {
+            $this->assertSame($before, $during, 'ZTS: the handler it found is left alone');
+            $this->assertSame(0, $pending, 'ZTS: no alarm is armed');
+
+            return;
+        }
+        $this->assertNotSame($before, $during, 'NTS: the watchdog takes SIGALRM');
+        $this->assertGreaterThan(0, $pending, 'NTS: and arms it');
     }
 
     private function runLoopFor(float $seconds): void

@@ -552,10 +552,8 @@ start, so the stale-cache test ages that file too.
 
 **A `zend_mm_heap corrupted` abort predates the round.** One paratest worker in
 `coverage:src` died that way on 3 of 7 runs with the new lock and on 1 of 2
-with the old one, each time after a different test (terminal, settings
-screenshot, LSP, focus cycling), never with one alone (30 repeats in one
-process were clean). CI never hit it; only the local macOS ZTS build with
-pcov does. That is evidence against the lock, not an explanation. It is still open.
+with the old one, so the lock is not the cause. The cause, the watchdog's
+SIGALRM on a ZTS PHP, is the next entry.
 
 **mago 1.60 extended `literal-named-argument` from function calls to method
 calls** — 30,200 new findings. A throwaway Rector rule, fed mago's exact
@@ -588,3 +586,42 @@ required second argument, while `SelfUpdate` calls it with one.
 
 *Re-opens on:* mago#2741 shipping — drop the rule's test excludes and the
 `@mago-expect`s, and convert the rest.
+
+## The freeze watchdog's alarm crashed ZTS PHP (2026-11-17)
+
+**The `zend_mm_heap corrupted` aborts in local `coverage:src` were
+`FreezeWatchdog`'s SIGALRM.** paratest's `--functional` runs one test per
+worker, so its crash report names the crashing test, not the `[loop-leak]`
+lines above it. Five of eight aborts named
+`SettingsPagesGoldenTest::testEveryPageReadsAsItDid`, two more a settings
+screen. That test renders every page in one synchronous stretch; under load
+(~400 on 16 cores) it blocks the loop past the 5s alarm, and one abort came in
+the same second as the second alarm of its worker.
+
+Measured, one process per run, pcov on, as `coverage:src` runs it:
+
+| Alarm | Runs | Aborted or hung |
+| --- | --- | --- |
+| 1s (temporary patch) | 15 | 4 — three `zend_mm_heap corrupted`, one spinning 4h38m in `zend_hash_find` |
+| off | 14 | 0 |
+
+A standalone script under a `kill -ALRM` storm, with a `usort` whose comparator
+calls a userland function, segfaulted 2 of 6 times on Homebrew's 8.5.12 ZTS and
+0 of 6 on 8.5.11 NTS and NTS-debug. lldb caught it: `EXC_BAD_ACCESS` at address
+0 in `pcntl_signal_handler`, on **thread #2**, while the main thread sat in
+`zend_array_destroy`. `alarm()` signals the process; macOS hands it to any
+thread that does not block it (a libdispatch worker exists in every PHP
+process); and ext-pcntl's handler reads `PCNTL_G()` with no check that it runs
+on a PHP thread. Under NTS those globals are process-wide and the handler is
+harmless anywhere. Not pcov's doing: a pcov rebuilt against 8.5.12 crashed as
+often (1 of 4 runs against 2 of 4), and the storm crashes without pcov.
+
+**So the alarm is off by default on ZTS** (`signalsAvailable: !PHP_ZTS`). The
+cost is real: the `loop blocked` backtraces history-06 grouped (41 of them)
+came from this alarm on a ZTS PHP. A hard hang now leaves only the `stalled`
+line once it lets go, and `docs/troubleshooting.md` says so. A crash loses the
+session; a missing backtrace loses a clue.
+
+*Re-opens on:* ext-pcntl's handler forwarding a signal from a non-PHP thread
+(upstream has no such guard, and no report, as of this entry), or a way to
+block SIGALRM on threads PHP does not own.
