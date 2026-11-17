@@ -622,6 +622,11 @@ came from this alarm on a ZTS PHP. A hard hang now leaves only the `stalled`
 line once it lets go, and `docs/troubleshooting.md` says so. A crash loses the
 session; a missing backtrace loses a clue.
 
-*Re-opens on:* ext-pcntl's handler forwarding a signal from a non-PHP thread
-(upstream has no such guard, and no report, as of this entry), or a way to
-block SIGALRM on threads PHP does not own.
+*Re-opens on:* ext-pcntl's handler forwarding a signal from a non-PHP thread,
+or a way to block SIGALRM on threads PHP does not own. Reported 2026-11-18 as
+php/php-src#25541, with a fix proposed in php/php-src#25542 (PHP-8.4). The crash
+needs ZTS built with `--disable-zend-signals`, as Homebrew's `php-zts` is: with
+zend signals on, `zend_signal_handler_defer()` catches the foreign thread
+first. The gate stays `!PHP_ZTS` rather than narrowing to that build, because
+what zend signals do instead was only read, not measured: the code hands the signal to the
+pre-PHP disposition, which for SIGALRM is to end the process.
