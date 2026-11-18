@@ -53,6 +53,14 @@ final class ReleasePrepareCommandTest extends TestCase
         $this->assertSame($expected, ReleasePrepareCommand::releaseNotes($expected));
     }
 
+    /** A fence takes three: one backtick or tilde opens inline code, and the line it starts is still prose. */
+    public function testAContinuationOpeningWithInlineCodeIsStillUnwrapped(): void
+    {
+        $source = "- Only a\n  `stalled` line, see\n  `docs/x.md`.\n- Fenced:\n  ```php\n  code();\n  ```\n";
+        $expected = "- Only a `stalled` line, see `docs/x.md`.\n- Fenced:\n  ```php\n  code();\n  ```\n";
+        $this->assertSame($expected, ReleasePrepareCommand::releaseNotes($source));
+    }
+
     public function testAMinorBumpReleasesTheUnreleasedSection(): void
     {
         $project = self::project();
