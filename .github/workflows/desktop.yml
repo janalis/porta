@@ -139,8 +139,11 @@ jobs:
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: |
           image="dist/porta-desktop-${{ matrix.name }}.dmg"
-          python3 -m pip install --quiet dmgbuild==2.0.0
-          desktop/macos/build-dmg.sh dist/Porta.app "$image"
+          # The runner's own Python takes no packages (PEP 668): dmgbuild gets a venv.
+          python3 -m venv "$RUNNER_TEMP/dmgbuild"
+          "$RUNNER_TEMP/dmgbuild/bin/pip" install --quiet dmgbuild==2.0.0
+          echo "$RUNNER_TEMP/dmgbuild/bin" >> "$GITHUB_PATH"
+          PATH="$RUNNER_TEMP/dmgbuild/bin:$PATH" desktop/macos/build-dmg.sh dist/Porta.app "$image"
           if [ -n "$APPLE_ID" ]; then
             xcrun notarytool submit "$image" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
             xcrun stapler staple "$image"
