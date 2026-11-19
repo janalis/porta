@@ -133,6 +133,7 @@ export default defineConfig({
           items: [
             { text: 'Introduction', link: '/' },
             { text: 'Getting started', link: '/getting-started' },
+            { text: 'Desktop application', link: '/desktop' },
             { text: 'Editor', link: '/editor' },
             { text: 'Keybindings', link: '/keybindings' },
             { text: 'Search & navigation', link: '/search-navigation' },

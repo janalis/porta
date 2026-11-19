@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Porta
+GenericName=PHP IDE
+Comment=An IDE for PHP projects
+Exec=porta-desktop %F
+Icon=io.github.janalis.porta
+Terminal=false
+Categories=Development;IDE;
+MimeType=inode/directory;
+StartupNotify=true
+StartupWMClass=io.github.janalis.porta
+Keywords=php;editor;ide;

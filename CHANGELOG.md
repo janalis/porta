@@ -5,6 +5,14 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Desktop application**: Porta in a window of its own, opened from an icon,
+  on macOS, Linux and Windows (through WSL), with PHP included. The `porta`
+  command is unchanged. Closing a window with unsaved work asks first, one
+  window opens per project, and on macOS Porta's menus live in the system menu
+  bar. See `docs/desktop.md`.
+
 ## [0.1.9] - 2026-11-19
 
 ### Fixed

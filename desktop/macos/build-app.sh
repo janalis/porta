@@ -44,9 +44,12 @@ done
 iconutil -c icns "$iconset" -o "$app/Contents/Resources/Porta.icns"
 
 identity=${PORTA_SIGN_IDENTITY:--}
+# Notarization insists on a secure timestamp; an ad hoc signature cannot have one.
+stamp=--timestamp
+[ "$identity" != - ] || stamp=--timestamp=none
 for code in "$runtime/php" "$app/Contents/MacOS/Porta"; do
-    codesign --force --options runtime --timestamp=none --sign "$identity" "$code"
+    codesign --force --options runtime "$stamp" --sign "$identity" "$code"
 done
-codesign --force --options runtime --timestamp=none --sign "$identity" "$app"
+codesign --force --options runtime "$stamp" --sign "$identity" "$app"
 codesign --verify --deep --strict "$app"
 echo "$app"

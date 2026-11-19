@@ -1,0 +1,1 @@
+option('app', type: 'boolean', value: true, description: 'Build the GTK application, not only the tested core')

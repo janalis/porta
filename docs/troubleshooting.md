@@ -19,6 +19,18 @@ The file is capped (256 KB) and starts over rather than growing without end, so
 a fault that fires every frame cannot fill the disk. `freeze.log`, `perf.log`
 and `dap.log` share the sink and the convention.
 
+## The desktop application
+
+- **The window title says "Porta — stopped".** Porta could not start, and what
+  it printed is on screen.
+- **A tool is missing that your terminal finds.** The application reads your
+  login shell's environment when it starts, and gives up after five seconds:
+  a slow shell profile leaves it on the bare system `PATH`.
+- **Windows says Porta needs WSL.** Run `wsl --install` from an administrator
+  terminal, restart, and open Porta again.
+
+[Desktop application](desktop.md) lists what each platform supports.
+
 ## The app appears frozen (no input, screen stuck)
 
 Porta runs everything — UI, LSP, git, terminals — on one event loop. A frozen

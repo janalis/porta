@@ -55,6 +55,10 @@ mergetool. From a shell, `porta --git-setup` makes it git's tools, and
 `porta --diff a.php b.php` compares two files by hand — see
 [the git guide](../plugins/git/docs/README.md#as-gits-difftool-and-mergetool).
 
+**The desktop application** — Porta in a window of its own, from an icon, with
+PHP included. See [Desktop application](desktop.md). It sits beside the `porta`
+command and changes nothing about it.
+
 ### Updating
 
 `porta --self-update` compares with the latest release and updates Porta the
@@ -68,6 +72,7 @@ is a newer one.
 | Composer, globally | runs `composer global update janalis/porta` |
 | a project's dependency | prints `composer update janalis/porta` for that project, and changes nothing |
 | a checkout | prints `git pull --ff-only && composer install`, and changes nothing |
+| the desktop application | points at the download, and changes nothing: a new package replaces the signed one |
 
 Homebrew's tap and Packagist follow a release by a few minutes; an update run
 before they have it says so rather than claiming success. A `GH_TOKEN` or

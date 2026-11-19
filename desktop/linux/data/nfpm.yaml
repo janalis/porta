@@ -1,0 +1,24 @@
+name: porta-desktop
+arch: ${PORTA_ARCH}
+platform: linux
+version: ${PORTA_VERSION}
+section: devel
+maintainer: The Porta authors
+description: Porta in a window of its own, beside the porta terminal command
+homepage: https://janalis.github.io/porta/
+license: MIT
+overrides:
+  deb:
+    depends: [libgtk-4-1, libvte-2.91-gtk4-0, libjson-glib-1.0-0]
+  rpm:
+    depends: [gtk4, vte291-gtk4, json-glib]
+contents:
+  - src: ${PORTA_STAGE}/lib/porta-desktop
+    dst: /usr/lib/porta-desktop
+  - src: /usr/lib/porta-desktop/porta-desktop
+    dst: /usr/bin/porta-desktop
+    type: symlink
+  - src: ${PORTA_STAGE}/share/applications/io.github.janalis.porta.desktop
+    dst: /usr/share/applications/io.github.janalis.porta.desktop
+  - src: ${PORTA_STAGE}/share/icons/hicolor/512x512/apps/io.github.janalis.porta.png
+    dst: /usr/share/icons/hicolor/512x512/apps/io.github.janalis.porta.png

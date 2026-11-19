@@ -52,3 +52,6 @@ plugins/*/vendor/
 # (relative paths resolve from there) and deletes it after the run.
 /.phpunit.affected-*.xml
 /desktop/macos/.build/
+/desktop/windows/*/bin/
+/desktop/windows/*/obj/
+/desktop/windows/Installer/output/

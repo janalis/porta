@@ -4,7 +4,7 @@ name: Release
 # commit, moves CHANGELOG.md's [Unreleased] section to the new version and
 # sets Ide::VERSION (bin/porta-dev release:prepare), commits and tags it, then
 # publishes: the GitHub release with porta.phar and its SHA-256 (what
-# `porta --self-update` fetches), the Homebrew formula (janalis/homebrew-tap),
+# `porta --self-update` fetches), the desktop packages, the Homebrew formula (janalis/homebrew-tap),
 # the plugin splits (janalis/porta-<name>), Packagist and the docs site.
 on:
   workflow_dispatch:
@@ -173,6 +173,37 @@ jobs:
           git add Formula/porta.rb
           git commit -m "porta $TAG"
           git push
+
+  # After the phar is out, and apart from it: a package that fails to build holds
+  # back neither `porta --self-update`, Homebrew nor Packagist.
+  desktop:
+    needs: [prepare, publish]
+    uses: ./.github/workflows/desktop.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+      ref: ${{ inputs.dry_run && github.sha || needs.prepare.outputs.tag }}
+    secrets: inherit
+
+  desktop-release:
+    needs: [prepare, desktop]
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: desktop-package-*
+          path: packages
+          merge-multiple: true
+      - name: Attach the packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: packages
+        run: |
+          sha256sum -- * > porta-desktop.sha256
+          gh release upload "$TAG" -- * --repo "$GITHUB_REPOSITORY"
 
   split:
     needs: [prepare, publish]

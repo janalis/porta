@@ -12,6 +12,7 @@ non-blocking event loop.
 | Guide | Contents |
 | --- | --- |
 | [Getting started](getting-started.md) | Installation, LSP setup, launching, first steps |
+| [Desktop application](desktop.md) | Porta in its own window: install, launch, system menus, packaging, platform limits |
 | [Editor](editor.md) | Buffers, editing, multi-caret, folding, indentation, live preview, mouse |
 | [Keybindings](keybindings.md) | Every default binding, and how to rebind |
 | [Search & navigation](search-navigation.md) | Go to file/symbol/test, find in file, Find in Files, problems panel |

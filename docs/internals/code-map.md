@@ -118,6 +118,12 @@ and draws nothing; drawing a tree is `Help/Layout/`'s.
 the IDE update check and machine-local release note. Update services are
 container-built; the standalone maintenance helpers remain plain objects.
 
+**`Desktop/`** — what a native window needs from the IDE, inert unless a host
+started it (`PORTA_DESKTOP` and a per-launch token): the in-band close and menu
+protocol, the login shell's environment, the pre-boot project picker and the
+system menu export. The hosts themselves are `desktop/<platform>`, outside
+`src/`, held to `desktop/contract/` by each side's tests.
+
 **`Console/PluginCommands`** — `porta <name> …` for a bundled plugin's console
 command (`extra.porta.commands`): the plugin's class, which must extend
 `Plugin/Api/PluginCommand`, lives in the plugin; core only finds it by name.
