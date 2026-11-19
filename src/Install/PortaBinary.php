@@ -15,6 +15,9 @@ use Porta\Support\Files;
  */
 final class PortaBinary
 {
+    /** Beside a desktop bundle's phar: runs it on the bundled PHP, which the phar's own shebang would not find. */
+    public const string DESKTOP_LAUNCHER = 'porta-cli';
+
     /** Preserve matching launch links; an unrelated wrapper must never become an update target. */
     public static function entry(string $invoked, string $binary): string
     {
@@ -47,6 +50,14 @@ final class PortaBinary
         $phar = \Phar::running(false);
 
         return '' !== $phar ? $phar : (string) \realpath(self::packageDir().'/bin/porta');
+    }
+
+    /** What something outside this process should run: git, or the `porta` link on PATH. */
+    public static function launcher(string $binary): string
+    {
+        $wrapper = \dirname($binary).'/'.self::DESKTOP_LAUNCHER;
+
+        return \is_file($wrapper) ? $wrapper : $binary;
     }
 
     /** The folder this package lives in: a checkout, or `vendor/janalis/porta` (inside the phar, its `phar://` root). */

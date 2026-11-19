@@ -43,6 +43,25 @@ final readonly class WorkbenchActions
         $this->tui->stop();
     }
 
+    /**
+     * The desktop window's close button: {@see quit()}, in the words that fit a
+     * button.
+     *
+     * @param \Closure(): void $closing told before the terminal is given back
+     *
+     * @return bool whether the IDE is stopping; false keeps the window open
+     */
+    public function closeWindow(\Closure $closing): bool
+    {
+        if (!$this->guard->confirmed('close-window', $this->translator->trans('Close the window again to discard them, Ctrl+S to save'))) {
+            return false;
+        }
+        $closing();
+        $this->tui->stop();
+
+        return true;
+    }
+
     /** A plugin asked to quit (a difftool session whose comparison was closed): the same guarded quit. */
     #[AsEventListener]
     public function onQuitRequested(QuitRequested $event): void

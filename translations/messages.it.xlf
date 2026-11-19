@@ -3934,6 +3934,18 @@
         <source>Updated %plugins% — restart scheduled for %names%</source>
         <target>%plugins% aggiornato — riavvio previsto per %names%</target>
       </trans-unit>
+      <trans-unit id="1319">
+        <source>Close the window again to discard them, Ctrl+S to save</source>
+        <target>Chiudi di nuovo la finestra per scartarle, Ctrl+S per salvare</target>
+      </trans-unit>
+      <trans-unit id="1320">
+        <source>Download the new version: %url%</source>
+        <target>Scarica la nuova versione: %url%</target>
+      </trans-unit>
+      <trans-unit id="1321">
+        <source>Porta %version% is available. Download it from %url%</source>
+        <target>Porta %version% è disponibile. Scaricala da %url%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

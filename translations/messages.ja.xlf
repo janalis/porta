@@ -3934,6 +3934,18 @@
         <source>Updated %plugins% — restart scheduled for %names%</source>
         <target>%plugins% を更新しました — %names% の再起動を予定しています</target>
       </trans-unit>
+      <trans-unit id="1319">
+        <source>Close the window again to discard them, Ctrl+S to save</source>
+        <target>破棄するにはもう一度ウィンドウを閉じてください。Ctrl+S で保存します</target>
+      </trans-unit>
+      <trans-unit id="1320">
+        <source>Download the new version: %url%</source>
+        <target>新しいバージョンをダウンロード: %url%</target>
+      </trans-unit>
+      <trans-unit id="1321">
+        <source>Porta %version% is available. Download it from %url%</source>
+        <target>Porta %version% が利用可能です。%url% からダウンロードしてください</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

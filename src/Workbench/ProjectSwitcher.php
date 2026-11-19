@@ -58,23 +58,7 @@ final readonly class ProjectSwitcher
      */
     public function open(): void
     {
-        $items = [];
-        foreach ($this->recent->all() as $root) {
-            // The project you are IN is not somewhere to switch to, and one
-            // that has been moved or deleted is an entry that answers a
-            // keystroke with an error — the recent-files list drops those for
-            // the same reason.
-            if ($root === $this->rootDir || !\is_dir($root)) {
-                continue;
-            }
-
-            // A remote project's root is its cache, a hash deep in ~/.porta:
-            // what a person knows it by is the server it mirrors.
-            $remote = ProjectLocation::forRoot($root)->remote;
-            $items[] = null === $remote
-                ? ['label' => \basename($root), 'hint' => PortaHome::tilde($root), 'value' => $root]
-                : ['label' => $remote->name(), 'hint' => $remote->label(), 'value' => $root];
-        }
+        $items = new RecentProjectChoices($this->recent)->except($this->rootDir);
         if ([] === $items) {
             $this->prompt();
 

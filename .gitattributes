@@ -8,6 +8,7 @@
 /.codex              export-ignore
 /.github             export-ignore
 /.vitepress          export-ignore
+/desktop             export-ignore
 /docker              export-ignore
 /docs/public         export-ignore
 /tests               export-ignore

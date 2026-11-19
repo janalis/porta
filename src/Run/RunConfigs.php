@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Run;
 
+use Porta\Desktop\DesktopSession;
 use Porta\Support\Argv;
 use Porta\Support\JsonFile;
 use Porta\Support\ProjectPaths;
@@ -23,6 +24,7 @@ final readonly class RunConfigs
         private string $rootDir,
         #[Autowire('%env(json:PORTA_LANGUAGES)%')]
         private array $languages = [],
+        private DesktopSession $desktop = new DesktopSession(active: false, token: ''),
     ) {}
 
     /**
@@ -69,13 +71,24 @@ final readonly class RunConfigs
     {
         $command = \trim($this->languages['php']['runCommand'] ?? '');
         if ('' === $command) {
-            return [\PHP_BINARY];
+            return $this->interpreter();
         }
         // The shared quote-aware tokenizer: an interpreter under a path with
         // spaces survives, exactly as it does for the LSP and debug seams.
         $parts = Argv::split($command);
 
-        return [] === $parts ? [\PHP_BINARY] : $parts;
+        return [] === $parts ? $this->interpreter() : $parts;
+    }
+
+    /**
+     * The interpreter Porta runs under, except in the desktop application:
+     * that one is Porta's own, and a project runs on the user's PHP.
+     *
+     * @return list<string>
+     */
+    private function interpreter(): array
+    {
+        return $this->desktop->active ? ['php'] : [\PHP_BINARY];
     }
 
     /**

@@ -220,6 +220,7 @@ final class CommandLineSection implements SettingsSection
                 // Said from where it is run, without the path: the page is about this Porta.
                 InstallMethod::ComposerProject => $this->translator->trans('Update it from a shell: %command%', ['%command%' => 'composer update '.Installation::PACKAGE]),
                 InstallMethod::Checkout => $this->translator->trans('Update it from a shell: %command%', ['%command%' => 'git pull --ff-only && composer install']),
+                InstallMethod::Desktop => $this->translator->trans('Download the new version: %url%', ['%url%' => Installation::DOWNLOAD]),
             },
             fieldset: $this->translator->trans('Updates'),
             disabled: !$installation->method->updatesItself(),
@@ -310,12 +311,12 @@ final class CommandLineSection implements SettingsSection
 
     private function link(): CommandLink
     {
-        return new CommandLink($this->binary ?? PortaBinary::path(), (string) \getenv('PATH'), (string) \getenv('HOME'));
+        return new CommandLink($this->binary ?? PortaBinary::launcher(PortaBinary::path()), (string) \getenv('PATH'), (string) \getenv('HOME'));
     }
 
     private function git(): GitToolSetup
     {
-        return new GitToolSetup($this->binary ?? PortaBinary::path(), self::runGit(...));
+        return new GitToolSetup($this->binary ?? PortaBinary::launcher(PortaBinary::path()), self::runGit(...));
     }
 
     /**

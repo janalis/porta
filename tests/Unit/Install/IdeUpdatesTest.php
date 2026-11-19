@@ -112,4 +112,14 @@ final class IdeUpdatesTest extends TestCase
         $this->assertCount(1, $this->store->http->batches);
         $this->assertTrue($this->restart->updatesCore());
     }
+
+    public function testADesktopInstallIsSentToTheDownloadAndNeverRestarted(): void
+    {
+        $this->store->http->bodies[IdeUpdates::RELEASE] = '{"tag_name":"v2.0.0"}';
+
+        $this->updates(['ideAutoUpdate' => true], InstallMethod::Desktop)->checkIfDue();
+
+        $this->assertFalse($this->restart->updatesCore());
+        $this->assertStringContainsString(Installation::DOWNLOAD, $this->store->toast());
+    }
 }

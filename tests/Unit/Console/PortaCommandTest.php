@@ -683,4 +683,88 @@ final class PortaCommandTest extends TestCase
         $this->assertNotNull($this->launched);
         $this->assertTrue($trust->shouldAsk($cache->dir), 'nothing answered on its behalf either');
     }
+
+    /** @param (\Closure(): ?string) $pick */
+    private function desktopCommand(\Closure $pick, bool $interactive = true): PortaCommand
+    {
+        return new PortaCommand(
+            launch: function (Workspace $workspace, ?string $lsp, LspMode $noLsp, Ansi $ansi, \Closure $onBooted): int {
+                $onBooted();
+                $this->launched = [$workspace, $lsp, $noLsp, $ansi];
+
+                return 0;
+            },
+            isInteractive: static fn (): bool => $interactive,
+            env: ['PORTA_DESKTOP' => '1', 'PORTA_DESKTOP_TOKEN' => \str_repeat('a', 32)],
+            pickProject: $pick,
+        );
+    }
+
+    public function testAnIconClickOpensWhatThePickerChose(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $this->launched = null;
+
+        $tester = new CommandTester($this->desktopCommand(static fn (): string => $project->dir));
+
+        $this->assertSame(Command::SUCCESS, $tester->execute([]));
+        $this->assertSame(\realpath($project->dir), $this->launched[0]->rootDir ?? null);
+    }
+
+    public function testLeavingThePickerOpensNothing(): void
+    {
+        $this->launched = null;
+
+        $tester = new CommandTester($this->desktopCommand(static fn (): ?string => null));
+
+        $this->assertSame(Command::SUCCESS, $tester->execute([]));
+        $this->assertNull($this->launched);
+    }
+
+    public function testAPathGivenToTheDesktopApplicationIsNotAskedAbout(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $asked = false;
+        $command = $this->desktopCommand(static function () use (&$asked): ?string {
+            $asked = true;
+
+            return null;
+        });
+
+        new CommandTester($command)->execute(['path' => [$project->dir]]);
+
+        $this->assertFalse($asked);
+    }
+
+    public function testATerminalLaunchIsNeverAskedWhatToOpen(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $cwd = (string) \getcwd();
+        \chdir($project->dir);
+        $asked = false;
+        try {
+            $command = new PortaCommand(
+                launch: static fn (): int => 0,
+                isInteractive: static fn (): bool => true,
+                pickProject: static function () use (&$asked): ?string {
+                    $asked = true;
+
+                    return null;
+                },
+            );
+            new CommandTester($command)->execute([]);
+        } finally {
+            \chdir($cwd);
+        }
+
+        $this->assertFalse($asked);
+    }
+
+    public function testTheDesktopApplicationIsUpdatedByDownloadingIt(): void
+    {
+        $tester = new CommandTester($this->updater('v1.2.0', latest: 'v1.3.0', phar: null, installation: new Installation(InstallMethod::Desktop, '/Applications/Porta.app/porta.phar')));
+
+        $this->assertSame(Command::FAILURE, $tester->execute(['--self-update' => true]));
+        $this->assertStringContainsString('download the new version from '.Installation::DOWNLOAD, $tester->getDisplay());
+    }
 }

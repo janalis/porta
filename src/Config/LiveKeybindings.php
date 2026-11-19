@@ -107,6 +107,13 @@ final class LiveKeybindings
         $this->rebuild();
     }
 
+    /** The desktop host forwards every Cmd chord: no need to wait for each to arrive. */
+    public function assumeCmdChords(): void
+    {
+        $this->cmdArrived = PlatformKeymap::cmdChords();
+        $this->rebuild();
+    }
+
     /**
      * Watch the input for Cmd chords. Each one that arrives is proof this
      * terminal hands that chord over, so the map is rebuilt with it leading

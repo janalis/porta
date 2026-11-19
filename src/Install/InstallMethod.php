@@ -22,12 +22,15 @@ enum InstallMethod
     /** A git checkout, someone working on Porta: the command is only printed. */
     case Checkout;
 
+    /** Inside the desktop application's bundle, which is signed as a whole: a new package replaces it. */
+    case Desktop;
+
     /** Whether `--self-update` runs the update itself, rather than saying what would. */
     public function updatesItself(): bool
     {
         return match ($this) {
             self::Phar, self::Homebrew, self::ComposerGlobal => true,
-            self::ComposerProject, self::Checkout => false,
+            self::ComposerProject, self::Checkout, self::Desktop => false,
         };
     }
 }

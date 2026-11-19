@@ -1,0 +1,115 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Desktop;
+
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
+use Symfony\Component\Process\Process;
+
+/**
+ * The environment the user's login shell would give Porta.
+ *
+ * An application started from an icon inherits the desktop session's bare
+ * environment: on macOS a PATH of `/usr/bin:/bin:/usr/sbin:/sbin`, where
+ * Homebrew's git, composer and every language server are missing. A terminal
+ * never has this problem, so this runs for a desktop launch only.
+ *
+ * A shell profile can hang or print anything. It runs in a session of its own
+ * with no stdin, its answer is read between two sentinels, and past the
+ * deadline Porta starts on the environment it already has.
+ */
+final readonly class LoginEnvironment
+{
+    private const string SENTINEL = '__PORTA_DESKTOP_ENVIRONMENT__';
+
+    /** Who this process is, which a login shell must not overwrite. */
+    private const string KEPT = '/^(?:PORTA_.*|TERM.*|COLORTERM|TMUX.*|WSL_.*|PWD|OLDPWD|SHLVL|_)$/D';
+
+    /** Starts a shell in its own session: nothing it does can reach the window's terminal. */
+    private const string DETACH = 'posix_setsid(); pcntl_exec($argv[1], array_slice($argv, 2));';
+
+    /** @var \Closure(list<string>, float): ?string */
+    private \Closure $run;
+
+    /**
+     * @param (\Closure(list<string>, float): ?string)|null $run      runs argv within the deadline, returning its output or null
+     * @param float                                         $deadline how long a shell profile may take, in seconds
+     */
+    public function __construct(
+        ?\Closure $run = null,
+        private float $deadline = 5.0,
+    ) {
+        $this->run = $run ?? self::runDetached(...);
+    }
+
+    /**
+     * Brings a desktop launch's environment in line with the login shell. Both
+     * tables are written: Symfony Process builds a child's environment from
+     * `$_SERVER`, and drops a variable only `putenv()` knows.
+     */
+    public static function apply(): void
+    {
+        if (!DesktopSession::current()->active) {
+            return;
+        }
+        foreach (new self()->resolve(\getenv()) as $name => $value) {
+            \putenv($name.'='.$value);
+            $_SERVER[$name] = $value;
+        }
+    }
+
+    /**
+     * @param array<string, string|false> $environment
+     *
+     * @return array<string, string> the variables to set; empty when the shell did not answer
+     */
+    public function resolve(array $environment): array
+    {
+        $shell = $environment['SHELL'] ?? '';
+        $argv = [
+            \is_string($shell) && \str_starts_with($shell, '/') ? $shell : '/bin/sh',
+            '-i',
+            '-l',
+            '-c',
+            \sprintf("printf '%%s' %s; /usr/bin/env -0; printf '%%s' %s", self::SENTINEL, self::SENTINEL),
+        ];
+
+        return self::parse(($this->run)($argv, $this->deadline) ?? '');
+    }
+
+    /** @return array<string, string> */
+    private static function parse(string $output): array
+    {
+        $parts = \explode(self::SENTINEL, $output);
+        if (3 !== \count($parts)) {
+            return [];
+        }
+        $variables = [];
+        foreach (\explode("\0", $parts[1]) as $entry) {
+            $split = \strpos($entry, needle: '=');
+            if (false === $split || 0 === $split) {
+                continue;
+            }
+            $name = \substr($entry, offset: 0, length: $split);
+            if (1 !== \preg_match(self::KEPT, $name)) {
+                $variables[$name] = \substr($entry, $split + 1);
+            }
+        }
+
+        return $variables;
+    }
+
+    /** @param list<string> $argv */
+    private static function runDetached(array $argv, float $deadline): ?string
+    {
+        $process = new Process([\PHP_BINARY, '-n', '-r', self::DETACH, '--', ...$argv], timeout: $deadline);
+        try {
+            $process->run();
+        } catch (ProcessTimedOutException) {
+            return null;
+        }
+
+        return $process->getOutput();
+    }
+}

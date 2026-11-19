@@ -9,6 +9,8 @@ use Porta\Config\WorkspaceTrust;
 use Porta\Container\Ansi;
 use Porta\Container\LspMode;
 use Porta\Container\ToolLaunch;
+use Porta\Desktop\DesktopSession;
+use Porta\Desktop\ProjectPicker;
 use Porta\Filesystem\ProjectLocation;
 use Porta\Ide;
 use Porta\Install\GitToolSetup;
@@ -80,6 +82,9 @@ final class PortaCommand extends Command
 
     private readonly WorkspaceTrust $trust;
 
+    /** @var \Closure(): ?string */
+    private readonly \Closure $pickProject;
+
     /**
      * @param (callable(Workspace, ?string, LspMode, Ansi, \Closure): int)|null $launch        defaults to booting a real {@see Ide}, returning its exit code; the
      *                                                                                         trailing closure is called between boot and run, so a crash can say
@@ -95,6 +100,7 @@ final class PortaCommand extends Command
      * @param WorkspaceTrust|null                                               $trust         whose answers decide what a project may run; defaults to the user's
      * @param Installation|null                                                 $installation  how this porta was installed, which --self-update follows; defaults
      *                                                                                         to reading it off $phar and the package's folder
+     * @param (\Closure(): ?string)|null $pickProject asks a desktop launch with no path what to open; null is leaving
      */
     public function __construct(
         ?callable $launch = null,
@@ -107,8 +113,10 @@ final class PortaCommand extends Command
         private readonly array $env = [],
         ?WorkspaceTrust $trust = null,
         private readonly ?Installation $installation = null,
+        ?\Closure $pickProject = null,
     ) {
         parent::__construct();
+        $this->pickProject = $pickProject ?? static fn (): ?string => ProjectPicker::forUser()->pick();
         $this->launch = $launch ?? self::launchIde(...);
         // stream_isatty is core PHP — the posix_isatty it replaced needed
         // ext-posix, and a box without it was refused as "not interactive".
@@ -160,11 +168,32 @@ final class PortaCommand extends Command
             return Command::INVALID;
         }
 
+        /** @param list<string> $paths */
+        $open = fn (array $paths): int => $this->open($output, $errors, $io, $paths, $line, $diff, $merge, $lsp, $noLsp, \array_values(\array_map(\strval(...), $plugin)));
+
         return match (true) {
             $gitSetup => $this->setUpGit($output, $io, $dryRun),
             $selfUpdate => $this->updateSelf($output, $io, $dryRun),
-            default => $this->open($output, $errors, $io, $path, $line, $diff, $merge, $lsp, $noLsp, \array_values(\array_map(\strval(...), $plugin))),
+            $diff, $merge => $open($path),
+            default => $this->openChosen($path, $open),
         };
+    }
+
+    /**
+     * A plain launch: the paths given, or what a desktop launch without any
+     * chooses. Leaving the picker opens nothing, and is no failure.
+     *
+     * @param list<string>                $path
+     * @param \Closure(list<string>): int $open
+     */
+    private function openChosen(array $path, \Closure $open): int
+    {
+        if ([] !== $path || !DesktopSession::fromEnvironment($this->env)->active || !($this->isInteractive)()) {
+            return $open($path);
+        }
+        $picked = ($this->pickProject)();
+
+        return null === $picked ? Command::SUCCESS : $open([$picked]);
     }
 
     /**
@@ -374,6 +403,11 @@ final class PortaCommand extends Command
     // @mago-expect lint:no-boolean-flag-parameter -- --dry-run is the flag being honoured.
     private function tellHow(OutputInterface $output, Installation $installation, bool $dryRun): int
     {
+        if (InstallMethod::Desktop === $installation->method) {
+            $output->writeln(\sprintf('This porta came with the desktop application: download the new version from %s', Installation::DOWNLOAD));
+
+            return $dryRun ? Command::SUCCESS : Command::FAILURE;
+        }
         $output->writeln(\sprintf(
             'This porta is %s %s: update it with `%s`.',
             InstallMethod::Checkout === $installation->method ? 'the git checkout at' : 'a dependency of the project at',

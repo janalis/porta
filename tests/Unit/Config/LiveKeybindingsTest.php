@@ -175,4 +175,15 @@ final class LiveKeybindingsTest extends TestCase
         $live->rebuild();
         $this->assertSame(['super+c', 'ctrl+c'], $live->getBindings('copy'), 'what arrived survives a plain rebuild');
     }
+
+    public function testADesktopHostsCmdChordsLeadFromTheStart(): void
+    {
+        $project = new TempProject(['composer.json' => '{}']);
+        [$live] = $this->live($project);
+        $live->usePlatform('macos');
+
+        $live->assumeCmdChords();
+
+        $this->assertSame('super+s', \array_first($live->getBindings('save')));
+    }
 }

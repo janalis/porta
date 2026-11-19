@@ -18,6 +18,7 @@ use Porta\Container\ToolLaunch;
 use Porta\Container\ToolMode;
 use Porta\Debug\DebugController;
 use Porta\Debug\DebugStatePersistence;
+use Porta\Desktop\DesktopProtocol;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
@@ -341,6 +342,8 @@ final class Ide
         $bidiTui->onBeforeFrame($pointer->beforeFrame(...));
         // kitty's drag-and-drop exchange arrives as input too, an OSC apiece.
         $this->tui->addListener($this->service(DragDropProtocol::class)->onInput(...), priority: 2000);
+        // The window's own requests, ahead of everything that reads input.
+        $this->service(DesktopProtocol::class)->attach();
         // Last: hand the plugin handlers their live runtime seam and flash the
         // config/plugin load warnings, once every service they reach exists.
         $this->service(StartupWiring::class)->wire();
@@ -605,6 +608,8 @@ final class Ide
             if (null === $this->tool) {
                 $this->service(RecentProjectsStore::class)->record($this->rootDir);
             }
+
+            $this->service(DesktopProtocol::class)->announceReady($this->rootDir);
 
             // Same reason, for observers: IdeReady lands before the first
             // BufferOpened instead of racing it.

@@ -3934,6 +3934,18 @@
         <source>Updated %plugins% — restart scheduled for %names%</source>
         <target>Updated %plugins% — restart scheduled for %names%</target>
       </trans-unit>
+      <trans-unit id="1319">
+        <source>Close the window again to discard them, Ctrl+S to save</source>
+        <target>Close the window again to discard them, Ctrl+S to save</target>
+      </trans-unit>
+      <trans-unit id="1320">
+        <source>Download the new version: %url%</source>
+        <target>Download the new version: %url%</target>
+      </trans-unit>
+      <trans-unit id="1321">
+        <source>Porta %version% is available. Download it from %url%</source>
+        <target>Porta %version% is available. Download it from %url%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -344,4 +344,12 @@ final class CommandLineSectionTest extends TestCase
         $section->change(CommandLineSection::ID, key: 'cli:update', value: 'Update');
         $this->assertTrue($restart->updatesCore());
     }
+
+    public function testTheDesktopApplicationPointsAtTheDownload(): void
+    {
+        $row = self::rows($this->section(new Installation(InstallMethod::Desktop, '/Applications/Porta.app/Contents/Resources/porta.phar')))['cli:update'];
+
+        $this->assertSame('Download the new version: '.Installation::DOWNLOAD, $row->hint);
+        $this->assertTrue($row->disabled);
+    }
 }

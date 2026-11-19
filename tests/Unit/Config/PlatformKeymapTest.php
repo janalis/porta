@@ -142,4 +142,14 @@ final class PlatformKeymapTest extends TestCase
         $this->assertFalse($parser->matches('c', keyId: 'super+c'));
         $this->assertTrue($parser->matches("\x1b[99;9u", keyId: 'super+c'));
     }
+
+    public function testADesktopHostProvesEveryCmdChordAtOnce(): void
+    {
+        $chords = PlatformKeymap::cmdChords();
+
+        $this->assertContains('super+s', $chords);
+        $this->assertContains('shift+super+z', $chords, 'spelled as the parser names it');
+        $this->assertSame(\array_values(\array_unique($chords)), $chords, 'super+c binds two actions, and counts once');
+        $this->assertSame(['super+s', 'ctrl+s'], PlatformKeymap::overrides(KeymapPlatform::MacOs, $chords)['save']);
+    }
 }

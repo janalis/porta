@@ -23,6 +23,9 @@ final readonly class Installation
 {
     public const string PACKAGE = 'janalis/porta';
 
+    /** Where a desktop install gets its next version. */
+    public const string DOWNLOAD = 'https://github.com/janalis/porta/releases/latest';
+
     private const string FORMULA = 'janalis/tap/porta';
 
     public static function current(): self
@@ -53,6 +56,7 @@ final readonly class Installation
         $root = \dirname($vendor);
 
         return match (true) {
+            '' !== $phar && \is_file(\dirname($file).'/'.PortaBinary::DESKTOP_LAUNCHER) => new self(InstallMethod::Desktop, $file, $phar),
             '' !== $phar => new self(\str_contains($file, '/Cellar/porta/') ? InstallMethod::Homebrew : InstallMethod::Phar, $file, $phar),
             \str_ends_with($package, '/'.self::PACKAGE) && \is_file($vendor.'/composer/installed.php') => new self(
                 \in_array($root, self::composerHomes($env), strict: true) ? InstallMethod::ComposerGlobal : InstallMethod::ComposerProject,
@@ -73,7 +77,7 @@ final readonly class Installation
     public function commands(): array
     {
         return match ($this->method) {
-            InstallMethod::Phar => [],
+            InstallMethod::Phar, InstallMethod::Desktop => [],
             InstallMethod::Homebrew => [['brew', 'upgrade', self::FORMULA]],
             InstallMethod::ComposerGlobal => [['composer', 'global', 'update', self::PACKAGE, '--no-interaction']],
             InstallMethod::ComposerProject => [['composer', 'update', self::PACKAGE, '--working-dir='.$this->path]],
@@ -104,8 +108,8 @@ final readonly class Installation
             // brew installs each version in its own Cellar folder and repoints the link.
             InstallMethod::Homebrew => Files::canonical($this->entry),
             InstallMethod::ComposerGlobal, InstallMethod::ComposerProject => \hash('xxh128', Files::read($this->path.'/vendor/composer/installed.php')),
-            // Never updated from here: its command is only shown.
-            InstallMethod::Checkout => '',
+            // Never updated from here: its command is only shown, or there is none.
+            InstallMethod::Checkout, InstallMethod::Desktop => '',
         };
     }
 

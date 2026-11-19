@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Run;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Desktop\DesktopSession;
 use Porta\Run\RunConfigs;
 use Porta\Tests\Support\TempProject;
 
@@ -156,5 +157,19 @@ final class RunConfigsTest extends TestCase
         $tasks = new RunConfigs($project->dir, ['php' => ['runCommand' => '"/opt/my php/bin/php" -d memory_limit=1G']])->discover($current);
 
         $this->assertSame(['/opt/my php/bin/php', '-d', 'memory_limit=1G', $current], $tasks[0]['command']);
+    }
+
+    public function testTheDesktopApplicationRunsAProjectOnTheUsersPhpNotItsOwn(): void
+    {
+        $desktop = new DesktopSession(active: true, token: \str_repeat('a', 32));
+
+        $this->assertSame(['php', '/p/a.php'], new RunConfigs('/nowhere', desktop: $desktop)->discover('/p/a.php')[0]['command']);
+        $this->assertSame([\PHP_BINARY, '/p/a.php'], new RunConfigs('/nowhere')->discover('/p/a.php')[0]['command'], 'a terminal launch keeps its interpreter');
+        $this->assertSame(
+            ['frankenphp', 'php-cli', '/p/a.php'],
+            new RunConfigs('/nowhere', ['php' => ['runCommand' => 'frankenphp php-cli']], $desktop)->discover('/p/a.php')[0]['command'],
+            'a configured command still wins',
+        );
+        $this->assertSame(['php', '/p/a.php'], new RunConfigs('/nowhere', ['php' => ['runCommand' => '   ']], $desktop)->discover('/p/a.php')[0]['command'], 'a blank command is no command');
     }
 }

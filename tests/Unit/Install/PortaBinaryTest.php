@@ -34,4 +34,12 @@ final class PortaBinaryTest extends TestCase
         $this->assertSame($project->path('Cellar/php/v1/bin/php'), PortaBinary::interpreter($project->path('Cellar/php/v1/bin/php')));
         $this->assertSame('/usr/bin/php', PortaBinary::interpreter('/usr/bin/php'));
     }
+
+    public function testOutsideProcessesRunTheDesktopLauncherWhenThereIsOne(): void
+    {
+        $project = new TempProject(['plain/porta.phar' => 'phar', 'bundle/porta.phar' => 'phar', 'bundle/porta-cli' => '#!/bin/sh']);
+
+        $this->assertSame($project->path('plain/porta.phar'), PortaBinary::launcher($project->path('plain/porta.phar')));
+        $this->assertSame($project->path('bundle/porta-cli'), PortaBinary::launcher($project->path('bundle/porta.phar')));
+    }
 }

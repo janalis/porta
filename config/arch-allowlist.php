@@ -62,6 +62,7 @@ return [
         'Config>Support',
         'Console>Config', // PortaCommand asks whether to trust a project before the IDE boots (WorkspaceTrust)
         'Console>Container',
+        'Console>Desktop', // a desktop launch with no path asks what to open
         'Console>Filesystem', // PortaCommand does not ask about trust for a remote project's cache: nothing runs there
         'Console>Install',
         'Console>Lsp', // lsp:probe drives the editor's own LspClient and ServerLocator, headless
@@ -72,6 +73,11 @@ return [
         // a php claim with no binary leaves custos out instead of launching a
         // broken process. Its porta.php does the rest of the wiring.
         'Custos>Plugin',
+        'Desktop>Config', // the picker expands the ~ of a typed folder
+        'Desktop>Container',
+        'Desktop>History', // the picker offers the recent projects
+        'Desktop>Ui', // the picker draws on the same non-blocking terminal as the IDE
+        'Desktop>Workbench', // a window close takes the quit path; the picker shares the switcher's list
         'Debug>Container',
         'Debug>Editor',
         'Debug>Event',
@@ -305,6 +311,7 @@ return [
         'ReviewPlugin>Workbench',
         'Run>Event',
         'Run>Container',
+        'Run>Desktop', // the desktop application's PHP is Porta's own: a project runs on the user's
         'Run>Editor', // a run saves the open buffers first: it runs what is on disk
         'Run>Filesystem', // runs and terminals run the project here: LocalOnly refuses a remote one
         'Run>Support',

@@ -138,4 +138,17 @@ final class InstallationTest extends TestCase
             \array_values(\array_filter(InstallMethod::cases(), static fn (InstallMethod $method): bool => $method->updatesItself())),
         );
     }
+
+    public function testAPharBesideTheDesktopLauncherBelongsToTheDesktopApplication(): void
+    {
+        $this->disk->write('Porta.app/Contents/Resources/porta.phar', content: 'PHAR');
+        $this->disk->write('Porta.app/Contents/Resources/porta-cli', content: '#!/bin/sh');
+
+        $installation = Installation::detect($this->disk->path('Porta.app/Contents/Resources/porta.phar'), packageDir: '', env: []);
+
+        $this->assertSame(InstallMethod::Desktop, $installation->method);
+        $this->assertFalse($installation->method->updatesItself(), 'a signed bundle is replaced whole');
+        $this->assertSame([], $installation->commands());
+        $this->assertSame('', $installation->fingerprint());
+    }
 }

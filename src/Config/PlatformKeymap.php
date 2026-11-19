@@ -122,6 +122,24 @@ final class PlatformKeymap
     }
 
     /**
+     * Every Cmd chord the macOS keymap binds, as the parser names them: what a
+     * host that forwards them all has proven before the first keypress.
+     *
+     * @return list<string>
+     */
+    public static function cmdChords(): array
+    {
+        $chords = [];
+        foreach (self::MAC_CMD as $keys) {
+            foreach (\array_filter($keys, static fn (string $key): bool => \str_starts_with($key, 'super+')) as $key) {
+                $chords[self::keyId($key)] = true;
+            }
+        }
+
+        return \array_keys($chords);
+    }
+
+    /**
      * The overlay for $platform without a single Cmd chord — the whole of it
      * off a Mac.
      *
