@@ -41,11 +41,20 @@ echo 'smoke: the IDE is up in its window'
 sleep 2
 [ "$(pgrep -c -P "$pid" php || true)" -le 1 ] || { echo 'smoke: a second Porta was started' >&2; exit 1; }
 
+# The first run opens on the welcome card, which keeps the keys until it is dismissed.
+press '^shop — Porta$' Escape
+sleep 2
 press '^shop — Porta$' ctrl+q
 tries=0
 while kill -0 "$pid" 2>/dev/null; do
     tries=$((tries + 1))
-    [ "$tries" -lt 40 ] || { echo 'smoke: the application did not exit' >&2; kill "$pid"; exit 1; }
+    if [ "$tries" -ge 40 ]; then
+        echo 'smoke: the application did not exit' >&2
+        pgrep -a -P "$pid" >&2 || echo 'smoke: Porta itself has ended' >&2
+        xdotool search --onlyvisible --name . getwindowname %@ >&2 || true
+        kill "$pid"
+        exit 1
+    fi
     sleep 0.5
 done
 echo 'smoke: the application closed with Porta'
