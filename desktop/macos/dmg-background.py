@@ -5,6 +5,7 @@ It writes desktop/macos/Resources/dmg-background.tiff, 1x and 2x in one file.
 Positions match desktop/macos/dmg-settings.py.
 """
 
+import math
 import subprocess
 import tempfile
 from pathlib import Path
@@ -26,6 +27,30 @@ def font(size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.load_default(size)
 
 
+def arrow(scale: int) -> Image.Image:
+    """A smooth arc ending in a chevron that follows it, drawn large and scaled down so its edges are soft."""
+    big = scale * 4
+    layer = Image.new('RGBA', (WIDTH * big, HEIGHT * big), (0, 0, 0, 0))
+    pen = ImageDraw.Draw(layer)
+    start, end, y = (APP + 90) * big, (FOLDER - 96) * big, ROW * big
+    lift = 30 * big
+    points = [(start + (end - start) * t, y - lift * 4 * t * (1 - t)) for t in (i / 60 for i in range(61))]
+    stroke = 5 * big
+    pen.line(points, fill=INDIGO, width=stroke, joint='curve')
+    for x, y_ in (points[0], points[-1]):
+        pen.ellipse([x - stroke / 2, y_ - stroke / 2, x + stroke / 2, y_ + stroke / 2], fill=INDIGO)
+    # The head follows the arc's last direction.
+    (x1, y1), (x2, y2) = points[-4], points[-1]
+    angle = math.atan2(y2 - y1, x2 - x1)
+    length, spread = 18 * big, math.radians(32)
+    for side in (-1, 1):
+        wing = (x2 - length * math.cos(angle + side * spread), y2 - length * math.sin(angle + side * spread))
+        pen.line([wing, (x2, y2)], fill=INDIGO, width=stroke)
+        pen.ellipse([wing[0] - stroke / 2, wing[1] - stroke / 2, wing[0] + stroke / 2, wing[1] + stroke / 2], fill=INDIGO)
+    pen.ellipse([x2 - stroke / 2, y2 - stroke / 2, x2 + stroke / 2, y2 + stroke / 2], fill=INDIGO)
+    return layer.resize((WIDTH * scale, HEIGHT * scale), Image.LANCZOS)
+
+
 def draw(scale: int) -> Image.Image:
     width, height = WIDTH * scale, HEIGHT * scale
     image = Image.new('RGB', (width, height))
@@ -42,22 +67,8 @@ def draw(scale: int) -> Image.Image:
     glow = glow.filter(ImageFilter.GaussianBlur(40 * scale))
     image = Image.composite(Image.new('RGB', (width, height), (232, 230, 252)), image, glow)
 
+    image.paste(arrow(scale), (0, 0), arrow(scale))
     pen = ImageDraw.Draw(image)
-    start, end = (APP + 88) * scale, (FOLDER - 88) * scale
-    y = ROW * scale
-    # A gentle arc, dashed, then a solid head.
-    points = []
-    for i in range(41):
-        t = i / 40
-        points.append((start + (end - start) * t, y - 26 * scale * 4 * t * (1 - t)))
-    for i in range(0, 40, 2):
-        pen.line([points[i], points[i + 1]], fill=INDIGO, width=5 * scale)
-    tip = points[-1]
-    pen.polygon([
-        (tip[0] + 6 * scale, tip[1] + 1 * scale),
-        (tip[0] - 14 * scale, tip[1] - 13 * scale),
-        (tip[0] - 10 * scale, tip[1] + 13 * scale),
-    ], fill=INDIGO)
 
     caption = 'Drag Porta to Applications to install it'
     face = font(17 * scale)
