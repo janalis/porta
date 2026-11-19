@@ -36,11 +36,34 @@ final class ProjectPickerTest extends TestCase
     /** @param list<string> $keys pressed one per loop turn, once the picker is on screen */
     private function pick(array $keys): ?string
     {
-        foreach ($keys as $turn => $key) {
-            EventLoop::delay(0.06 * ($turn + 1), fn () => $this->terminal->simulateInput($key));
-        }
+        $this->type($keys);
 
         return new ProjectPicker(new RecentProjectChoices(new RecentProjectsStore()), $this->terminal)->pick();
+    }
+
+    /**
+     * Each key once the screen has drawn what the previous one did: a key
+     * pressed before the picker is up would be a key nobody could press.
+     *
+     * @param list<string> $keys
+     */
+    private function type(array $keys): void
+    {
+        $drawn = 0;
+        EventLoop::repeat(0.005, function (string $id) use (&$keys, &$drawn): void {
+            $output = $this->terminal->getOutput();
+            // A frame, not the cursor bookkeeping before it: some text has been drawn since.
+            if (1 !== \preg_match('/\pL{3}/u', \substr($output, $drawn))) {
+                return;
+            }
+            if ([] === $keys) {
+                EventLoop::cancel($id);
+
+                return;
+            }
+            $drawn = \strlen($output);
+            $this->terminal->simulateInput((string) \array_shift($keys));
+        });
     }
 
     private function recordRecent(): void
@@ -128,7 +151,7 @@ final class ProjectPickerTest extends TestCase
     public function testThePickerSpeaksTheUsersLanguage(): void
     {
         $this->recordRecent();
-        EventLoop::delay(0.06, fn () => $this->terminal->simulateInput("\r"));
+        $this->type(["\r"]);
 
         new ProjectPicker(new RecentProjectChoices(new RecentProjectsStore()), $this->terminal, new Translator('fr'))->pick();
 
