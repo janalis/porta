@@ -439,7 +439,8 @@ static void recovery_answered(GObject *source, GAsyncResult *result, gpointer da
         g_autofree char *log = g_build_filename(NULL != self->project_key ? self->project_key : g_get_home_dir(), ".porta", "error.log", NULL);
         g_autoptr(GFile) file = g_file_new_for_path(log);
         g_autoptr(GtkFileLauncher) launcher = gtk_file_launcher_new(file);
-        gtk_file_launcher_launch(launcher, GTK_WINDOW(self->window), NULL, NULL, NULL);
+        /* Shown in its folder, never launched: the project decides what that path is. */
+        gtk_file_launcher_open_containing_folder(launcher, GTK_WINDOW(self->window), NULL, NULL, NULL);
     } else {
         gtk_window_destroy(GTK_WINDOW(self->window));
     }

@@ -259,7 +259,10 @@ namespace Porta.Desktop.App
             var windows = Root == null ? null : WindowRegistry.WindowsPath(Root + "/.porta/error.log");
             if (windows != null)
             {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(windows) { UseShellExecute = true });
+                // Shown in its folder, never launched: the project decides what that path is.
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                    System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Windows), "explorer.exe"),
+                    "/select,\"" + windows + "\""));
             }
 
             PortaExited(1);
