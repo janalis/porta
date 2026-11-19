@@ -5,6 +5,18 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Crashes on thread-safe PHP**: on a ZTS build (Homebrew's `php-zts`, for
+  one), Porta could abort with `zend_mm_heap corrupted`, crash, or hang with
+  the CPU busy. The freeze watchdog's 5-second alarm caused it: macOS can
+  deliver that signal to a thread PHP's pcntl extension cannot handle it on.
+  The alarm is now off on ZTS builds. A hard hang there leaves only a
+  `loop stalled` line in `.porta/freeze.log`, without the backtrace; see
+  `docs/troubleshooting.md`.
+- **Rendering**: a truncated hint keeps its dim color through the ellipsis,
+  and a tinted gutter keeps its color over its padding (symfony/tui fixes).
+
 ## [0.1.8] - 2026-11-13
 
 ### Added

@@ -102,9 +102,10 @@ final class ReleasePrepareCommand extends Command
     public static function releaseNotes(string $body): string
     {
         // Only two-space list continuations are source wrapping. Deeper
-        // indentation, block markers and explicit breaks remain untouched.
+        // indentation, block markers (a fence takes three backticks or tildes;
+        // one opens inline code) and explicit breaks remain untouched.
         return (string) \preg_replace_callback(
-            '/^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?^ {0,3}\1[^\n]*$|(?<!  )(?<!\\\\)\n {2}(?![ \t]|[-*+>#`~|]|\d+[.)] )(?=\S)/m',
+            '/^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?^ {0,3}\1[^\n]*$|(?<!  )(?<!\\\\)\n {2}(?![ \t]|[-*+>#|]|`{3}|~{3}|\d+[.)] )(?=\S)/m',
             static fn (array $match): string => \str_starts_with($match[0], "\n") ? ' ' : $match[0],
             $body,
         );
