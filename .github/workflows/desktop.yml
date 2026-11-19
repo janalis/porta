@@ -76,7 +76,6 @@ jobs:
         env:
           # static-php-cli asks GitHub where sources are; anonymously, it is rate limited.
           GITHUB_TOKEN: ${{ github.token }}
-          PORTA_SOURCES_RECORD: ${{ github.workspace }}/sources-${{ matrix.name }}.lock
           PORTA_RELEASE: ${{ inputs.version }}
         run: desktop/build-php.sh "$PWD/php-${{ matrix.name }}"
       - run: ./php-${{ matrix.name }} -n desktop/runtime/check-php.php
@@ -84,10 +83,6 @@ jobs:
         with:
           name: desktop-php-${{ matrix.name }}
           path: php-${{ matrix.name }}
-      - uses: actions/upload-artifact@v7
-        with:
-          name: desktop-sources-${{ matrix.name }}
-          path: sources-${{ matrix.name }}.lock
 
   macos:
     needs: [phar, php]

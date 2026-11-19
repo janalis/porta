@@ -128,6 +128,7 @@ public class CoreTests
     [Theory]
     [InlineData("x86_64\n", "x86_64")]
     [InlineData("aarch64", "aarch64")]
+    [InlineData("wsl: Failed to translate 'C:\\tools'\r\naarch64\r\n", "aarch64")]
     [InlineData("riscv64", null)]
     [InlineData("", null)]
     public void OnlyShippedArchitecturesAreRun(string uname, string? expected)

@@ -25,8 +25,9 @@ namespace Porta.Desktop
         /// <summary>The folder of the bundled PHP for what `uname -m` said; null when Porta ships none.</summary>
         public static string? Architecture(string uname)
         {
-            var machine = uname.Trim();
-            return machine == "x86_64" || machine == "aarch64" ? machine : null;
+            // wsl.exe may print its own warnings around the answer.
+            var match = System.Text.RegularExpressions.Regex.Match(uname, @"\b(x86_64|aarch64)\b");
+            return match.Success ? match.Groups[1].Value : null;
         }
 
         /// <param name="runtime">the runtime folder, as WSL spells it</param>

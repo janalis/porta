@@ -49,7 +49,13 @@ tr '\0' '\n' < "/proc/$php/environ" | grep -qx 'PORTA_DESKTOP_MENU=system' || { 
 tries=0
 until gdbus call --session --dest io.github.janalis.porta --object-path /io/github/janalis/porta --method org.gtk.Actions.List 2>/dev/null | grep -q 'porta-0-'; do
     tries=$((tries + 1))
-    [ "$tries" -lt 40 ] || { echo 'smoke: the menus never reached the desktop' >&2; kill "$pid"; exit 1; }
+    if [ "$tries" -ge 40 ]; then
+        echo 'smoke: the menus never reached the desktop' >&2
+        gdbus call --session --dest io.github.janalis.porta --object-path /io/github/janalis/porta --method org.gtk.Actions.List >&2 || true
+        gdbus introspect --session --dest io.github.janalis.porta --object-path /io/github/janalis/porta --recurse 2>&1 | grep -E 'node|interface' | head -20 >&2 || true
+        kill "$pid"
+        exit 1
+    fi
     sleep 0.5
 done
 echo 'smoke: the menus reached the desktop'
