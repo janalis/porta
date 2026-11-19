@@ -345,11 +345,20 @@ final class CommandLineSectionTest extends TestCase
         $this->assertTrue($restart->updatesCore());
     }
 
-    public function testTheDesktopApplicationPointsAtTheDownload(): void
+    public function testTheDesktopApplicationSaysHowItWillUpdate(): void
     {
-        $row = self::rows($this->section(new Installation(InstallMethod::Desktop, '/Applications/Porta.app/Contents/Resources/porta.phar')))['cli:update'];
+        $bundle = new TempProject([
+            'runtime/porta.phar' => 'PHAR',
+            'runtime/desktop-package' => "porta-desktop-macos-arm64.dmg\n",
+            'system/porta.phar' => 'PHAR',
+            'system/desktop-package' => "porta-desktop-linux-x86_64.deb\n",
+        ]);
 
-        $this->assertSame('Download the new version: '.Installation::DOWNLOAD, $row->hint);
-        $this->assertTrue($row->disabled);
+        $row = self::rows($this->section(new Installation(InstallMethod::Desktop, $bundle->path('runtime/porta.phar'))))['cli:update'];
+        $this->assertSame('Downloads and installs the new version', $row->hint);
+        $this->assertFalse($row->disabled);
+
+        $system = self::rows($this->section(new Installation(InstallMethod::Desktop, $bundle->path('system/porta.phar'))))['cli:update'];
+        $this->assertSame('Installs the new package; asks for your password', $system->hint);
     }
 }

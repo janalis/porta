@@ -224,6 +224,7 @@ jobs:
           mv runtime-php/php-linux-x86_64 runtime/x86_64/php
           mv runtime-php/php-linux-aarch64 runtime/aarch64/php
           cp desktop/runtime/porta-cli desktop/runtime/wsl-relay.php runtime/
+          echo porta-desktop-windows.exe > runtime/desktop-package
       - name: The installer
         shell: pwsh
         run: |

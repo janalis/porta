@@ -33,6 +33,8 @@ cp "$php" "$runtime/php"
 cp "$phar" "$runtime/porta.phar"
 cp "$here/../runtime/porta-cli" "$runtime/porta-cli"
 chmod 755 "$runtime/php" "$runtime/porta-cli"
+# Which release asset this is: `porta --self-update` downloads the same one again.
+printf 'porta-desktop-macos-%s.dmg\n' "$(uname -m)" > "$runtime/desktop-package"
 
 iconset=$(mktemp -d)/Porta.iconset
 mkdir -p "$iconset"

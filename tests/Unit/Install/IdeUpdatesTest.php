@@ -113,13 +113,57 @@ final class IdeUpdatesTest extends TestCase
         $this->assertTrue($this->restart->updatesCore());
     }
 
-    public function testADesktopInstallIsSentToTheDownloadAndNeverRestarted(): void
+    public function testADesktopInstallUpdatesItselfLikeAPhar(): void
     {
         $this->store->http->bodies[IdeUpdates::RELEASE] = '{"tag_name":"v2.0.0"}';
 
         $this->updates(['ideAutoUpdate' => true], InstallMethod::Desktop)->checkIfDue();
 
-        $this->assertFalse($this->restart->updatesCore());
-        $this->assertStringContainsString(Installation::DOWNLOAD, $this->store->toast());
+        $this->assertTrue($this->restart->updatesCore());
+    }
+
+    public function testCheckingNowAnswersEvenWhenThereIsNothingNew(): void
+    {
+        $this->store->http->bodies[IdeUpdates::RELEASE] = '{"tag_name":"v1.0.0"}';
+        $updates = $this->updates(['ideUpdateCheck' => 'off']);
+
+        $updates->checkNow();
+
+        $this->assertCount(1, $this->store->http->batches, 'asked although checks are off');
+        $this->assertStringContainsString('Porta 1.0.0 is up to date.', $this->store->toast());
+    }
+
+    public function testCheckingNowOffersANewerReleaseAgain(): void
+    {
+        $this->store->http->bodies[IdeUpdates::RELEASE] = '{"tag_name":"v1.1.0"}';
+        $updates = $this->updates();
+        $updates->checkIfDue();
+
+        $updates->checkNow();
+
+        $this->assertCount(2, $this->store->http->batches);
+        $this->assertStringContainsString('Porta v1.1.0 is available', $this->store->toast(), 'the offer is repeated for someone who asked');
+    }
+
+    public function testCheckingNowSaysSoWhenTheReleasesCannotBeRead(): void
+    {
+        $this->store->http->bodies[IdeUpdates::RELEASE] = 'not json';
+
+        $this->updates()->checkNow();
+
+        $this->assertStringContainsString('Could not check for updates.', $this->store->toast());
+    }
+
+    public function testASecondCheckWhileOneIsOutAsksNothingMore(): void
+    {
+        $this->store->http->hold = true;
+        $updates = $this->updates();
+
+        $updates->checkNow();
+        $updates->checkNow();
+
+        $this->assertStringContainsString('Checking for updates', $this->store->toast());
+        $this->store->http->release();
+        $this->assertCount(1, $this->store->http->batches);
     }
 }

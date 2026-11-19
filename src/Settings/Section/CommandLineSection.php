@@ -220,7 +220,10 @@ final class CommandLineSection implements SettingsSection
                 // Said from where it is run, without the path: the page is about this Porta.
                 InstallMethod::ComposerProject => $this->translator->trans('Update it from a shell: %command%', ['%command%' => 'composer update '.Installation::PACKAGE]),
                 InstallMethod::Checkout => $this->translator->trans('Update it from a shell: %command%', ['%command%' => 'git pull --ff-only && composer install']),
-                InstallMethod::Desktop => $this->translator->trans('Download the new version: %url%', ['%url%' => Installation::DOWNLOAD]),
+                InstallMethod::Desktop => match (\pathinfo($installation->desktopPackage(), \PATHINFO_EXTENSION)) {
+                    'deb', 'rpm' => $this->translator->trans('Installs the new package; asks for your password'),
+                    default => $this->translator->trans('Downloads and installs the new version'),
+                },
             },
             fieldset: $this->translator->trans('Updates'),
             disabled: !$installation->method->updatesItself(),

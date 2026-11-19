@@ -34,10 +34,15 @@ case $(uname -m) in
     aarch64) arch=arm64 ;;
     *) arch=$(uname -m) ;;
 esac
+# Which release asset each package is: `porta --self-update` installs the same kind again.
+marker=$stage/lib/porta-desktop/runtime/desktop-package
+printf 'porta-desktop-linux-%s.tar.gz\n' "$(uname -m)" > "$marker"
 tar -czf "$out/porta-desktop-linux-$(uname -m).tar.gz" -C "$stage" .
+rm "$marker"
 # nfpm expands the environment in some fields only, and never in a file's source.
-sed -e "s|\${PORTA_ARCH}|$arch|g" -e "s|\${PORTA_VERSION}|$version|g" -e "s|\${PORTA_STAGE}|$stage|g" "$here/data/nfpm.yaml" > "$build/nfpm.yaml"
 for format in deb rpm; do
+    printf 'porta-desktop-linux-%s.%s\n' "$(uname -m)" "$format" > "$build/marker-$format"
+    sed -e "s|\${PORTA_ARCH}|$arch|g" -e "s|\${PORTA_VERSION}|$version|g" -e "s|\${PORTA_STAGE}|$stage|g" -e "s|\${PORTA_MARKER}|$build/marker-$format|g" "$here/data/nfpm.yaml" > "$build/nfpm-$format.yaml"
     # Version-free names: releases/latest/download/<name> then always means the newest.
-    nfpm package --config "$build/nfpm.yaml" --packager "$format" --target "$out/porta-desktop-linux-$(uname -m).$format"
+    nfpm package --config "$build/nfpm-$format.yaml" --packager "$format" --target "$out/porta-desktop-linux-$(uname -m).$format"
 done

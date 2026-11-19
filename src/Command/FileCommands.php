@@ -12,12 +12,13 @@ use Porta\Editor\OpenAs;
 use Porta\Editor\OpenFocus;
 use Porta\Editor\ReferenceCopier;
 use Porta\Editor\ScratchFiles;
+use Porta\Install\IdeUpdates;
 use Porta\Lsp\RefactorController;
 use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\ProjectSwitcher;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
-/** File-level palette commands: saving, LSP reformat, and the viewer escape hatch. */
+/** File- and project-level palette commands: saving, LSP reformat, the viewer escape hatch, trust and updates. */
 #[AsTaggedItem(priority: 400)]
 final readonly class FileCommands implements CommandProvider
 {
@@ -29,6 +30,7 @@ final readonly class FileCommands implements CommandProvider
         private ReferenceCopier $references,
         private ProjectSwitcher $projects,
         private FileTreeWidget $tree,
+        private IdeUpdates $updates,
     ) {}
 
     #[\Override]
@@ -64,6 +66,7 @@ final readonly class FileCommands implements CommandProvider
                 keyBound: KeyDispatch::Bound,
             )
             // Palette-only: an answer given once, not a verb worth a chord.
+            ->add('ide_check_updates', fn () => $this->updates->checkNow(), label: 'Check for Updates…')
             ->add('ide_trust_project', fn () => $this->projects->trustCurrent(), label: 'Trust This Project')
             ->add('ide_restrict_project', fn () => $this->projects->restrictCurrent(), label: 'Open This Project Restricted')
             // From the tree, the row under the cursor rather than the open file.

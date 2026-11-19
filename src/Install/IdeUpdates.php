@@ -98,14 +98,58 @@ final class IdeUpdates
             [self::RELEASE],
             function (array $answers): void {
                 $this->checking = false;
-                $data = Decoded::json($answers[self::RELEASE] ?? '');
-                $version = \is_string($data['tag_name'] ?? null) ? $data['tag_name'] : '';
-                $stable = true !== ($data['prerelease'] ?? false) && true !== ($data['draft'] ?? false) && 1 === \preg_match('/^v?\d+\.\d+\.\d+$/D', $version);
-                $this->state->checked(($this->clock)(), $stable ? $version : null);
-                $this->offer($stable ? $version : $this->state->latest());
+                $released = self::released($answers);
+                $this->state->checked(($this->clock)(), $released);
+                $this->offer($released ?? $this->state->latest());
             },
             maxBytes: 1_048_576,
         );
+    }
+
+    /**
+     * Check for Updates: asks now, whatever the cadence, and answers even
+     * when there is nothing new — someone asked.
+     */
+    public function checkNow(): void
+    {
+        if ($this->checking) {
+            return;
+        }
+        $this->checking = true;
+        $this->notifier->flash($this->translator->trans('Checking for updates…'), seconds: 4.0, slot: 'ide-updates');
+        $this->http->get(
+            [self::RELEASE],
+            function (array $answers): void {
+                $this->checking = false;
+                $released = self::released($answers);
+                if (null === $released) {
+                    $this->notifier->error($this->translator->trans('Could not check for updates.'), seconds: 6.0, slot: 'ide-updates');
+
+                    return;
+                }
+                $this->state->checked(($this->clock)(), $released);
+                $this->handled = null;
+                $this->offer($released);
+                if (null === $this->handled) {
+                    $this->notifier->flash($this->translator->trans('Porta %version% is up to date.', ['%version%' => $this->version]), seconds: 6.0, slot: 'ide-updates');
+                }
+            },
+            maxBytes: 1_048_576,
+        );
+    }
+
+    /**
+     * The latest stable release the answer names, or null.
+     *
+     * @param array<string, ?string> $answers each address => its body, or null
+     */
+    private static function released(array $answers): ?string
+    {
+        $data = Decoded::json($answers[self::RELEASE] ?? '');
+        $version = \is_string($data['tag_name'] ?? null) ? $data['tag_name'] : '';
+        $stable = true !== ($data['prerelease'] ?? false) && true !== ($data['draft'] ?? false) && 1 === \preg_match('/^v?\d+\.\d+\.\d+$/D', $version);
+
+        return $stable ? $version : null;
     }
 
     private function offer(?string $version): void
@@ -124,12 +168,6 @@ final class IdeUpdates
 
             return;
         }
-        $this->notifier->flash(
-            InstallMethod::Desktop === $this->installation->method
-                ? $this->translator->trans('Porta %version% is available. Download it from %url%', ['%version%' => $version, '%url%' => Installation::DOWNLOAD])
-                : $this->translator->trans('Porta %version% is available. Update from Settings › Command line.', ['%version%' => $version]),
-            seconds: 8.0,
-            slot: 'ide-updates',
-        );
+        $this->notifier->flash($this->translator->trans('Porta %version% is available. Update from Settings › Command line.', ['%version%' => $version]), seconds: 8.0, slot: 'ide-updates');
     }
 }

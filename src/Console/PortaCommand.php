@@ -404,11 +404,6 @@ final class PortaCommand extends Command
     // @mago-expect lint:no-boolean-flag-parameter -- --dry-run is the flag being honoured.
     private function tellHow(OutputInterface $output, Installation $installation, bool $dryRun): int
     {
-        if (InstallMethod::Desktop === $installation->method) {
-            $output->writeln(\sprintf('This porta came with the desktop application: download the new version from %s', Installation::DOWNLOAD));
-
-            return $dryRun ? Command::SUCCESS : Command::FAILURE;
-        }
         $output->writeln(\sprintf(
             'This porta is %s %s: update it with `%s`.',
             InstallMethod::Checkout === $installation->method ? 'the git checkout at' : 'a dependency of the project at',
@@ -430,6 +425,11 @@ final class PortaCommand extends Command
     {
         if (InstallMethod::Phar === $installation->method) {
             $update->install($latest, $installation->path, \PHP_BINARY);
+
+            return;
+        }
+        if (InstallMethod::Desktop === $installation->method) {
+            new DesktopUpdate($update, $this->process)->install($latest, $installation);
 
             return;
         }
@@ -578,7 +578,7 @@ final class PortaCommand extends Command
             $directory,
             $root,
             $launch,
-            $ide->updatesCore() ? [$php, $binary, '--self-update', '--no-interaction', '--no-ansi'] : [],
+            $ide->updatesCore() ? [...PortaBinary::command($php, $binary), '--self-update', '--no-interaction', '--no-ansi'] : [],
             $state.'/'.\hash('sha256', $key).'.lock',
         );
         if (null === $helper) {

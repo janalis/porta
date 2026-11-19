@@ -3938,14 +3938,6 @@
         <source>Close the window again to discard them, Ctrl+S to save</source>
         <target>Close the window again to discard them, Ctrl+S to save</target>
       </trans-unit>
-      <trans-unit id="1320">
-        <source>Download the new version: %url%</source>
-        <target>Download the new version: %url%</target>
-      </trans-unit>
-      <trans-unit id="1321">
-        <source>Porta %version% is available. Download it from %url%</source>
-        <target>Porta %version% is available. Download it from %url%</target>
-      </trans-unit>
       <trans-unit id="1322">
         <source>Open a project</source>
         <target>Open a project</target>
@@ -3965,6 +3957,30 @@
       <trans-unit id="1326">
         <source>Not a folder: %path%</source>
         <target>Not a folder: %path%</target>
+      </trans-unit>
+      <trans-unit id="1327">
+        <source>Check for Updates…</source>
+        <target>Check for Updates…</target>
+      </trans-unit>
+      <trans-unit id="1328">
+        <source>Checking for updates…</source>
+        <target>Checking for updates…</target>
+      </trans-unit>
+      <trans-unit id="1329">
+        <source>Could not check for updates.</source>
+        <target>Could not check for updates.</target>
+      </trans-unit>
+      <trans-unit id="1330">
+        <source>Porta %version% is up to date.</source>
+        <target>Porta %version% is up to date.</target>
+      </trans-unit>
+      <trans-unit id="1331">
+        <source>Installs the new package; asks for your password</source>
+        <target>Installs the new package; asks for your password</target>
+      </trans-unit>
+      <trans-unit id="1332">
+        <source>Downloads and installs the new version</source>
+        <target>Downloads and installs the new version</target>
       </trans-unit>
     </body>
   </file>

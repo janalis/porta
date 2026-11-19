@@ -131,24 +131,29 @@ final class InstallationTest extends TestCase
         $this->assertSame("composer update janalis/porta '--working-dir=/My Projects/app'", $installation->commandLine());
     }
 
-    public function testOnlyThePharBrewAndAGlobalComposerUpdateThemselves(): void
+    public function testOnlyThePharBrewAGlobalComposerAndTheDesktopApplicationUpdateThemselves(): void
     {
         $this->assertSame(
-            [InstallMethod::Phar, InstallMethod::Homebrew, InstallMethod::ComposerGlobal],
+            [InstallMethod::Phar, InstallMethod::Homebrew, InstallMethod::ComposerGlobal, InstallMethod::Desktop],
             \array_values(\array_filter(InstallMethod::cases(), static fn (InstallMethod $method): bool => $method->updatesItself())),
         );
     }
 
     public function testAPharBesideTheDesktopLauncherBelongsToTheDesktopApplication(): void
     {
-        $this->disk->write('Porta.app/Contents/Resources/porta.phar', content: 'PHAR');
-        $this->disk->write('Porta.app/Contents/Resources/porta-cli', content: '#!/bin/sh');
+        $this->disk->write('Porta.app/Contents/Resources/runtime/porta.phar', content: 'PHAR');
+        $this->disk->write('Porta.app/Contents/Resources/runtime/porta-cli', content: '#!/bin/sh');
 
-        $installation = Installation::detect($this->disk->path('Porta.app/Contents/Resources/porta.phar'), packageDir: '', env: []);
+        $installation = Installation::detect($this->disk->path('Porta.app/Contents/Resources/runtime/porta.phar'), packageDir: '', env: []);
 
         $this->assertSame(InstallMethod::Desktop, $installation->method);
-        $this->assertFalse($installation->method->updatesItself(), 'a signed bundle is replaced whole');
+        $this->assertTrue($installation->method->updatesItself(), 'it downloads the package it came as');
         $this->assertSame([], $installation->commands());
-        $this->assertSame('', $installation->fingerprint());
+        $this->assertSame(\hash('xxh128', 'PHAR'), $installation->fingerprint());
+        $this->assertSame('', $installation->desktopPackage(), 'a bundle without its marker names no package');
+
+        $this->disk->write('Porta.app/Contents/Resources/runtime/desktop-package', content: "porta-desktop-macos-arm64.dmg\n");
+        $this->assertSame('porta-desktop-macos-arm64.dmg', $installation->desktopPackage());
+        $this->assertSame('', new Installation(InstallMethod::Phar, $this->disk->path('Porta.app/Contents/Resources/runtime/porta.phar'))->desktopPackage(), 'only a desktop install has one');
     }
 }

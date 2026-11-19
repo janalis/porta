@@ -31,6 +31,9 @@ UninstallDisplayIcon={app}\Porta.exe
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+; An update started from Porta runs this quietly: close the application, install, open it again.
+CloseApplications=yes
+RestartApplications=no
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
@@ -45,3 +48,4 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
 
 [Run]
 Filename: "{app}\Porta.exe"; Description: "Start Porta"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\Porta.exe"; Flags: nowait; Check: WizardSilent

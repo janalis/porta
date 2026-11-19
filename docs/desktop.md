@@ -69,8 +69,21 @@ file when it opens. Without it each system's own monospaced font is used.
 
 ## Updating
 
-Install the new package over the old one. `porta --self-update` does not replace
-the application: it says where to download the new version.
+**Help → Check for Updates…** asks for a newer release now, and Porta also
+checks on its own (**Settings → Command line** sets how often). Updating there,
+or `porta --self-update`, installs the new version the way the application was
+installed:
+
+| Installed from | The update |
+| --- | --- |
+| The macOS disk image | downloads the new one, checks its signature, and replaces the application |
+| The Linux tarball | downloads it and replaces the folder in `~/.local` |
+| A `.deb` or `.rpm` | downloads it and installs it with the package manager, which asks for your password |
+| The Windows installer | downloads it and runs it quietly: the application closes and opens again |
+
+Every download is checked against the release's checksums before anything is
+replaced. Porta restarts on the new version; the window itself is updated the
+next time the application starts.
 
 ## Limitations
 

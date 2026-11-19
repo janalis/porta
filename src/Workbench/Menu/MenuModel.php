@@ -164,6 +164,7 @@ final class MenuModel
         'Help' => [
             'i:ide_welcome',
             'i:ide_help',
+            'i:ide_check_updates',
             self::SEP,
             'i:ide_command_palette',
             'e:quick_doc',

@@ -23,10 +23,9 @@ final readonly class Installation
 {
     public const string PACKAGE = 'janalis/porta';
 
-    /** Where a desktop install gets its next version. */
-    public const string DOWNLOAD = 'https://github.com/janalis/porta/releases/latest';
-
     private const string FORMULA = 'janalis/tap/porta';
+
+    private const string DESKTOP_PACKAGE = 'desktop-package';
 
     public static function current(): self
     {
@@ -85,6 +84,17 @@ final readonly class Installation
         };
     }
 
+    /**
+     * The release asset a desktop installation came as, which says how it is
+     * replaced: the packaging writes it beside the phar. '' for anything else.
+     */
+    public function desktopPackage(): string
+    {
+        $marker = \dirname($this->path).'/'.self::DESKTOP_PACKAGE;
+
+        return InstallMethod::Desktop === $this->method && \is_file($marker) ? \trim(Files::read($marker)) : '';
+    }
+
     /** {@see commands()} as one line to paste into a shell. */
     public function commandLine(): string
     {
@@ -104,12 +114,12 @@ final readonly class Installation
     public function fingerprint(): string
     {
         return match ($this->method) {
-            InstallMethod::Phar => \hash('xxh128', Files::read($this->path)),
+            InstallMethod::Phar, InstallMethod::Desktop => \hash('xxh128', Files::read($this->path)),
             // brew installs each version in its own Cellar folder and repoints the link.
             InstallMethod::Homebrew => Files::canonical($this->entry),
             InstallMethod::ComposerGlobal, InstallMethod::ComposerProject => \hash('xxh128', Files::read($this->path.'/vendor/composer/installed.php')),
-            // Never updated from here: its command is only shown, or there is none.
-            InstallMethod::Checkout, InstallMethod::Desktop => '',
+            // Never updated from here: its command is only shown.
+            InstallMethod::Checkout => '',
         };
     }
 

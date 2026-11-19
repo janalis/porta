@@ -3938,14 +3938,6 @@
         <source>Close the window again to discard them, Ctrl+S to save</source>
         <target>סגרו את החלון שוב כדי לבטל אותם, Ctrl+S לשמירה</target>
       </trans-unit>
-      <trans-unit id="1320">
-        <source>Download the new version: %url%</source>
-        <target>הורידו את הגרסה החדשה: %url%</target>
-      </trans-unit>
-      <trans-unit id="1321">
-        <source>Porta %version% is available. Download it from %url%</source>
-        <target>Porta %version% זמינה. הורידו אותה מ-%url%</target>
-      </trans-unit>
       <trans-unit id="1322">
         <source>Open a project</source>
         <target>פתיחת פרויקט</target>
@@ -3965,6 +3957,30 @@
       <trans-unit id="1326">
         <source>Not a folder: %path%</source>
         <target>לא תיקייה: %path%</target>
+      </trans-unit>
+      <trans-unit id="1327">
+        <source>Check for Updates…</source>
+        <target>בדיקת עדכונים…</target>
+      </trans-unit>
+      <trans-unit id="1328">
+        <source>Checking for updates…</source>
+        <target>בודק עדכונים…</target>
+      </trans-unit>
+      <trans-unit id="1329">
+        <source>Could not check for updates.</source>
+        <target>לא ניתן לבדוק עדכונים.</target>
+      </trans-unit>
+      <trans-unit id="1330">
+        <source>Porta %version% is up to date.</source>
+        <target>Porta %version% מעודכן.</target>
+      </trans-unit>
+      <trans-unit id="1331">
+        <source>Installs the new package; asks for your password</source>
+        <target>מתקין את החבילה החדשה; מבקש את הסיסמה</target>
+      </trans-unit>
+      <trans-unit id="1332">
+        <source>Downloads and installs the new version</source>
+        <target>מוריד ומתקין את הגרסה החדשה</target>
       </trans-unit>
     </body>
   </file>

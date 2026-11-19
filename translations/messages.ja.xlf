@@ -3938,14 +3938,6 @@
         <source>Close the window again to discard them, Ctrl+S to save</source>
         <target>破棄するにはもう一度ウィンドウを閉じてください。Ctrl+S で保存します</target>
       </trans-unit>
-      <trans-unit id="1320">
-        <source>Download the new version: %url%</source>
-        <target>新しいバージョンをダウンロード: %url%</target>
-      </trans-unit>
-      <trans-unit id="1321">
-        <source>Porta %version% is available. Download it from %url%</source>
-        <target>Porta %version% が利用可能です。%url% からダウンロードしてください</target>
-      </trans-unit>
       <trans-unit id="1322">
         <source>Open a project</source>
         <target>プロジェクトを開く</target>
@@ -3965,6 +3957,30 @@
       <trans-unit id="1326">
         <source>Not a folder: %path%</source>
         <target>フォルダーではありません: %path%</target>
+      </trans-unit>
+      <trans-unit id="1327">
+        <source>Check for Updates…</source>
+        <target>アップデートを確認…</target>
+      </trans-unit>
+      <trans-unit id="1328">
+        <source>Checking for updates…</source>
+        <target>アップデートを確認しています…</target>
+      </trans-unit>
+      <trans-unit id="1329">
+        <source>Could not check for updates.</source>
+        <target>アップデートを確認できませんでした。</target>
+      </trans-unit>
+      <trans-unit id="1330">
+        <source>Porta %version% is up to date.</source>
+        <target>Porta %version% は最新です。</target>
+      </trans-unit>
+      <trans-unit id="1331">
+        <source>Installs the new package; asks for your password</source>
+        <target>新しいパッケージをインストールします（パスワードが必要です）</target>
+      </trans-unit>
+      <trans-unit id="1332">
+        <source>Downloads and installs the new version</source>
+        <target>新しいバージョンをダウンロードしてインストールします</target>
       </trans-unit>
     </body>
   </file>

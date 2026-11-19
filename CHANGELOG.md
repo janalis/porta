@@ -11,7 +11,11 @@ versions follow [Semantic Versioning](https://semver.org/).
   on macOS, Linux and Windows (through WSL), with PHP included. The `porta`
   command is unchanged. Closing a window with unsaved work asks first, one
   window opens per project, and on macOS Porta's menus live in the system menu
-  bar. See `docs/desktop.md`.
+  bar. It updates itself the way it was installed: disk image, tarball,
+  `.deb`/`.rpm` through the package manager, or the Windows installer. See
+  `docs/desktop.md`, and the new Download page.
+- **Help → Check for Updates…**: asks for a newer release now, whatever the
+  cadence set in Settings.
 
 ## [0.1.9] - 2026-11-19
 

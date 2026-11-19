@@ -39,6 +39,7 @@ return [
         'Command>Config',
         'Command>Container',
         'Command>Debug',
+        'Command>Install', // Check for Updates asks the update service
         'Command>Editor',
         'Command>Layout',
         'Command>Lsp',

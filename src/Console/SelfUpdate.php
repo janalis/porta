@@ -129,8 +129,26 @@ final readonly class SelfUpdate
     /** $tag's phar and its checksum, into $dir. */
     private function download(string $tag, string $dir): void
     {
-        foreach ($this->assets($tag) as $name => $url) {
-            if (!\in_array($name, [self::ASSET, self::ASSET.'.sha256'], strict: true)) {
+        $this->fetch($tag, [self::ASSET, self::ASSET.'.sha256'], $dir);
+    }
+
+    /**
+     * $tag's assets called $names, into $dir.
+     *
+     * @param list<string> $names
+     *
+     * @throws \RuntimeException when one cannot be downloaded
+     */
+    public function fetch(string $tag, array $names, string $dir): void
+    {
+        $assets = $this->assets($tag);
+        foreach ($names as $name) {
+            if (!\array_key_exists($name, $assets)) {
+                throw new \RuntimeException($tag.' has no '.$name.'; nothing was changed.');
+            }
+        }
+        foreach ($assets as $name => $url) {
+            if (!\in_array($name, $names, strict: true)) {
                 continue;
             }
             // curl drops the Authorization header on the redirect to the

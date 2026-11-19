@@ -15,6 +15,8 @@ overrides:
 contents:
   - src: ${PORTA_STAGE}/lib/porta-desktop
     dst: /usr/lib/porta-desktop
+  - src: ${PORTA_MARKER}
+    dst: /usr/lib/porta-desktop/runtime/desktop-package
   - src: /usr/lib/porta-desktop/porta-desktop
     dst: /usr/bin/porta-desktop
     type: symlink

@@ -72,7 +72,7 @@ is a newer one.
 | Composer, globally | runs `composer global update janalis/porta` |
 | a project's dependency | prints `composer update janalis/porta` for that project, and changes nothing |
 | a checkout | prints `git pull --ff-only && composer install`, and changes nothing |
-| the desktop application | points at the download, and changes nothing: a new package replaces the signed one |
+| the desktop application | downloads the package it came as, checks it, and installs it the same way (see [Desktop application](desktop.md#updating)) |
 
 Homebrew's tap and Packagist follow a release by a few minutes; an update run
 before they have it says so rather than claiming success. A `GH_TOKEN` or

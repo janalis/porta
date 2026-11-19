@@ -760,11 +760,21 @@ final class PortaCommandTest extends TestCase
         $this->assertFalse($asked);
     }
 
-    public function testTheDesktopApplicationIsUpdatedByDownloadingIt(): void
+    public function testTheDesktopApplicationUpdatesThroughItsPackage(): void
+    {
+        $bundle = new TempProject(['runtime/porta.phar' => 'OLD', 'runtime/desktop-package' => "porta-desktop-linux-x86_64.tar.gz\n"]);
+        $tester = new CommandTester($this->updater('v1.2.0', latest: 'v1.3.0', phar: null, installation: new Installation(InstallMethod::Desktop, $bundle->path('runtime/porta.phar'))));
+
+        $this->assertSame(Command::FAILURE, $tester->execute(['--self-update' => true]));
+        $this->assertStringContainsString('has no porta-desktop-linux-x86_64.tar.gz', $tester->getDisplay(), 'the package it came as is what it asks for');
+        $this->assertSame('OLD', \file_get_contents($bundle->path('runtime/porta.phar')));
+    }
+
+    public function testTheDesktopApplicationCanBeUpdated(): void
     {
         $tester = new CommandTester($this->updater('v1.2.0', latest: 'v1.3.0', phar: null, installation: new Installation(InstallMethod::Desktop, '/Applications/Porta.app/porta.phar')));
 
-        $this->assertSame(Command::FAILURE, $tester->execute(['--self-update' => true]));
-        $this->assertStringContainsString('download the new version from '.Installation::DOWNLOAD, $tester->getDisplay());
+        $this->assertSame(Command::SUCCESS, $tester->execute(['--self-update' => true, '--dry-run' => true]));
+        $this->assertStringContainsString('porta v1.2.0 can be updated to v1.3.0.', $tester->getDisplay());
     }
 }
