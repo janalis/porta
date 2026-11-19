@@ -3,7 +3,7 @@
 
 export const LATEST = 'https://github.com/janalis/porta/releases/latest/download/'
 
-/** The Download page's main link, before it knows the visitor. */
+/** The Download page's plain link, for a reader without the page's script. */
 export const DOWNLOAD = 'https://github.com/janalis/porta/releases/latest#download'
 
 /** Every package a release attaches, by the name the release workflow gives it. */
