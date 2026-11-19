@@ -7,6 +7,7 @@
 #include <gtk/gtk.h>
 #include <json-glib/json-glib.h>
 #include <signal.h>
+#include <sys/ioctl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
@@ -464,6 +465,10 @@ static void open_window(GtkApplication *application, const char *project)
         return;
     }
     self->master = vte_pty_get_fd(self->pty);
+    /* VTE turns packet mode on, which puts a status byte before every read.
+     * This window reads the PTY itself, so it wants the bytes alone. */
+    int packets = 0;
+    ioctl(self->master, TIOCPKT, &packets);
     g_unix_set_fd_nonblocking(self->master, TRUE, NULL);
     self->reader = g_unix_fd_add(self->master, G_IO_IN | G_IO_HUP | G_IO_ERR, on_readable, self);
 
