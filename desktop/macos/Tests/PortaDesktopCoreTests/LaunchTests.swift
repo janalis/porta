@@ -22,7 +22,7 @@ final class LaunchTests: XCTestCase {
     func testTheEnvironmentSaysDesktopAndDropsWhatWouldMisleadPorta() {
         let environment = plan(inherited: ["PATH": "/bin", "PHPRC": "/x", "PHP_INI_SCAN_DIR": "/y", "DYLD_INSERT_LIBRARIES": "/z", "LD_PRELOAD": "/w", "TMUX": "1", "TERM": "dumb", "WT_SESSION": "1"]).environment
 
-        XCTAssertEqual(environment, ["COLORTERM=truecolor", "PATH=/bin", "PORTA_DESKTOP=1", "PORTA_DESKTOP_TOKEN=\(token)", "TERM=xterm-256color"])
+        XCTAssertEqual(environment, ["COLORTERM=truecolor", "PATH=/bin", "PORTA_DESKTOP=1", "PORTA_DESKTOP_MENU=system", "PORTA_DESKTOP_TOKEN=\(token)", "TERM=xterm-256color"])
     }
 
     func testTokensAreLongEnoughAndNeverRepeat() {

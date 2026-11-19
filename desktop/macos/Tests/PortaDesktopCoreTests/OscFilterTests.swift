@@ -50,7 +50,7 @@ final class OscFilterTests: XCTestCase {
     }
 
     func testARunawayPayloadIsHandedBackToTheTerminal() {
-        let long = String(repeating: "x", count: 9000)
+        let long = String(repeating: "x", count: 4 * 1024 * 1024 + 1)
 
         XCTAssertEqual(run(["\u{1b}]7777;" + long]).0, "\u{1b}]7777;" + long)
     }

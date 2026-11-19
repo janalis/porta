@@ -1,17 +1,20 @@
 {
     "environment": {
         "flag": "PORTA_DESKTOP",
-        "token": "PORTA_DESKTOP_TOKEN"
+        "token": "PORTA_DESKTOP_TOKEN",
+        "menu": "PORTA_DESKTOP_MENU"
     },
     "osc": 7777,
     "namespace": "porta-desktop",
     "hostToPorta": [
-        "close"
+        "close",
+        "menu"
     ],
     "portaToHost": [
         "ready",
         "accepted",
-        "closing"
+        "closing",
+        "menu"
     ],
     "examples": {
         "token": "0123456789abcdef0123456789abcdef",
@@ -19,6 +22,39 @@
         "ready": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;ready;L3dvcmsvc2hvcA==\u001b\\",
         "accepted": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;accepted\u001b\\",
         "closing": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;closing\u001b\\",
-        "root": "/work/shop"
+        "root": "/work/shop",
+        "menuModel": {
+            "generation": "abc123",
+            "menus": [
+                {
+                    "title": "File",
+                    "items": [
+                        {
+                            "label": "Save",
+                            "shortcut": "Ctrl+S",
+                            "separator": false,
+                            "enabled": true,
+                            "checked": null
+                        },
+                        {
+                            "label": "",
+                            "shortcut": "",
+                            "separator": true,
+                            "enabled": false,
+                            "checked": null
+                        },
+                        {
+                            "label": "Word Wrap",
+                            "shortcut": "",
+                            "separator": false,
+                            "enabled": false,
+                            "checked": true
+                        }
+                    ]
+                }
+            ]
+        },
+        "menu": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;menu;eyJnZW5lcmF0aW9uIjoiYWJjMTIzIiwibWVudXMiOlt7InRpdGxlIjoiRmlsZSIsIml0ZW1zIjpbeyJsYWJlbCI6IlNhdmUiLCJzaG9ydGN1dCI6IkN0cmwrUyIsInNlcGFyYXRvciI6ZmFsc2UsImVuYWJsZWQiOnRydWUsImNoZWNrZWQiOm51bGx9LHsibGFiZWwiOiIiLCJzaG9ydGN1dCI6IiIsInNlcGFyYXRvciI6dHJ1ZSwiZW5hYmxlZCI6ZmFsc2UsImNoZWNrZWQiOm51bGx9LHsibGFiZWwiOiJXb3JkIFdyYXAiLCJzaG9ydGN1dCI6IiIsInNlcGFyYXRvciI6ZmFsc2UsImVuYWJsZWQiOmZhbHNlLCJjaGVja2VkIjp0cnVlfV19XX0=\u001b\\",
+        "menuChoice": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;menu;abc123;0;2\u001b\\"
     }
 }

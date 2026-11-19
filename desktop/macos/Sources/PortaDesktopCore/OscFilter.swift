@@ -3,7 +3,7 @@ public struct OscFilter {
     private static let escape: UInt8 = 0x1b
     private static let bell: UInt8 = 0x07
     private static let stringTerminator: UInt8 = 0x5c
-    private static let longestPayload = 8192
+    private static let longestPayload = 4 * 1024 * 1024
 
     private let prefix: [UInt8] = [0x1b] + Array("]\(DesktopMessage.oscCode);".utf8)
     private var matched = 0

@@ -76,6 +76,9 @@ final readonly class WorkbenchActions
      */
     public function openMenu(): void
     {
+        if ($this->menuBar->usesSystemMenu()) {
+            return;
+        }
         if ($this->menuBar->isOpen()) {
             $this->menuBar->close();
             $this->tui->requestRender();

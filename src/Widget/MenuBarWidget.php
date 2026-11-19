@@ -90,6 +90,8 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
     /** @var list<array{index: int, start: int, width: int}> title strip layout from the last render */
     private array $titleLayout = [];
 
+    private bool $systemMenu = false;
+
     /** How many titles the last render drew in full; the rest hide behind the `…`. */
     private int $shown = 0;
 
@@ -99,6 +101,32 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         $this->menus = $menus;
 
         return $this;
+    }
+
+    /** @return list<Menu> */
+    public function menus(): array
+    {
+        return $this->menus;
+    }
+
+    /** The operating system shows these menus: the window gives up the row, and never opens one. */
+    public function useSystemMenu(): void
+    {
+        $this->systemMenu = true;
+    }
+
+    public function usesSystemMenu(): bool
+    {
+        return $this->systemMenu;
+    }
+
+    /** Runs an item chosen outside this widget, under the rules a click here obeys. */
+    public function runMenuItem(int $menu, int $item): void
+    {
+        $entry = $this->menus[$menu]->items[$item] ?? null;
+        if (null !== $entry && !$entry->separator && $entry->enabled() && null !== $entry->run) {
+            ($entry->run)();
+        }
     }
 
     /** Open the dropdown for menu $index and focus its first selectable item. */
@@ -176,6 +204,10 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
     #[\Override]
     public function render(RenderContext $context): array
     {
+        if ($this->systemMenu) {
+            return [];
+        }
+
         // Only the title row — never the dropdown — so opening a menu never
         // reflows the widgets below. The dropdown is composited over the tab
         // bar/editor by the coordinator (see Ide::refreshMenuOverlay()).

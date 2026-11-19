@@ -4,11 +4,12 @@ import PortaDesktopCore
 /// One process, one window per project: LaunchServices hands every further launch to this instance.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var windows: [ProjectWindowController] = []
+    private let menus = MainMenu()
     private var quitting = false
     private var openedAtLaunch = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.mainMenu = MainMenu.build(target: self)
+        menus.install(target: self)
         NSWindow.allowsAutomaticWindowTabbing = false
         KeyForwarding.install { [weak self] in self?.focused }
         if !openedAtLaunch {
@@ -70,6 +71,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if self.quitting && self.windows.isEmpty {
                 NSApp.reply(toApplicationShouldTerminate: true)
             }
+        }
+        controller.onMenuChanged = { [weak self] window in
+            guard window.window?.isKeyWindow == true else { return }
+            self?.menus.show(window.menuBar, choose: { [weak window] generation, menu, item in
+                window?.chooseMenuItem(generation: generation, menu: menu, item: item)
+            })
         }
         controller.onCloseRefused = { [weak self] in
             guard let self, self.quitting else { return }

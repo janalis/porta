@@ -5,6 +5,7 @@ public enum DesktopMessage: Equatable {
     case ready(root: String)
     case accepted
     case closing
+    case menu(MenuBar)
 
     public static let oscCode = 7777
     private static let namespace = "porta-desktop"
@@ -25,9 +26,19 @@ public enum DesktopMessage: Equatable {
             return .accepted
         case ("closing", 3):
             return .closing
+        case ("menu", 4):
+            guard let data = Data(base64Encoded: fields[3]), let menu = try? JSONDecoder().decode(MenuBar.self, from: data) else {
+                return nil
+            }
+            return .menu(menu)
         default:
             return nil
         }
+    }
+
+    /// What choosing a system menu item sends.
+    public static func menuChoice(token: String, generation: String, menu: Int, item: Int) -> String {
+        "\u{1b}]\(oscCode);\(namespace);\(token);menu;\(generation);\(menu);\(item)\u{1b}\\"
     }
 
     /// The request the close button sends.

@@ -62,6 +62,22 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    func pasteClipboard() {
+        terminal.paste(self)
+    }
+
+    /// The menus this window's Porta offers, shown while it is the key window.
+    private(set) var menuBar: MenuBar?
+    var onMenuChanged: ((ProjectWindowController) -> Void)?
+
+    func chooseMenuItem(generation: String, menu: Int, item: Int) {
+        send(DesktopMessage.menuChoice(token: token, generation: generation, menu: menu, item: item))
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) {
+        onMenuChanged?(self)
+    }
+
     func send(_ text: String) {
         process.send(data: Array(text.utf8)[...])
     }
@@ -124,6 +140,10 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
         }
         if case let .ready(root) = message {
             projectKey = ProjectKey.of(root)
+        }
+        if case let .menu(bar) = message {
+            menuBar = bar
+            onMenuChanged?(self)
         }
         if flow.received(message) == .stopWaiting {
             answerTimer?.invalidate()

@@ -7,7 +7,14 @@ enum KeyForwarding {
 
     static func install(focused: @escaping () -> ProjectWindowController?) {
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            guard let chord = chord(of: event), KeyChord.forwarded.contains(chord), let window = focused() else {
+            guard let chord = chord(of: event), let window = focused() else {
+                return event
+            }
+            if chord == KeyChord(key: "v") {
+                window.pasteClipboard()
+                return nil
+            }
+            guard KeyChord.forwarded.contains(chord) else {
                 return event
             }
             window.send(chord.sequence)

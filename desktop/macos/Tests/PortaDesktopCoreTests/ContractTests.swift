@@ -10,12 +10,16 @@ final class ContractTests: XCTestCase {
         return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
     }
 
+    private func strings() throws -> [String: String] {
+        try XCTUnwrap(contract("protocol")["examples"] as? [String: Any]).compactMapValues { $0 as? String }
+    }
+
     private func payload(_ sequence: String) -> String {
         String(sequence.dropFirst(7).dropLast(2))
     }
 
     func testMessagesReadAsTheContractWritesThem() throws {
-        let examples = try XCTUnwrap(contract("protocol")["examples"] as? [String: String])
+        let examples = try strings()
         let token = try XCTUnwrap(examples["token"])
 
         XCTAssertEqual(DesktopMessage.parse(payload: payload(try XCTUnwrap(examples["ready"])), token: token), .ready(root: examples["root"]!))
@@ -24,8 +28,26 @@ final class ContractTests: XCTestCase {
         XCTAssertEqual(DesktopMessage.closeRequest(token: token), examples["close"])
     }
 
+    func testTheMenusReadAsTheContractWritesThem() throws {
+        let examples = try strings()
+        let message = DesktopMessage.parse(payload: payload(try XCTUnwrap(examples["menu"])), token: try XCTUnwrap(examples["token"]))
+
+        guard case let .menu(bar) = message else {
+            return XCTFail("not a menu message")
+        }
+        XCTAssertEqual(bar.generation, "abc123")
+        XCTAssertEqual(bar.menus.first?.title, "File")
+        XCTAssertEqual(bar.menus.first?.items.map(\.label), ["Save", "", "Word Wrap"])
+        XCTAssertEqual(bar.menus.first?.items[0].shortcut, "Ctrl+S")
+        XCTAssertEqual(bar.menus.first?.items[1].separator, true)
+        XCTAssertEqual(bar.menus.first?.items[2].enabled, false)
+        XCTAssertEqual(bar.menus.first?.items[2].checked, true)
+        XCTAssertNil(bar.menus.first?.items[0].checked)
+        XCTAssertEqual(DesktopMessage.menuChoice(token: try XCTUnwrap(examples["token"]), generation: "abc123", menu: 0, item: 2), examples["menuChoice"])
+    }
+
     func testAnotherSessionsTokenIsNotListenedTo() throws {
-        let examples = try XCTUnwrap(contract("protocol")["examples"] as? [String: String])
+        let examples = try strings()
 
         XCTAssertNil(DesktopMessage.parse(payload: payload(try XCTUnwrap(examples["closing"])), token: String(repeating: "f", count: 32)))
     }

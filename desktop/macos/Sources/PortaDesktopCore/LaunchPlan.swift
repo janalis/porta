@@ -20,6 +20,7 @@ public struct LaunchPlan: Equatable {
         }
         variables["PORTA_DESKTOP"] = "1"
         variables["PORTA_DESKTOP_TOKEN"] = token
+        variables["PORTA_DESKTOP_MENU"] = "system"
         variables["TERM"] = "xterm-256color"
         variables["COLORTERM"] = "truecolor"
         environment = variables.map { "\($0.key)=\($0.value)" }.sorted()

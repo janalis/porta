@@ -683,6 +683,7 @@ final class Ide
                 $remote->close();
                 $presence->stop();
                 EventLoop::cancel($graphicsProbe);
+                $this->service(DesktopProtocol::class)->detach();
                 foreach ($signals as $signal) {
                     EventLoop::cancel($signal);
                 }

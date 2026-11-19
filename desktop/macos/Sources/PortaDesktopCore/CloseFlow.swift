@@ -47,6 +47,8 @@ public struct CloseFlow: Equatable {
         case .closing:
             state = .closing
             return .stopWaiting
+        case .menu:
+            return .wait
         }
     }
 

@@ -21,6 +21,16 @@ final class DesktopSessionTest extends TestCase
         $this->assertSame(self::SESSION, $session->token);
     }
 
+    public function testOnlyAHostThatSaysSoHasASystemMenu(): void
+    {
+        $session = [DesktopSession::FLAG => '1', DesktopSession::TOKEN => self::SESSION];
+
+        $this->assertFalse(DesktopSession::fromEnvironment($session)->systemMenu);
+        $this->assertFalse(DesktopSession::fromEnvironment([...$session, DesktopSession::MENU => 'window'])->systemMenu);
+        $this->assertTrue(DesktopSession::fromEnvironment([...$session, DesktopSession::MENU => 'system'])->systemMenu);
+        $this->assertFalse(DesktopSession::fromEnvironment([DesktopSession::MENU => 'system'])->systemMenu, 'not without a session');
+    }
+
     /** @return iterable<string, array{array<string, string|false>}> */
     public static function terminalLaunches(): iterable
     {

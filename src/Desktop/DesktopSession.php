@@ -25,6 +25,9 @@ final readonly class DesktopSession
     // @mago-expect lint:no-literal-password -- the variable's name; the secret is generated per launch by the host.
     public const string TOKEN = 'PORTA_DESKTOP_TOKEN';
 
+    /** Set by a host whose operating system shows application menus itself. */
+    public const string MENU = 'PORTA_DESKTOP_MENU';
+
     /** 128 bits, hex: long enough that it cannot be guessed from inside a paste. */
     private const string TOKEN_SHAPE = '/^[0-9a-f]{32,}$/D';
 
@@ -32,6 +35,7 @@ final readonly class DesktopSession
         public bool $active,
         #[\SensitiveParameter]
         public string $token,
+        public bool $systemMenu = false,
     ) {}
 
     public static function current(): self
@@ -47,6 +51,6 @@ final readonly class DesktopSession
             return new self(active: false, token: '');
         }
 
-        return new self(active: true, token: $token);
+        return new self(active: true, token: $token, systemMenu: 'system' === ($environment[self::MENU] ?? ''));
     }
 }

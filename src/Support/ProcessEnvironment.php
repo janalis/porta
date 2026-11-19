@@ -17,7 +17,7 @@ final class ProcessEnvironment
      */
     public static function withoutRestart(array $environment): array
     {
-        unset($environment['PORTA_DESKTOP'], $environment['PORTA_DESKTOP_TOKEN']);
+        unset($environment['PORTA_DESKTOP'], $environment['PORTA_DESKTOP_TOKEN'], $environment['PORTA_DESKTOP_MENU']);
 
         return self::forNestedPorta($environment);
     }
