@@ -391,7 +391,8 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
     // MARK: TerminalViewDelegate
 
     func sizeChanged(source: TerminalView, newCols: Int, newRows: Int) {
-        guard process.running else {
+        // A font set before the process exists resizes too: nothing to tell yet (a crash once).
+        guard let process, process.running else {
             return
         }
         var size = getWindowSize()

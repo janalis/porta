@@ -10,7 +10,12 @@ final class PermissionsSheet: NSWindowController {
         case askable
         case refused
         case askedWhenNeeded
+        /// The system will not even ask: notifications need a signed build (a team identity).
+        case unavailable
     }
+
+    /// macOS turned the request down without asking: true for a build with no team identity.
+    private var notificationsUnavailable = false
 
     private let project: String?
     private let rows = NSStackView()
@@ -109,6 +114,8 @@ final class PermissionsSheet: NSWindowController {
         let badge = NSImageView(image: NSImage(systemSymbolName: symbol, accessibilityDescription: nil) ?? NSImage())
         badge.symbolConfiguration = .init(pointSize: 15, weight: .medium)
         badge.contentTintColor = .white
+        // Decoration: the row's title says what it is (a reader announced the folder as "move").
+        badge.setAccessibilityElement(false)
         badge.wantsLayer = true
         badge.layer?.backgroundColor = tint.cgColor
         badge.layer?.cornerRadius = 7
@@ -148,6 +155,11 @@ final class PermissionsSheet: NSWindowController {
             }())
             done.textColor = .secondaryLabelColor
             return done
+        case .unavailable:
+            let none = NSTextField(labelWithString: "Not in this build")
+            none.textColor = .tertiaryLabelColor
+            none.font = .systemFont(ofSize: 11)
+            return none
         case .askedWhenNeeded:
             let later = NSTextField(labelWithString: "Asked when needed")
             later.textColor = .tertiaryLabelColor
@@ -169,7 +181,7 @@ final class PermissionsSheet: NSWindowController {
             let access: Access = switch settings.authorizationStatus {
             case .authorized, .provisional, .ephemeral: .allowed
             case .denied: .refused
-            default: .askable
+            default: self.notificationsUnavailable ? .unavailable : .askable
             }
             DispatchQueue.main.async { self.show(notifications: access) }
         }
@@ -177,7 +189,10 @@ final class PermissionsSheet: NSWindowController {
 
     private func show(notifications: Access) {
         rows.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        rows.addArrangedSubview(row(symbol: "bell.badge.fill", tint: .systemRed, title: "Notifications", detail: "When a run ends while you are in another window or application", access: notifications, grant: notifications == .askable ? #selector(askNotifications) : #selector(openNotificationSettings)))
+        let detail = notifications == .unavailable
+            ? "macOS lets only a signed Porta send them; the Dock icon bounces instead"
+            : "When a run ends while you are in another window or application"
+        rows.addArrangedSubview(row(symbol: "bell.badge.fill", tint: .systemRed, title: "Notifications", detail: detail, access: notifications, grant: notifications == .askable ? #selector(askNotifications) : #selector(openNotificationSettings)))
         let separator = NSBox()
         separator.boxType = .separator
         rows.addArrangedSubview(separator)
@@ -203,8 +218,14 @@ final class PermissionsSheet: NSWindowController {
     // MARK: actions
 
     @objc private func askNotifications() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { [weak self] _, _ in
-            DispatchQueue.main.async { self?.refresh() }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { [weak self] _, error in
+            DispatchQueue.main.async {
+                // Turned down with no question asked (UNErrorDomain 1): say so, rather than leave a button that does nothing.
+                if let error = error as NSError?, error.domain == UNErrorDomain, error.code == UNError.Code.notificationsNotAllowed.rawValue {
+                    self?.notificationsUnavailable = true
+                }
+                self?.refresh()
+            }
         }
     }
 

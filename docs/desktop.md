@@ -50,6 +50,9 @@ Each row says whether it is allowed. **Allow** asks the system right there;
 updates when you come back. On Windows, **Install WSL** runs `wsl --install` with
 administrator rights. Linux needs no permission.
 
+macOS lets only a signed application (a Developer ID) send notifications: in a
+build without one, the sheet says so, and the Dock icon bounces instead.
+
 ## Windows and closing
 
 Minimize, maximize, resize, full screen and restore are the system's own. Size
