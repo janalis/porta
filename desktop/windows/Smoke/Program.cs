@@ -73,7 +73,10 @@ string Screen()
 void Fail(string why)
 {
     Console.Error.WriteLine("smoke: " + why);
-    Console.Error.WriteLine("smoke: the screen ended with: " + new string(Screen().TakeLast(1500).ToArray()));
+    // The text Porta drew, without its escape sequences: what a reader can make sense of.
+    var text = System.Text.RegularExpressions.Regex.Replace(Screen(), "\u001b(\\[[0-?]*[ -/]*[@-~]|\\][^\u0007\u001b]*(\u0007|\u001b\\\\)|[@-Z\\\\-_])", " ");
+    text = System.Text.RegularExpressions.Regex.Replace(text, " {2,}", " ");
+    Console.Error.WriteLine("smoke: the screen ended with: " + new string(text.TakeLast(3000).ToArray()));
     process.Kill();
     Environment.Exit(1);
 }
