@@ -122,6 +122,13 @@ public class CoreTests
     }
 
     [Fact]
+    public void WslIsNeverFoundThroughTheSearchPath()
+    {
+        Assert.True(Path.IsPathRooted(LaunchPlan.Executable));
+        Assert.EndsWith("wsl.exe", LaunchPlan.Executable);
+    }
+
+    [Fact]
     public void TokensAreWhatPortaInsistsOn()
     {
         Assert.Matches("^[0-9a-f]{32}$", LaunchPlan.NewToken());

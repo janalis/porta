@@ -70,6 +70,16 @@ final class ProjectPickerTest extends TestCase
         $this->assertSame($this->disk->path('two'), $this->pick([self::DOWN, "\r"]));
     }
 
+    public function testAFoldersNameCannotDriveTheTerminal(): void
+    {
+        $hostile = $this->disk->path("evil\x1b]52;c;aGk=\x07name");
+        \mkdir($hostile);
+        new RecentProjectsStore()->record($hostile);
+
+        $this->assertSame($hostile, $this->pick(["\r"]), 'the real path is still what opens');
+        $this->assertStringNotContainsString("\x1b]52", $this->terminal->getOutput());
+    }
+
     public function testEscapeLeavesWithoutChoosing(): void
     {
         $this->recordRecent();

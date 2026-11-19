@@ -6,6 +6,7 @@ namespace Porta\Desktop;
 
 use Porta\Config\PortaHome;
 use Porta\History\RecentProjectsStore;
+use Porta\Support\ControlChars;
 use Porta\Ui\NonBlockingTerminal;
 use Porta\Workbench\RecentProjectChoices;
 use Symfony\Component\Tui\Event\SelectEvent;
@@ -91,7 +92,7 @@ final class ProjectPicker
         $input->onSubmit(function (SubmitEvent $event) use ($tui, $screen, $recent): void {
             $folder = \realpath(PortaHome::expand(\trim($event->getValue())));
             if (false === $folder || !\is_dir($folder)) {
-                $this->askForFolder($tui, $screen, $recent, 'Not a folder: '.$event->getValue());
+                $this->askForFolder($tui, $screen, $recent, 'Not a folder: '.ControlChars::line($event->getValue()));
 
                 return;
             }

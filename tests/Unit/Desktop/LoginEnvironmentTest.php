@@ -71,8 +71,8 @@ final class LoginEnvironmentTest extends TestCase
     public function testTheLoginShellIsAskedAndAMissingOneFallsBackToSh(): void
     {
         $asked = [];
-        $environment = new LoginEnvironment(static function (array $argv, float $deadline) use (&$asked): ?string {
-            $asked[] = [$argv[0], \array_slice($argv, 1, 3), $deadline];
+        $environment = new LoginEnvironment(static function (array $argv, float $deadline, string $folder) use (&$asked): ?string {
+            $asked[] = [$argv[0], \array_slice($argv, 1, 3), $deadline, $folder];
 
             return null;
         });
@@ -84,6 +84,46 @@ final class LoginEnvironmentTest extends TestCase
         $this->assertSame(['/bin/zsh', '/bin/sh', '/bin/sh'], \array_column($asked, 0));
         $this->assertSame(['-i', '-l', '-c'], $asked[0][1]);
         $this->assertSame(5.0, $asked[0][2]);
+    }
+
+    public function testTheShellNeverStartsInTheProject(): void
+    {
+        $disk = new TempProject([
+            'home/.keep' => '',
+            'project/evil' => "#!/bin/sh\ntouch \"\$CANARY\"\n",
+            'shell' => "#!/bin/sh\nexport STARTED_IN=\"\$PWD\"\n./evil 2>/dev/null\nshift 3\nexec /bin/sh -c \"\$1\"\n",
+        ]);
+        \chmod($disk->path('shell'), 0o755);
+        \chmod($disk->path('project/evil'), 0o755);
+        $canary = $disk->path('canary');
+        \putenv('CANARY='.$canary);
+        $cwd = (string) \getcwd();
+        \chdir($disk->path('project'));
+        try {
+            $resolved = new LoginEnvironment()->resolve(['SHELL' => $disk->path('shell'), 'HOME' => $disk->path('home')]);
+        } finally {
+            \chdir($cwd);
+            \putenv('CANARY');
+        }
+
+        $this->assertSame(\realpath($disk->path('home')), \realpath($resolved['STARTED_IN'] ?? ''));
+        $this->assertFileDoesNotExist($canary, 'the project\'s own program ran');
+    }
+
+    public function testWithoutAUsableHomeTheShellStartsAtTheRoot(): void
+    {
+        $folders = [];
+        $environment = new LoginEnvironment(static function (array $argv, float $deadline, string $folder) use (&$folders): ?string {
+            $folders[] = $folder;
+
+            return null;
+        });
+
+        $environment->resolve(['HOME' => 'relative']);
+        $environment->resolve(['HOME' => '/no/such/folder']);
+        $environment->resolve([]);
+
+        $this->assertSame(['/', '/', '/'], $folders);
     }
 
     public function testARealShellAnswersFromItsOwnSession(): void

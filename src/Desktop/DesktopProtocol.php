@@ -6,6 +6,7 @@ namespace Porta\Desktop;
 
 use Porta\Config\LiveKeybindings;
 use Porta\Container\AsIdeService;
+use Porta\Support\ControlChars;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\WorkbenchActions;
 use Revolt\EventLoop;
@@ -88,7 +89,7 @@ final class DesktopProtocol
         if (!$this->session->active) {
             return;
         }
-        $this->tui->getTerminal()->setTitle(\basename($root).' — Porta');
+        $this->tui->getTerminal()->setTitle(ControlChars::line(\basename($root)).' — Porta');
         $this->send('ready;'.\base64_encode($root));
         if ($this->session->systemMenu) {
             $this->syncMenu();

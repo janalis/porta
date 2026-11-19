@@ -70,6 +70,9 @@ jobs:
           path: php-${{ matrix.name }}
           key: static-php-${{ matrix.name }}-${{ hashFiles('desktop/build-php.sh', 'desktop/runtime/check-php.php') }}
       - if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          # static-php-cli asks GitHub where sources are; anonymously, it is rate limited.
+          GITHUB_TOKEN: ${{ github.token }}
         run: desktop/build-php.sh "$PWD/php-${{ matrix.name }}"
       - run: ./php-${{ matrix.name }} -n desktop/runtime/check-php.php
       - uses: actions/upload-artifact@v7

@@ -7,6 +7,7 @@ namespace Porta\Workbench;
 use Porta\Config\PortaHome;
 use Porta\Filesystem\ProjectLocation;
 use Porta\History\RecentProjectsStore;
+use Porta\Support\ControlChars;
 
 /** The recent projects worth offering, as a person knows them: shared by the switcher and the desktop picker. */
 final readonly class RecentProjectChoices
@@ -33,8 +34,8 @@ final readonly class RecentProjectChoices
             // what a person knows it by is the server it mirrors.
             $remote = ProjectLocation::forRoot($root)->remote;
             $items[] = null === $remote
-                ? ['label' => \basename($root), 'hint' => PortaHome::tilde($root), 'value' => $root]
-                : ['label' => $remote->name(), 'hint' => $remote->label(), 'value' => $root];
+                ? ['label' => ControlChars::line(\basename($root)), 'hint' => ControlChars::line(PortaHome::tilde($root)), 'value' => $root]
+                : ['label' => ControlChars::line($remote->name()), 'hint' => ControlChars::line($remote->label()), 'value' => $root];
         }
 
         return $items;

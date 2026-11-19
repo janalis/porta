@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -9,7 +10,8 @@ namespace Porta.Desktop
     /// <summary>How Porta is started inside WSL, through the relay that gives it a real terminal.</summary>
     public static class LaunchPlan
     {
-        public const string Executable = "wsl.exe";
+        /// <summary>Always System32's: by bare name, Windows would look in the working directory first.</summary>
+        public static string Executable { get; } = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.System), "wsl.exe");
 
         public static IReadOnlyDictionary<string, string> Environment(string token) => new Dictionary<string, string>
         {

@@ -76,6 +76,7 @@ return [
         'Desktop>Config', // the picker expands the ~ of a typed folder
         'Desktop>Container',
         'Desktop>History', // the picker offers the recent projects
+        'Desktop>Support', // a folder's name is made safe to draw
         'Desktop>Ui', // the picker draws on the same non-blocking terminal as the IDE
         'Desktop>Widget', // the system menu shows what the menu bar holds
         'Desktop>Workbench', // a window close takes the quit path; the picker shares the switcher's list

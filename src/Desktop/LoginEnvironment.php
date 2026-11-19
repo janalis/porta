@@ -29,11 +29,11 @@ final readonly class LoginEnvironment
     /** Starts a shell in its own session: nothing it does can reach the window's terminal. */
     private const string DETACH = 'posix_setsid(); pcntl_exec($argv[1], array_slice($argv, 2));';
 
-    /** @var \Closure(list<string>, float): ?string */
+    /** @var \Closure(list<string>, float, string): ?string */
     private \Closure $run;
 
     /**
-     * @param (\Closure(list<string>, float): ?string)|null $run      runs argv within the deadline, returning its output or null
+     * @param (\Closure(list<string>, float, string): ?string)|null $run runs argv from a folder within the deadline, returning its output or null
      * @param float                                         $deadline how long a shell profile may take, in seconds
      */
     public function __construct(
@@ -75,7 +75,12 @@ final readonly class LoginEnvironment
             \sprintf("printf '%%s' %s; /usr/bin/env -0; printf '%%s' %s", self::SENTINEL, self::SENTINEL),
         ];
 
-        return self::parse(($this->run)($argv, $this->deadline) ?? '');
+        // Never from the project: a profile running a relative command would
+        // run whatever an untrusted folder holds, before anyone was asked to trust it.
+        $home = $environment['HOME'] ?? '';
+        $folder = \is_string($home) && \str_starts_with($home, '/') && \is_dir($home) ? $home : '/';
+
+        return self::parse(($this->run)($argv, $this->deadline, $folder) ?? '');
     }
 
     /** @return array<string, string> */
@@ -101,9 +106,9 @@ final readonly class LoginEnvironment
     }
 
     /** @param list<string> $argv */
-    private static function runDetached(array $argv, float $deadline): ?string
+    private static function runDetached(array $argv, float $deadline, string $folder): ?string
     {
-        $process = new Process([\PHP_BINARY, '-n', '-r', self::DETACH, '--', ...$argv], timeout: $deadline);
+        $process = new Process([\PHP_BINARY, '-n', '-r', self::DETACH, '--', ...$argv], cwd: $folder, timeout: $deadline);
         try {
             $process->run();
         } catch (ProcessTimedOutException) {
