@@ -143,6 +143,61 @@ static void apply_font(PortaWindow *self)
     pango_font_description_free(font);
 }
 
+/* What the font dialog shows: monospaced families only, a terminal's grid needs them. */
+static gboolean monospaced(gpointer item, gpointer data)
+{
+    (void) data;
+    if (PANGO_IS_FONT_FACE(item)) {
+        item = pango_font_face_get_family(PANGO_FONT_FACE(item));
+    }
+    return PANGO_IS_FONT_FAMILY(item) && pango_font_family_is_monospace(PANGO_FONT_FAMILY(item));
+}
+
+/* A font chosen in the dialog: written to desktop.json, any other key in it kept, and every window takes it. */
+static void font_chosen(GObject *source, GAsyncResult *result, gpointer data)
+{
+    PangoFontDescription *chosen = gtk_font_dialog_choose_font_finish(GTK_FONT_DIALOG(source), result, NULL);
+    const char *home = g_getenv("PORTA_HOME");
+    g_autofree char *folder = g_build_filename(NULL != home && '\0' != home[0] ? home : g_get_home_dir(), ".porta", NULL);
+    g_autofree char *path = g_build_filename(folder, "desktop.json", NULL);
+    g_autoptr(JsonParser) parser = json_parser_new();
+    g_autoptr(JsonGenerator) generator = json_generator_new();
+    JsonNode *existing;
+    JsonObject *settings;
+
+    (void) data;
+    if (NULL == chosen) {
+        return; /* cancelled */
+    }
+    existing = json_parser_load_from_file(parser, path, NULL) ? json_parser_get_root(parser) : NULL;
+    settings = NULL != existing && JSON_NODE_HOLDS_OBJECT(existing) ? json_object_ref(json_node_get_object(existing)) : json_object_new();
+    json_object_set_string_member(settings, "fontFamily", pango_font_description_get_family(chosen));
+    json_object_set_double_member(settings, "fontSize", (double) pango_font_description_get_size(chosen) / PANGO_SCALE);
+    g_autoptr(JsonNode) root = json_node_init_object(json_node_alloc(), settings);
+    json_object_unref(settings);
+    json_generator_set_root(generator, root);
+    json_generator_set_pretty(generator, TRUE);
+    g_mkdir_with_parents(folder, 0700);
+    json_generator_to_file(generator, path, NULL);
+    pango_font_description_free(chosen);
+    for (GList *entry = windows; NULL != entry; entry = entry->next) {
+        apply_font(entry->data);
+    }
+}
+
+static void choose_font(GSimpleAction *action, GVariant *parameter, gpointer data)
+{
+    PortaWindow *self = data;
+    g_autoptr(GtkFontDialog) dialog = gtk_font_dialog_new();
+    g_autoptr(GtkCustomFilter) filter = gtk_custom_filter_new(monospaced, NULL, NULL);
+
+    (void) action;
+    (void) parameter;
+    gtk_font_dialog_set_title(dialog, "Font");
+    gtk_font_dialog_set_filter(dialog, GTK_FILTER(filter));
+    gtk_font_dialog_choose_font(dialog, GTK_WINDOW(self->window), vte_terminal_get_font(self->terminal), NULL, font_chosen, NULL);
+}
+
 static void write_to_porta(PortaWindow *self, const char *bytes, gssize length)
 {
     gsize left = length < 0 ? strlen(bytes) : (gsize) length;
@@ -684,6 +739,19 @@ static void open_window(GtkApplication *application, const char *project)
     }
     apply_font(self);
     gtk_window_set_child(GTK_WINDOW(self->window), GTK_WIDGET(self->terminal));
+
+    /* The window's own menu, in its title bar: Porta's menus are Porta's, the font is the window's. */
+    const GActionEntry window_actions[] = {{.name = "font", .activate = choose_font}};
+    g_action_map_add_action_entries(G_ACTION_MAP(self->window), window_actions, G_N_ELEMENTS(window_actions), self);
+    g_autoptr(GMenu) window_menu = g_menu_new();
+    g_menu_append(window_menu, "Font…", "win.font");
+    GtkWidget *menu_button = gtk_menu_button_new();
+    gtk_menu_button_set_icon_name(GTK_MENU_BUTTON(menu_button), "open-menu-symbolic");
+    gtk_menu_button_set_menu_model(GTK_MENU_BUTTON(menu_button), G_MENU_MODEL(window_menu));
+    gtk_widget_set_tooltip_text(menu_button, "Window");
+    GtkWidget *header = gtk_header_bar_new();
+    gtk_header_bar_pack_end(GTK_HEADER_BAR(header), menu_button);
+    gtk_window_set_titlebar(GTK_WINDOW(self->window), header);
     GtkDropTarget *drop = gtk_drop_target_new(GDK_TYPE_FILE_LIST, GDK_ACTION_COPY);
     g_signal_connect(drop, "drop", G_CALLBACK(on_drop), self);
     gtk_widget_add_controller(GTK_WIDGET(self->terminal), GTK_EVENT_CONTROLLER(drop));

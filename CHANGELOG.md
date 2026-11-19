@@ -20,7 +20,8 @@ versions follow [Semantic Versioning](https://semver.org/).
   Porta goes to its project's window; light and dark follow the system until a
   theme is chosen; a run that ends while you are elsewhere is notified; and a
   window whose Porta stopped offers to reopen it, show the error log, or close.
-  On macOS, **Window → Font…** picks the window's font in the system font panel.
+  **Font…** picks the window's font in the system's own dialog: the Window menu
+  on macOS, the title bar's menu button on Linux, the system menu on Windows.
 - **Help → Check for Updates…**: asks for a newer release now, whatever the
   cadence set in Settings.
 - **Help → Install the porta Command…**: the Command line page of the settings,

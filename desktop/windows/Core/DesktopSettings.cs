@@ -37,6 +37,15 @@ namespace Porta.Desktop
             }
         }
 
+        /// <summary>The file with a font chosen in the window: the two keys it holds.</summary>
+        public static string Written(string fontFamily, double fontSize)
+        {
+            var settings = new DesktopSettings { family = fontFamily, size = fontSize };
+            using var stream = new MemoryStream();
+            new DataContractJsonSerializer(typeof(DesktopSettings)).WriteObject(stream, settings);
+            return Encoding.UTF8.GetString(stream.ToArray());
+        }
+
         public static DesktopSettings Parse(string? json)
         {
             if (string.IsNullOrWhiteSpace(json))

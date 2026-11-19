@@ -87,8 +87,11 @@ Linux, and in `%LOCALAPPDATA%\Porta\` on Windows:
 ```
 
 Both keys are optional, the size runs from 6 to 72, and a new window reads the
-file when it opens. On macOS, **Window → Font…** (Cmd+T) picks the font in the
-system's font panel and writes this file for you; every open window takes it. Without it each system's own monospaced font is used.
+file when it opens. You rarely need to edit it by hand: **Font…** picks a
+monospaced font in the system's own dialog, writes this file, and every open
+window takes it. It is in the **Window** menu on macOS (Cmd+T), in the menu
+button of the title bar on Linux, and in the window's system menu on Windows
+(Alt+Space, or a right click on the title bar). Without it each system's own monospaced font is used.
 
 ## Updating
 

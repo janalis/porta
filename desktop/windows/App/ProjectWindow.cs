@@ -66,14 +66,17 @@ namespace Porta.Desktop.App
 
                 e.Handled = true;
             };
+            SourceInitialized += (_, _) => AddFontToSystemMenu();
             Loaded += (_, _) =>
             {
-                var settings = ReadSettings();
-                terminal.SetTheme(Theme.Dark, settings.FontFamily ?? "Cascadia Mono", (short)(settings.FontSize ?? 11));
+                ApplySavedFont();
                 terminal.Connection = connection;
                 terminal.Focus();
             };
         }
+
+        /// <summary>A font was chosen in this window: every window takes it.</summary>
+        public event Action? FontChosen;
 
         /// <summary>A file or folder dropped on the window, as Windows names it.</summary>
         public event Action<string>? Dropped;
@@ -357,11 +360,83 @@ namespace Porta.Desktop.App
             PortaExited(1);
         }
 
-        private static DesktopSettings ReadSettings()
+        private static string SettingsFile => Path.Combine(Path.GetDirectoryName(PlacementFile)!, "desktop.json");
+
+        private static DesktopSettings ReadSettings() =>
+            DesktopSettings.Parse(File.Exists(SettingsFile) ? File.ReadAllText(SettingsFile) : null);
+
+        /// <summary>The font desktop.json names, after a choice in any window.</summary>
+        public void ApplySavedFont()
         {
-            var file = Path.Combine(Path.GetDirectoryName(PlacementFile)!, "desktop.json");
-            return DesktopSettings.Parse(File.Exists(file) ? File.ReadAllText(file) : null);
+            var settings = ReadSettings();
+            terminal.SetTheme(Theme.Dark, settings.FontFamily ?? DefaultFont, (short)(settings.FontSize ?? DefaultFontSize));
         }
+
+        private const string DefaultFont = "Cascadia Mono";
+        private const double DefaultFontSize = 11;
+        private const int FontCommand = 0x1000;
+
+        /// <summary>
+        /// "Font…" in the window's system menu (Alt+Space, or a right click on the title bar), where
+        /// the Windows console keeps its own: this window has no menu bar of its own to hold it.
+        /// </summary>
+        private void AddFontToSystemMenu()
+        {
+            var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            var menu = GetSystemMenu(handle, false);
+            AppendMenu(menu, MenuSeparator, IntPtr.Zero, null);
+            AppendMenu(menu, MenuString, (IntPtr)FontCommand, "Font…");
+            System.Windows.Interop.HwndSource.FromHwnd(handle)?.AddHook(SystemMenuChosen);
+        }
+
+        private IntPtr SystemMenuChosen(IntPtr window, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            const int SystemCommand = 0x0112;
+            if (message == SystemCommand && (wParam.ToInt64() & 0xFFF0) == FontCommand)
+            {
+                handled = true;
+                ChooseFont();
+            }
+
+            return IntPtr.Zero;
+        }
+
+        private void ChooseFont()
+        {
+            var settings = ReadSettings();
+            using var dialog = new System.Windows.Forms.FontDialog
+            {
+                FixedPitchOnly = true,
+                ShowEffects = false,
+                AllowScriptChange = false,
+                Font = new System.Drawing.Font(settings.FontFamily ?? DefaultFont, (float)(settings.FontSize ?? DefaultFontSize)),
+            };
+            try
+            {
+                if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+                {
+                    return;
+                }
+            }
+            catch (ArgumentException)
+            {
+                // The dialog refuses a font that is not TrueType, by throwing: nothing changes.
+                return;
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(SettingsFile)!);
+            File.WriteAllText(SettingsFile, DesktopSettings.Written(dialog.Font.FontFamily.Name, Math.Round(dialog.Font.SizeInPoints)));
+            FontChosen?.Invoke();
+        }
+
+        private const uint MenuString = 0;
+        private const uint MenuSeparator = 0x800;
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr GetSystemMenu(IntPtr window, bool revert);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        private static extern bool AppendMenu(IntPtr menu, uint flags, IntPtr id, string? text);
 
         private void RestorePlacement()
         {

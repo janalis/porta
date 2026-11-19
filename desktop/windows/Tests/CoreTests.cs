@@ -204,4 +204,13 @@ public class CoreTests
     {
         Assert.Matches("^[0-9a-f]{32}$", LaunchPlan.NewToken());
     }
+
+    [Fact]
+    public void AChosenFontIsWrittenAsTheWindowsReadIt()
+    {
+        var read = DesktopSettings.Parse(DesktopSettings.Written("Cascadia \"Mono\" \\ Pro", 12.5));
+
+        Assert.Equal("Cascadia \"Mono\" \\ Pro", read.FontFamily);
+        Assert.Equal(12.5, read.FontSize);
+    }
 }
