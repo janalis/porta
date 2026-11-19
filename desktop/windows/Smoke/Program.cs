@@ -152,10 +152,16 @@ Console.WriteLine("smoke: the IDE is up inside WSL");
 Send(RelayFrame.Resize(100, 30));
 Thread.Sleep(1000);
 
-// The first run opens on the welcome card; a file opened through the window closes it.
-// No Escape first: a lone ESC byte is still pending when the request's own ESC arrives.
+// The first run opens on the welcome card.
 System.IO.File.WriteAllText(System.IO.Path.Combine(args[1], "a.php"), "<?php\n");
 AwaitScreen(0, "Welcome", "the welcome card");
+
+// The Escape key on the welcome card closes it, and the keys after it still arrive.
+Thread.Sleep(1000);
+var beforeEscape = Screen().Length;
+Type("\u001b");
+Thread.Sleep(3000);
+Console.WriteLine($"smoke: Escape on the welcome card redrew {Screen().Length - beforeEscape} bytes");
 var beforeOpen = Screen().Length;
 
 // A file of the project, as the window hands it over, opens here; an edit is told, and so is its save.
