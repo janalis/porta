@@ -423,16 +423,20 @@ final class PortaCommand extends Command
      */
     private function install(SelfUpdate $update, Installation $installation, string $latest): void
     {
-        if (InstallMethod::Phar === $installation->method) {
-            $update->install($latest, $installation->path, \PHP_BINARY);
+        match ($installation->method) {
+            InstallMethod::Phar => $update->install($latest, $installation->path, \PHP_BINARY),
+            InstallMethod::Desktop => new DesktopUpdate($update, $this->process)->install($latest, $installation),
+            default => $this->runManager($installation, $latest),
+        };
+    }
 
-            return;
-        }
-        if (InstallMethod::Desktop === $installation->method) {
-            new DesktopUpdate($update, $this->process)->install($latest, $installation);
-
-            return;
-        }
+    /**
+     * Brew or Composer: the manager runs, and must visibly have changed the install.
+     *
+     * @throws \RuntimeException saying what went wrong
+     */
+    private function runManager(Installation $installation, string $latest): void
+    {
         $before = $installation->fingerprint();
         foreach ($installation->commands() as $command) {
             // @mago-expect lint:literal-named-argument -- a closure's parameters have no names to pass it by
