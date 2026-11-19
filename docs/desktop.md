@@ -162,7 +162,7 @@ protocol every side is tested against.
 | macOS disk image | `desktop/macos/build-dmg.sh <Porta.app> <output.dmg>` (needs `pip install dmgbuild`) |
 | macOS | `desktop/macos/build-app.sh --php <php> --phar <phar> --version <x.y.z> --out <dir>` |
 | Linux | `desktop/linux/package.sh --php <php> --phar <phar> --version <x.y.z> --out <dir>` |
-| Windows | `dotnet build desktop/windows/App` (and again with `-p:TargetFramework=net481 -p:PlatformTarget=ARM64 -r win-arm64` for Arm, passed to Inno Setup as `ArmSourceDir`), then `desktop/windows/Installer/porta.iss` with Inno Setup |
+| Windows | `dotnet build desktop/windows/App` (it builds the x64 window in `net48` and the Arm64 one in `net481/win-arm64`, passed to Inno Setup as `SourceDir` and `ArmSourceDir`), then `desktop/windows/Installer/porta.iss` with Inno Setup |
 
 The release workflow signs when these secrets exist, and ad hoc otherwise:
 `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGN_IDENTITY`,

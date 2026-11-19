@@ -40,8 +40,10 @@ final class AccessibleTerminalView: TerminalView {
             self.starts = starts
             text = lines.map { $0 as String }.joined(separator: "\n") as NSString
             cursorRow = min(max(snapshot.cursor.row, 0), max(lines.count - 1, 0))
-            let column = lines.isEmpty ? 0 : min(max(snapshot.cursor.col, 0), lines[cursorRow].length)
-            cursorOffset = (starts.isEmpty ? 0 : starts[cursorRow]) + column
+            // A screen column is not a text offset once a row holds wide characters or emoji.
+            let row = snapshot.visibleRows.indices.contains(cursorRow) ? snapshot.visibleRows[cursorRow] : nil
+            let column = row.map { ReadableLine.offset(ofColumn: snapshot.cursor.col, widths: $0.cellWidths, in: $0.text) } ?? 0
+            cursorOffset = (starts.isEmpty ? 0 : starts[cursorRow]) + (lines.isEmpty ? 0 : min(column, lines[cursorRow].length))
         }
     }
 

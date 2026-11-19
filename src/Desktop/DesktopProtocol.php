@@ -123,13 +123,14 @@ final class DesktopProtocol
             EventLoop::cancel($this->menuPoll);
             $this->menuPoll = null;
         }
+        // No longer the window's: a run that ends now is not told to it.
+        $this->dirty = null;
     }
 
-    /** What the window shows of the IDE: how many files are unsaved, and the menus. */
     /**
      * A run ended: the window tells the system, when it is not the one in front —
      * a notification on macOS and Linux, the taskbar button flashing on Windows.
-     * Not before ready: a window still starting has nobody waiting on a run.
+     * Not before ready, nor after detach: nobody is waiting on a run then.
      */
     #[AsEventListener]
     public function onRunFinished(RunFinished $event): void
@@ -145,6 +146,7 @@ final class DesktopProtocol
         $this->send('notify;'.\base64_encode($text));
     }
 
+    /** What the window shows of the IDE: how many files are unsaved, and the menus. */
     private function sync(): void
     {
         $dirty = $this->buffers->dirtyCount();

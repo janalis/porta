@@ -94,7 +94,8 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
 
     /// A run ended. Told only when this window is not the one in front: the user is elsewhere.
     private func notify(_ text: String) {
-        guard !(NSApp.isActive && window?.isKeyWindow == true) else { return }
+        // Main, not key: the font panel or a sheet can be key while this window is the one in front.
+        guard !(NSApp.isActive && window?.isMainWindow == true), Bundle.main.bundleIdentifier != nil else { return }
         let content = UNMutableNotificationContent()
         content.title = window?.title ?? "Porta"
         content.body = text

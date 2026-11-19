@@ -355,6 +355,9 @@ final class DesktopProtocolTest extends TestCase
         $events->dispatch(new RunFinished('composer test', 1));
         $events->dispatch(new RunFinished('make', 0));
         $protocol->detach();
+        $told = $this->terminal->getOutput();
+        $events->dispatch(new RunFinished('after', 0));
+        $this->assertSame($told, $this->terminal->getOutput(), 'a detached window is told nothing more');
 
         $this->assertStringContainsString($this->contract['examples']['notify'], $this->terminal->getOutput());
         $this->assertStringContainsString(';notify;'.\base64_encode('make finished')."\x1b\\", $this->terminal->getOutput());

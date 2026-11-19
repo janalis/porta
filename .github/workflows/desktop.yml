@@ -307,9 +307,8 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.sha }}
       - run: dotnet test desktop/windows/Tests --configuration Release
+      # Both windows: net48 for x64, net481 for Arm64 (see the project).
       - run: dotnet build desktop/windows/App --configuration Release
-      # The window for Windows on Arm, natively: .NET Framework 4.8.1 is the first to run on Arm64.
-      - run: dotnet build desktop/windows/App --configuration Release -p:TargetFramework=net481 -p:PlatformTarget=ARM64 -r win-arm64
       - uses: actions/download-artifact@v8
         with:
           name: desktop-phar

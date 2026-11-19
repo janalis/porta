@@ -41,6 +41,7 @@ public class CoreTests
         Assert.Equal(MessageKind.None, DesktopMessage.Parse($"porta-desktop;{token};state;-1", token).Kind);
         Assert.Equal((MessageKind.Notify, Example("notifyText")), DesktopMessage.Parse(Payload(Example("notify")), token));
         Assert.Equal(MessageKind.None, DesktopMessage.Parse($"porta-desktop;{token};notify;not base64!", token).Kind);
+        Assert.Equal(MessageKind.None, DesktopMessage.Parse($"porta-desktop;{token};ready;not base64!", token).Kind);
     }
 
     [Fact]

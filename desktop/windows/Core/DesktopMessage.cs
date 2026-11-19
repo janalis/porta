@@ -50,7 +50,15 @@ namespace Porta.Desktop
                     }
 
                 case "ready" when fields.Length == 4:
-                    return (MessageKind.Ready, Encoding.UTF8.GetString(Convert.FromBase64String(fields[3])));
+                    try
+                    {
+                        return (MessageKind.Ready, Encoding.UTF8.GetString(Convert.FromBase64String(fields[3])));
+                    }
+                    catch (FormatException)
+                    {
+                        return (MessageKind.None, "");
+                    }
+
                 default:
                     return (MessageKind.None, "");
             }

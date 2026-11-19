@@ -12,10 +12,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Tabs as the system prefers them (Desktop & Dock → Prefer tabs): projects can share a window.
-        // Before the menus: AppKit adds its tab items to the Window menu as it is installed.
+        // The Window menu's tab items are MainMenu's own: AppKit adds none to a menu built in code.
         NSWindow.allowsAutomaticWindowTabbing = true
         menus.install(target: self)
-        UNUserNotificationCenter.current().delegate = self
+        // The notification centre needs an application bundle; the bare executable of a build has none.
+        if Bundle.main.bundleIdentifier != nil {
+            UNUserNotificationCenter.current().delegate = self
+        }
         KeyForwarding.install { [weak self] in self?.focused }
         appearance = NSApp.observe(\.effectiveAppearance) { [weak self] _, _ in
             DispatchQueue.main.async { self?.windows.forEach { $0.sendAppearance() } }
@@ -139,9 +142,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     /// The system's font panel, on the font of the window in front.
+    private weak var fontSource: ProjectWindowController?
+
     @objc func showFonts(_ sender: Any?) {
         let manager = NSFontManager.shared
         manager.target = self
+        // The panel becomes key: the window it was opened from is the one its choices convert from.
+        fontSource = focused
         if let font = focused?.currentFont {
             manager.setSelectedFont(font, isMultiple: false)
         }
@@ -150,7 +157,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     /// A font picked in the panel: every window takes it, and new ones read it from desktop.json.
     @objc func changeFont(_ sender: NSFontManager?) {
-        guard let sender, let current = focused?.currentFont ?? windows.first?.currentFont else { return }
+        guard let sender, let current = (fontSource ?? focused ?? windows.first)?.currentFont else { return }
         let chosen = sender.convert(current)
         // The panel lists every font; a terminal's grid needs one whose letters are all as wide.
         guard chosen.isFixedPitch else {
