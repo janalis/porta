@@ -1,0 +1,157 @@
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using Porta.Desktop;
+
+// Drives the packaged runtime inside a real WSL, the way the window does:
+// the same launch plan, relay frames, filter and close protocol, with no window.
+// Usage: PortaDesktop.Smoke <runtime folder> <project folder>
+
+var token = LaunchPlan.NewToken();
+var runtime = WslPath(args[0]);
+var project = WslPath(args[1]);
+Console.WriteLine($"smoke: runtime {runtime}, project {project}");
+
+var start = new ProcessStartInfo(LaunchPlan.Executable, LaunchPlan.CommandLine(LaunchPlan.Arguments(runtime, project, 120, 36)))
+{
+    UseShellExecute = false,
+    CreateNoWindow = true,
+    RedirectStandardInput = true,
+    RedirectStandardOutput = true,
+};
+foreach (var variable in LaunchPlan.Environment(token))
+{
+    start.EnvironmentVariables[variable.Key] = variable.Value;
+}
+
+using var process = Process.Start(start)!;
+var messages = new BlockingCollection<(MessageKind Kind, string Root)>();
+var screen = new StringBuilder();
+var filter = new OscFilter();
+var reader = Task.Run(async () =>
+{
+    var buffer = new byte[65536];
+    int count;
+    while ((count = await process.StandardOutput.BaseStream.ReadAsync(buffer)) > 0)
+    {
+        var found = new List<(int Code, string Payload)>();
+        var output = filter.Consume(buffer, count, found);
+        lock (screen)
+        {
+            screen.Append(Encoding.UTF8.GetString(output));
+        }
+
+        foreach (var (code, payload) in found.Where(entry => entry.Code == OscFilter.Private))
+        {
+            messages.Add(DesktopMessage.Parse(payload, token));
+        }
+    }
+});
+
+void Send(byte[] frame)
+{
+    process.StandardInput.BaseStream.Write(frame);
+    process.StandardInput.BaseStream.Flush();
+}
+
+void Type(string text) => Send(RelayFrame.Input(Encoding.UTF8.GetBytes(text)));
+
+string Screen()
+{
+    lock (screen)
+    {
+        return screen.ToString();
+    }
+}
+
+void Fail(string why)
+{
+    Console.Error.WriteLine("smoke: " + why);
+    Console.Error.WriteLine("smoke: the screen ended with: " + new string(Screen().TakeLast(1500).ToArray()));
+    process.Kill();
+    Environment.Exit(1);
+}
+
+(MessageKind Kind, string Root) Await(MessageKind expected, TimeSpan patience)
+{
+    var deadline = DateTime.UtcNow + patience;
+    while (DateTime.UtcNow < deadline)
+    {
+        if (messages.TryTake(out var message, 250) && message.Kind == expected)
+        {
+            return message;
+        }
+
+        if (process.HasExited)
+        {
+            Fail($"Porta exited with {process.ExitCode} while waiting for {expected}");
+        }
+    }
+
+    Fail($"no {expected} within {patience.TotalSeconds}s");
+    return default;
+}
+
+var trustDeadline = DateTime.UtcNow.AddSeconds(120);
+while (!Screen().Contains("Trust this project") && DateTime.UtcNow < trustDeadline && !process.HasExited)
+{
+    Thread.Sleep(250);
+}
+
+// Enter answers no: the project opens restricted.
+Type("\r");
+var ready = Await(MessageKind.Ready, TimeSpan.FromSeconds(120));
+if (ready.Root != project)
+{
+    Fail($"Porta opened {ready.Root}");
+}
+
+Console.WriteLine("smoke: the IDE is up inside WSL");
+
+Send(RelayFrame.Resize(100, 30));
+Thread.Sleep(1000);
+
+Type(DesktopMessage.CloseRequest(new string('f', 32)));
+if (messages.TryTake(out var answer, 3000) && answer.Kind == MessageKind.Closing)
+{
+    Fail("a forged token closed the session");
+}
+
+Console.WriteLine("smoke: a forged close was ignored");
+
+var flow = new CloseFlow();
+flow.Received(MessageKind.Ready);
+Type(DesktopMessage.CloseRequest(token));
+flow.Received(Await(MessageKind.Closing, TimeSpan.FromSeconds(30)).Kind);
+if (!process.WaitForExit(30000))
+{
+    Fail("Porta did not exit after saying it was closing");
+}
+
+await reader;
+if (!flow.ClosesWhenPortaExits(process.ExitCode))
+{
+    Fail($"the window would have stayed open on exit status {process.ExitCode}");
+}
+
+Console.WriteLine($"smoke: Porta closed cleanly with status {process.ExitCode}");
+return 0;
+
+static string WslPath(string path)
+{
+    var start = new ProcessStartInfo(LaunchPlan.Executable, LaunchPlan.CommandLine(new[] { "--exec", "wslpath", "-a", "-u", path }))
+    {
+        UseShellExecute = false,
+        RedirectStandardOutput = true,
+        StandardOutputEncoding = Encoding.UTF8,
+    };
+    using var process = Process.Start(start)!;
+    var answer = process.StandardOutput.ReadToEnd().Trim();
+    process.WaitForExit();
+    return answer;
+}

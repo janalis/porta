@@ -3,6 +3,8 @@ name: Desktop
 # The native applications around Porta: each host's own tests, and the packages.
 # Release calls this with a version; on a pull request it only proves they build.
 on:
+  push:
+    branches: [feat/desktop-app]
   pull_request:
     paths:
       - 'desktop/**'
@@ -208,6 +210,21 @@ jobs:
         run: |
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=$env:VERSION" "/DSourceDir=$PWD\desktop\windows\App\bin\Release\net48" "/DRuntimeDir=$PWD\runtime" "/DOutputDir=$PWD\dist" desktop\windows\Installer\porta.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: Vampire/setup-wsl@v6
+        with:
+          distribution: Ubuntu-24.04
+      - name: It runs inside WSL
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\shop" | Out-Null
+          Set-Content "$env:RUNNER_TEMP\shop\composer.json" '{}'
+          dotnet run --project desktop\windows\Smoke --configuration Release -- "$PWD\runtime" "$env:RUNNER_TEMP\shop"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: The installed application opens
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem dist\*.exe | Select-Object -First 1).FullName
+          desktop\windows\Smoke\installed.ps1 -Installer $installer -Project "$env:RUNNER_TEMP\shop"
       - name: Sign
         if: ${{ env.WINDOWS_CERTIFICATE != '' }}
         env:

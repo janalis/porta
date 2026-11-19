@@ -34,3 +34,4 @@
 # Run inside Linux and macOS, whatever the checkout they were packaged from.
 /desktop/runtime/porta-cli text eol=lf
 /desktop/**/*.sh text eol=lf
+/desktop/runtime/wsl-relay.php text eol=lf
