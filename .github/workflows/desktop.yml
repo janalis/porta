@@ -43,6 +43,9 @@ jobs:
           coverage: none
           extensions: mbstring, gd, pcntl, simplexml, ctype
       - run: composer install --no-interaction --no-progress --prefer-dist
+        # Downloads from GitHub, which rate-limits them anonymously.
+        env:
+          COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ github.token }}"}}'
       - run: composer build:phar
       - uses: actions/upload-artifact@v7
         with:
@@ -165,6 +168,9 @@ jobs:
           coverage: none
           extensions: mbstring, pcntl, ctype
       - run: composer install --no-interaction --no-progress --prefer-dist
+        # Downloads from GitHub, which rate-limits them anonymously.
+        env:
+          COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ github.token }}"}}'
       - name: An installed application updates itself from the next disk image
         run: |
           desktop/macos/build-app.sh --php php-${{ matrix.name }} --phar porta.phar --version 99.0.0 --out next
@@ -247,6 +253,9 @@ jobs:
           coverage: none
           extensions: mbstring, pcntl, ctype
       - run: composer install --no-interaction --no-progress --prefer-dist
+        # Downloads from GitHub, which rate-limits them anonymously.
+        env:
+          COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ github.token }}"}}'
       - name: An installed tarball updates itself from the next one
         run: |
           installed="$RUNNER_TEMP/share/porta-desktop"
