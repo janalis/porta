@@ -577,6 +577,31 @@ static void start_porta(PortaWindow *self)
     vte_pty_spawn_async(self->pty, NULL != self->project ? self->project : g_get_home_dir(), argv, env, G_SPAWN_DEFAULT, NULL, NULL, NULL, -1, NULL, (GAsyncReadyCallback) on_spawned, self);
 }
 
+static void on_open(GApplication *application, GFile **files, int count, const char *hint, gpointer data);
+
+/* Files and folders dropped on the window go where opening them with Porta would. */
+static gboolean on_drop(GtkDropTarget *target, const GValue *value, double x, double y, gpointer data)
+{
+    PortaWindow *self = data;
+    GSList *list = gdk_file_list_get_files(g_value_get_boxed(value));
+    guint count = g_slist_length(list);
+    g_autofree GFile **files = g_new0(GFile *, count + 1);
+    guint i = 0;
+
+    (void) target;
+    (void) x;
+    (void) y;
+    for (GSList *entry = list; NULL != entry; entry = entry->next) {
+        files[i++] = entry->data;
+    }
+    g_slist_free(list);
+    if (0 == count) {
+        return FALSE;
+    }
+    on_open(G_APPLICATION(gtk_window_get_application(GTK_WINDOW(self->window))), files, (int) count, "", NULL);
+    return TRUE;
+}
+
 static void open_window(GtkApplication *application, const char *project)
 {
     PortaWindow *self = g_new0(PortaWindow, 1);
@@ -607,6 +632,9 @@ static void open_window(GtkApplication *application, const char *project)
     }
     apply_font(self);
     gtk_window_set_child(GTK_WINDOW(self->window), GTK_WIDGET(self->terminal));
+    GtkDropTarget *drop = gtk_drop_target_new(GDK_TYPE_FILE_LIST, GDK_ACTION_COPY);
+    g_signal_connect(drop, "drop", G_CALLBACK(on_drop), self);
+    gtk_widget_add_controller(GTK_WIDGET(self->terminal), GTK_EVENT_CONTROLLER(drop));
     gtk_event_controller_set_propagation_phase(keys, GTK_PHASE_CAPTURE);
     g_signal_connect(keys, "key-pressed", G_CALLBACK(on_key), self);
     gtk_widget_add_controller(GTK_WIDGET(self->terminal), keys);

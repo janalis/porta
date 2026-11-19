@@ -98,6 +98,21 @@ void Fail(string why)
     return default;
 }
 
+void AwaitState(bool unsaved)
+{
+    var deadline = DateTime.UtcNow.AddSeconds(30);
+    while (DateTime.UtcNow < deadline)
+    {
+        var state = Await(MessageKind.State, deadline - DateTime.UtcNow);
+        if ((state.Root != "0") == unsaved)
+        {
+            return;
+        }
+    }
+
+    Fail(unsaved ? "no unsaved file was told" : "the save was not told");
+}
+
 var trustDeadline = DateTime.UtcNow.AddSeconds(120);
 while (!Screen().Contains("Trust this project") && DateTime.UtcNow < trustDeadline && !process.HasExited)
 {
@@ -116,6 +131,21 @@ Console.WriteLine("smoke: the IDE is up inside WSL");
 
 Send(RelayFrame.Resize(100, 30));
 Thread.Sleep(1000);
+
+// The first run opens on the welcome card, which keeps the keys until it is dismissed.
+System.IO.File.WriteAllText(System.IO.Path.Combine(args[1], "a.php"), "<?php\n");
+Type("\u001b");
+Thread.Sleep(2000);
+
+// A file of the project, as the window hands it over, opens here; an edit is told, and so is its save.
+Type(DesktopMessage.OpenRequest(token, project + "/a.php"));
+Thread.Sleep(2000);
+Type("x");
+AwaitState(unsaved: true);
+Console.WriteLine("smoke: the file opened, and its edit was told");
+Type("\u0013");
+AwaitState(unsaved: false);
+Console.WriteLine("smoke: its save was told");
 
 Type(DesktopMessage.CloseRequest(new string('f', 32)));
 if (messages.TryTake(out var answer, 3000) && answer.Kind == MessageKind.Closing)

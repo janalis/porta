@@ -5,9 +5,10 @@ set -eu
 
 app=$1
 work=$(mktemp -d)
-mkdir -p "$work/home" "$work/shop"
+mkdir -p "$work/home" "$work/shop" "$work/data"
 echo '{}' > "$work/shop/composer.json"
-export PORTA_HOME="$work/home" PORTA_CACHE_DIR="$work/cache" GDK_BACKEND=x11
+printf '<?php\n' > "$work/shop/a.php"
+export PORTA_HOME="$work/home" PORTA_CACHE_DIR="$work/cache" GDK_BACKEND=x11 XDG_DATA_HOME="$work/data"
 
 # xvfb-run returns before its server always accepts clients: wait until it does.
 tries=0
@@ -49,9 +50,31 @@ echo 'smoke: the IDE is up in its window'
 sleep 2
 [ "$(pgrep -c -P "$pid" php || true)" -le 1 ] || { echo 'smoke: a second Porta was started' >&2; exit 1; }
 
+# The project joins the desktop's recent items.
+tries=0
+until grep -q "file://$work/shop" "$work/data/recently-used.xbel" 2>/dev/null; do
+    tries=$((tries + 1))
+    [ "$tries" -lt 40 ] || { echo 'smoke: the project is not among the recent items' >&2; kill "$pid"; exit 1; }
+    sleep 0.25
+done
+echo 'smoke: the project is among the recent items'
+
 # The first run opens on the welcome card, which keeps the keys until it is dismissed.
 press '^shop — Porta$' Escape
 sleep 2
+
+# A file of the project, opened with the application, goes to that project's window.
+"$app/porta-desktop" "$work/shop/a.php"
+sleep 3
+[ "$(pgrep -c -P "$pid" php || true)" -le 1 ] || { echo 'smoke: a file started a second Porta' >&2; exit 1; }
+
+# An edit marks the title, and saving clears the mark.
+press '^shop — Porta$' x
+await_window '^• shop — Porta$'
+echo 'smoke: the file opened here, and its edit marks the title'
+press '^• shop — Porta$' ctrl+s
+await_window '^shop — Porta$'
+echo 'smoke: saving clears the mark'
 press '^shop — Porta$' ctrl+q
 tries=0
 while kill -0 "$pid" 2>/dev/null; do

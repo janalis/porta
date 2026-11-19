@@ -74,6 +74,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         let controller = ProjectWindowController(runtime: runtime, project: project)
+        controller.onDropped = { [weak self] paths in
+            paths.forEach { self?.open(project: $0) }
+        }
         controller.onClosed = { [weak self, weak controller] in
             guard let self, let controller else { return }
             self.windows.removeAll { $0 === controller }

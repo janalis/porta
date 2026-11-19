@@ -14,6 +14,12 @@ versions follow [Semantic Versioning](https://semver.org/).
   bar. It updates itself the way it was installed: disk image, tarball,
   `.deb`/`.rpm` through the package manager, or the Windows installer. See
   `docs/desktop.md`, and the new Download page.
+- **Desktop application, as an application of the system**: unsaved work
+  shows in the window (the dot in the close button on macOS, a `•` before the
+  title elsewhere); projects join the system's recent items; a file opened with
+  Porta goes to its project's window; light and dark follow the system until a
+  theme is chosen; and a window whose Porta stopped offers to reopen it, show
+  the error log, or close.
 - **Help → Check for Updates…**: asks for a newer release now, whatever the
   cadence set in Settings.
 

@@ -26,6 +26,12 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
     private var answerTimer: Timer?
     private var exited = false
     private var ready = false
+    private var dropView: DropView?
+    /// Files and folders dropped on the window, for the application to send where they belong.
+    var onDropped: (([String]) -> Void)? {
+        get { dropView?.onDropped }
+        set { dropView?.onDropped = newValue }
+    }
 
     init(runtime: String, project: String?) {
         token = LaunchPlan.newToken()
@@ -42,7 +48,9 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
         window.title = "Porta"
         window.minSize = NSSize(width: 480, height: 320)
         window.collectionBehavior = [.fullScreenPrimary]
-        window.contentView = terminal
+        let holder = DropView(holding: terminal)
+        window.contentView = holder
+        dropView = holder
         window.setFrameAutosaveName("PortaProjectWindow")
         super.init(window: window)
         window.delegate = self

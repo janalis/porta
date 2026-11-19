@@ -20,8 +20,8 @@ on your `PATH`: **Settings → Command line** does that, if you want it to.
 
 Each project gets one window. Opening a project that is already open brings its
 window forward, and opening another project opens another window. A file opened
-with Porta, or a folder inside a project that is open, goes to that project's
-window.
+with Porta or dropped on its window (macOS and Linux), or a folder inside a
+project that is open, goes to that project's window.
 
 Projects you open join the system's recent items: **Window → Open Recent** and
 the Dock on macOS, the recent files of the desktop on Linux, and Windows'
