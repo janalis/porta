@@ -21,7 +21,7 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
     /// Paths for this project that arrived while Porta was starting, sent once it is ready.
     private var pending: [String] = []
     private let token: String
-    private let terminal: TerminalView
+    private let terminal: AccessibleTerminalView
     private var process: LocalProcess!
     private var filter = OscFilter()
     private var flow = CloseFlow()
@@ -40,7 +40,7 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
         self.runtime = runtime
         plan = LaunchPlan(runtime: runtime, project: project, inherited: ProcessInfo.processInfo.environment, token: token, home: NSHomeDirectory())
         projectKey = project.map(ProjectKey.of)
-        terminal = TerminalView(frame: NSRect(x: 0, y: 0, width: 1100, height: 720))
+        terminal = AccessibleTerminalView(frame: NSRect(x: 0, y: 0, width: 1100, height: 720))
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1100, height: 720),
@@ -349,6 +349,7 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
     func dataReceived(slice: ArraySlice<UInt8>) {
         let (output, payloads) = filter.consume(slice)
         terminal.feed(byteArray: output[...])
+        terminal.screenChanged()
         payloads.forEach(received)
     }
 

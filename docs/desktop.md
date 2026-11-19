@@ -137,6 +137,12 @@ the automated tests.
   application and choose **Open**.
 - **Images** depend on the terminal engine of each host. Where an engine has no
   pixel graphics, Porta falls back to drawing them with half-blocks.
+- **Screen readers.** On macOS, VoiceOver reads the window as a text area: the
+  screen's lines without the borders drawn around panes, with the cursor's
+  line as its insertion point. Porta is a full-screen program, so what it reads
+  is what is drawn, not a structure of controls. On Linux and Windows the
+  terminal engines (VTE, the Windows Terminal control) expose what they expose
+  themselves; that has not been checked.
 - **Linux packages use the system's GTK and VTE.** There is no Flatpak: its
   sandbox would stop the IDE running your tools.
 - **Unsaved work survives the application being killed**, a force quit, a

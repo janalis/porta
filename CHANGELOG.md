@@ -20,7 +20,8 @@ versions follow [Semantic Versioning](https://semver.org/).
   Porta goes to its project's window; light and dark follow the system until a
   theme is chosen; a run that ends while you are elsewhere is notified; and a
   window whose Porta stopped offers to reopen it, show the error log, or close.
-  On macOS, projects can share a window as tabs, as the system prefers.
+  On macOS, projects can share a window as tabs, as the system prefers, and
+  VoiceOver reads the window's text, the cursor's line as its insertion point.
   **Font…** picks the window's font in the system's own dialog: the Window menu
   on macOS, the title bar's menu button on Linux, the system menu on Windows.
 - **Help → Check for Updates…**: asks for a newer release now, whatever the
