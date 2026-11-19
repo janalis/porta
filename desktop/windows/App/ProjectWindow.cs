@@ -22,6 +22,8 @@ namespace Porta.Desktop.App
         private readonly DispatcherTimer answer = new DispatcherTimer { Interval = AnswerTime };
         private bool exited;
         private bool ready;
+        private bool? sentDark;
+        private readonly System.Collections.Generic.List<string> pending = new System.Collections.Generic.List<string>();
         private string? name;
         private readonly string runtime;
         private readonly string architecture;
@@ -39,7 +41,9 @@ namespace Porta.Desktop.App
 
             connection = Connect();
             answer.Tick += (_, _) => AnswerTimedOut();
-            Microsoft.Win32.SystemEvents.UserPreferenceChanged += (_, _) => Dispatcher.Invoke(SendAppearance);
+            // A static event: unsubscribed on close, or every closed window would stay alive.
+            Microsoft.Win32.SystemEvents.UserPreferenceChanged += PreferenceChanged;
+            Closed += (_, _) => Microsoft.Win32.SystemEvents.UserPreferenceChanged -= PreferenceChanged;
             Content = terminal;
             Loaded += (_, _) =>
             {
@@ -96,8 +100,15 @@ namespace Porta.Desktop.App
                 name = root.Substring(root.LastIndexOf('/') + 1) + " — Porta";
                 Title = name;
                 ready = true;
+                sentDark = null;
                 SendAppearance();
                 RememberRecent(root);
+                foreach (var path in pending)
+                {
+                    connection.WriteInput(DesktopMessage.OpenRequest(token, path));
+                }
+
+                pending.Clear();
             }
 
             if (kind == MessageKind.State && name != null)
@@ -178,8 +189,22 @@ namespace Porta.Desktop.App
             {
                 connection.WriteInput(DesktopMessage.OpenRequest(token, path));
             }
+            else
+            {
+                // Still starting: sent once Porta is ready.
+                pending.Add(path);
+            }
 
             Activate();
+        }
+
+        /// <summary>Light or dark mode is a General preference; the mouse, the wallpaper and the rest are not.</summary>
+        private void PreferenceChanged(object sender, Microsoft.Win32.UserPreferenceChangedEventArgs e)
+        {
+            if (e.Category == Microsoft.Win32.UserPreferenceCategory.General)
+            {
+                Dispatcher.Invoke(SendAppearance);
+            }
         }
 
         private void SendAppearance()
@@ -190,8 +215,13 @@ namespace Porta.Desktop.App
             }
 
             using var personalize = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-            var light = personalize?.GetValue("AppsUseLightTheme") is int value && value == 1;
-            connection.WriteInput(DesktopMessage.Appearance(token, dark: !light));
+            var dark = !(personalize?.GetValue("AppsUseLightTheme") is int value && value == 1);
+            // Sent when it changes: Porta rebuilds every pane's styles for a theme.
+            if (sentDark != dark)
+            {
+                sentDark = dark;
+                connection.WriteInput(DesktopMessage.Appearance(token, dark));
+            }
         }
 
         /// <summary>The project among Windows' recent items, as Explorer and the Start menu list them.</summary>
@@ -254,9 +284,11 @@ namespace Porta.Desktop.App
             terminal.Connection = connection;
         }
 
-        private void ShowLog()
+        private async void ShowLog()
         {
-            var windows = Root == null ? null : WindowRegistry.WindowsPath(Root + "/.porta/error.log");
+            // wslpath can take seconds while WSL starts: never on the window's thread.
+            var root = Root;
+            var windows = root == null ? null : await System.Threading.Tasks.Task.Run(() => WindowRegistry.WindowsPath(root + "/.porta/error.log"));
             if (windows != null)
             {
                 // Shown in its folder, never launched: the project decides what that path is.

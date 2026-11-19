@@ -31,6 +31,7 @@ typedef struct {
     char *project; /* what this window was opened on, for a restart; NULL for the picker */
     char *title;   /* the project's name, without the unsaved mark */
     gboolean ready;
+    GPtrArray *pending; /* paths for this project, sent once Porta is ready */
     GPid pid;
     int master;
     guint reader;
@@ -105,6 +106,7 @@ static void release(PortaWindow *self)
     g_free(self->menu_json);
     g_free(self->project);
     g_free(self->title);
+    g_ptr_array_unref(self->pending);
     g_free(self);
 }
 
@@ -273,7 +275,12 @@ static void appearance_from(GVariant *value)
 {
     g_autoptr(GVariant) inner = g_variant_is_of_type(value, G_VARIANT_TYPE_VARIANT) ? g_variant_get_variant(value) : g_variant_ref(value);
     if (g_variant_is_of_type(inner, G_VARIANT_TYPE_UINT32)) {
-        dark_preferred = 1 == g_variant_get_uint32(inner);
+        guint32 scheme = g_variant_get_uint32(inner);
+        /* 1 dark, 2 light; 0 is no preference, which leaves Porta's own theme alone. */
+        if (1 != scheme && 2 != scheme) {
+            return;
+        }
+        dark_preferred = 1 == scheme;
         appearance_known = TRUE;
         for (GList *entry = windows; NULL != entry; entry = entry->next) {
             send_appearance(entry->data);
@@ -342,7 +349,15 @@ static void received(PortaWindow *self, PortaOsc *osc)
             gtk_recent_manager_add_item(gtk_recent_manager_get_default(), uri);
         }
         self->ready = TRUE;
+        /* Reopen starts what is open now, which a switch may have changed. */
+        g_free(self->project);
+        self->project = g_strdup(value);
         send_appearance(self);
+        for (guint i = 0; i < self->pending->len; i++) {
+            g_autofree char *request = porta_open_request(self->token, g_ptr_array_index(self->pending, i));
+            write_to_porta(self, request, -1);
+        }
+        g_ptr_array_set_size(self->pending, 0);
     }
     if (PORTA_MESSAGE_STATE == kind && NULL != self->title) {
         /* A mark in the title: closing this window would lose work. */
@@ -415,13 +430,16 @@ static gboolean sync_size(GtkWidget *widget, GdkFrameClock *clock, gpointer data
 }
 
 static void start_porta(PortaWindow *self);
+static void offer_recovery(PortaWindow *self);
 
 static void recovery_answered(GObject *source, GAsyncResult *result, gpointer data)
 {
     PortaWindow *self = data;
     int answer = gtk_alert_dialog_choose_finish(GTK_ALERT_DIALOG(source), result, NULL);
 
+    /* The dialog's own reference, taken when it was shown: the window may have closed since. */
     if (self->closed) {
+        release(self);
         return;
     }
     if (0 == answer) {
@@ -441,9 +459,12 @@ static void recovery_answered(GObject *source, GAsyncResult *result, gpointer da
         g_autoptr(GtkFileLauncher) launcher = gtk_file_launcher_new(file);
         /* Shown in its folder, never launched: the project decides what that path is. */
         gtk_file_launcher_open_containing_folder(launcher, GTK_WINDOW(self->window), NULL, NULL, NULL);
+        /* Still stopped: the choice stays on offer. */
+        offer_recovery(self);
     } else {
         gtk_window_destroy(GTK_WINDOW(self->window));
     }
+    release(self);
 }
 
 /* A window whose Porta stopped says what can be done, rather than just staying. */
@@ -454,6 +475,7 @@ static void offer_recovery(PortaWindow *self)
 
     gtk_alert_dialog_set_detail(dialog, "What it printed is in the window. The project's .porta/error.log may say more.");
     gtk_alert_dialog_set_buttons(dialog, buttons);
+    self->holds++;
     gtk_alert_dialog_choose(dialog, GTK_WINDOW(self->window), NULL, recovery_answered, self);
 }
 
@@ -613,6 +635,7 @@ static void open_window(GtkApplication *application, const char *project)
 
     self->holds = 2;
     self->project = g_strdup(project);
+    self->pending = g_ptr_array_new_with_free_func(g_free);
     self->filter = porta_filter_new();
     self->token = porta_new_token();
     self->project_key = NULL != project ? project_key(project) : NULL;
@@ -746,10 +769,15 @@ static void on_open(GApplication *application, GFile **files, int count, const c
             if (0 == g_strcmp0(window->project_key, key)) {
                 gtk_window_present(GTK_WINDOW(window->window));
                 found = TRUE;
-            } else if (NULL != window->project_key && window->ready && g_str_has_prefix(key, window->project_key) && '/' == key[strlen(window->project_key)]) {
-                /* A file, or a folder inside a project already open, goes to that window. */
-                g_autofree char *request = porta_open_request(window->token, key);
-                write_to_porta(window, request, -1);
+            } else if (NULL != window->project_key && g_str_has_prefix(key, window->project_key) && '/' == key[strlen(window->project_key)]) {
+                /* A file, or a folder inside a project already open, goes to that window,
+                 * once it is ready if it is still starting. */
+                if (window->ready) {
+                    g_autofree char *request = porta_open_request(window->token, key);
+                    write_to_porta(window, request, -1);
+                } else {
+                    g_ptr_array_add(window->pending, g_strdup(key));
+                }
                 gtk_window_present(GTK_WINDOW(window->window));
                 found = TRUE;
             }

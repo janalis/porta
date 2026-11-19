@@ -11,12 +11,11 @@ use Porta\Desktop\DesktopSession;
 use Porta\Desktop\SystemMenu;
 use Porta\Editor\BufferManager;
 use Porta\Event\ThemeChanged;
-use Porta\Settings\SettingsProvenance;
 use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\Services;
-use Porta\Tests\Support\TempProject;
+use Porta\Widget\FileTreeWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuItem;
@@ -74,7 +73,7 @@ final class DesktopProtocolTest extends TestCase
     {
         \putenv(DesktopSession::FLAG.'=1');
         \putenv(DesktopSession::TOKEN.'='.$this->contract['examples']['token']);
-        $this->bootIde(['composer.json' => '{}', 'a.php' => "<?php\n"]);
+        $this->bootIde(['composer.json' => '{}', 'a.php' => "<?php\n", 'src/b.php' => "<?php\n"]);
         $this->terminal->clearOutput();
 
         return Services::resolve($this->ide, DesktopProtocol::class);
@@ -318,14 +317,14 @@ final class DesktopProtocolTest extends TestCase
         $this->assertNull($this->ide->reopenAt());
     }
 
-    public function testAnythingElseIsAnotherProject(): void
+    public function testAFolderOfThisProjectIsShownInTheTreeNotOpenedAsAProject(): void
     {
         $protocol = $this->bootDesktop();
-        $elsewhere = new TempProject(['composer.json' => '{}', 'src/b.php' => "<?php\n"]);
 
-        $protocol->onInput($this->request('open;'.\base64_encode($elsewhere->path('src/b.php'))));
+        $protocol->onInput($this->request('open;'.\base64_encode($this->project->path('src'))));
 
-        $this->assertSame(\realpath($elsewhere->path('src')), $this->ide->reopenAt(), 'a file elsewhere opens its folder');
+        $this->assertSame($this->project->path('src'), Services::resolve($this->ide, FileTreeWidget::class)->selectedNode()?->path);
+        $this->assertNull($this->ide->reopenAt(), 'the project stays the one it is');
     }
 
     public function testTheSystemAppearanceIsFollowedUntilAThemeIsChosen(): void
@@ -337,8 +336,8 @@ final class DesktopProtocolTest extends TestCase
         });
 
         $protocol->onInput($this->request('appearance;light'));
+        // Written behind the IDE's back, as another window or an editor would.
         $this->project->write('.porta.json', content: '{"settings":{"theme":"dark"}}');
-        Services::resolve($this->ide, SettingsProvenance::class)->invalidate();
         $protocol->onInput($this->request('appearance;light'));
 
         $this->assertSame(['light'], $themes, 'a theme chosen for the project stays');

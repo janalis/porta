@@ -17,7 +17,10 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
     var onCloseRefused: (() -> Void)?
     private(set) var projectKey: String?
 
-    private let plan: LaunchPlan
+    private var plan: LaunchPlan
+    private let runtime: String
+    /// Paths for this project that arrived while Porta was starting, sent once it is ready.
+    private var pending: [String] = []
     private let token: String
     private let terminal: TerminalView
     private var process: LocalProcess!
@@ -35,6 +38,7 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
 
     init(runtime: String, project: String?) {
         token = LaunchPlan.newToken()
+        self.runtime = runtime
         plan = LaunchPlan(runtime: runtime, project: project, inherited: ProcessInfo.processInfo.environment, token: token, home: NSHomeDirectory())
         projectKey = project.map(ProjectKey.of)
         terminal = TerminalView(frame: NSRect(x: 0, y: 0, width: 1100, height: 720))
@@ -78,8 +82,11 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
 
     /// A file or folder for this window's project, from Finder or the Dock.
     func open(path: String) {
-        guard ready else { return }
-        send(DesktopMessage.openRequest(token: token, path: path))
+        if ready {
+            send(DesktopMessage.openRequest(token: token, path: path))
+        } else {
+            pending.append(path)
+        }
         focus()
     }
 
@@ -175,7 +182,11 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
             window?.representedURL = folder
             NSDocumentController.shared.noteNewRecentDocumentURL(folder)
             ready = true
+            // Reopen starts what is open now, which a switch may have changed.
+            plan = LaunchPlan(runtime: runtime, project: root, inherited: ProcessInfo.processInfo.environment, token: token, home: NSHomeDirectory())
             sendAppearance()
+            pending.forEach { send(DesktopMessage.openRequest(token: token, path: $0)) }
+            pending.removeAll()
         }
         if case let .state(unsaved) = message {
             // The dot in the close button: closing this window would lose work.
