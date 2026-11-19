@@ -10,6 +10,13 @@ if ($install.ExitCode -ne 0) { throw "the installer exited with $($install.ExitC
 
 $app = Join-Path $env:LOCALAPPDATA 'Programs\Porta\Porta.exe'
 if (-not (Test-Path $app)) { throw "nothing installed at $app" }
+# The build for this machine: Windows on Arm gets the arm64 window, not x64 under emulation.
+$bytes = [IO.File]::ReadAllBytes($app)
+$machine = [BitConverter]::ToUInt16($bytes, [BitConverter]::ToInt32($bytes, 0x3C) + 4)
+$expected = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64' -or $env:PROCESSOR_ARCHITEW6432 -eq 'ARM64') { 0xAA64 } else { 0x8664 }
+if ($machine -ne $expected) { throw ('Porta.exe is built for machine 0x{0:X4}, this one is 0x{1:X4}' -f $machine, $expected) }
+Write-Output ('smoke: Porta.exe is built for this machine (0x{0:X4})' -f $machine)
+
 $shortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'Porta.lnk'
 if (-not (Test-Path $shortcut)) { throw "no Start menu entry at $shortcut" }
 

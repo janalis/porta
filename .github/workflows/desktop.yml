@@ -308,6 +308,8 @@ jobs:
           ref: ${{ inputs.ref || github.sha }}
       - run: dotnet test desktop/windows/Tests --configuration Release
       - run: dotnet build desktop/windows/App --configuration Release
+      # The window for Windows on Arm, natively: .NET Framework 4.8.1 is the first to run on Arm64.
+      - run: dotnet build desktop/windows/App --configuration Release -p:TargetFramework=net481 -p:PlatformTarget=ARM64 -r win-arm64
       - uses: actions/download-artifact@v8
         with:
           name: desktop-phar
@@ -331,7 +333,7 @@ jobs:
       - name: The installer
         shell: pwsh
         run: |
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=$env:VERSION" "/DSourceDir=$PWD\desktop\windows\App\bin\Release\net48" "/DRuntimeDir=$PWD\runtime" "/DOutputDir=$PWD\dist" desktop\windows\Installer\porta.iss
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=$env:VERSION" "/DSourceDir=$PWD\desktop\windows\App\bin\Release\net48" "/DArmSourceDir=$PWD\desktop\windows\App\bin\Release\net481\win-arm64" "/DRuntimeDir=$PWD\runtime" "/DOutputDir=$PWD\dist" desktop\windows\Installer\porta.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: Vampire/setup-wsl@4c48163d9f981914dd8caa0fc335fe19cca5bff4 # v7.2.0
         with:
@@ -353,7 +355,7 @@ jobs:
           name: desktop-unsigned-windows
           path: dist/*.exe
 
-  # The same installer on Windows on Arm: the x64 application under emulation,
+  # The same installer on Windows on Arm: the window's own arm64 build,
   # running the arm64 PHP inside an arm64 distribution.
   windows-arm:
     needs: windows

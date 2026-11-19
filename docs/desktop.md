@@ -123,10 +123,11 @@ next time the application starts.
 | --- | --- | --- | --- |
 | Runs Porta | natively | natively | inside WSL |
 | Needs | macOS 13 | GTK 4.10, VTE 0.70 | WSL with a Linux distribution |
-| Architectures | arm64, x86-64 | x86-64, arm64 | x86-64, and Arm through Windows' x64 emulation |
+| Architectures | arm64, x86-64 | x86-64, arm64 | x86-64, arm64 |
 
-On Windows on Arm the application runs under Windows' x64 emulation and runs
-Porta inside an arm64 WSL distribution; that last part is not yet covered by
+On Windows on Arm the installer puts in the window's own arm64 build (it needs
+.NET Framework 4.8.1, part of Windows 11) and runs Porta inside an arm64 WSL
+distribution; that last part is not yet covered by
 the automated tests.
 
 - **Windows needs WSL.** Porta depends on POSIX terminals, signals and process
@@ -161,7 +162,7 @@ protocol every side is tested against.
 | macOS disk image | `desktop/macos/build-dmg.sh <Porta.app> <output.dmg>` (needs `pip install dmgbuild`) |
 | macOS | `desktop/macos/build-app.sh --php <php> --phar <phar> --version <x.y.z> --out <dir>` |
 | Linux | `desktop/linux/package.sh --php <php> --phar <phar> --version <x.y.z> --out <dir>` |
-| Windows | `dotnet build desktop/windows/App`, then `desktop/windows/Installer/porta.iss` with Inno Setup |
+| Windows | `dotnet build desktop/windows/App` (and again with `-p:TargetFramework=net481 -p:PlatformTarget=ARM64 -r win-arm64` for Arm, passed to Inno Setup as `ArmSourceDir`), then `desktop/windows/Installer/porta.iss` with Inno Setup |
 
 The release workflow signs when these secrets exist, and ad hoc otherwise:
 `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGN_IDENTITY`,

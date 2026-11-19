@@ -36,7 +36,13 @@ CloseApplications=yes
 RestartApplications=no
 
 [Files]
+#ifdef ArmSourceDir
+; Two builds of the window, one installed: Windows on Arm gets its own, not x64 under emulation.
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion; Check: not IsArm64
+Source: "{#ArmSourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion; Check: IsArm64
+#else
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
+#endif
 Source: "{#RuntimeDir}\*"; DestDir: "{app}\runtime"; Flags: recursesubdirs ignoreversion
 
 [Icons]
