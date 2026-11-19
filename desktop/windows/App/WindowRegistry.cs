@@ -57,6 +57,7 @@ namespace Porta.Desktop.App
             }
 
             var opened = new ProjectWindow(runtime, architecture, root);
+            opened.Dropped += Open;
             opened.Closed += (_, _) => windows.Remove(opened);
             windows.Add(opened);
             opened.Show();

@@ -45,6 +45,27 @@ namespace Porta.Desktop.App
             Microsoft.Win32.SystemEvents.UserPreferenceChanged += PreferenceChanged;
             Closed += (_, _) => Microsoft.Win32.SystemEvents.UserPreferenceChanged -= PreferenceChanged;
             Content = terminal;
+
+            // Files and folders dropped on the window go where opening them would. The terminal is a
+            // native child window with no drop target of its own, so the drop reaches this one.
+            AllowDrop = true;
+            DragOver += (_, e) =>
+            {
+                e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
+                e.Handled = true;
+            };
+            Drop += (_, e) =>
+            {
+                if (e.Data.GetData(DataFormats.FileDrop) is string[] paths)
+                {
+                    foreach (var path in paths)
+                    {
+                        Dropped?.Invoke(path);
+                    }
+                }
+
+                e.Handled = true;
+            };
             Loaded += (_, _) =>
             {
                 var settings = ReadSettings();
@@ -53,6 +74,9 @@ namespace Porta.Desktop.App
                 terminal.Focus();
             };
         }
+
+        /// <summary>A file or folder dropped on the window, as Windows names it.</summary>
+        public event Action<string>? Dropped;
 
         /// <summary>The project, as WSL names it.</summary>
         public string? Root { get; private set; }
