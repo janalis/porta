@@ -3986,6 +3986,14 @@
         <source>Download the new version from %url%</source>
         <target>%url% から新しいバージョンをダウンロードしてください</target>
       </trans-unit>
+      <trans-unit id="1334">
+        <source>%title% finished</source>
+        <target>%title% が完了しました</target>
+      </trans-unit>
+      <trans-unit id="1335">
+        <source>%title% failed (exit code %code%)</source>
+        <target>%title% が失敗しました (終了コード %code%)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

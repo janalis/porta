@@ -1,6 +1,7 @@
 import AppKit
 import PortaDesktopCore
 import SwiftTerm
+import UserNotifications
 
 /// One window running one Porta.
 final class ProjectWindowController: NSWindowController, NSWindowDelegate, TerminalViewDelegate, LocalProcessDelegate {
@@ -88,6 +89,31 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
             pending.append(path)
         }
         focus()
+    }
+
+    /// A run ended. Told only when this window is not the one in front: the user is elsewhere.
+    private func notify(_ text: String) {
+        guard !(NSApp.isActive && window?.isKeyWindow == true) else { return }
+        let content = UNMutableNotificationContent()
+        content.title = window?.title ?? "Porta"
+        content.body = text
+        content.userInfo = ["window": token]
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            DispatchQueue.main.async {
+                if granted {
+                    center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+                } else {
+                    // Notifications turned off for Porta: the Dock icon bounces once instead.
+                    NSApp.requestUserAttention(.informationalRequest)
+                }
+            }
+        }
+    }
+
+    /// Whether a notification came from this window.
+    func posted(_ notification: UNNotification) -> Bool {
+        notification.request.content.userInfo["window"] as? String == token
     }
 
     /// The system's light or dark mode, for Porta and for the window around it.
@@ -187,6 +213,9 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
             sendAppearance()
             pending.forEach { send(DesktopMessage.openRequest(token: token, path: $0)) }
             pending.removeAll()
+        }
+        if case let .notify(text) = message {
+            notify(text)
         }
         if case let .state(unsaved) = message {
             // The dot in the close button: closing this window would lose work.

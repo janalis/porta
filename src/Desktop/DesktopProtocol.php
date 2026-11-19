@@ -7,10 +7,13 @@ namespace Porta\Desktop;
 use Porta\Config\LiveKeybindings;
 use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
+use Porta\Event\RunFinished;
+use Porta\I18n\Translator;
 use Porta\Support\ControlChars;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\WorkbenchActions;
 use Revolt\EventLoop;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Event\InputEvent;
 use Symfony\Component\Tui\Tui;
 
@@ -45,6 +48,7 @@ final class DesktopProtocol
         private readonly SystemMenu $systemMenu,
         private readonly DesktopRequests $requests,
         private readonly BufferManager $buffers,
+        private readonly Translator $translator,
     ) {}
 
     /** Starts listening, in a desktop launch only: in a terminal these bytes mean nothing. */
@@ -122,6 +126,25 @@ final class DesktopProtocol
     }
 
     /** What the window shows of the IDE: how many files are unsaved, and the menus. */
+    /**
+     * A run ended: the window tells the system, when it is not the one in front —
+     * a notification on macOS and Linux, the taskbar button flashing on Windows.
+     * Not before ready: a window still starting has nobody waiting on a run.
+     */
+    #[AsEventListener]
+    public function onRunFinished(RunFinished $event): void
+    {
+        // Never ready outside a desktop launch: announceReady() returns first there.
+        if (null === $this->dirty) {
+            return;
+        }
+        $title = ControlChars::line($event->title);
+        $text = 0 === $event->code
+            ? $this->translator->trans('%title% finished', ['%title%' => $title])
+            : $this->translator->trans('%title% failed (exit code %code%)', ['%title%' => $title, '%code%' => $event->code]);
+        $this->send('notify;'.\base64_encode($text));
+    }
+
     private function sync(): void
     {
         $dirty = $this->buffers->dirtyCount();

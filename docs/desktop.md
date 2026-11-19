@@ -40,6 +40,11 @@ a `•` before the title elsewhere. Closing it keeps it open and says so. Close 
 within three seconds to discard them. If Porta does not answer, the application
 offers to force quit.
 
+When a run in the terminal panel ends while you are in another application or
+window, the system tells you: a notification on macOS and Linux (clicking it
+brings the window back), the taskbar button flashing on Windows. macOS asks
+once whether Porta may notify; if you say no, the Dock icon bounces instead.
+
 If Porta stops on its own, the window says so and offers to reopen it in
 place, show the project's `.porta/error.log`, or close.
 

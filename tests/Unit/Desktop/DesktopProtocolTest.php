@@ -10,6 +10,7 @@ use Porta\Desktop\DesktopProtocol;
 use Porta\Desktop\DesktopSession;
 use Porta\Desktop\SystemMenu;
 use Porta\Editor\BufferManager;
+use Porta\Event\RunFinished;
 use Porta\Event\ThemeChanged;
 use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
@@ -31,13 +32,13 @@ final class DesktopProtocolTest extends TestCase
     use BootsIde;
     use PumpsLoop;
 
-    /** @var array{examples: array{token: string, root: string, close: string, ready: string, accepted: string, closing: string, open: string, openPath: string, appearance: string, state: string}} */
+    /** @var array{examples: array{token: string, root: string, close: string, ready: string, accepted: string, closing: string, open: string, openPath: string, appearance: string, state: string, notify: string, notifyText: string}} */
     private array $contract;
 
     #[\Override]
     protected function setUp(): void
     {
-        /** @var array{examples: array{token: string, root: string, close: string, ready: string, accepted: string, closing: string, open: string, openPath: string, appearance: string, state: string}} $contract */
+        /** @var array{examples: array{token: string, root: string, close: string, ready: string, accepted: string, closing: string, open: string, openPath: string, appearance: string, state: string, notify: string, notifyText: string}} $contract */
         $contract = \json_decode((string) \file_get_contents(\dirname(__DIR__, 3).'/desktop/contract/protocol.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->contract = $contract;
     }
@@ -341,6 +342,33 @@ final class DesktopProtocolTest extends TestCase
         $protocol->onInput($this->request('appearance;light'));
 
         $this->assertSame(['light'], $themes, 'a theme chosen for the project stays');
+    }
+
+    public function testARunEndingIsToldToTheWindowOnceItIsReady(): void
+    {
+        $protocol = $this->bootDesktop();
+        $events = Services::resolve($this->ide, EventDispatcherInterface::class);
+        $events->dispatch(new RunFinished('early', 0));
+        $this->assertStringNotContainsString(';notify;', $this->terminal->getOutput(), 'a window still starting has nobody waiting on a run');
+
+        $protocol->announceReady($this->project->dir);
+        $events->dispatch(new RunFinished('composer test', 1));
+        $events->dispatch(new RunFinished('make', 0));
+        $protocol->detach();
+
+        $this->assertStringContainsString($this->contract['examples']['notify'], $this->terminal->getOutput());
+        $this->assertStringContainsString(';notify;'.\base64_encode('make finished')."\x1b\\", $this->terminal->getOutput());
+    }
+
+    public function testATerminalLaunchHasNoWindowToTell(): void
+    {
+        $this->bootIde(['composer.json' => '{}']);
+        $protocol = Services::resolve($this->ide, DesktopProtocol::class);
+        $protocol->announceReady($this->project->dir);
+
+        $protocol->onRunFinished(new RunFinished('make', 0));
+
+        $this->assertStringNotContainsString(';notify;', $this->terminal->getOutput(), 'a terminal launch has no window to tell');
     }
 
     public function testTheContractsExamplesAreTheMessagesPortaReads(): void

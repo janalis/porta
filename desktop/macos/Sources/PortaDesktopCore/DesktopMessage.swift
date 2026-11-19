@@ -7,6 +7,8 @@ public enum DesktopMessage: Equatable {
     case closing
     case menu(MenuBar)
     case state(unsaved: Int)
+    /// A run ended; the text says which and how.
+    case notify(text: String)
 
     public static let oscCode = 7777
     private static let namespace = "porta-desktop"
@@ -32,6 +34,11 @@ public enum DesktopMessage: Equatable {
                 return nil
             }
             return .state(unsaved: unsaved)
+        case ("notify", 4):
+            guard let data = Data(base64Encoded: fields[3]), let text = String(data: data, encoding: .utf8) else {
+                return nil
+            }
+            return .notify(text: text)
         case ("menu", 4):
             guard let data = Data(base64Encoded: fields[3]), let menu = try? JSONDecoder().decode(MenuBar.self, from: data) else {
                 return nil

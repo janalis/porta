@@ -8,6 +8,7 @@ use Porta\Container\AsIdeService;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferSaver;
+use Porta\Event\RunFinished;
 use Porta\Event\TerminalRevealRequested;
 use Porta\Event\TerminalSessionCloseRequested;
 use Porta\Event\TerminalSessionCycleRequested;
@@ -20,6 +21,7 @@ use Porta\Terminal\TerminalSessions;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Notifier;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
 
@@ -71,6 +73,7 @@ final class RunController
         // Optional trailing: a bare construction runs what is on disk.
         private readonly ?BufferSaver $saver = null,
         private readonly ?BufferManager $buffers = null,
+        private readonly ?EventDispatcherInterface $events = null,
     ) {}
 
     public function openRunMenu(): void
@@ -297,6 +300,7 @@ final class RunController
                 ($this->watchers[$session->id] ?? null)?->__invoke($chunk);
             })
             ->onExit(function (int $code) use ($session): void {
+                $this->events?->dispatch(new RunFinished($session->title, $code));
                 $session->title = \sprintf('%s (%d)', $session->title, $code);
                 $waiter = $this->waiting[$session->id] ?? null;
                 unset($this->waiting[$session->id]);

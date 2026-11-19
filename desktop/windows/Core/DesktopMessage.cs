@@ -13,6 +13,9 @@ namespace Porta.Desktop
 
         /// <summary>How many files are unsaved, in the second field.</summary>
         State,
+
+        /// <summary>A run ended; the second field says which and how.</summary>
+        Notify,
     }
 
     /// <summary>The conversation with Porta, as desktop/contract/protocol.json defines it.</summary>
@@ -36,6 +39,16 @@ namespace Porta.Desktop
                     return (MessageKind.Closing, "");
                 case "state" when fields.Length == 4 && fields[3].Length > 0 && fields[3].All(char.IsDigit):
                     return (MessageKind.State, fields[3]);
+                case "notify" when fields.Length == 4:
+                    try
+                    {
+                        return (MessageKind.Notify, Encoding.UTF8.GetString(Convert.FromBase64String(fields[3])));
+                    }
+                    catch (FormatException)
+                    {
+                        return (MessageKind.None, "");
+                    }
+
                 case "ready" when fields.Length == 4:
                     return (MessageKind.Ready, Encoding.UTF8.GetString(Convert.FromBase64String(fields[3])));
                 default:

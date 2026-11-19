@@ -76,6 +76,7 @@ return [
         'Custos>Plugin',
         'Desktop>Config', // the picker expands the ~ of a typed folder
         'Desktop>Container',
+        'Desktop>Event', // a run that ended is told to the window, for the system to notify
         'Desktop>Editor', // what is unsaved is kept when a session ends unasked
         'Desktop>History', // the picker offers the recent projects
         'Desktop>Settings', // the window follows the system's light or dark mode through the live theme switch

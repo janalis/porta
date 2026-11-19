@@ -14,6 +14,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Notifier;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -30,6 +31,7 @@ final class TestRunController
         ?TerminalPanelWidget $panel = null,
         ?CodeEditorWidget $editor = null,
         ?LocalOnly $localOnly = null,
+        ?EventDispatcherInterface $events = null,
     ): RunController {
         $tui ??= TestTui::create(100, rows: 24);
 
@@ -44,6 +46,7 @@ final class TestRunController
             $root,
             $sessions ?? new TerminalSessions(),
             $localOnly,
+            events: $events,
         );
     }
 }

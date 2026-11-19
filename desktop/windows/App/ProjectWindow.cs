@@ -135,6 +135,12 @@ namespace Porta.Desktop.App
                 pending.Clear();
             }
 
+            if (kind == MessageKind.Notify && !IsActive)
+            {
+                // A run ended while the user was elsewhere: the taskbar button flashes until they come back.
+                Flash();
+            }
+
             if (kind == MessageKind.State && name != null)
             {
                 // A mark in the title: closing this window would lose work.
@@ -260,6 +266,33 @@ namespace Porta.Desktop.App
                 }
             });
         }
+
+        private void Flash()
+        {
+            var info = new FlashInfo
+            {
+                Size = (uint)System.Runtime.InteropServices.Marshal.SizeOf<FlashInfo>(),
+                Window = new System.Windows.Interop.WindowInteropHelper(this).Handle,
+                Flags = FlashTray | FlashUntilForeground,
+            };
+            FlashWindowEx(ref info);
+        }
+
+        private const uint FlashTray = 2;
+        private const uint FlashUntilForeground = 12;
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct FlashInfo
+        {
+            public uint Size;
+            public IntPtr Window;
+            public uint Flags;
+            public uint Count;
+            public uint Timeout;
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool FlashWindowEx(ref FlashInfo info);
 
         private const uint ShardPathW = 3;
 

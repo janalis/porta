@@ -54,6 +54,8 @@ final class ContractTests: XCTestCase {
         XCTAssertEqual(DesktopMessage.appearance(token: token, dark: true), examples["appearance"])
         XCTAssertEqual(DesktopMessage.parse(payload: payload(try XCTUnwrap(examples["state"])), token: token), .state(unsaved: 2))
         XCTAssertNil(DesktopMessage.parse(payload: "porta-desktop;\(token);state;-1", token: token))
+        XCTAssertEqual(DesktopMessage.parse(payload: payload(try XCTUnwrap(examples["notify"])), token: token), .notify(text: try XCTUnwrap(examples["notifyText"])))
+        XCTAssertNil(DesktopMessage.parse(payload: "porta-desktop;\(token);notify;not base64!", token: token))
     }
 
     func testAnotherSessionsTokenIsNotListenedTo() throws {

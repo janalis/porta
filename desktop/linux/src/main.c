@@ -306,10 +306,22 @@ static void on_setting_changed(GDBusProxy *proxy, const char *sender, const char
     }
 }
 
-static void follow_appearance(GApplication *application, gpointer data)
+static void focus_window(GSimpleAction *action, GVariant *parameter, gpointer data)
 {
-    (void) application;
+    const char *token = g_variant_get_string(parameter, NULL);
+
+    (void) action;
     (void) data;
+    for (GList *entry = windows; NULL != entry; entry = entry->next) {
+        PortaWindow *window = entry->data;
+        if (0 == g_strcmp0(window->token, token)) {
+            gtk_window_present(GTK_WINDOW(window->window));
+        }
+    }
+}
+
+static void follow_appearance(void)
+{
     g_autoptr(GError) error = NULL;
     GDBusProxy *portal = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION, G_DBUS_PROXY_FLAGS_NONE, NULL,
         "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop", "org.freedesktop.portal.Settings", NULL, &error);
@@ -323,6 +335,16 @@ static void follow_appearance(GApplication *application, gpointer data)
         appearance_from(value);
     }
     g_signal_connect(portal, "g-signal", G_CALLBACK(on_setting_changed), NULL);
+}
+
+static void on_startup(GApplication *application, gpointer data)
+{
+    /* What a notification runs when clicked: the window it came from comes forward. */
+    static const GActionEntry actions[] = {{.name = "focus-window", .activate = focus_window, .parameter_type = "s"}};
+
+    (void) data;
+    g_action_map_add_action_entries(G_ACTION_MAP(application), actions, G_N_ELEMENTS(actions), NULL);
+    follow_appearance();
 }
 
 static void received(PortaWindow *self, PortaOsc *osc)
@@ -358,6 +380,13 @@ static void received(PortaWindow *self, PortaOsc *osc)
             write_to_porta(self, request, -1);
         }
         g_ptr_array_set_size(self->pending, 0);
+    }
+    if (PORTA_MESSAGE_NOTIFY == kind && !gtk_window_is_active(GTK_WINDOW(self->window))) {
+        /* A run ended while the user was elsewhere: the desktop says so, and clicking brings this window. */
+        g_autoptr(GNotification) notification = g_notification_new(NULL != self->title ? self->title : "Porta");
+        g_notification_set_body(notification, value);
+        g_notification_set_default_action_and_target(notification, "app.focus-window", "s", self->token);
+        g_application_send_notification(G_APPLICATION(gtk_window_get_application(GTK_WINDOW(self->window))), NULL, notification);
     }
     if (PORTA_MESSAGE_STATE == kind && NULL != self->title) {
         /* A mark in the title: closing this window would lose work. */
@@ -795,6 +824,6 @@ int main(int argc, char **argv)
     g_set_application_name("Porta");
     g_signal_connect(application, "activate", G_CALLBACK(on_activate), NULL);
     g_signal_connect(application, "open", G_CALLBACK(on_open), NULL);
-    g_signal_connect(application, "startup", G_CALLBACK(follow_appearance), NULL);
+    g_signal_connect(application, "startup", G_CALLBACK(on_startup), NULL);
     return g_application_run(G_APPLICATION(application), argc, argv);
 }

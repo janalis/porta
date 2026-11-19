@@ -3986,6 +3986,14 @@
         <source>Download the new version from %url%</source>
         <target>Neue Version herunterladen: %url%</target>
       </trans-unit>
+      <trans-unit id="1334">
+        <source>%title% finished</source>
+        <target>%title% ist fertig</target>
+      </trans-unit>
+      <trans-unit id="1335">
+        <source>%title% failed (exit code %code%)</source>
+        <target>%title% ist fehlgeschlagen (Exit-Code %code%)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

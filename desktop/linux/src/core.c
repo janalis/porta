@@ -187,6 +187,9 @@ PortaMessageKind porta_message_parse(const char *payload, const char *token, cha
     } else if (4 == count && 0 == g_strcmp0(fields[2], "state") && '\0' != fields[3][0] && strspn(fields[3], "0123456789") == strlen(fields[3])) {
         kind = PORTA_MESSAGE_STATE;
         *value = g_strdup(fields[3]);
+    } else if (4 == count && 0 == g_strcmp0(fields[2], "notify")) {
+        kind = PORTA_MESSAGE_NOTIFY;
+        *value = decoded(fields[3]);
     } else if (4 == count && 0 == g_strcmp0(fields[2], "menu")) {
         kind = PORTA_MESSAGE_MENU;
         *value = decoded(fields[3]);

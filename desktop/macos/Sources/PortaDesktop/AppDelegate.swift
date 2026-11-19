@@ -1,8 +1,9 @@
 import AppKit
 import PortaDesktopCore
+import UserNotifications
 
 /// One process, one window per project: LaunchServices hands every further launch to this instance.
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     private var windows: [ProjectWindowController] = []
     private let menus = MainMenu()
     private var quitting = false
@@ -11,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         menus.install(target: self)
+        UNUserNotificationCenter.current().delegate = self
         NSWindow.allowsAutomaticWindowTabbing = false
         KeyForwarding.install { [weak self] in self?.focused }
         appearance = NSApp.observe(\.effectiveAppearance) { [weak self] _, _ in
@@ -108,6 +110,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if panel.runModal() == .OK, let url = panel.url {
             open(project: url.path)
         }
+    }
+
+    /// A notification clicked: the window it came from comes forward.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler done: @escaping () -> Void) {
+        // Delegate calls may come on another queue; the windows are the main thread's.
+        DispatchQueue.main.async { [weak self] in
+            self?.windows.first { $0.posted(response.notification) }?.focus()
+            done()
+        }
+    }
+
+    /// Shown while Porta is in front too: it was posted because its own window was not.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler present: @escaping (UNNotificationPresentationOptions) -> Void) {
+        present([.banner, .sound])
     }
 
     @objc func openRecent(_ sender: NSMenuItem) {

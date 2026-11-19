@@ -87,6 +87,13 @@ static void test_the_newer_messages_are_the_contracts(void)
     g_assert_cmpint(porta_message_parse(state_payload, token, &count), ==, PORTA_MESSAGE_STATE);
     g_assert_cmpstr(count, ==, "2");
     g_assert_cmpint(porta_message_parse(bad, token, &nothing), ==, PORTA_MESSAGE_NONE);
+
+    g_autofree char *notify = example("notify");
+    g_autofree char *notify_payload = payload(notify);
+    g_autofree char *notify_text = example("notifyText");
+    g_autofree char *text = NULL;
+    g_assert_cmpint(porta_message_parse(notify_payload, token, &text), ==, PORTA_MESSAGE_NOTIFY);
+    g_assert_cmpstr(text, ==, notify_text);
 }
 
 static void test_a_split_at_every_byte_changes_nothing(void)

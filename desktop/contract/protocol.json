@@ -17,7 +17,8 @@
         "accepted",
         "closing",
         "menu",
-        "state"
+        "state",
+        "notify"
     ],
     "examples": {
         "token": "0123456789abcdef0123456789abcdef",
@@ -62,6 +63,8 @@
         "openPath": "/work/shop/src/a.php",
         "open": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;open;L3dvcmsvc2hvcC9zcmMvYS5waHA=\u001b\\",
         "appearance": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;appearance;dark\u001b\\",
-        "state": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;state;2\u001b\\"
+        "state": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;state;2\u001b\\",
+        "notifyText": "composer test failed (exit code 1)",
+        "notify": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;notify;Y29tcG9zZXIgdGVzdCBmYWlsZWQgKGV4aXQgY29kZSAxKQ==\u001b\\"
     }
 }

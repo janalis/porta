@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Run;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Event\RunFinished;
 use Porta\Run\RunController;
 use Porta\Terminal\TerminalSession;
 use Porta\Terminal\TerminalSessions;
@@ -14,6 +15,7 @@ use Porta\Tests\Support\TestRunController;
 use Porta\Tests\Support\TestRuns;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\TerminalPanelWidget;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -91,6 +93,27 @@ final class BackgroundRunTest extends TestCase
         $this->assertSame(3, $output['exitCode']);
         $this->assertStringContainsString('hello from the run in '.\realpath($this->project->dir), $output['output'], 'run in the project');
         $this->assertStringNotContainsString("\x1b", $output['output'], 'plain text, not terminal escapes');
+    }
+
+    public function testARunEndingIsAFactWithItsTitleAndCode(): void
+    {
+        $events = new EventDispatcher();
+        $finished = [];
+        $events->addListener(RunFinished::class, static function (RunFinished $event) use (&$finished): void {
+            $finished[] = [$event->title, $event->code];
+        });
+        $runs = TestRunController::create($this->project->dir, $this->tui, new TerminalSessions(), events: $events);
+
+        try {
+            $runs->runInBackground(self::php('exit(4);'), 'agent');
+            $this->await(static function () use (&$finished): bool {
+                return [] !== $finished;
+            }, what: 'the run to end');
+        } finally {
+            $runs->stop();
+        }
+
+        $this->assertSame([['agent', 4]], $finished, 'the title as it was started, without the code it gains');
     }
 
     public function testAWaiterIsToldWhenItsRunIsReplacedOrClosedFirst(): void
