@@ -19,13 +19,13 @@ final class DesktopProtocolTest extends TestCase
 {
     use BootsIde;
 
-    /** @var array{examples: array{token: string, close: string, ready: string, accepted: string, closing: string}} */
+    /** @var array{examples: array{token: string, root: string, close: string, ready: string, accepted: string, closing: string}} */
     private array $contract;
 
     #[\Override]
     protected function setUp(): void
     {
-        /** @var array{examples: array{token: string, close: string, ready: string, accepted: string, closing: string}} $contract */
+        /** @var array{examples: array{token: string, root: string, close: string, ready: string, accepted: string, closing: string}} $contract */
         $contract = \json_decode((string) \file_get_contents(\dirname(__DIR__, 3).'/desktop/contract/protocol.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->contract = $contract;
     }
@@ -125,7 +125,7 @@ final class DesktopProtocolTest extends TestCase
     {
         $protocol = $this->bootDesktop();
 
-        $protocol->announceReady('/work/shop');
+        $protocol->announceReady($this->contract['examples']['root']);
 
         $this->assertStringContainsString("\x1b]0;shop — Porta\x07", $this->terminal->getOutput());
         $this->assertStringContainsString($this->contract['examples']['ready'], $this->terminal->getOutput());

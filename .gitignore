@@ -51,3 +51,4 @@ plugins/*/vendor/
 # test:affected writes its throwaway phpunit configuration beside phpunit.xml.dist
 # (relative paths resolve from there) and deletes it after the run.
 /.phpunit.affected-*.xml
+/desktop/macos/.build/

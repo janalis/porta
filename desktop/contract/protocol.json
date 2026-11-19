@@ -5,13 +5,20 @@
     },
     "osc": 7777,
     "namespace": "porta-desktop",
-    "hostToPorta": ["close"],
-    "portaToHost": ["ready", "accepted", "closing"],
+    "hostToPorta": [
+        "close"
+    ],
+    "portaToHost": [
+        "ready",
+        "accepted",
+        "closing"
+    ],
     "examples": {
         "token": "0123456789abcdef0123456789abcdef",
         "close": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;close\u001b\\",
-        "ready": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;ready\u001b\\",
+        "ready": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;ready;L3dvcmsvc2hvcA==\u001b\\",
         "accepted": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;accepted\u001b\\",
-        "closing": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;closing\u001b\\"
+        "closing": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;closing\u001b\\",
+        "root": "/work/shop"
     }
 }

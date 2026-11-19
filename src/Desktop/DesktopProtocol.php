@@ -65,7 +65,7 @@ final readonly class DesktopProtocol
             return;
         }
         $this->tui->getTerminal()->setTitle(\basename($root).' — Porta');
-        $this->send('ready');
+        $this->send('ready;'.\base64_encode($root));
     }
 
     private function send(string $message): void

@@ -1,0 +1,64 @@
+{
+    "macosForwardedCmdChords": [
+        {
+            "chord": "super+c",
+            "sequence": "\u001b[99;9u"
+        },
+        {
+            "chord": "super+x",
+            "sequence": "\u001b[120;9u"
+        },
+        {
+            "chord": "super+a",
+            "sequence": "\u001b[97;9u"
+        },
+        {
+            "chord": "super+z",
+            "sequence": "\u001b[122;9u"
+        },
+        {
+            "chord": "shift+super+z",
+            "sequence": "\u001b[122;10u"
+        },
+        {
+            "chord": "super+s",
+            "sequence": "\u001b[115;9u"
+        },
+        {
+            "chord": "alt+super+s",
+            "sequence": "\u001b[115;11u"
+        },
+        {
+            "chord": "super+f",
+            "sequence": "\u001b[102;9u"
+        },
+        {
+            "chord": "super+r",
+            "sequence": "\u001b[114;9u"
+        },
+        {
+            "chord": "super+d",
+            "sequence": "\u001b[100;9u"
+        },
+        {
+            "chord": "super+/",
+            "sequence": "\u001b[47;9u"
+        },
+        {
+            "chord": "super+l",
+            "sequence": "\u001b[108;9u"
+        },
+        {
+            "chord": "super+e",
+            "sequence": "\u001b[101;9u"
+        },
+        {
+            "chord": "shift+super+c",
+            "sequence": "\u001b[99;10u"
+        },
+        {
+            "chord": "super+backspace",
+            "sequence": "\u001b[127;9u"
+        }
+    ]
+}

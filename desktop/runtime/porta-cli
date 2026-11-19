@@ -1,0 +1,14 @@
+#!/bin/sh
+# Runs the desktop application's Porta from a shell, on the PHP it ships with:
+# the phar's own shebang would look for a PHP on PATH.
+self=$0
+while [ -L "$self" ]; do
+    target=$(readlink "$self")
+    case $target in
+        /*) self=$target ;;
+        *) self=$(dirname "$self")/$target ;;
+    esac
+done
+dir=$(CDPATH= cd -- "$(dirname -- "$self")" && pwd -P)
+unset PHPRC PHP_INI_SCAN_DIR
+exec "$dir/php" -n -d memory_limit=-1 -d display_errors=0 "$dir/porta.phar" "$@"
