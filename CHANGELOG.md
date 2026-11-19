@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-11-19
+
 ### Fixed
 
 - **Crashes on thread-safe PHP**: on a ZTS build (Homebrew's `php-zts`, for
