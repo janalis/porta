@@ -49,12 +49,28 @@ sleep 3
 [ "$(portas)" = 1 ] || fail "a file of the project started another Porta ($(portas) running)"
 echo 'smoke: a file of the project went to its window'
 
-# Accessibility-driven checks need rights a runner may not grant: reported only.
-if titles=$(osascript -e 'tell application "System Events" to get name of every window of (first process whose bundle identifier is "io.github.janalis.porta")' 2>&1); then
-    echo "smoke: windows, as System Events sees them: $titles"
-else
-    echo "smoke: System Events cannot read the windows here: $titles"
-fi
+# Accessibility-driven checks need rights a runner may not grant: run where they are, reported where not.
+porta_process='first process whose bundle identifier is "io.github.janalis.porta"'
+titles=$(osascript -e "tell application \"System Events\" to get name of every window of ($porta_process)" 2>&1 || true)
+case "$titles" in
+    *'shop — Porta'*)
+        echo "smoke: the window is named after its project: $titles"
+        # The file opened above has the keys: an edit puts the dot in the close button, saving takes it away.
+        osascript -e "tell application \"System Events\" to tell ($porta_process)
+            set frontmost to true
+            delay 0.5
+            keystroke \"x\"
+        end tell"
+        await 20 'an edit did not mark the window as unsaved' sh -c "[ \"\$(osascript -e 'tell application \"System Events\" to tell (first process whose bundle identifier is \"io.github.janalis.porta\") to get value of attribute \"AXEdited\" of (first button of window 1 whose subrole is \"AXCloseButton\")')\" = true ]"
+        echo 'smoke: an edit puts the dot in the close button'
+        osascript -e "tell application \"System Events\" to tell ($porta_process) to keystroke \"s\" using command down"
+        await 20 'saving did not clear the dot' sh -c "[ \"\$(osascript -e 'tell application \"System Events\" to tell (first process whose bundle identifier is \"io.github.janalis.porta\") to get value of attribute \"AXEdited\" of (first button of window 1 whose subrole is \"AXCloseButton\")')\" = false ]"
+        echo 'smoke: saving clears it'
+        ;;
+    *)
+        echo "smoke: System Events cannot read the windows here, so the title and the unsaved dot go unchecked: ${titles:-none listed}"
+        ;;
+esac
 
 pkill -f "$host_pattern"
 await 20 'the application did not end' sh -c "! pgrep -f '$host_pattern' > /dev/null"

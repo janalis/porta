@@ -18,17 +18,7 @@ var project = Wsl("wslpath", "-a", "-u", args[1]);
 var architecture = LaunchPlan.Architecture(Wsl("uname", "-m")) ?? throw new InvalidOperationException("no PHP for this distribution");
 Console.WriteLine($"smoke: runtime {runtime}, project {project}");
 
-var launch = LaunchPlan.Arguments(runtime, architecture, project, 120, 36).ToList();
-// Diagnostic, on demand: Porta itself (not the relay) under strace, its reads and writes kept.
-var trace = Environment.GetEnvironmentVariable("PORTA_SMOKE_STRACE") == "1";
-if (trace)
-{
-    var porta = launch.FindLastIndex(argument => argument.EndsWith("/php", StringComparison.Ordinal));
-    // The relay's pcntl_exec() takes a path, not a name looked up on PATH.
-    launch.InsertRange(porta, new[] { "/usr/bin/strace", "-f", "-tt", "-s", "48", "-e", "trace=read,write,pselect6,poll,epoll_wait", "-o", "/tmp/porta.trace" });
-}
-
-var start = new ProcessStartInfo(LaunchPlan.Executable, LaunchPlan.CommandLine(launch))
+var start = new ProcessStartInfo(LaunchPlan.Executable, LaunchPlan.CommandLine(LaunchPlan.Arguments(runtime, architecture, project, 120, 36)))
 {
     UseShellExecute = false,
     CreateNoWindow = true,
@@ -181,13 +171,6 @@ if (redrawn == 0)
     Console.WriteLine($"smoke: diagnostic: a second Escape redrew {Screen().Length - beforeSecond} bytes");
 }
 
-if (trace)
-{
-    // What Porta read and wrote from the first lone ESC on.
-    var traced = Wsl("grep", "-n", "-F", "-A", "80", "read(0, \"\\33\"", "/tmp/porta.trace");
-    Console.WriteLine("smoke: trace from the first lone ESC Porta read:\n" + (traced.Length > 0 ? traced : "(Porta never read a lone ESC)"));
-    Console.WriteLine("smoke: lone ESC reads: " + Wsl("grep", "-c", "-F", "read(0, \"\\33\"", "/tmp/porta.trace"));
-}
 var beforeOpen = Screen().Length;
 
 // A file of the project, as the window hands it over, opens here; an edit is told, and so is its save.
