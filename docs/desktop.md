@@ -35,6 +35,21 @@ recent items.
 A project you open this way is still asked whether it may be trusted, exactly
 as it is in a terminal.
 
+## Permissions
+
+Porta asks the system for little, and says what and why before the system asks:
+
+| | What | When it shows |
+| --- | --- | --- |
+| macOS | **Notifications**, to tell you a run ended while you were elsewhere | the first launch, and **Porta → Permissions…** |
+| macOS | **Files and Folders**, for a project in Desktop, Documents, Downloads, iCloud Drive or on an external disk | a project macOS keeps from Porta, before Porta opens it |
+| Windows | **The Windows Subsystem for Linux**, where Porta runs | at launch, when it is missing |
+
+Each row says whether it is allowed. **Allow** asks the system right there;
+**Open Settings** opens System Settings at the pane that grants it, and the row
+updates when you come back. On Windows, **Install WSL** runs `wsl --install` with
+administrator rights. Linux needs no permission.
+
 ## Windows and closing
 
 Minimize, maximize, resize, full screen and restore are the system's own. Size

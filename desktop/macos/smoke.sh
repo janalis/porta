@@ -38,6 +38,8 @@ await() { # await <tries of half a second> <what> <command…>
 }
 
 "$app/Contents/Resources/runtime/porta-cli" --version
+# A first launch shows what Porta may ask macOS for, once.
+introduced=$(defaults read io.github.janalis.porta permissionsIntroduced 2>/dev/null || echo 0)
 
 open --env PORTA_HOME="$work/home" --env PORTA_CACHE_DIR="$work/cache" --env PORTA_TRUSTED_FOLDERS="$work" -a "$app" "$work/shop"
 await 240 'the IDE did not come up' sh -c "grep -q shop '$work/home/.porta/recent-projects.json' 2>/dev/null"
@@ -55,6 +57,13 @@ titles=$(osascript -e "tell application \"System Events\" to get name of every w
 case "$titles" in
     *'shop — Porta'*)
         echo "smoke: the window is named after its project: $titles"
+        sheet=$(osascript -e "tell application \"System Events\" to tell ($porta_process) to get exists sheet 1 of window 1")
+        if [ "$introduced" = 0 ]; then
+            [ "$sheet" = true ] || fail 'a first launch did not show the permissions sheet'
+            osascript -e "tell application \"System Events\" to tell ($porta_process) to click button \"Not Now\" of sheet 1 of window 1"
+            await 20 'Not Now did not close the permissions sheet' sh -c "[ \"\$(osascript -e 'tell application \"System Events\" to tell (first process whose bundle identifier is \"io.github.janalis.porta\") to get exists sheet 1 of window 1')\" = false ]"
+            echo 'smoke: a first launch shows the permissions sheet, and Not Now closes it'
+        fi
         # The file opened above has the keys: an edit puts the dot in the close button, saving takes it away.
         osascript -e "tell application \"System Events\" to tell ($porta_process)
             set frontmost to true

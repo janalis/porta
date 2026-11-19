@@ -28,15 +28,15 @@ namespace Porta.Desktop.App
             var architecture = LaunchPlan.Architecture(await Task.Run(() => Wsl("uname", "-m") ?? ""));
             if (runtime == null || architecture == null || (project != null && root == null))
             {
-                MessageBox.Show(
-                    "Porta on Windows runs inside the Windows Subsystem for Linux.\n\nInstall it from an administrator terminal with:\n\n    wsl --install",
-                    "Porta needs WSL",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                // What is missing, and the button that installs it; the application ends with it when it is alone.
+                var needs = new PermissionsWindow();
                 if (windows.Count == 0)
                 {
-                    Application.Current.Shutdown();
+                    needs.Closed += (_, _) => Application.Current.Shutdown();
                 }
+
+                needs.Show();
+                needs.Activate();
 
                 return;
             }

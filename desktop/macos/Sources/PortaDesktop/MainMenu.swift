@@ -16,6 +16,7 @@ final class MainMenu: NSObject, NSMenuDelegate {
         recentTarget = target
         bar.addItem(Self.submenu("Porta", [
             NSMenuItem(title: "About Porta", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: ""),
+            Self.item("Permissions…", #selector(AppDelegate.showPermissions(_:)), "", target),
             .separator(),
             NSMenuItem(title: "Hide Porta", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h"),
             NSMenuItem(title: "Show All", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: ""),

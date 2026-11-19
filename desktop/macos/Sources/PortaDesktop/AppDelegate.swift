@@ -105,6 +105,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
         windows.append(controller)
         controller.start()
+        // The first launch says what Porta may ask macOS for, once; a blocked project already did.
+        if !UserDefaults.standard.bool(forKey: Self.permissionsIntroduced) {
+            UserDefaults.standard.set(true, forKey: Self.permissionsIntroduced)
+            controller.showPermissions()
+        }
+    }
+
+    private static let permissionsIntroduced = "permissionsIntroduced"
+    private var permissions: PermissionsSheet?
+
+    /// Porta → Permissions…: over the window in front, or on its own when there is none.
+    @objc func showPermissions(_ sender: Any?) {
+        if let window = focused ?? windows.first {
+            window.showPermissions()
+            return
+        }
+        let sheet = PermissionsSheet(project: nil)
+        permissions = sheet
+        sheet.present(over: nil) { [weak self] in self?.permissions = nil }
     }
 
     @objc func openFolder(_ sender: Any?) {

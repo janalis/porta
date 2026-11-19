@@ -35,9 +35,13 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
         set { dropView?.onDropped = newValue }
     }
 
+    private let project: String?
+    private var permissions: PermissionsSheet?
+
     init(runtime: String, project: String?) {
         token = LaunchPlan.newToken()
         self.runtime = runtime
+        self.project = project
         plan = LaunchPlan(runtime: runtime, project: project, inherited: ProcessInfo.processInfo.environment, token: token, home: NSHomeDirectory())
         projectKey = project.map(ProjectKey.of)
         terminal = AccessibleTerminalView(frame: NSRect(x: 0, y: 0, width: 1100, height: 720))
@@ -74,6 +78,31 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
         terminal.font = Self.font(size: Self.savedFontSize)
         focus()
         window?.makeFirstResponder(terminal)
+        // A project macOS keeps from Porta: say so, and how to allow it, before Porta finds out.
+        if PermissionsSheet.blocks(project) {
+            let sheet = PermissionsSheet(project: project)
+            permissions = sheet
+            sheet.present(over: window) { [weak self] in
+                self?.permissions = nil
+                self?.launch()
+            }
+            return
+        }
+        launch()
+    }
+
+    /// The permissions sheet over this window, about its project.
+    func showPermissions(done: @escaping () -> Void = {}) {
+        guard permissions == nil else { return }
+        let sheet = PermissionsSheet(project: project)
+        permissions = sheet
+        sheet.present(over: window) { [weak self] in
+            self?.permissions = nil
+            done()
+        }
+    }
+
+    private func launch() {
         process.startProcess(executable: plan.executable, args: plan.arguments, environment: plan.environment, currentDirectory: plan.workingDirectory)
     }
 

@@ -44,6 +44,13 @@ $labels = foreach ($i in 0..([Smoke.SystemMenu]::GetMenuItemCount($menu) - 1)) {
 if ($running[0].MainWindowTitle -ne 'Porta needs WSL') {
     if ($labels -notcontains 'Font…') { throw "no Font… in the system menu: $($labels -join ', ')" }
     Write-Output 'smoke: the system menu offers Font…'
+} else {
+    # Without WSL, the window says what is missing and offers to install it.
+    Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+    $needs = [System.Windows.Automation.AutomationElement]::FromHandle($running[0].MainWindowHandle)
+    $install = $needs.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, 'Install WSL')))
+    if (-not $install) { throw 'the window for a missing WSL offers no Install WSL button' }
+    Write-Output 'smoke: without WSL, the window offers to install it'
 }
 
 # Screen readers: the terminal control answers UI Automation with a text provider of its own.

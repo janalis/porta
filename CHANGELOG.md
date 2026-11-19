@@ -23,6 +23,8 @@ versions follow [Semantic Versioning](https://semver.org/).
   On macOS, projects can share a window as tabs, as the system prefers, and
   VoiceOver reads the window's text, the cursor's line as its insertion point.
   Windows on Arm gets the window's own arm64 build rather than x64 emulation.
+  A permissions sheet says what Porta may ask the system for (notifications and
+  protected folders on macOS, WSL on Windows) and how to allow it.
   **Font…** picks the window's font in the system's own dialog: the Window menu
   on macOS, the title bar's menu button on Linux, the system menu on Windows.
 - **Help → Check for Updates…**: asks for a newer release now, whatever the
