@@ -55,6 +55,7 @@ jobs:
       matrix:
         include:
           - { name: macos-arm64, os: macos-26 }
+          - { name: macos-x86_64, os: macos-26-intel }
           - { name: linux-x86_64, os: ubuntu-24.04 }
           - { name: linux-aarch64, os: ubuntu-24.04-arm }
     name: static php (${{ matrix.name }})
@@ -68,21 +69,33 @@ jobs:
         uses: actions/cache@v4
         with:
           path: php-${{ matrix.name }}
-          key: static-php-${{ matrix.name }}-${{ hashFiles('desktop/build-php.sh', 'desktop/runtime/check-php.php') }}
+          key: static-php-${{ matrix.name }}-${{ hashFiles('desktop/build-php.sh', 'desktop/verify-sources.sh', 'desktop/php-sources.lock', 'desktop/runtime/check-php.php') }}
       - if: steps.cache.outputs.cache-hit != 'true'
         env:
           # static-php-cli asks GitHub where sources are; anonymously, it is rate limited.
           GITHUB_TOKEN: ${{ github.token }}
+          PORTA_SOURCES_RECORD: ${{ github.workspace }}/sources-${{ matrix.name }}.lock
         run: desktop/build-php.sh "$PWD/php-${{ matrix.name }}"
       - run: ./php-${{ matrix.name }} -n desktop/runtime/check-php.php
       - uses: actions/upload-artifact@v7
         with:
           name: desktop-php-${{ matrix.name }}
           path: php-${{ matrix.name }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: desktop-sources-${{ matrix.name }}
+          path: sources-${{ matrix.name }}.lock
 
   macos:
     needs: [phar, php]
-    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: macos-arm64, os: macos-26 }
+          - { name: macos-x86_64, os: macos-26-intel }
+    name: macos (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
@@ -95,7 +108,7 @@ jobs:
           name: desktop-phar
       - uses: actions/download-artifact@v8
         with:
-          name: desktop-php-macos-arm64
+          name: desktop-php-${{ matrix.name }}
       - name: The application
         env:
           PORTA_SIGN_IDENTITY: ${{ secrets.APPLE_SIGN_IDENTITY }}
@@ -112,7 +125,7 @@ jobs:
             security set-key-partition-list -S apple-tool:,apple: -s -k ci "$keychain"
             security list-keychains -d user -s "$keychain" login.keychain-db
           fi
-          desktop/macos/build-app.sh --php php-macos-arm64 --phar porta.phar --version "$VERSION" --out dist
+          desktop/macos/build-app.sh --php php-${{ matrix.name }} --phar porta.phar --version "$VERSION" --out dist
       - name: It runs
         run: |
           dist/Porta.app/Contents/Resources/runtime/porta-cli --version
@@ -127,7 +140,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: |
-          image="dist/porta-desktop-$VERSION-macos-arm64.dmg"
+          image="dist/porta-desktop-$VERSION-${{ matrix.name }}.dmg"
           hdiutil create -volname Porta -srcfolder dist/Porta.app -ov -format UDZO "$image"
           if [ -n "$APPLE_ID" ]; then
             xcrun notarytool submit "$image" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
@@ -135,7 +148,7 @@ jobs:
           fi
       - uses: actions/upload-artifact@v7
         with:
-          name: desktop-package-macos
+          name: desktop-package-${{ matrix.name }}
           path: dist/*.dmg
 
   linux:
@@ -155,7 +168,7 @@ jobs:
           ref: ${{ inputs.ref || github.sha }}
       - run: |
           sudo apt-get update
-          sudo apt-get install -y meson ninja-build libgtk-4-dev libvte-2.91-gtk4-dev libjson-glib-dev xvfb xdotool dbus
+          sudo apt-get install -y meson ninja-build libgtk-4-dev libvte-2.91-gtk4-dev libjson-glib-dev xvfb xdotool dbus weston
           curl -fsSL "https://github.com/goreleaser/nfpm/releases/download/v2.41.1/nfpm_2.41.1_Linux_${{ matrix.nfpm }}.tar.gz" | sudo tar -xz -C /usr/local/bin nfpm
       - run: |
           meson setup build desktop/linux
@@ -172,6 +185,8 @@ jobs:
           mkdir unpacked
           tar -xzf dist/*.tar.gz -C unpacked
           dbus-run-session -- xvfb-run -a desktop/linux/smoke.sh "$PWD/unpacked/lib/porta-desktop"
+      - name: It runs on Wayland, and offers its menus to a desktop that shows them
+        run: dbus-run-session -- desktop/linux/smoke-session.sh "$PWD/unpacked/lib/porta-desktop"
       - uses: actions/upload-artifact@v7
         with:
           name: desktop-package-${{ matrix.name }}
@@ -198,10 +213,16 @@ jobs:
         with:
           name: desktop-php-linux-x86_64
           path: runtime-php
+      - uses: actions/download-artifact@v8
+        with:
+          name: desktop-php-linux-aarch64
+          path: runtime-php
       - name: The runtime
         shell: bash
         run: |
-          mv runtime-php/php-linux-x86_64 runtime/php
+          mkdir runtime/x86_64 runtime/aarch64
+          mv runtime-php/php-linux-x86_64 runtime/x86_64/php
+          mv runtime-php/php-linux-aarch64 runtime/aarch64/php
           cp desktop/runtime/porta-cli desktop/runtime/wsl-relay.php runtime/
       - name: The installer
         shell: pwsh
@@ -227,6 +248,39 @@ jobs:
         with:
           name: desktop-unsigned-windows
           path: dist/*.exe
+
+  # The same installer on Windows on Arm: the x64 application under emulation,
+  # running the arm64 PHP inside an arm64 distribution.
+  windows-arm:
+    needs: windows
+    runs-on: windows-11-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: desktop-unsigned-windows
+          path: dist
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: Vampire/setup-wsl@4c48163d9f981914dd8caa0fc335fe19cca5bff4 # v7.2.0
+        with:
+          distribution: Ubuntu-24.04
+      - name: The installed application opens
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\shop" | Out-Null
+          Set-Content "$env:RUNNER_TEMP\shop\composer.json" '{}'
+          $installer = (Get-ChildItem dist\*.exe | Select-Object -First 1).FullName
+          desktop\windows\Smoke\installed.ps1 -Installer $installer -Project "$env:RUNNER_TEMP\shop"
+      - name: It runs inside WSL
+        shell: pwsh
+        run: |
+          dotnet run --project desktop\windows\Smoke --configuration Release -- "$env:LOCALAPPDATA\Programs\Porta\runtime" "$env:RUNNER_TEMP\shop"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   # Apart from the job above: the signing key never shares a runner with the
   # smoke tests or a third-party action.

@@ -6,7 +6,11 @@ import SwiftTerm
 final class ProjectWindowController: NSWindowController, NSWindowDelegate, TerminalViewDelegate, LocalProcessDelegate {
     private static let answerSeconds: TimeInterval = 4
     private static let shutdownSeconds: TimeInterval = 15
-    private static let defaultFontSize: CGFloat = 13
+    private static let settings: DesktopSettings = {
+        let path = DesktopSettings.path(environment: ProcessInfo.processInfo.environment, home: NSHomeDirectory())
+        return DesktopSettings.parse(FileManager.default.contents(atPath: path))
+    }()
+    private static let defaultFontSize = CGFloat(settings.fontSize ?? 13)
     private static let fontSizeKey = "fontSize"
 
     var onClosed: (() -> Void)?
@@ -130,7 +134,7 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
     }
 
     private static func font(size: CGFloat) -> NSFont {
-        NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
+        settings.fontFamily.flatMap { NSFont(name: $0, size: size) } ?? NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
     }
 
     private func received(_ payload: String) {

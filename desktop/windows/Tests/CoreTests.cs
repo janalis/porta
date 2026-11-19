@@ -91,11 +91,11 @@ public class CoreTests
     [Fact]
     public void PortaRunsThroughTheRelayOnTheBundledPhp()
     {
-        var arguments = LaunchPlan.Arguments("/mnt/c/Porta/runtime", "/home/me/shop", 120, 36);
+        var arguments = LaunchPlan.Arguments("/mnt/c/Porta/runtime", "aarch64", "/home/me/shop", 120, 36);
 
-        Assert.Equal(new[] { "--cd", "~", "--exec", "/mnt/c/Porta/runtime/php", "-n", "/mnt/c/Porta/runtime/wsl-relay.php", "120", "36" }, arguments.Take(8));
+        Assert.Equal(new[] { "--cd", "~", "--exec", "/mnt/c/Porta/runtime/aarch64/php", "-n", "/mnt/c/Porta/runtime/wsl-relay.php", "120", "36" }, arguments.Take(8));
         Assert.Equal("/home/me/shop", arguments.Last());
-        Assert.Equal("/mnt/c/Porta/runtime/porta.phar", LaunchPlan.Arguments("/mnt/c/Porta/runtime", null, 80, 24).Last());
+        Assert.Equal("/mnt/c/Porta/runtime/porta.phar", LaunchPlan.Arguments("/mnt/c/Porta/runtime", "x86_64", null, 80, 24).Last());
     }
 
     [Fact]
@@ -123,6 +123,29 @@ public class CoreTests
     {
         Assert.Equal(new byte[] { 0, 0, 0, 0, 2, 104, 105 }, RelayFrame.Input(Encoding.ASCII.GetBytes("hi")));
         Assert.Equal(new byte[] { 1, 0, 132, 0, 43 }, RelayFrame.Resize(132, 43));
+    }
+
+    [Theory]
+    [InlineData("x86_64\n", "x86_64")]
+    [InlineData("aarch64", "aarch64")]
+    [InlineData("riscv64", null)]
+    [InlineData("", null)]
+    public void OnlyShippedArchitecturesAreRun(string uname, string? expected)
+    {
+        Assert.Equal(expected, LaunchPlan.Architecture(uname));
+    }
+
+    [Theory]
+    [InlineData("{\"fontFamily\":\"JetBrains Mono\",\"fontSize\":14}", "JetBrains Mono", 14.0)]
+    [InlineData("{\"fontFamily\":\"\",\"fontSize\":500}", null, null)]
+    [InlineData("not json", null, null)]
+    [InlineData(null, null, null)]
+    public void SettingsReadOrReadAsNotSet(string? json, string? family, double? size)
+    {
+        var settings = DesktopSettings.Parse(json);
+
+        Assert.Equal(family, settings.FontFamily);
+        Assert.Equal(size, settings.FontSize);
     }
 
     [Fact]

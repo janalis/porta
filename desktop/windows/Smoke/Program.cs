@@ -13,11 +13,12 @@ using Porta.Desktop;
 // Usage: PortaDesktop.Smoke <runtime folder> <project folder>
 
 var token = LaunchPlan.NewToken();
-var runtime = WslPath(args[0]);
-var project = WslPath(args[1]);
+var runtime = Wsl("wslpath", "-a", "-u", args[0]);
+var project = Wsl("wslpath", "-a", "-u", args[1]);
+var architecture = LaunchPlan.Architecture(Wsl("uname", "-m")) ?? throw new InvalidOperationException("no PHP for this distribution");
 Console.WriteLine($"smoke: runtime {runtime}, project {project}");
 
-var start = new ProcessStartInfo(LaunchPlan.Executable, LaunchPlan.CommandLine(LaunchPlan.Arguments(runtime, project, 120, 36)))
+var start = new ProcessStartInfo(LaunchPlan.Executable, LaunchPlan.CommandLine(LaunchPlan.Arguments(runtime, architecture, project, 120, 36)))
 {
     UseShellExecute = false,
     CreateNoWindow = true,
@@ -142,9 +143,9 @@ if (!flow.ClosesWhenPortaExits(process.ExitCode))
 Console.WriteLine($"smoke: Porta closed cleanly with status {process.ExitCode}");
 return 0;
 
-static string WslPath(string path)
+static string Wsl(params string[] command)
 {
-    var start = new ProcessStartInfo(LaunchPlan.Executable, LaunchPlan.CommandLine(new[] { "--exec", "wslpath", "-a", "-u", path }))
+    var start = new ProcessStartInfo(LaunchPlan.Executable, LaunchPlan.CommandLine(new[] { "--exec" }.Concat(command)))
     {
         UseShellExecute = false,
         RedirectStandardOutput = true,

@@ -12,11 +12,11 @@ Download the package for your system from the
 
 | System | Package | Install |
 | --- | --- | --- |
-| macOS (Apple silicon) | `porta-desktop-*-macos-arm64.dmg` | Open it and drag Porta to Applications |
+| macOS | `porta-desktop-*-macos-arm64.dmg` (Apple silicon) or `-macos-x86_64.dmg` (Intel) | Open it and drag Porta to Applications |
 | Debian, Ubuntu | `porta-desktop_*.deb` | `sudo apt install ./porta-desktop_*.deb` |
 | Fedora, RHEL | `porta-desktop-*.rpm` | `sudo dnf install ./porta-desktop-*.rpm` |
 | Other Linux | `porta-desktop-*-linux-*.tar.gz` | Unpack it and run `./install.sh`, which writes only to `~/.local` |
-| Windows 10 2004+ or 11 | `porta-desktop-*-windows-x86_64.exe` | Run it; no administrator rights are needed |
+| Windows 10 2004+ or 11, x64 or Arm | `porta-desktop-*-windows.exe` | Run it; no administrator rights are needed |
 
 Installing registers the application with the system. It does not put `porta`
 on your `PATH`: **Settings → Command line** does that, if you want it to.
@@ -61,6 +61,21 @@ command. It also takes your login shell's environment when it starts, so it
 finds the same tools a terminal does; a project's **Run current file** uses the
 `php` on that `PATH`, not the PHP bundled with the application.
 
+### Font
+
+`desktop.json` sets the window's font. It lives in `~/.porta/` on macOS and
+Linux, and in `%LOCALAPPDATA%\Porta\` on Windows:
+
+```json
+{
+    "fontFamily": "JetBrains Mono",
+    "fontSize": 14
+}
+```
+
+Both keys are optional, the size runs from 6 to 72, and a new window reads the
+file when it opens. Without it each system's own monospaced font is used.
+
 ## Updating
 
 Install the new package over the old one. `porta --self-update` does not replace
@@ -72,7 +87,7 @@ the application: it says where to download the new version.
 | --- | --- | --- | --- |
 | Runs Porta | natively | natively | inside WSL |
 | Needs | macOS 13 | GTK 4.10, VTE 0.70 | WSL with a Linux distribution |
-| Architectures | arm64 | x86-64, arm64 | x86-64 |
+| Architectures | arm64, x86-64 | x86-64, arm64 | x86-64, and Arm through Windows' x64 emulation |
 
 - **Windows needs WSL.** Porta depends on POSIX terminals, signals and process
   control that Windows does not offer. A project under `/mnt/c` works, but is

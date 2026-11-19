@@ -13,6 +13,7 @@ namespace Porta.Desktop.App
         private const int ReadSize = 65536;
 
         private readonly string runtime;
+        private readonly string architecture;
         private readonly string? project;
         private readonly string token;
         private readonly OscFilter filter = new OscFilter();
@@ -22,9 +23,10 @@ namespace Porta.Desktop.App
         private int columns = 120;
         private int rows = 36;
 
-        public RelayConnection(string runtime, string? project, string token)
+        public RelayConnection(string runtime, string architecture, string? project, string token)
         {
             this.runtime = runtime;
+            this.architecture = architecture;
             this.project = project;
             this.token = token;
         }
@@ -37,7 +39,7 @@ namespace Porta.Desktop.App
 
         public void Start()
         {
-            var start = new ProcessStartInfo(LaunchPlan.Executable, LaunchPlan.CommandLine(LaunchPlan.Arguments(runtime, project, columns, rows)))
+            var start = new ProcessStartInfo(LaunchPlan.Executable, LaunchPlan.CommandLine(LaunchPlan.Arguments(runtime, architecture, project, columns, rows)))
             {
                 UseShellExecute = false,
                 CreateNoWindow = true,

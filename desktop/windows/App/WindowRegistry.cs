@@ -25,7 +25,8 @@ namespace Porta.Desktop.App
             var runtimeFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "runtime");
             var runtime = await Task.Run(() => WslPath(runtimeFolder));
             var root = project == null ? null : await Task.Run(() => WslPath(project));
-            if (runtime == null || (project != null && root == null))
+            var architecture = LaunchPlan.Architecture(await Task.Run(() => Wsl("uname", "-m") ?? ""));
+            if (runtime == null || architecture == null || (project != null && root == null))
             {
                 MessageBox.Show(
                     "Porta on Windows runs inside the Windows Subsystem for Linux.\n\nInstall it from an administrator terminal with:\n\n    wsl --install",
@@ -47,7 +48,7 @@ namespace Porta.Desktop.App
                 return;
             }
 
-            var opened = new ProjectWindow(runtime, root);
+            var opened = new ProjectWindow(runtime, architecture, root);
             opened.Closed += (_, _) => windows.Remove(opened);
             windows.Add(opened);
             opened.Show();
@@ -56,9 +57,16 @@ namespace Porta.Desktop.App
         /// <summary>The path as WSL spells it; null when WSL cannot answer.</summary>
         private static string? WslPath(string path)
         {
+            var answer = Wsl("wslpath", "-a", "-u", path);
+            return answer != null && answer.StartsWith("/") ? answer : null;
+        }
+
+        /// <summary>What a command inside WSL printed; null when WSL cannot answer.</summary>
+        private static string? Wsl(params string[] command)
+        {
             try
             {
-                var start = new ProcessStartInfo(LaunchPlan.Executable, LaunchPlan.CommandLine(new[] { "--exec", "wslpath", "-a", "-u", path }))
+                var start = new ProcessStartInfo(LaunchPlan.Executable, LaunchPlan.CommandLine(new[] { "--exec" }.Concat(command)))
                 {
                     UseShellExecute = false,
                     CreateNoWindow = true,
@@ -68,7 +76,7 @@ namespace Porta.Desktop.App
                 using var process = Process.Start(start)!;
                 var answer = process.StandardOutput.ReadToEnd().Trim();
                 process.WaitForExit();
-                return process.ExitCode == 0 && answer.StartsWith("/") ? answer : null;
+                return process.ExitCode == 0 ? answer : null;
             }
             catch (System.ComponentModel.Win32Exception)
             {

@@ -23,14 +23,14 @@ namespace Porta.Desktop.App
         private readonly DispatcherTimer answer = new DispatcherTimer { Interval = AnswerTime };
         private bool exited;
 
-        public ProjectWindow(string runtime, string? project)
+        public ProjectWindow(string runtime, string architecture, string? project)
         {
             Root = project;
             Title = "Porta";
             Background = Brushes.Black;
             RestorePlacement();
 
-            connection = new RelayConnection(runtime, project, token);
+            connection = new RelayConnection(runtime, architecture, project, token);
             connection.PrivateSequence += (code, payload) => Dispatcher.Invoke(() => Received(code, payload));
             connection.Exited += status => Dispatcher.Invoke(() => PortaExited(status));
             answer.Tick += (_, _) => AnswerTimedOut();
@@ -39,7 +39,8 @@ namespace Porta.Desktop.App
             Content = terminal;
             Loaded += (_, _) =>
             {
-                terminal.SetTheme(Theme.Dark, "Cascadia Mono", 11);
+                var settings = ReadSettings();
+                terminal.SetTheme(Theme.Dark, settings.FontFamily ?? "Cascadia Mono", (short)(settings.FontSize ?? 11));
                 terminal.Connection = connection;
                 terminal.Focus();
             };
@@ -159,6 +160,12 @@ namespace Porta.Desktop.App
             }
 
             Title = "Porta — stopped";
+        }
+
+        private static DesktopSettings ReadSettings()
+        {
+            var file = Path.Combine(Path.GetDirectoryName(PlacementFile)!, "desktop.json");
+            return DesktopSettings.Parse(File.Exists(file) ? File.ReadAllText(file) : null);
         }
 
         private void RestorePlacement()

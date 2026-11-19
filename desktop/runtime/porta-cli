@@ -11,4 +11,6 @@ while [ -L "$self" ]; do
 done
 dir=$(CDPATH= cd -- "$(dirname -- "$self")" && pwd -P)
 unset PHPRC PHP_INI_SCAN_DIR
-exec "$dir/php" -n -d memory_limit=-1 -d display_errors=0 "$dir/porta.phar" "$@"
+php=$dir/php
+[ -x "$php" ] || php=$dir/$(uname -m)/php
+exec "$php" -n -d memory_limit=-1 -d display_errors=0 "$dir/porta.phar" "$@"

@@ -109,6 +109,27 @@ static void destroy_window(PortaWindow *self)
     gtk_window_destroy(GTK_WINDOW(self->window));
 }
 
+/* `desktop.json`: the font the user chose, when the file says anything usable. */
+static void apply_font(PortaWindow *self)
+{
+    const char *home = g_getenv("PORTA_HOME");
+    g_autofree char *path = g_build_filename(NULL != home && '\0' != home[0] ? home : g_get_home_dir(), ".porta", "desktop.json", NULL);
+    g_autoptr(JsonParser) parser = json_parser_new();
+    JsonNode *root;
+    JsonObject *settings;
+    PangoFontDescription *font;
+
+    if (!json_parser_load_from_file(parser, path, NULL) || NULL == (root = json_parser_get_root(parser)) || !JSON_NODE_HOLDS_OBJECT(root)) {
+        return;
+    }
+    settings = json_node_get_object(root);
+    font = pango_font_description_from_string(json_object_get_string_member_with_default(settings, "fontFamily", "Monospace"));
+    double size = json_object_get_double_member_with_default(settings, "fontSize", 11);
+    pango_font_description_set_size(font, (int) (CLAMP(size, 6, 72) * PANGO_SCALE));
+    vte_terminal_set_font(self->terminal, font);
+    pango_font_description_free(font);
+}
+
 static void write_to_porta(PortaWindow *self, const char *bytes, gssize length)
 {
     gsize left = length < 0 ? strlen(bytes) : (gsize) length;
@@ -421,6 +442,7 @@ static void open_window(GtkApplication *application, const char *project)
     if (scale > 0) {
         vte_terminal_set_font_scale(self->terminal, scale);
     }
+    apply_font(self);
     gtk_window_set_child(GTK_WINDOW(self->window), GTK_WIDGET(self->terminal));
     gtk_event_controller_set_propagation_phase(keys, GTK_PHASE_CAPTURE);
     g_signal_connect(keys, "key-pressed", G_CALLBACK(on_key), self);

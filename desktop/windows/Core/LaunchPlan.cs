@@ -22,15 +22,24 @@ namespace Porta.Desktop
             ["WSLENV"] = "PORTA_DESKTOP/u:PORTA_DESKTOP_TOKEN/u:TERM/u:COLORTERM/u",
         };
 
-        /// <param name="runtime">the runtime folder, as WSL spells it</param>
-        /// <param name="project">the project, as WSL spells it; null when an icon click names none</param>
-        public static IReadOnlyList<string> Arguments(string runtime, string? project, int columns, int rows)
+        /// <summary>The folder of the bundled PHP for what `uname -m` said; null when Porta ships none.</summary>
+        public static string? Architecture(string uname)
         {
+            var machine = uname.Trim();
+            return machine == "x86_64" || machine == "aarch64" ? machine : null;
+        }
+
+        /// <param name="runtime">the runtime folder, as WSL spells it</param>
+        /// <param name="architecture">the distribution's, from <see cref="Architecture"/></param>
+        /// <param name="project">the project, as WSL spells it; null when an icon click names none</param>
+        public static IReadOnlyList<string> Arguments(string runtime, string architecture, string? project, int columns, int rows)
+        {
+            var php = runtime + "/" + architecture + "/php";
             var arguments = new List<string>
             {
                 "--cd", "~", "--exec",
-                runtime + "/php", "-n", runtime + "/wsl-relay.php", columns.ToString(), rows.ToString(),
-                runtime + "/php", "-n", "-d", "memory_limit=-1", "-d", "display_errors=0", runtime + "/porta.phar",
+                php, "-n", runtime + "/wsl-relay.php", columns.ToString(), rows.ToString(),
+                php, "-n", "-d", "memory_limit=-1", "-d", "display_errors=0", runtime + "/porta.phar",
             };
             if (project != null)
             {
