@@ -113,6 +113,7 @@ export default defineConfig({
   themeConfig: {
     logo: { src: '/logo.png', alt: 'Porta' },
     nav: [
+      { text: 'Download', link: '/download' },
       { text: 'Guide', link: '/getting-started', activeMatch: '^/(?!plugins/|changelog)' },
       { text: 'Plugins', link: '/plugins/git/', activeMatch: '/plugins/' },
       { text: 'Plugin API', link: '/plugins' },
@@ -132,6 +133,7 @@ export default defineConfig({
           text: 'Using Porta',
           items: [
             { text: 'Introduction', link: '/' },
+            { text: 'Download', link: '/download' },
             { text: 'Getting started', link: '/getting-started' },
             { text: 'Desktop application', link: '/desktop' },
             { text: 'Editor', link: '/editor' },

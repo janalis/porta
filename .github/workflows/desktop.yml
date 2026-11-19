@@ -143,7 +143,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: |
-          image="dist/porta-desktop-$VERSION-${{ matrix.name }}.dmg"
+          image="dist/porta-desktop-${{ matrix.name }}.dmg"
           hdiutil create -volname Porta -srcfolder dist/Porta.app -ov -format UDZO "$image"
           if [ -n "$APPLE_ID" ]; then
             xcrun notarytool submit "$image" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait

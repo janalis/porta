@@ -7,16 +7,7 @@ used side by side.
 
 ## Install
 
-Download the package for your system from the
-[latest release](https://github.com/janalis/porta/releases/latest).
-
-| System | Package | Install |
-| --- | --- | --- |
-| macOS | `porta-desktop-*-macos-arm64.dmg` (Apple silicon) or `-macos-x86_64.dmg` (Intel) | Open it and drag Porta to Applications |
-| Debian, Ubuntu | `porta-desktop_*.deb` | `sudo apt install ./porta-desktop_*.deb` |
-| Fedora, RHEL | `porta-desktop-*.rpm` | `sudo dnf install ./porta-desktop-*.rpm` |
-| Other Linux | `porta-desktop-*-linux-*.tar.gz` | Unpack it and run `./install.sh`, which writes only to `~/.local` |
-| Windows 10 2004+ or 11, x64 or Arm | `porta-desktop-*-windows.exe` | Run it; no administrator rights are needed |
+Get the package for your system from the [Download](download.md) page.
 
 Installing registers the application with the system. It does not put `porta`
 on your `PATH`: **Settings → Command line** does that, if you want it to.

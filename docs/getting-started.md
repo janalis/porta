@@ -56,7 +56,7 @@ mergetool. From a shell, `porta --git-setup` makes it git's tools, and
 [the git guide](../plugins/git/docs/README.md#as-gits-difftool-and-mergetool).
 
 **The desktop application** — Porta in a window of its own, from an icon, with
-PHP included. See [Desktop application](desktop.md). It sits beside the `porta`
+PHP included: [Download](download.md), then see [Desktop application](desktop.md). It sits beside the `porta`
 command and changes nothing about it.
 
 ### Updating

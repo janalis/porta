@@ -34,9 +34,10 @@ case $(uname -m) in
     aarch64) arch=arm64 ;;
     *) arch=$(uname -m) ;;
 esac
-tar -czf "$out/porta-desktop-$version-linux-$(uname -m).tar.gz" -C "$stage" .
+tar -czf "$out/porta-desktop-linux-$(uname -m).tar.gz" -C "$stage" .
 # nfpm expands the environment in some fields only, and never in a file's source.
 sed -e "s|\${PORTA_ARCH}|$arch|g" -e "s|\${PORTA_VERSION}|$version|g" -e "s|\${PORTA_STAGE}|$stage|g" "$here/data/nfpm.yaml" > "$build/nfpm.yaml"
 for format in deb rpm; do
-    nfpm package --config "$build/nfpm.yaml" --packager "$format" --target "$out/"
+    # Version-free names: releases/latest/download/<name> then always means the newest.
+    nfpm package --config "$build/nfpm.yaml" --packager "$format" --target "$out/porta-desktop-linux-$(uname -m).$format"
 done

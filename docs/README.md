@@ -12,6 +12,7 @@ non-blocking event loop.
 | Guide | Contents |
 | --- | --- |
 | [Getting started](getting-started.md) | Installation, LSP setup, launching, first steps |
+| [Download](download.md) | The desktop application for your system, and the `porta` command |
 | [Desktop application](desktop.md) | Porta in its own window: install, launch, system menus, packaging, platform limits |
 | [Editor](editor.md) | Buffers, editing, multi-caret, folding, indentation, live preview, mouse |
 | [Keybindings](keybindings.md) | Every default binding, and how to rebind |

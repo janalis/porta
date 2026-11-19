@@ -75,6 +75,8 @@ jobs:
       # a job-control warning.
       - run: sudo apt-get install -y --no-install-recommends zsh
       - run: npm ci
+      # Which package the download link offers, held to the names the release gives them.
+      - run: node --test .vitepress/theme/downloads.test.mjs
       # A scenario that cannot reach its screen fails the build: a page would
       # otherwise show a missing image.
       - run: npm run docs:screenshots
