@@ -23,8 +23,8 @@ final readonly class LoginEnvironment
 {
     private const string SENTINEL = '__PORTA_DESKTOP_ENVIRONMENT__';
 
-    /** Who this process is, which a login shell must not overwrite. */
-    private const string KEPT = '/^(?:PORTA_.*|TERM.*|COLORTERM|TMUX.*|WSL_.*|PWD|OLDPWD|SHLVL|_)$/D';
+    /** Who this process is, and what would change how the bundled PHP loads: a login shell overwrites neither. */
+    private const string KEPT = '/^(?:PORTA_.*|TERM.*|COLORTERM|TMUX.*|WSL_.*|PWD|OLDPWD|SHLVL|_|PHPRC|PHP_INI_SCAN_DIR|LD_.*|DYLD_.*)$/D';
 
     /** Starts a shell in its own session: nothing it does can reach the window's terminal. */
     private const string DETACH = 'posix_setsid(); pcntl_exec($argv[1], array_slice($argv, 2));';

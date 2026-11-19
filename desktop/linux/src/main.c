@@ -15,6 +15,7 @@
 
 #define APP_ID "io.github.janalis.porta"
 #define ANSWER_SECONDS 4
+#define SHUTDOWN_SECONDS 15
 #define READ_SIZE 65536
 
 typedef struct {
@@ -33,6 +34,8 @@ typedef struct {
     glong columns;
     glong rows;
     gboolean exited;
+    gboolean closed; /* the widgets are gone; only the child is still being waited for */
+    int holds;       /* the window, and the child or the spawn that will become it */
 } PortaWindow;
 
 static GList *windows = NULL;
@@ -85,6 +88,27 @@ static void save_settings(PortaWindow *self)
     g_key_file_save_to_file(settings, path, NULL);
 }
 
+/* The child can outlive its window: whichever ends last frees what they shared. */
+static void release(PortaWindow *self)
+{
+    if (--self->holds > 0) {
+        return;
+    }
+    porta_filter_free(self->filter);
+    g_clear_object(&self->pty);
+    g_free(self->token);
+    g_free(self->project_key);
+    g_free(self->menu_json);
+    g_free(self);
+}
+
+/* Before the destroy: by the time GTK announces it, the terminal is already gone. */
+static void destroy_window(PortaWindow *self)
+{
+    save_settings(self);
+    gtk_window_destroy(GTK_WINDOW(self->window));
+}
+
 static void write_to_porta(PortaWindow *self, const char *bytes, gssize length)
 {
     gsize left = length < 0 ? strlen(bytes) : (gsize) length;
@@ -109,14 +133,20 @@ static void end_porta(PortaWindow *self)
     if (self->pid > 0) {
         kill(self->pid, SIGHUP);
     }
-    gtk_window_destroy(GTK_WINDOW(self->window));
+    destroy_window(self);
 }
+
+static gboolean answer_timed_out(gpointer data);
 
 static void force_quit_answered(GObject *source, GAsyncResult *result, gpointer data)
 {
+    PortaWindow *self = data;
+
     /* Button 1 is "Force Quit"; anything else keeps waiting. */
     if (1 == gtk_alert_dialog_choose_finish(GTK_ALERT_DIALOG(source), result, NULL)) {
-        end_porta(data);
+        end_porta(self);
+    } else if (porta_flow_is_closing(&self->flow)) {
+        self->answer = g_timeout_add_seconds(SHUTDOWN_SECONDS, answer_timed_out, self);
     }
 }
 
@@ -141,6 +171,7 @@ static gboolean on_close_request(GtkWindow *window, gpointer data)
 
     (void) window;
     if (self->exited) {
+        save_settings(self);
         return FALSE;
     }
     switch (porta_flow_close_requested(&self->flow)) {
@@ -149,6 +180,7 @@ static gboolean on_close_request(GtkWindow *window, gpointer data)
         if (self->pid > 0) {
             kill(self->pid, SIGHUP);
         }
+        save_settings(self);
         return FALSE;
     case PORTA_STEP_ASK: {
         g_autofree char *request = porta_close_request(self->token);
@@ -166,7 +198,6 @@ static void on_destroy(GtkWidget *widget, gpointer data)
     PortaWindow *self = data;
 
     (void) widget;
-    save_settings(self);
     if (0 != self->answer) {
         g_source_remove(self->answer);
     }
@@ -177,12 +208,8 @@ static void on_destroy(GtkWidget *widget, gpointer data)
     if (menu_owner == self) {
         menu_owner = NULL;
     }
-    porta_filter_free(self->filter);
-    g_clear_object(&self->pty);
-    g_free(self->token);
-    g_free(self->project_key);
-    g_free(self->menu_json);
-    g_free(self);
+    self->closed = TRUE;
+    release(self);
 }
 
 static void copy_to_clipboard(PortaWindow *self, const char *payload)
@@ -222,9 +249,13 @@ static void received(PortaWindow *self, PortaOsc *osc)
             show_menus(gtk_window_get_application(GTK_WINDOW(self->window)), self);
         }
     }
-    if (PORTA_STEP_STOP_WAITING == porta_flow_received(&self->flow, kind) && 0 != self->answer) {
+    PortaStep step = porta_flow_received(&self->flow, kind);
+    if ((PORTA_STEP_STOP_WAITING == step || PORTA_STEP_WAIT_FOR_EXIT == step) && 0 != self->answer) {
         g_source_remove(self->answer);
         self->answer = 0;
+    }
+    if (PORTA_STEP_WAIT_FOR_EXIT == step) {
+        self->answer = g_timeout_add_seconds(SHUTDOWN_SECONDS, answer_timed_out, self);
     }
 }
 
@@ -282,11 +313,14 @@ static void on_child_exit(GPid pid, int status, gpointer data)
     g_spawn_close_pid(pid);
     self->pid = 0;
     self->exited = TRUE;
-    if (porta_flow_closes_on_exit(&self->flow, exited, exited ? WEXITSTATUS(status) : 0)) {
-        gtk_window_destroy(GTK_WINDOW(self->window));
-        return;
+    if (!self->closed) {
+        if (porta_flow_closes_on_exit(&self->flow, exited, exited ? WEXITSTATUS(status) : 0)) {
+            destroy_window(self);
+        } else {
+            gtk_window_set_title(GTK_WINDOW(self->window), "Porta — stopped");
+        }
     }
-    gtk_window_set_title(GTK_WINDOW(self->window), "Porta — stopped");
+    release(self);
 }
 
 static void on_spawned(VtePty *pty, GAsyncResult *result, gpointer data)
@@ -295,11 +329,18 @@ static void on_spawned(VtePty *pty, GAsyncResult *result, gpointer data)
     g_autoptr(GError) error = NULL;
 
     if (!vte_pty_spawn_finish(pty, result, &self->pid, &error)) {
-        g_autofree char *message = g_strdup_printf("Porta could not start: %s\r\n", error->message);
-        vte_terminal_feed(self->terminal, message, -1);
-        gtk_window_set_title(GTK_WINDOW(self->window), "Porta — stopped");
-        self->exited = TRUE;
+        if (!self->closed) {
+            g_autofree char *message = g_strdup_printf("Porta could not start: %s\r\n", error->message);
+            vte_terminal_feed(self->terminal, message, -1);
+            gtk_window_set_title(GTK_WINDOW(self->window), "Porta — stopped");
+            self->exited = TRUE;
+        }
+        release(self);
         return;
+    }
+    if (self->closed) {
+        /* The window was closed while Porta was still starting. */
+        kill(self->pid, SIGHUP);
     }
     g_child_watch_add(self->pid, on_child_exit, self);
 }
@@ -362,6 +403,7 @@ static void open_window(GtkApplication *application, const char *project)
     double scale = g_key_file_get_double(settings, "window", "scale", NULL);
     GtkEventController *keys = gtk_event_controller_key_new();
 
+    self->holds = 2;
     self->filter = porta_filter_new();
     self->token = porta_new_token();
     self->project_key = NULL != project ? project_key(project) : NULL;
@@ -394,6 +436,7 @@ static void open_window(GtkApplication *application, const char *project)
     if (NULL == self->pty) {
         vte_terminal_feed(self->terminal, error->message, -1);
         self->exited = TRUE;
+        release(self);
         return;
     }
     self->master = vte_pty_get_fd(self->pty);

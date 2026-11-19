@@ -80,6 +80,8 @@ final class DesktopProtocol
         if ($this->session->systemMenu && 1 === \preg_match('/^menu;([0-9a-f]+);(\d{1,4});(\d{1,4})\x1b\\\\$/D', $request, $choice)) {
             $this->systemMenu->choose($choice[1], (int) $choice[2], (int) $choice[3]);
             $this->syncMenu();
+            // The event was stopped here, so nothing further along will paint what the item did.
+            $this->tui->requestRender();
         }
     }
 

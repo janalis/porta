@@ -41,5 +41,7 @@ final class PortaBinaryTest extends TestCase
 
         $this->assertSame($project->path('plain/porta.phar'), PortaBinary::launcher($project->path('plain/porta.phar')));
         $this->assertSame($project->path('bundle/porta-cli'), PortaBinary::launcher($project->path('bundle/porta.phar')));
+        $this->assertSame(['php', $project->path('plain/porta.phar')], PortaBinary::command('php', $project->path('plain/porta.phar')));
+        $this->assertSame([$project->path('bundle/porta-cli')], PortaBinary::command('php', $project->path('bundle/porta.phar')), 'the wrapper carries the flags the bundled PHP needs');
     }
 }

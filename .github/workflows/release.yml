@@ -203,7 +203,7 @@ jobs:
         working-directory: packages
         run: |
           sha256sum -- * > porta-desktop.sha256
-          gh release upload "$TAG" -- * --repo "$GITHUB_REPOSITORY"
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" ./*
 
   split:
     needs: [prepare, publish]

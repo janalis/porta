@@ -5,6 +5,7 @@ import SwiftTerm
 /// One window running one Porta.
 final class ProjectWindowController: NSWindowController, NSWindowDelegate, TerminalViewDelegate, LocalProcessDelegate {
     private static let answerSeconds: TimeInterval = 4
+    private static let shutdownSeconds: TimeInterval = 15
     private static let defaultFontSize: CGFloat = 13
     private static let fontSizeKey = "fontSize"
 
@@ -93,9 +94,7 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
             endPorta()
         case .askPorta:
             send(DesktopMessage.closeRequest(token: token))
-            answerTimer = Timer.scheduledTimer(withTimeInterval: Self.answerSeconds, repeats: false) { [weak self] _ in
-                self?.answerTimedOut()
-            }
+            armAnswerTimer(Self.answerSeconds)
         default:
             break
         }
@@ -145,11 +144,21 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
             menuBar = bar
             onMenuChanged?(self)
         }
-        if flow.received(message) == .stopWaiting {
+        switch flow.received(message) {
+        case .stopWaiting:
             answerTimer?.invalidate()
-            if message == .accepted {
-                onCloseRefused?()
-            }
+            onCloseRefused?()
+        case .waitForExit:
+            armAnswerTimer(Self.shutdownSeconds)
+        default:
+            break
+        }
+    }
+
+    private func armAnswerTimer(_ seconds: TimeInterval) {
+        answerTimer?.invalidate()
+        answerTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { [weak self] _ in
+            self?.answerTimedOut()
         }
     }
 
@@ -164,6 +173,8 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
         alert.addButton(withTitle: "Force Quit")
         if alert.runModal() == .alertSecondButtonReturn {
             endPorta()
+        } else if flow.isClosing {
+            armAnswerTimer(Self.shutdownSeconds)
         } else {
             onCloseRefused?()
         }

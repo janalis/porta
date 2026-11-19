@@ -9,6 +9,8 @@ public struct CloseFlow: Equatable {
         case wait
         /// Stop waiting for an answer.
         case stopWaiting
+        /// Porta is shutting down: give it longer, but not forever.
+        case waitForExit
         /// Porta did not answer: the user decides.
         case offerForceQuit
     }
@@ -21,6 +23,10 @@ public struct CloseFlow: Equatable {
     private var wasReady = false
 
     public init() {}
+
+    public var isClosing: Bool {
+        state == .closing
+    }
 
     public mutating func closeRequested() -> Step {
         switch state {
@@ -46,7 +52,7 @@ public struct CloseFlow: Equatable {
             return .stopWaiting
         case .closing:
             state = .closing
-            return .stopWaiting
+            return .waitForExit
         case .menu:
             return .wait
         }
@@ -59,6 +65,9 @@ public struct CloseFlow: Equatable {
     }
 
     public mutating func answerTimedOut() -> Step {
+        if state == .closing {
+            return .offerForceQuit
+        }
         guard state == .asking else {
             return .wait
         }

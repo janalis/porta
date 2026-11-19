@@ -101,7 +101,7 @@ abstract class OpenRemoteCommand extends PluginCommand
     private static function launchPorta(string $root): int
     {
         $pipes = [];
-        $process = \proc_open([\PHP_BINARY, PortaBinary::path(), $root], [\STDIN, \STDOUT, \STDERR], $pipes, env_vars: ProcessEnvironment::forNestedPorta(\getenv()));
+        $process = \proc_open([...PortaBinary::command(\PHP_BINARY, PortaBinary::path()), $root], [\STDIN, \STDOUT, \STDERR], $pipes, env_vars: ProcessEnvironment::forNestedPorta(\getenv()));
 
         return false === $process ? 1 : \proc_close($process);
     }

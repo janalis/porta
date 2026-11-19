@@ -37,6 +37,7 @@ typedef enum {
     PORTA_STEP_ASK,
     PORTA_STEP_WAIT,
     PORTA_STEP_STOP_WAITING,
+    PORTA_STEP_WAIT_FOR_EXIT,
     PORTA_STEP_FORCE_QUIT,
 } PortaStep;
 
@@ -48,6 +49,7 @@ typedef struct {
 PortaStep porta_flow_close_requested(PortaCloseFlow *flow);
 PortaStep porta_flow_received(PortaCloseFlow *flow, PortaMessageKind message);
 PortaStep porta_flow_timed_out(PortaCloseFlow *flow);
+gboolean porta_flow_is_closing(const PortaCloseFlow *flow);
 /* `exited` is false when a signal ended Porta. */
 gboolean porta_flow_closes_on_exit(const PortaCloseFlow *flow, gboolean exited, int status);
 

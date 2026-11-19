@@ -13,6 +13,7 @@ namespace Porta.Desktop.App
     public sealed class ProjectWindow : Window
     {
         private static readonly TimeSpan AnswerTime = TimeSpan.FromSeconds(4);
+        private static readonly TimeSpan ShutdownTime = TimeSpan.FromSeconds(15);
         private static readonly string PlacementFile = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Porta", "window.txt");
 
@@ -66,6 +67,7 @@ namespace Porta.Desktop.App
                 case CloseStep.AskPorta:
                     e.Cancel = true;
                     connection.WriteInput(DesktopMessage.CloseRequest(token));
+                    answer.Interval = AnswerTime;
                     answer.Start();
                     break;
                 default:
@@ -89,9 +91,17 @@ namespace Porta.Desktop.App
                 Title = root.Substring(root.LastIndexOf('/') + 1) + " — Porta";
             }
 
-            if (flow.Received(kind) == CloseStep.StopWaiting)
+            var step = flow.Received(kind);
+            if (step == CloseStep.StopWaiting)
             {
                 answer.Stop();
+            }
+
+            if (step == CloseStep.WaitForExit)
+            {
+                answer.Stop();
+                answer.Interval = ShutdownTime;
+                answer.Start();
             }
         }
 
@@ -105,6 +115,10 @@ namespace Porta.Desktop.App
             catch (FormatException)
             {
                 // Not text Porta wrote.
+            }
+            catch (System.Runtime.InteropServices.ExternalException)
+            {
+                // Another application holds the clipboard: this copy is lost, the session is not.
             }
         }
 
@@ -127,6 +141,10 @@ namespace Porta.Desktop.App
                 exited = true;
                 connection.Close();
                 Close();
+            }
+            else if (flow.IsClosing)
+            {
+                answer.Start();
             }
         }
 

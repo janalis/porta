@@ -6,6 +6,7 @@ namespace Porta.Desktop
         AskPorta,
         Wait,
         StopWaiting,
+        WaitForExit,
         OfferForceQuit,
     }
 
@@ -24,6 +25,8 @@ namespace Porta.Desktop
 
         private State state = State.Starting;
         private bool wasReady;
+
+        public bool IsClosing => state == State.Closing;
 
         public CloseStep CloseRequested()
         {
@@ -53,7 +56,7 @@ namespace Porta.Desktop
                     return CloseStep.StopWaiting;
                 case MessageKind.Closing:
                     state = State.Closing;
-                    return CloseStep.StopWaiting;
+                    return CloseStep.WaitForExit;
                 default:
                     return CloseStep.Wait;
             }
@@ -61,6 +64,11 @@ namespace Porta.Desktop
 
         public CloseStep AnswerTimedOut()
         {
+            if (state == State.Closing)
+            {
+                return CloseStep.OfferForceQuit;
+            }
+
             if (state != State.Asking)
             {
                 return CloseStep.Wait;

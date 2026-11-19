@@ -30,3 +30,7 @@
 /package-lock.json   export-ignore
 /phpunit.xml.dist    export-ignore
 /rector.php          export-ignore
+
+# Run inside Linux and macOS, whatever the checkout they were packaged from.
+/desktop/runtime/porta-cli text eol=lf
+/desktop/**/*.sh text eol=lf

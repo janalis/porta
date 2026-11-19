@@ -232,8 +232,11 @@ final class DesktopProtocolTest extends TestCase
         $protocol->detach();
         $choice = fn (string $generation, int $item = 0): InputEvent => new InputEvent("\x1b]7777;porta-desktop;{$this->contract['examples']['token']};menu;{$generation};0;{$item}\x1b\\");
 
+        $tui = Services::resolve($this->ide, Tui::class);
+        $tui->processRender();
         $protocol->onInput($choice($generation));
         $this->assertSame(1, $ran);
+        $this->assertTrue(Probe::get($tui, 'renderRequested'), 'what the item changed gets painted');
 
         $protocol->onInput($choice('00ff'));
         $protocol->onInput($choice($generation, item: 9));

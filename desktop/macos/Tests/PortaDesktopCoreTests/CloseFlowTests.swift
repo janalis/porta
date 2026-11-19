@@ -26,12 +26,14 @@ final class CloseFlowTests: XCTestCase {
         XCTAssertEqual(flow.closeRequested(), .askPorta)
     }
 
-    func testClosingIsFinal() {
+    func testAShutdownThatHangsStillLeavesAWayOut() {
         var flow = ready()
         _ = flow.closeRequested()
-        XCTAssertEqual(flow.received(.closing), .stopWaiting)
+        XCTAssertEqual(flow.received(.closing), .waitForExit)
+        XCTAssertTrue(flow.isClosing)
         XCTAssertEqual(flow.closeRequested(), .wait)
-        XCTAssertEqual(flow.answerTimedOut(), .wait)
+        XCTAssertEqual(flow.answerTimedOut(), .offerForceQuit)
+        XCTAssertEqual(flow.answerTimedOut(), .offerForceQuit, "keeping waiting is not the last word")
     }
 
     func testAFinishedSessionTakesTheWindowWithIt() {

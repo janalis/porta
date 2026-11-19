@@ -1,6 +1,8 @@
 #include "core.h"
 
 #include <string.h>
+#include <sys/random.h>
+#include <unistd.h>
 
 #define LONGEST_PAYLOAD (4 * 1024 * 1024)
 #define ESC 0x1b
@@ -194,7 +196,7 @@ PortaStep porta_flow_received(PortaCloseFlow *flow, PortaMessageKind message)
         return PORTA_STEP_STOP_WAITING;
     case PORTA_MESSAGE_CLOSING:
         flow->state = FLOW_CLOSING;
-        return PORTA_STEP_STOP_WAITING;
+        return PORTA_STEP_WAIT_FOR_EXIT;
     default:
         return PORTA_STEP_WAIT;
     }
@@ -202,11 +204,19 @@ PortaStep porta_flow_received(PortaCloseFlow *flow, PortaMessageKind message)
 
 PortaStep porta_flow_timed_out(PortaCloseFlow *flow)
 {
+    if (FLOW_CLOSING == flow->state) {
+        return PORTA_STEP_FORCE_QUIT;
+    }
     if (FLOW_ASKING != flow->state) {
         return PORTA_STEP_WAIT;
     }
     flow->state = FLOW_READY;
     return PORTA_STEP_FORCE_QUIT;
+}
+
+gboolean porta_flow_is_closing(const PortaCloseFlow *flow)
+{
+    return FLOW_CLOSING == flow->state;
 }
 
 gboolean porta_flow_closes_on_exit(const PortaCloseFlow *flow, gboolean exited, int status)
@@ -217,9 +227,15 @@ gboolean porta_flow_closes_on_exit(const PortaCloseFlow *flow, gboolean exited, 
 
 char *porta_new_token(void)
 {
+    guint8 bytes[16];
     GString *token = g_string_sized_new(32);
-    for (int i = 0; i < 4; i++) {
-        g_string_append_printf(token, "%08x", g_random_int());
+
+    /* The secret that tells the window's requests from pasted bytes: never a plain PRNG. */
+    if (0 != getentropy(bytes, sizeof bytes)) {
+        g_error("porta-desktop: the system has no source of randomness");
+    }
+    for (gsize i = 0; i < sizeof bytes; i++) {
+        g_string_append_printf(token, "%02x", bytes[i]);
     }
     return g_string_free(token, FALSE);
 }

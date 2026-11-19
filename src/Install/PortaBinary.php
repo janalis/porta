@@ -60,6 +60,19 @@ final class PortaBinary
         return \is_file($wrapper) ? $wrapper : $binary;
     }
 
+    /**
+     * The argv that starts another Porta: a desktop bundle's wrapper carries the
+     * flags its PHP needs, which `php porta.phar` would lose.
+     *
+     * @return non-empty-list<string>
+     */
+    public static function command(string $php, string $binary): array
+    {
+        $launcher = self::launcher($binary);
+
+        return $launcher === $binary ? [$php, $binary] : [$launcher];
+    }
+
     /** The folder this package lives in: a checkout, or `vendor/janalis/porta` (inside the phar, its `phar://` root). */
     public static function packageDir(): string
     {

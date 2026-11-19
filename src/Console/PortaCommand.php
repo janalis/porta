@@ -554,7 +554,7 @@ final class PortaCommand extends Command
     {
         $binary = PortaBinary::entry($_SERVER['SCRIPT_FILENAME'], PortaBinary::path());
         $php = PortaBinary::interpreter(\PHP_BINARY);
-        $launch = [$php, $binary, $root];
+        $launch = [...PortaBinary::command($php, $binary), $root];
         if (Ansi::Disabled === $ansi) {
             $launch[] = '--no-ansi';
         }

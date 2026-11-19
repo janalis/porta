@@ -113,6 +113,13 @@ static void test_the_close_flow(void)
     g_assert_cmpint(porta_flow_timed_out(&flow), ==, PORTA_STEP_WAIT);
     g_assert_true(porta_flow_closes_on_exit(&flow, FALSE, 0));
     g_assert_true(porta_flow_closes_on_exit(&flow, TRUE, 0));
+    /* A shutdown that hangs still leaves a way out. */
+    g_assert_cmpint(porta_flow_close_requested(&flow), ==, PORTA_STEP_ASK);
+    g_assert_cmpint(porta_flow_received(&flow, PORTA_MESSAGE_CLOSING), ==, PORTA_STEP_WAIT_FOR_EXIT);
+    g_assert_true(porta_flow_is_closing(&flow));
+    g_assert_cmpint(porta_flow_close_requested(&flow), ==, PORTA_STEP_WAIT);
+    g_assert_cmpint(porta_flow_timed_out(&flow), ==, PORTA_STEP_FORCE_QUIT);
+    g_assert_cmpint(porta_flow_timed_out(&flow), ==, PORTA_STEP_FORCE_QUIT);
     g_assert_false(porta_flow_closes_on_exit(&flow, TRUE, 1));
 }
 

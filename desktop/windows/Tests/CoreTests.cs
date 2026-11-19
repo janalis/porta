@@ -79,6 +79,10 @@ public class CoreTests
         Assert.Equal(CloseStep.AskPorta, flow.CloseRequested());
         Assert.Equal(CloseStep.OfferForceQuit, flow.AnswerTimedOut());
         Assert.Equal(CloseStep.Wait, flow.AnswerTimedOut());
+        Assert.Equal(CloseStep.AskPorta, flow.CloseRequested());
+        Assert.Equal(CloseStep.WaitForExit, flow.Received(MessageKind.Closing));
+        Assert.True(flow.IsClosing);
+        Assert.Equal(CloseStep.OfferForceQuit, flow.AnswerTimedOut());
         Assert.True(flow.ClosesWhenPortaExits(0));
         Assert.True(flow.ClosesWhenPortaExits(129));
         Assert.False(flow.ClosesWhenPortaExits(1));
