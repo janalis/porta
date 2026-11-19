@@ -403,7 +403,7 @@ static void open_window(GtkApplication *application, const char *project)
     g_auto(GStrv) argv = porta_launch_argv(runtime, project);
     g_auto(GStrv) inherited = g_get_environ();
     g_auto(GStrv) env = porta_launch_env(inherited, self->token, desktop_shows_menus());
-    vte_pty_spawn_async(self->pty, NULL != project ? project : g_get_home_dir(), argv, env, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, NULL, -1, NULL, (GAsyncReadyCallback) on_spawned, self);
+    vte_pty_spawn_async(self->pty, NULL != project ? project : g_get_home_dir(), argv, env, G_SPAWN_DEFAULT, NULL, NULL, NULL, -1, NULL, (GAsyncReadyCallback) on_spawned, self);
 }
 
 /* The system menu: one action per item, since each is enabled and ticked on its own. */

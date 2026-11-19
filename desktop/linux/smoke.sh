@@ -14,17 +14,25 @@ pid=$!
 
 await_window() {
     tries=0
-    until xdotool search --name "$1" > /dev/null 2>&1; do
+    until xdotool search --onlyvisible --name "$1" > /dev/null 2>&1; do
         tries=$((tries + 1))
         [ "$tries" -lt 120 ] || { echo "smoke: no window named '$1'" >&2; kill "$pid" 2>/dev/null; exit 1; }
         sleep 0.5
     done
 }
 
+# No window manager here: focus the one window that is on screen, then type.
+press() {
+    window=$(xdotool search --onlyvisible --name "$1" | tail -n 1)
+    xdotool windowfocus "$window"
+    sleep 0.5
+    xdotool key "$2"
+}
+
 await_window '^Porta$'
 sleep 3
 # The trust prompt: Enter answers no, and the project opens restricted.
-xdotool search --name '^Porta$' windowfocus --sync key Return
+press '^Porta$' Return
 await_window '^shop — Porta$'
 echo 'smoke: the IDE is up in its window'
 
@@ -33,7 +41,7 @@ echo 'smoke: the IDE is up in its window'
 sleep 2
 [ "$(pgrep -c -P "$pid" php || true)" -le 1 ] || { echo 'smoke: a second Porta was started' >&2; exit 1; }
 
-xdotool search --name '^shop — Porta$' windowfocus --sync key ctrl+q
+press '^shop — Porta$' ctrl+q
 tries=0
 while kill -0 "$pid" 2>/dev/null; do
     tries=$((tries + 1))
