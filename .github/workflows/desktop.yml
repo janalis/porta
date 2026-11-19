@@ -3,8 +3,6 @@ name: Desktop
 # The native applications around Porta: each host's own tests, and the packages.
 # Release calls this with a version; on a pull request it only proves they build.
 on:
-  push:
-    branches: [feat/desktop-app]
   pull_request:
     paths:
       - 'desktop/**'
@@ -244,9 +242,6 @@ jobs:
         run: dbus-run-session -- desktop/linux/smoke-session.sh wayland "$PWD/unpacked/lib/porta-desktop"
       - name: It offers its menus to a desktop that shows them
         run: dbus-run-session -- xvfb-run -a desktop/linux/smoke-session.sh menu "$PWD/unpacked/lib/porta-desktop"
-      # The Windows smoke's welcome-card Escape on a plain Linux PTY: reported, never failed.
-      - name: Escape at the welcome card's first paint
-        run: python3 desktop/linux/escape-probe.py "$PWD/unpacked/lib/porta-desktop" || true
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
