@@ -196,8 +196,9 @@ jobs:
           echo "Dir::Cache::archives \"$HOME/apt-archives\";" | sudo tee /etc/apt/apt.conf.d/99porta-cache > /dev/null
       - run: |
           # The x86 runners' route to Ubuntu's archives has crawled at a few kB/s, for
-          # half an hour: the kernel.org mirror is served from a CDN.
-          sudo sed -i -E 's#http://([a-z0-9.-]+\.)?archive\.ubuntu\.com/ubuntu/?#http://mirrors.edge.kernel.org/ubuntu/#' /etc/apt/sources.list.d/*.sources /etc/apt/sources.list 2>/dev/null || true
+          # half an hour, and security.ubuntu.com has answered 503: the kernel.org mirror,
+          # served from a CDN, carries both pockets.
+          sudo sed -i -E 's#https?://(([a-z0-9.-]+\.)?archive|security)\.ubuntu\.com/ubuntu/?#http://mirrors.edge.kernel.org/ubuntu/#' /etc/apt/sources.list.d/*.sources /etc/apt/sources.list 2>/dev/null || true
           # A stalled mirror has hung this step: bounded retries rather than the job's whole budget.
           for attempt in 1 2 3; do
             timeout 180 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update && break
