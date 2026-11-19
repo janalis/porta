@@ -136,6 +136,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         openWindow(project: nil)
     }
 
+    /// The system's font panel, on the font of the window in front.
+    @objc func showFonts(_ sender: Any?) {
+        let manager = NSFontManager.shared
+        manager.target = self
+        if let font = focused?.currentFont {
+            manager.setSelectedFont(font, isMultiple: false)
+        }
+        manager.orderFrontFontPanel(sender)
+    }
+
+    /// A font picked in the panel: every window takes it, and new ones read it from desktop.json.
+    @objc func changeFont(_ sender: NSFontManager?) {
+        guard let sender, let current = focused?.currentFont ?? windows.first?.currentFont else { return }
+        let chosen = sender.convert(current)
+        ProjectWindowController.choose(family: chosen.familyName ?? chosen.fontName, size: chosen.pointSize)
+        windows.forEach { $0.applySavedFont() }
+    }
+
     @objc func zoomIn(_ sender: Any?) { focused?.zoom(by: 1) }
     @objc func zoomOut(_ sender: Any?) { focused?.zoom(by: -1) }
     @objc func zoomReset(_ sender: Any?) { focused?.zoomReset() }

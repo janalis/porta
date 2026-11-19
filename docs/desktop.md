@@ -87,7 +87,8 @@ Linux, and in `%LOCALAPPDATA%\Porta\` on Windows:
 ```
 
 Both keys are optional, the size runs from 6 to 72, and a new window reads the
-file when it opens. Without it each system's own monospaced font is used.
+file when it opens. On macOS, **Window → Font…** (Cmd+T) picks the font in the
+system's font panel and writes this file for you; every open window takes it. Without it each system's own monospaced font is used.
 
 ## Updating
 

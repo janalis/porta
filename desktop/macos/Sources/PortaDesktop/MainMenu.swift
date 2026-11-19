@@ -33,6 +33,7 @@ final class MainMenu: NSObject, NSMenuDelegate {
             Self.item("Bigger", #selector(AppDelegate.zoomIn(_:)), "+", target),
             Self.item("Smaller", #selector(AppDelegate.zoomOut(_:)), "-", target),
             Self.item("Actual Size", #selector(AppDelegate.zoomReset(_:)), "0", target),
+            Self.item("Font…", #selector(AppDelegate.showFonts(_:)), "t", target),
             .separator(),
             fullScreen,
             NSMenuItem(title: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m"),

@@ -28,6 +28,14 @@ public struct DesktopSettings: Decodable, Equatable {
         data.flatMap { try? JSONDecoder().decode(DesktopSettings.self, from: $0) } ?? DesktopSettings()
     }
 
+    /// The file with a font chosen in the window: the two keys set, anything else in it kept.
+    public static func written(_ existing: Data?, fontFamily: String, fontSize: Double) -> Data {
+        var object = existing.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+        object["fontFamily"] = fontFamily
+        object["fontSize"] = fontSize
+        return (try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])) ?? Data()
+    }
+
     /// `$PORTA_HOME/.porta/desktop.json`, else the same folder under the home directory.
     public static func path(environment: [String: String], home: String) -> String {
         (environment["PORTA_HOME"].flatMap { $0.isEmpty ? nil : $0 } ?? home) + "/.porta/desktop.json"

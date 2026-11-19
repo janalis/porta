@@ -7,11 +7,9 @@ import UserNotifications
 final class ProjectWindowController: NSWindowController, NSWindowDelegate, TerminalViewDelegate, LocalProcessDelegate {
     private static let answerSeconds: TimeInterval = 4
     private static let shutdownSeconds: TimeInterval = 15
-    private static let settings: DesktopSettings = {
-        let path = DesktopSettings.path(environment: ProcessInfo.processInfo.environment, home: NSHomeDirectory())
-        return DesktopSettings.parse(FileManager.default.contents(atPath: path))
-    }()
-    private static let defaultFontSize = CGFloat(settings.fontSize ?? 13)
+    private static let settingsPath = DesktopSettings.path(environment: ProcessInfo.processInfo.environment, home: NSHomeDirectory())
+    private static var settings = DesktopSettings.parse(FileManager.default.contents(atPath: settingsPath))
+    private static var defaultFontSize: CGFloat { CGFloat(settings.fontSize ?? 13) }
     private static let fontSizeKey = "fontSize"
 
     var onClosed: (() -> Void)?
@@ -194,7 +192,27 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
     }
 
     private static func font(size: CGFloat) -> NSFont {
-        settings.fontFamily.flatMap { NSFont(name: $0, size: size) } ?? NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
+        // A family as desktop.json names it ("JetBrains Mono"), or a face's own name ("Menlo-Regular").
+        let named = settings.fontFamily.flatMap { NSFont(name: $0, size: size) ?? NSFontManager.shared.font(withFamily: $0, traits: [], weight: 5, size: size) }
+        return named ?? NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
+    }
+
+    /// The font this window shows, for the font panel to start from.
+    var currentFont: NSFont { terminal.font }
+
+    /// A font chosen in the font panel: written to desktop.json, which every window reads.
+    static func choose(family: String, size: CGFloat) {
+        let written = DesktopSettings.written(FileManager.default.contents(atPath: settingsPath), fontFamily: family, fontSize: Double(size))
+        try? FileManager.default.createDirectory(atPath: (settingsPath as NSString).deletingLastPathComponent, withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: settingsPath, contents: written)
+        settings = DesktopSettings.parse(written)
+        // The size is the file's now: Bigger and Smaller start again from it.
+        UserDefaults.standard.removeObject(forKey: fontSizeKey)
+    }
+
+    /// The font desktop.json names, after a choice in another window.
+    func applySavedFont() {
+        terminal.font = Self.font(size: Self.savedFontSize)
     }
 
     private func received(_ payload: String) {
