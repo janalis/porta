@@ -49,19 +49,18 @@ jobs:
           name: desktop-phar
           path: build/porta.phar
 
-  php:
+  # Each platform's PHP is its own job: a queue without a Mac runner must not hold up Linux and Windows.
+  php-macos:
     strategy:
       fail-fast: false
       matrix:
         include:
           - { name: macos-arm64, os: macos-26 }
           - { name: macos-x86_64, os: macos-26-intel }
-          - { name: linux-x86_64, os: ubuntu-24.04 }
-          - { name: linux-aarch64, os: ubuntu-24.04-arm }
     name: static php (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
-    steps:
+    steps: &php-steps
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.sha }}
@@ -84,8 +83,20 @@ jobs:
           name: desktop-php-${{ matrix.name }}
           path: php-${{ matrix.name }}
 
+  php-linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux-x86_64, os: ubuntu-24.04 }
+          - { name: linux-aarch64, os: ubuntu-24.04-arm }
+    name: static php (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps: *php-steps
+
   macos:
-    needs: [phar, php]
+    needs: [phar, php-macos]
     strategy:
       fail-fast: false
       matrix:
@@ -171,7 +182,7 @@ jobs:
           path: dist/*.dmg
 
   linux:
-    needs: [phar, php]
+    needs: [phar, php-linux]
     strategy:
       fail-fast: false
       matrix:
@@ -299,7 +310,7 @@ jobs:
           test "$(cat /usr/lib/porta-desktop/runtime/desktop-package)" = porta-desktop-linux-x86_64.rpm
 
   windows:
-    needs: [phar, php]
+    needs: [phar, php-linux]
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
