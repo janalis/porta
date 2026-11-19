@@ -39,7 +39,7 @@ mkdir -p "$iconset"
 for size in 16 32 128 256 512; do
     sips -z "$size" "$size" "$here/../assets/icon.png" --out "$iconset/icon_${size}x${size}.png" > /dev/null
     double=$((size * 2))
-    [ "$double" -le 512 ] && sips -z "$double" "$double" "$here/../assets/icon.png" --out "$iconset/icon_${size}x${size}@2x.png" > /dev/null
+    [ "$double" -le 1024 ] && sips -z "$double" "$double" "$here/../assets/icon.png" --out "$iconset/icon_${size}x${size}@2x.png" > /dev/null
 done
 iconutil -c icns "$iconset" -o "$app/Contents/Resources/Porta.icns"
 

@@ -16,8 +16,8 @@ done
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 build=$(mktemp -d)
 stage=$build/stage
-meson setup "$build/meson" "$here" --buildtype=release --prefix=/usr > /dev/null
-meson compile -C "$build/meson" > /dev/null
+meson setup "$build/meson" "$here" --buildtype=release --prefix=/usr
+meson compile -C "$build/meson"
 
 mkdir -p "$stage/lib/porta-desktop/runtime" "$stage/share/applications" "$stage/share/icons/hicolor/512x512/apps" "$out"
 cp "$build/meson/porta-desktop" "$stage/lib/porta-desktop/"
@@ -26,7 +26,7 @@ cp "$phar" "$stage/lib/porta-desktop/runtime/porta.phar"
 cp "$here/../runtime/porta-cli" "$stage/lib/porta-desktop/runtime/porta-cli"
 chmod 755 "$stage/lib/porta-desktop/runtime/php" "$stage/lib/porta-desktop/runtime/porta-cli"
 cp "$here/data/io.github.janalis.porta.desktop" "$stage/share/applications/"
-cp "$here/../assets/icon.png" "$stage/share/icons/hicolor/512x512/apps/io.github.janalis.porta.png"
+cp "$here/../assets/icon-512.png" "$stage/share/icons/hicolor/512x512/apps/io.github.janalis.porta.png"
 cp "$here/data/install.sh" "$stage/install.sh"
 
 case $(uname -m) in

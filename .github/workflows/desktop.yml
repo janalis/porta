@@ -200,18 +200,16 @@ jobs:
         with:
           name: desktop-php-linux-x86_64
           path: runtime-php
-      - name: The installer
+      - name: The runtime
         shell: bash
         run: |
           mv runtime-php/php-linux-x86_64 runtime/php
           cp desktop/runtime/porta-cli desktop/runtime/wsl-relay.php runtime/
-          choco install innosetup --no-progress -y
-          "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" \
-            "//DAppVersion=$VERSION" \
-            "//DSourceDir=$PWD/desktop/windows/App/bin/Release/net48" \
-            "//DRuntimeDir=$PWD/runtime" \
-            "//DOutputDir=$PWD/dist" \
-            desktop/windows/Installer/porta.iss
+      - name: The installer
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=$env:VERSION" "/DSourceDir=$PWD\desktop\windows\App\bin\Release\net48" "/DRuntimeDir=$PWD\runtime" "/DOutputDir=$PWD\dist" desktop\windows\Installer\porta.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Sign
         if: ${{ env.WINDOWS_CERTIFICATE != '' }}
         env:
