@@ -3,6 +3,8 @@ name: Desktop
 # The native applications around Porta: each host's own tests, and the packages.
 # Release calls this with a version; on a pull request it only proves they build.
 on:
+  push:
+    branches: [feat/desktop-app]
   pull_request:
     paths:
       - 'desktop/**'
@@ -235,11 +237,45 @@ jobs:
           test "$(cat /usr/lib/porta-desktop/runtime/desktop-package)" = "porta-desktop-linux-$(uname -m).deb"
       - uses: actions/upload-artifact@v7
         with:
+          name: desktop-next-${{ matrix.name }}
+          path: next/*.rpm
+      - uses: actions/upload-artifact@v7
+        with:
           name: desktop-package-${{ matrix.name }}
           path: |
             dist/*.tar.gz
             dist/*.deb
             dist/*.rpm
+
+  # Fedora: the .rpm installed with dnf, then updated from the next one by the
+  # application's own update code, on the PHP and phar the package ships.
+  rpm:
+    needs: linux
+    runs-on: ubuntu-24.04
+    container: fedora:42
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: desktop-package-linux-x86_64
+          path: dist
+      - uses: actions/download-artifact@v8
+        with:
+          name: desktop-next-linux-x86_64
+          path: next
+      - name: An installed .rpm updates itself through dnf
+        run: |
+          dnf install -y ./dist/porta-desktop-linux-x86_64.rpm
+          rpm -q --qf '%{VERSION}\n' porta-desktop
+          # pkexec asks for a password through the desktop; in a container, root needs none.
+          printf '#!/bin/sh\nexec "$@"\n' > /usr/local/bin/pkexec
+          chmod 755 /usr/local/bin/pkexec
+          PORTA_HARNESS_FROM_PHAR=1 /usr/lib/porta-desktop/runtime/php -n -d memory_limit=-1 desktop/update-harness.php /usr/lib/porta-desktop/runtime/porta.phar next/porta-desktop-linux-x86_64.rpm v99.0.0
+          test "$(rpm -q --qf '%{VERSION}' porta-desktop)" = 99.0.0
+          test "$(cat /usr/lib/porta-desktop/runtime/desktop-package)" = porta-desktop-linux-x86_64.rpm
 
   windows:
     needs: [phar, php]

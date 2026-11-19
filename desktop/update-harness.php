@@ -8,6 +8,9 @@ declare(strict_types=1);
  * script. CI runs it to update one build with the next.
  *
  * Usage: php update-harness.php <installed porta.phar> <new package> <tag>
+ *
+ * Porta's classes come from the checkout's vendor/, or, with PORTA_HARNESS_FROM_PHAR=1,
+ * from the installed phar itself: then nothing but the package is needed.
  */
 
 use Porta\Console\DesktopUpdate;
@@ -16,9 +19,8 @@ use Porta\Install\Installation;
 use Porta\Install\InstallMethod;
 use Symfony\Component\Process\Process;
 
-require __DIR__.'/../vendor/autoload.php';
-
 [, $phar, $package, $tag] = $argv;
+require '1' === getenv('PORTA_HARNESS_FROM_PHAR') ? 'phar://'.$phar.'/vendor/autoload.php' : __DIR__.'/../vendor/autoload.php';
 $name = trim((string) file_get_contents(dirname($phar).'/desktop-package'));
 $sums = sys_get_temp_dir().'/porta-harness-'.bin2hex(random_bytes(4)).'.sha256';
 file_put_contents($sums, hash_file('sha256', $package).'  '.$name."\n");
