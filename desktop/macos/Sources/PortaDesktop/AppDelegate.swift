@@ -11,9 +11,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var appearance: NSKeyValueObservation?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Tabs as the system prefers them (Desktop & Dock → Prefer tabs): projects can share a window.
+        // Before the menus: AppKit adds its tab items to the Window menu as it is installed.
+        NSWindow.allowsAutomaticWindowTabbing = true
         menus.install(target: self)
         UNUserNotificationCenter.current().delegate = self
-        NSWindow.allowsAutomaticWindowTabbing = false
         KeyForwarding.install { [weak self] in self?.focused }
         appearance = NSApp.observe(\.effectiveAppearance) { [weak self] _, _ in
             DispatchQueue.main.async { self?.windows.forEach { $0.sendAppearance() } }

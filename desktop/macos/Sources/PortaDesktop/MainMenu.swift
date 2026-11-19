@@ -35,6 +35,12 @@ final class MainMenu: NSObject, NSMenuDelegate {
             Self.item("Actual Size", #selector(AppDelegate.zoomReset(_:)), "0", target),
             Self.item("Font…", #selector(AppDelegate.showFonts(_:)), "t", target),
             .separator(),
+            // A menu built in code gets no tab items from AppKit: these are its own, sent to the key window.
+            NSMenuItem(title: "Show Tab Bar", action: #selector(NSWindow.toggleTabBar(_:)), keyEquivalent: ""),
+            NSMenuItem(title: "Show All Tabs", action: #selector(NSWindow.toggleTabOverview(_:)), keyEquivalent: ""),
+            NSMenuItem(title: "Merge All Windows", action: #selector(NSWindow.mergeAllWindows(_:)), keyEquivalent: ""),
+            NSMenuItem(title: "Move Tab to New Window", action: #selector(NSWindow.moveTabToNewWindow(_:)), keyEquivalent: ""),
+            .separator(),
             fullScreen,
             NSMenuItem(title: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m"),
             NSMenuItem(title: "Zoom", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: ""),

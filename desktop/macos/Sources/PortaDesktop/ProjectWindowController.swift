@@ -55,6 +55,9 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
         window.contentView = holder
         dropView = holder
         window.setFrameAutosaveName("PortaProjectWindow")
+        // Every project window is the same kind: any can be a tab of another.
+        window.tabbingIdentifier = "io.github.janalis.porta.project"
+        window.tabbingMode = .automatic
         super.init(window: window)
         window.delegate = self
     }

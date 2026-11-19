@@ -24,6 +24,10 @@ window forward, and opening another project opens another window. A file opened
 with Porta or dropped on its window, or a folder inside a
 project that is open, goes to that project's window.
 
+On macOS, project windows can be tabs of one window, as the system prefers
+(**System Settings → Desktop & Dock → Prefer tabs when opening documents**), and
+**Window → Merge All Windows** gathers them; each tab is still its own project.
+
 Projects you open join the system's recent items: **Window → Open Recent** and
 the Dock on macOS, the recent files of the desktop on Linux, and Windows'
 recent items.
