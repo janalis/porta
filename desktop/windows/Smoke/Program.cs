@@ -169,6 +169,15 @@ Type("\u0013");
 AwaitState(unsaved: false);
 Console.WriteLine("smoke: its save was told");
 
+// The Escape key reaches Porta as a lone ESC byte; the keys after it must still arrive.
+Type("\u001b");
+Thread.Sleep(1000);
+Type("y");
+AwaitState(unsaved: true);
+Type("\u0013");
+AwaitState(unsaved: false);
+Console.WriteLine("smoke: the keys after a lone Escape still arrive");
+
 Type(DesktopMessage.CloseRequest(new string('f', 32)));
 if (messages.TryTake(out var answer, 3000) && answer.Kind == MessageKind.Closing)
 {
