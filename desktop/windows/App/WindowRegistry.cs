@@ -61,7 +61,7 @@ namespace Porta.Desktop.App
             return answer != null && answer.StartsWith("/") ? answer : null;
         }
 
-        /// <summary>What a command inside WSL printed; null when WSL cannot answer.</summary>
+        /// <summary>What a command inside WSL printed; null when WSL cannot answer in time.</summary>
         private static string? Wsl(params string[] command)
         {
             try
@@ -70,13 +70,21 @@ namespace Porta.Desktop.App
                 {
                     UseShellExecute = false,
                     CreateNoWindow = true,
+                    // Without WSL, wsl.exe offers to install it and waits for a key: give it none.
+                    RedirectStandardInput = true,
                     RedirectStandardOutput = true,
                     StandardOutputEncoding = Encoding.UTF8,
                 };
                 using var process = Process.Start(start)!;
-                var answer = process.StandardOutput.ReadToEnd().Trim();
-                process.WaitForExit();
-                return process.ExitCode == 0 ? answer : null;
+                process.StandardInput.Close();
+                var answer = process.StandardOutput.ReadToEndAsync();
+                if (!process.WaitForExit(20000))
+                {
+                    process.Kill();
+                    return null;
+                }
+
+                return process.ExitCode == 0 ? answer.Result.Trim() : null;
             }
             catch (System.ComponentModel.Win32Exception)
             {
