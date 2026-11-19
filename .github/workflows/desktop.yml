@@ -3,6 +3,8 @@ name: Desktop
 # The native applications around Porta: each host's own tests, and the packages.
 # Release calls this with a version; on a pull request it only proves they build.
 on:
+  push:
+    branches: [feat/desktop-app]
   pull_request:
     paths:
       - 'desktop/**'
@@ -221,6 +223,18 @@ jobs:
           php desktop/update-harness.php "$installed/runtime/porta.phar" dist/porta-desktop-linux-$(uname -m).tar.gz v99.0.0
           cmp porta.phar "$installed/runtime/porta.phar"
           test "$(ls -A "$RUNNER_TEMP/share")" = porta-desktop
+      - name: An installed .deb updates itself through the package manager
+        run: |
+          sudo apt-get install -y "./dist/porta-desktop-linux-$(uname -m).deb"
+          test "$(dpkg-query -W -f='${Version}' porta-desktop)" = "$VERSION"
+          desktop/linux/package.sh --php php-${{ matrix.name }} --phar porta.phar --version 99.0.0 --out next
+          # pkexec asks for a password through the desktop; here, sudo stands in for it.
+          mkdir -p "$RUNNER_TEMP/bin"
+          printf '#!/bin/sh\nexec sudo "$@"\n' > "$RUNNER_TEMP/bin/pkexec"
+          chmod 755 "$RUNNER_TEMP/bin/pkexec"
+          PATH="$RUNNER_TEMP/bin:$PATH" php desktop/update-harness.php /usr/lib/porta-desktop/runtime/porta.phar "next/porta-desktop-linux-$(uname -m).deb" v99.0.0
+          test "$(dpkg-query -W -f='${Version}' porta-desktop)" = 99.0.0
+          test "$(cat /usr/lib/porta-desktop/runtime/desktop-package)" = "porta-desktop-linux-$(uname -m).deb"
       - uses: actions/upload-artifact@v7
         with:
           name: desktop-package-${{ matrix.name }}
