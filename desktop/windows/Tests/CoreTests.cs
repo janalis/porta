@@ -205,12 +205,39 @@ public class CoreTests
         Assert.Matches("^[0-9a-f]{32}$", LaunchPlan.NewToken());
     }
 
-    [Fact]
-    public void AChosenFontIsWrittenAsTheWindowsReadIt()
-    {
-        var read = DesktopSettings.Parse(DesktopSettings.Written("Cascadia \"Mono\" \\ Pro", 12.5));
+    private static JsonElement FontChoice([CallerFilePath] string here = "") =>
+        JsonDocument.Parse(File.ReadAllText(Path.Combine(Path.GetDirectoryName(here)!, "..", "..", "contract", "font-choice.json"))).RootElement;
 
+    [Fact]
+    public void AChosenSizeIsWrittenAsTheContractSays()
+    {
+        foreach (var pair in FontChoice().GetProperty("sizes").EnumerateArray())
+        {
+            var chosen = double.Parse(pair[0].GetString()!, System.Globalization.CultureInfo.InvariantCulture);
+            var written = double.Parse(pair[1].GetString()!, System.Globalization.CultureInfo.InvariantCulture);
+            Assert.Equal(written, DesktopSettings.WrittenSize(chosen));
+        }
+    }
+
+    [Fact]
+    public void AChosenFontKeepsTheRestOfTheFile()
+    {
+        var written = DesktopSettings.Written(FontChoice().GetProperty("existing").GetString(), "Cascadia \"Mono\" \\ Pro", 14.6);
+
+        var read = DesktopSettings.Parse(written);
         Assert.Equal("Cascadia \"Mono\" \\ Pro", read.FontFamily);
-        Assert.Equal(12.5, read.FontSize);
+        Assert.Equal(15, read.FontSize);
+        var other = JsonDocument.Parse(written).RootElement.GetProperty("other");
+        Assert.Equal(1, other[0].GetInt32());
+        Assert.True(other[1].GetProperty("deep").GetBoolean());
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("not json")]
+    [InlineData("[1]")]
+    public void AMissingOrBrokenFileIsReplacedWithTheChosenFont(string? existing)
+    {
+        Assert.Equal("Menlo", DesktopSettings.Parse(DesktopSettings.Written(existing, "Menlo", 13)).FontFamily);
     }
 }

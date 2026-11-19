@@ -1,7 +1,11 @@
+using System;
+using System.Globalization;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
+using System.Xml;
+using System.Xml.Linq;
 
 namespace Porta.Desktop
 {
@@ -37,13 +41,56 @@ namespace Porta.Desktop
             }
         }
 
-        /// <summary>The file with a font chosen in the window: the two keys it holds.</summary>
-        public static string Written(string fontFamily, double fontSize)
+        /// <summary>A chosen size as the file holds it: whole points, within what a window reads (contract/font-choice.json).</summary>
+        public static double WrittenSize(double chosen) =>
+            Math.Min(LargestFont, Math.Max(SmallestFont, Math.Round(chosen, MidpointRounding.AwayFromZero)));
+
+        /// <summary>The file with a font chosen in the window: the two keys set, anything else in it kept.</summary>
+        public static string Written(string? existing, string fontFamily, double fontSize)
         {
-            var settings = new DesktopSettings { family = fontFamily, size = fontSize };
+            // JSON read as the XML the framework maps it to, which keeps every key whatever it holds.
+            var root = ReadAsXml(existing);
+            Set(root, "fontFamily", "string", fontFamily);
+            Set(root, "fontSize", "number", WrittenSize(fontSize).ToString(CultureInfo.InvariantCulture));
             using var stream = new MemoryStream();
-            new DataContractJsonSerializer(typeof(DesktopSettings)).WriteObject(stream, settings);
+            using (var writer = JsonReaderWriterFactory.CreateJsonWriter(stream, Encoding.UTF8, ownsStream: false, indent: true))
+            {
+                root.WriteTo(writer);
+            }
+
             return Encoding.UTF8.GetString(stream.ToArray());
+        }
+
+        private static XElement ReadAsXml(string? json)
+        {
+            if (!string.IsNullOrWhiteSpace(json))
+            {
+                try
+                {
+                    using var reader = JsonReaderWriterFactory.CreateJsonReader(Encoding.UTF8.GetBytes(json), XmlDictionaryReaderQuotas.Max);
+                    var root = XElement.Load(reader);
+                    if ((string?)root.Attribute("type") == "object")
+                    {
+                        return root;
+                    }
+                }
+                catch (XmlException)
+                {
+                    // Not JSON: replaced by the font alone.
+                }
+                catch (SerializationException)
+                {
+                    // Likewise.
+                }
+            }
+
+            return new XElement("root", new XAttribute("type", "object"));
+        }
+
+        private static void Set(XElement root, string key, string type, string value)
+        {
+            root.Element(key)?.Remove();
+            root.Add(new XElement(key, new XAttribute("type", type), value));
         }
 
         public static DesktopSettings Parse(string? json)

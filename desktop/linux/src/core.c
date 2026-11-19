@@ -1,5 +1,8 @@
 #include "core.h"
 
+#include <json-glib/json-glib.h>
+#include <math.h>
+
 #include <string.h>
 #include <sys/random.h>
 #include <unistd.h>
@@ -200,6 +203,27 @@ PortaMessageKind porta_message_parse(const char *payload, const char *token, cha
 char *porta_close_request(const char *token)
 {
     return g_strdup_printf("\x1b]7777;" NAMESPACE ";%s;close\x1b\\", token);
+}
+
+double porta_font_size_written(double chosen)
+{
+    return CLAMP(round(chosen), 6, 72);
+}
+
+char *porta_settings_with_font(const char *existing, const char *family, double size)
+{
+    g_autoptr(JsonParser) parser = json_parser_new();
+    g_autoptr(JsonGenerator) generator = json_generator_new();
+    JsonNode *root = NULL != existing && json_parser_load_from_data(parser, existing, -1, NULL) ? json_parser_get_root(parser) : NULL;
+    JsonObject *settings = NULL != root && JSON_NODE_HOLDS_OBJECT(root) ? json_object_ref(json_node_get_object(root)) : json_object_new();
+
+    json_object_set_string_member(settings, "fontFamily", family);
+    json_object_set_double_member(settings, "fontSize", porta_font_size_written(size));
+    g_autoptr(JsonNode) written = json_node_init_object(json_node_alloc(), settings);
+    json_object_unref(settings);
+    json_generator_set_root(generator, written);
+    json_generator_set_pretty(generator, TRUE);
+    return json_generator_to_data(generator, NULL);
 }
 
 char *porta_open_request(const char *token, const char *path)

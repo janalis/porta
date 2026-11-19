@@ -201,14 +201,17 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
     var currentFont: NSFont { terminal.font }
 
     /// A font chosen in the font panel: written to desktop.json, which every window reads.
-    static func choose(family: String, size: CGFloat) {
+    /// Throws, changing nothing, when the file cannot be written.
+    static func choose(family: String, size: CGFloat) throws {
         let written = DesktopSettings.written(FileManager.default.contents(atPath: settingsPath), fontFamily: family, fontSize: Double(size))
-        try? FileManager.default.createDirectory(atPath: (settingsPath as NSString).deletingLastPathComponent, withIntermediateDirectories: true)
-        FileManager.default.createFile(atPath: settingsPath, contents: written)
+        try FileManager.default.createDirectory(atPath: (settingsPath as NSString).deletingLastPathComponent, withIntermediateDirectories: true)
+        try written.write(to: URL(fileURLWithPath: settingsPath), options: .atomic)
         settings = DesktopSettings.parse(written)
-        // The size is the file's now: Bigger and Smaller start again from it.
+        // The size is the file's now: Bigger and Smaller start again from it, in every window.
         UserDefaults.standard.removeObject(forKey: fontSizeKey)
     }
+
+    static var settingsFile: String { settingsPath }
 
     /// The font desktop.json names, after a choice in another window.
     func applySavedFont() {

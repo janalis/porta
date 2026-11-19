@@ -32,6 +32,11 @@ typedef enum {
 /* `value` is the decoded root for READY, the decoded JSON for MENU and the unsaved count for STATE and the decoded text for NOTIFY; the caller frees it. */
 PortaMessageKind porta_message_parse(const char *payload, const char *token, char **value);
 char *porta_close_request(const char *token);
+/* A font picked in the window, as desktop.json holds it (contract/font-choice.json):
+ * the size in whole points between 6 and 72, and the file's other keys kept. */
+double porta_font_size_written(double chosen);
+char *porta_settings_with_font(const char *existing, const char *family, double size);
+
 char *porta_open_request(const char *token, const char *path);
 char *porta_appearance(const char *token, gboolean dark);
 char *porta_menu_choice(const char *token, const char *generation, int menu, int item);

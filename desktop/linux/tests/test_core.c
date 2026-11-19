@@ -1,5 +1,7 @@
 #include "../src/core.h"
 
+#include <json-glib/json-glib.h>
+
 #include <string.h>
 
 /* The contract's example named `key`, with its JSON escapes undone. */
@@ -94,6 +96,49 @@ static void test_the_newer_messages_are_the_contracts(void)
     g_autofree char *text = NULL;
     g_assert_cmpint(porta_message_parse(notify_payload, token, &text), ==, PORTA_MESSAGE_NOTIFY);
     g_assert_cmpstr(text, ==, notify_text);
+}
+
+static JsonObject *font_choice(JsonParser *parser)
+{
+    g_assert_true(json_parser_load_from_file(parser, CONTRACT_DIR "/font-choice.json", NULL));
+    return json_node_get_object(json_parser_get_root(parser));
+}
+
+static void test_a_chosen_size_is_written_as_the_contract_says(void)
+{
+    g_autoptr(JsonParser) parser = json_parser_new();
+    JsonArray *sizes = json_object_get_array_member(font_choice(parser), "sizes");
+
+    for (guint i = 0; i < json_array_get_length(sizes); i++) {
+        JsonArray *pair = json_array_get_array_element(sizes, i);
+        double chosen = g_ascii_strtod(json_array_get_string_element(pair, 0), NULL);
+        double written = g_ascii_strtod(json_array_get_string_element(pair, 1), NULL);
+        g_assert_cmpfloat(porta_font_size_written(chosen), ==, written);
+    }
+}
+
+static void test_a_chosen_font_keeps_the_rest_of_the_file(void)
+{
+    g_autoptr(JsonParser) contract = json_parser_new();
+    const char *existing = json_object_get_string_member(font_choice(contract), "existing");
+    g_autofree char *written = porta_settings_with_font(existing, "JetBrains Mono", 14.6);
+    g_autoptr(JsonParser) parser = json_parser_new();
+
+    g_assert_true(json_parser_load_from_data(parser, written, -1, NULL));
+    JsonObject *settings = json_node_get_object(json_parser_get_root(parser));
+    g_assert_cmpstr(json_object_get_string_member(settings, "fontFamily"), ==, "JetBrains Mono");
+    g_assert_cmpfloat(json_object_get_double_member(settings, "fontSize"), ==, 15);
+    JsonArray *other = json_object_get_array_member(settings, "other");
+    g_assert_cmpint(json_array_get_int_element(other, 0), ==, 1);
+    g_assert_true(json_object_get_boolean_member(json_array_get_object_element(other, 1), "deep"));
+
+    for (guint i = 0; i < 3; i++) {
+        const char *broken[] = {NULL, "not json", "[1]"};
+        g_autofree char *fresh = porta_settings_with_font(broken[i], "Menlo", 13);
+        g_autoptr(JsonParser) reread = json_parser_new();
+        g_assert_true(json_parser_load_from_data(reread, fresh, -1, NULL));
+        g_assert_cmpstr(json_object_get_string_member(json_node_get_object(json_parser_get_root(reread)), "fontFamily"), ==, "Menlo");
+    }
 }
 
 static void test_a_split_at_every_byte_changes_nothing(void)
@@ -221,6 +266,8 @@ int main(int argc, char **argv)
     g_test_add_func("/messages/token", test_another_sessions_token_is_not_listened_to);
     g_test_add_func("/messages/menu-choice", test_the_menu_choice_is_the_contracts);
     g_test_add_func("/messages/newer", test_the_newer_messages_are_the_contracts);
+    g_test_add_func("/font/size", test_a_chosen_size_is_written_as_the_contract_says);
+    g_test_add_func("/font/kept", test_a_chosen_font_keeps_the_rest_of_the_file);
     g_test_add_func("/filter/split", test_a_split_at_every_byte_changes_nothing);
     g_test_add_func("/filter/foreign", test_a_sequence_written_into_the_payload_goes_to_the_terminal);
     g_test_add_func("/filter/foreign-string", test_a_string_sequence_written_into_the_payload_goes_whole_to_the_terminal);

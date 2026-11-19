@@ -409,11 +409,14 @@ namespace Porta.Desktop.App
                 FixedPitchOnly = true,
                 ShowEffects = false,
                 AllowScriptChange = false,
+                MinSize = 6,
+                MaxSize = 72,
                 Font = new System.Drawing.Font(settings.FontFamily ?? DefaultFont, (float)(settings.FontSize ?? DefaultFontSize)),
             };
             try
             {
-                if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+                // Owned by this window: modal to it, and never behind it.
+                if (dialog.ShowDialog(new Owner(new System.Windows.Interop.WindowInteropHelper(this).Handle)) != System.Windows.Forms.DialogResult.OK)
                 {
                     return;
                 }
@@ -424,9 +427,37 @@ namespace Porta.Desktop.App
                 return;
             }
 
-            Directory.CreateDirectory(Path.GetDirectoryName(SettingsFile)!);
-            File.WriteAllText(SettingsFile, DesktopSettings.Written(dialog.Font.FontFamily.Name, Math.Round(dialog.Font.SizeInPoints)));
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(SettingsFile)!);
+                var existing = File.Exists(SettingsFile) ? File.ReadAllText(SettingsFile) : null;
+                // Written beside, then moved over: a reader never sees half a file.
+                var staged = SettingsFile + ".new";
+                File.WriteAllText(staged, DesktopSettings.Written(existing, dialog.Font.FontFamily.Name, dialog.Font.SizeInPoints));
+                if (File.Exists(SettingsFile))
+                {
+                    File.Replace(staged, SettingsFile, null);
+                }
+                else
+                {
+                    File.Move(staged, SettingsFile);
+                }
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+            {
+                MessageBox.Show(this, SettingsFile + ": " + e.Message, "The font could not be saved", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             FontChosen?.Invoke();
+        }
+
+        /// <summary>The window, as the font dialog takes its owner.</summary>
+        private sealed class Owner : System.Windows.Forms.IWin32Window
+        {
+            public Owner(IntPtr handle) => Handle = handle;
+
+            public IntPtr Handle { get; }
         }
 
         private const uint MenuString = 0;

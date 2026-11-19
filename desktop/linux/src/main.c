@@ -153,36 +153,42 @@ static gboolean monospaced(gpointer item, gpointer data)
     return PANGO_IS_FONT_FAMILY(item) && pango_font_family_is_monospace(PANGO_FONT_FAMILY(item));
 }
 
-/* A font chosen in the dialog: written to desktop.json, any other key in it kept, and every window takes it. */
+/* A font chosen in the dialog: written to desktop.json (the core says how), and every window takes it
+ * at its own size, the zoom of each set back. A file that cannot be written changes nothing, and says so. */
 static void font_chosen(GObject *source, GAsyncResult *result, gpointer data)
 {
+    PortaWindow *self = data;
     PangoFontDescription *chosen = gtk_font_dialog_choose_font_finish(GTK_FONT_DIALOG(source), result, NULL);
     const char *home = g_getenv("PORTA_HOME");
     g_autofree char *folder = g_build_filename(NULL != home && '\0' != home[0] ? home : g_get_home_dir(), ".porta", NULL);
     g_autofree char *path = g_build_filename(folder, "desktop.json", NULL);
-    g_autoptr(JsonParser) parser = json_parser_new();
-    g_autoptr(JsonGenerator) generator = json_generator_new();
-    JsonNode *existing;
-    JsonObject *settings;
+    g_autofree char *existing = NULL;
+    g_autoptr(GError) error = NULL;
 
-    (void) data;
     if (NULL == chosen) {
+        release(self);
         return; /* cancelled */
     }
-    existing = json_parser_load_from_file(parser, path, NULL) ? json_parser_get_root(parser) : NULL;
-    settings = NULL != existing && JSON_NODE_HOLDS_OBJECT(existing) ? json_object_ref(json_node_get_object(existing)) : json_object_new();
-    json_object_set_string_member(settings, "fontFamily", pango_font_description_get_family(chosen));
-    json_object_set_double_member(settings, "fontSize", (double) pango_font_description_get_size(chosen) / PANGO_SCALE);
-    g_autoptr(JsonNode) root = json_node_init_object(json_node_alloc(), settings);
-    json_object_unref(settings);
-    json_generator_set_root(generator, root);
-    json_generator_set_pretty(generator, TRUE);
-    g_mkdir_with_parents(folder, 0700);
-    json_generator_to_file(generator, path, NULL);
+    g_file_get_contents(path, &existing, NULL, NULL);
+    g_autofree char *written = porta_settings_with_font(existing, pango_font_description_get_family(chosen),
+        (double) pango_font_description_get_size(chosen) / PANGO_SCALE);
     pango_font_description_free(chosen);
-    for (GList *entry = windows; NULL != entry; entry = entry->next) {
-        apply_font(entry->data);
+    if (0 != g_mkdir_with_parents(folder, 0700) || !g_file_set_contents_full(path, written, -1, G_FILE_SET_CONTENTS_CONSISTENT, 0600, &error)) {
+        if (!self->closed) {
+            g_autoptr(GtkAlertDialog) alert = gtk_alert_dialog_new("The font could not be saved");
+            g_autofree char *detail = g_strdup_printf("%s: %s", path, NULL != error ? error->message : g_strerror(errno));
+            gtk_alert_dialog_set_detail(alert, detail);
+            gtk_alert_dialog_show(alert, GTK_WINDOW(self->window));
+        }
+        release(self);
+        return;
     }
+    for (GList *entry = windows; NULL != entry; entry = entry->next) {
+        PortaWindow *window = entry->data;
+        vte_terminal_set_font_scale(window->terminal, 1.0);
+        apply_font(window);
+    }
+    release(self);
 }
 
 static void choose_font(GSimpleAction *action, GVariant *parameter, gpointer data)
@@ -195,7 +201,9 @@ static void choose_font(GSimpleAction *action, GVariant *parameter, gpointer dat
     (void) parameter;
     gtk_font_dialog_set_title(dialog, "Font");
     gtk_font_dialog_set_filter(dialog, GTK_FILTER(filter));
-    gtk_font_dialog_choose_font(dialog, GTK_WINDOW(self->window), vte_terminal_get_font(self->terminal), NULL, font_chosen, NULL);
+    /* The dialog's own reference: the window may close while it is open. */
+    self->holds++;
+    gtk_font_dialog_choose_font(dialog, GTK_WINDOW(self->window), vte_terminal_get_font(self->terminal), NULL, font_chosen, self);
 }
 
 static void write_to_porta(PortaWindow *self, const char *bytes, gssize length)

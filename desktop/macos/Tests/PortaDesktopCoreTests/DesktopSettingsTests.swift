@@ -22,14 +22,28 @@ final class DesktopSettingsTests: XCTestCase {
         XCTAssertEqual(DesktopSettings.path(environment: [:], home: "/Users/me"), "/Users/me/.porta/desktop.json")
     }
 
-    func testAChosenFontIsWrittenOverTheFileKeepingTheRest() {
-        let existing = Data(#"{"fontFamily": "Menlo", "fontSize": 12, "other": [1, 2]}"#.utf8)
+    private func choice() throws -> [String: Any] {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        return try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: root.appendingPathComponent("contract/font-choice.json"))) as? [String: Any])
+    }
 
-        let written = DesktopSettings.written(existing, fontFamily: "JetBrains Mono", fontSize: 15)
+    func testAChosenSizeIsWrittenAsTheContractSays() throws {
+        let sizes = try XCTUnwrap(try choice()["sizes"] as? [[String]])
+        for pair in sizes {
+            XCTAssertEqual(DesktopSettings.writtenSize(try XCTUnwrap(Double(pair[0]))), Double(pair[1]), "\(pair[0]) is written as \(pair[1])")
+        }
+    }
+
+    func testAChosenFontIsWrittenOverTheFileKeepingTheRest() throws {
+        let existing = Data(try XCTUnwrap(try choice()["existing"] as? String).utf8)
+
+        let written = DesktopSettings.written(existing, fontFamily: "JetBrains Mono", fontSize: 14.6)
 
         XCTAssertEqual(DesktopSettings.parse(written), DesktopSettings(fontFamily: "JetBrains Mono", fontSize: 15))
-        let object = try? JSONSerialization.jsonObject(with: written) as? [String: Any]
-        XCTAssertEqual(object?["other"] as? [Int], [1, 2], "a key the window does not know is kept")
+        let object = try XCTUnwrap(try JSONSerialization.jsonObject(with: written) as? [String: Any])
+        let other = try XCTUnwrap(object["other"] as? [Any])
+        XCTAssertEqual(other.first as? Int, 1, "a key the window does not know is kept")
+        XCTAssertEqual((other.last as? [String: Any])?["deep"] as? Bool, true, "with all it holds")
     }
 
     func testAMissingOrBrokenFileIsReplacedWithTheChosenFont() {

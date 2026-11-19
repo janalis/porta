@@ -150,7 +150,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     @objc func changeFont(_ sender: NSFontManager?) {
         guard let sender, let current = focused?.currentFont ?? windows.first?.currentFont else { return }
         let chosen = sender.convert(current)
-        ProjectWindowController.choose(family: chosen.familyName ?? chosen.fontName, size: chosen.pointSize)
+        // The panel lists every font; a terminal's grid needs one whose letters are all as wide.
+        guard chosen.isFixedPitch else {
+            NSSound.beep()
+            return
+        }
+        do {
+            try ProjectWindowController.choose(family: chosen.familyName ?? chosen.fontName, size: chosen.pointSize)
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "The font could not be saved"
+            alert.informativeText = "\(ProjectWindowController.settingsFile): \(error.localizedDescription)"
+            alert.runModal()
+            return
+        }
         windows.forEach { $0.applySavedFont() }
     }
 

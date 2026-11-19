@@ -28,11 +28,16 @@ public struct DesktopSettings: Decodable, Equatable {
         data.flatMap { try? JSONDecoder().decode(DesktopSettings.self, from: $0) } ?? DesktopSettings()
     }
 
+    /// A chosen size as the file holds it: whole points, within what a window reads (contract/font-choice.json).
+    public static func writtenSize(_ chosen: Double) -> Double {
+        min(sizes.upperBound, max(sizes.lowerBound, chosen.rounded(.toNearestOrAwayFromZero)))
+    }
+
     /// The file with a font chosen in the window: the two keys set, anything else in it kept.
     public static func written(_ existing: Data?, fontFamily: String, fontSize: Double) -> Data {
         var object = existing.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
         object["fontFamily"] = fontFamily
-        object["fontSize"] = fontSize
+        object["fontSize"] = writtenSize(fontSize)
         return (try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])) ?? Data()
     }
 
