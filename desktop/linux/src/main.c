@@ -266,7 +266,8 @@ static void received(PortaWindow *self, PortaOsc *osc)
     if (PORTA_MESSAGE_MENU == kind) {
         g_free(self->menu_json);
         self->menu_json = g_steal_pointer(&value);
-        if (gtk_window_is_active(GTK_WINDOW(self->window))) {
+        /* The active window's menus; until one is active, whichever window has some. */
+        if (gtk_window_is_active(GTK_WINDOW(self->window)) || NULL == menu_owner || menu_owner == self) {
             show_menus(gtk_window_get_application(GTK_WINDOW(self->window)), self);
         }
     }
