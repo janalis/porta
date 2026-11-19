@@ -184,8 +184,6 @@ jobs:
     needs: [phar, php]
     runs-on: windows-latest
     timeout-minutes: 30
-    env:
-      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -210,7 +208,7 @@ jobs:
         run: |
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=$env:VERSION" "/DSourceDir=$PWD\desktop\windows\App\bin\Release\net48" "/DRuntimeDir=$PWD\runtime" "/DOutputDir=$PWD\dist" desktop\windows\Installer\porta.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - uses: Vampire/setup-wsl@v6
+      - uses: Vampire/setup-wsl@4c48163d9f981914dd8caa0fc335fe19cca5bff4 # v7.2.0
         with:
           distribution: Ubuntu-24.04
       - name: It runs inside WSL
@@ -225,15 +223,33 @@ jobs:
         run: |
           $installer = (Get-ChildItem dist\*.exe | Select-Object -First 1).FullName
           desktop\windows\Smoke\installed.ps1 -Installer $installer -Project "$env:RUNNER_TEMP\shop"
-      - name: Sign
-        if: ${{ env.WINDOWS_CERTIFICATE != '' }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: desktop-unsigned-windows
+          path: dist/*.exe
+
+  # Apart from the job above: the signing key never shares a runner with the
+  # smoke tests or a third-party action.
+  windows-sign:
+    needs: windows
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: desktop-unsigned-windows
+          path: dist
+      - name: Sign, when there is a certificate
         env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         shell: pwsh
         run: |
+          if (-not $env:WINDOWS_CERTIFICATE) { Write-Output 'No certificate: the installer stays unsigned.'; exit 0 }
           [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\certificate.pfx", [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
           $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" | Select-Object -Last 1
           & $signtool sign /f "$env:RUNNER_TEMP\certificate.pfx" /p $env:WINDOWS_CERTIFICATE_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 (Get-ChildItem dist\*.exe).FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v7
         with:
           name: desktop-package-windows
