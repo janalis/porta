@@ -75,6 +75,28 @@ case "$titles" in
         osascript -e "tell application \"System Events\" to tell ($porta_process) to keystroke \"s\" using command down"
         await 20 'saving did not clear the dot' sh -c "[ \"\$(osascript -e 'tell application \"System Events\" to tell (first process whose bundle identifier is \"io.github.janalis.porta\") to get value of attribute \"AXEdited\" of (first button of window 1 whose subrole is \"AXCloseButton\")')\" = false ]"
         echo 'smoke: saving clears it'
+
+        # Porta → Permissions… shows the sheet again; Continue closes it.
+        osascript -e "tell application \"System Events\" to tell ($porta_process) to click menu item \"Permissions…\" of menu 1 of menu bar item \"Porta\" of menu bar 1"
+        await 20 'Permissions… showed no sheet' sh -c "[ \"\$(osascript -e 'tell application \"System Events\" to tell (first process whose bundle identifier is \"io.github.janalis.porta\") to get exists sheet 1 of window 1')\" = true ]"
+        osascript -e "tell application \"System Events\" to tell ($porta_process) to click button \"Continue\" of sheet 1 of window 1"
+        await 20 'Continue did not close the permissions sheet' sh -c "[ \"\$(osascript -e 'tell application \"System Events\" to tell (first process whose bundle identifier is \"io.github.janalis.porta\") to get exists sheet 1 of window 1')\" = false ]"
+        echo 'smoke: Porta → Permissions… shows the sheet, and Continue closes it'
+
+        # Window → Font… opens the system's font panel.
+        osascript -e "tell application \"System Events\" to tell ($porta_process) to click menu item \"Font…\" of menu 1 of menu bar item \"Window\" of menu bar 1"
+        await 20 'Font… opened no font panel' sh -c "osascript -e 'tell application \"System Events\" to tell (first process whose bundle identifier is \"io.github.janalis.porta\") to get name of every window' | grep -q Fonts"
+        osascript -e "tell application \"System Events\" to tell ($porta_process) to click (first button of window \"Fonts\" whose subrole is \"AXCloseButton\")"
+        echo 'smoke: Window → Font… opens the font panel'
+
+        # A second project is a second window; Window → Merge All Windows makes them tabs of one.
+        mkdir -p "$work/blog"
+        echo '{}' > "$work/blog/composer.json"
+        open -a "$app" "$work/blog"
+        await 60 'the second project opened no window' sh -c "[ \"\$(osascript -e 'tell application \"System Events\" to tell (first process whose bundle identifier is \"io.github.janalis.porta\") to count windows')\" -ge 2 ]"
+        osascript -e "tell application \"System Events\" to tell ($porta_process) to click menu item \"Merge All Windows\" of menu 1 of menu bar item \"Window\" of menu bar 1"
+        await 20 'Merge All Windows left the projects apart' sh -c "[ \"\$(osascript -e 'tell application \"System Events\" to tell (first process whose bundle identifier is \"io.github.janalis.porta\") to count windows')\" = 1 ]"
+        echo 'smoke: Merge All Windows makes two projects tabs of one window'
         ;;
     *)
         echo "smoke: System Events cannot read the windows here, so the title and the unsaved dot go unchecked: ${titles:-none listed}"

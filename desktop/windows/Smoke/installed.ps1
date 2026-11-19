@@ -34,6 +34,7 @@ Add-Type -Namespace Smoke -Name SystemMenu -MemberDefinition @'
 [DllImport("user32.dll")] public static extern IntPtr GetSystemMenu(IntPtr window, bool revert);
 [DllImport("user32.dll")] public static extern int GetMenuItemCount(IntPtr menu);
 [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetMenuString(IntPtr menu, uint item, System.Text.StringBuilder text, int length, uint flags);
+[DllImport("user32.dll")] public static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
 '@
 $menu = [Smoke.SystemMenu]::GetSystemMenu($running[0].MainWindowHandle, $false)
 $labels = foreach ($i in 0..([Smoke.SystemMenu]::GetMenuItemCount($menu) - 1)) {
@@ -44,6 +45,21 @@ $labels = foreach ($i in 0..([Smoke.SystemMenu]::GetMenuItemCount($menu) - 1)) {
 if ($running[0].MainWindowTitle -ne 'Porta needs WSL') {
     if ($labels -notcontains 'Font…') { throw "no Font… in the system menu: $($labels -join ', ')" }
     Write-Output 'smoke: the system menu offers Font…'
+
+    # Choosing it opens the font dialog, owned by the window; closing it changes nothing.
+    Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+    [void][Smoke.SystemMenu]::PostMessage($running[0].MainWindowHandle, 0x0112, [IntPtr]0x1000, [IntPtr]::Zero)
+    $owned = New-Object System.Windows.Automation.AndCondition(
+        (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ProcessIdProperty, $running[0].Id)),
+        (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, 'Font')))
+    $deadline = (Get-Date).AddSeconds(20)
+    do {
+        Start-Sleep -Milliseconds 500
+        $dialog = [System.Windows.Automation.AutomationElement]::RootElement.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $owned)
+    } until ($dialog -or (Get-Date) -gt $deadline)
+    if (-not $dialog) { throw 'Font… opened no font dialog' }
+    $dialog.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close()
+    Write-Output 'smoke: Font… opens the font dialog'
 } else {
     # Without WSL, the window says what is missing and offers to install it.
     Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
