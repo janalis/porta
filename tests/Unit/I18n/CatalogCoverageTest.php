@@ -341,6 +341,7 @@ final class CatalogCoverageTest extends TestCase
         '/plugins/git/src/Command/GitCommands.php' => false, // stash subjects and branch names
         '/plugins/git/src/Command/WorktreeCommands.php' => false, // worktree folder and branch names
         '/plugins/assist/porta.php' => false, // 'localhost:'.$port, the host's shared servers
+        '/src/Desktop/ProjectPicker.php' => false, // before the IDE boots there is no locale yet, as for the trust prompt
     ];
 
     /**

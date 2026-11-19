@@ -173,6 +173,8 @@ final class DesktopProtocolTest extends TestCase
         Services::resolve($this->ide, Tui::class)->start();
 
         $this->terminal->simulateInput($this->contract['examples']['close']);
+        // A terminal session has no token: an empty one must not pass for it.
+        $this->terminal->simulateInput("\x1b]7777;porta-desktop;;close\x1b\\");
 
         $this->assertStringNotContainsString('porta-desktop;', $this->terminal->getOutput());
         $this->assertStringNotContainsString('shop — Porta', $this->terminal->getOutput());
