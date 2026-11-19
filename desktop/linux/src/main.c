@@ -7,6 +7,8 @@
 #include <gtk/gtk.h>
 #include <json-glib/json-glib.h>
 #include <signal.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <vte/vte.h>
@@ -267,7 +269,7 @@ static gboolean sync_size(GtkWidget *widget, GdkFrameClock *clock, gpointer data
     if ((columns != self->columns || rows != self->rows) && NULL != self->pty) {
         self->columns = columns;
         self->rows = rows;
-        vte_pty_set_size(self->pty, (int) rows, (int) columns, NULL, NULL);
+        vte_pty_set_size(self->pty, (int) rows, (int) columns, NULL);
     }
     return G_SOURCE_CONTINUE;
 }
