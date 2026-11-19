@@ -28,6 +28,9 @@ typedef struct {
     char *token;
     char *project_key;
     char *menu_json;
+    char *project; /* what this window was opened on, for a restart; NULL for the picker */
+    char *title;   /* the project's name, without the unsaved mark */
+    gboolean ready;
     GPid pid;
     int master;
     guint reader;
@@ -100,6 +103,8 @@ static void release(PortaWindow *self)
     g_free(self->token);
     g_free(self->project_key);
     g_free(self->menu_json);
+    g_free(self->project);
+    g_free(self->title);
     g_free(self);
 }
 
@@ -252,6 +257,67 @@ static void copy_to_clipboard(PortaWindow *self, const char *payload)
     gdk_clipboard_set_text(gtk_widget_get_clipboard(GTK_WIDGET(self->window)), terminated);
 }
 
+/* The desktop's light or dark preference, from the settings portal: 1 is dark. */
+static gboolean dark_preferred = FALSE;
+static gboolean appearance_known = FALSE;
+
+static void send_appearance(PortaWindow *self)
+{
+    if (self->ready && appearance_known) {
+        g_autofree char *message = porta_appearance(self->token, dark_preferred);
+        write_to_porta(self, message, -1);
+    }
+}
+
+static void appearance_from(GVariant *value)
+{
+    g_autoptr(GVariant) inner = g_variant_is_of_type(value, G_VARIANT_TYPE_VARIANT) ? g_variant_get_variant(value) : g_variant_ref(value);
+    if (g_variant_is_of_type(inner, G_VARIANT_TYPE_UINT32)) {
+        dark_preferred = 1 == g_variant_get_uint32(inner);
+        appearance_known = TRUE;
+        for (GList *entry = windows; NULL != entry; entry = entry->next) {
+            send_appearance(entry->data);
+        }
+    }
+}
+
+static void on_setting_changed(GDBusProxy *proxy, const char *sender, const char *signal, GVariant *parameters, gpointer data)
+{
+    const char *scope = NULL;
+    const char *key = NULL;
+    g_autoptr(GVariant) value = NULL;
+
+    (void) proxy;
+    (void) sender;
+    (void) data;
+    if (0 != g_strcmp0(signal, "SettingChanged")) {
+        return;
+    }
+    g_variant_get(parameters, "(&s&sv)", &scope, &key, &value);
+    if (0 == g_strcmp0(scope, "org.freedesktop.appearance") && 0 == g_strcmp0(key, "color-scheme")) {
+        appearance_from(value);
+    }
+}
+
+static void follow_appearance(GApplication *application, gpointer data)
+{
+    (void) application;
+    (void) data;
+    g_autoptr(GError) error = NULL;
+    GDBusProxy *portal = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION, G_DBUS_PROXY_FLAGS_NONE, NULL,
+        "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop", "org.freedesktop.portal.Settings", NULL, &error);
+    if (NULL == portal) {
+        return; /* no portal: Porta keeps its own theme */
+    }
+    g_autoptr(GVariant) answer = g_dbus_proxy_call_sync(portal, "ReadOne", g_variant_new("(ss)", "org.freedesktop.appearance", "color-scheme"),
+        G_DBUS_CALL_FLAGS_NONE, 2000, NULL, NULL);
+    if (NULL != answer) {
+        g_autoptr(GVariant) value = g_variant_get_child_value(answer, 0);
+        appearance_from(value);
+    }
+    g_signal_connect(portal, "g-signal", G_CALLBACK(on_setting_changed), NULL);
+}
+
 static void received(PortaWindow *self, PortaOsc *osc)
 {
     g_autofree char *value = NULL;
@@ -265,9 +331,23 @@ static void received(PortaWindow *self, PortaOsc *osc)
     if (PORTA_MESSAGE_READY == kind) {
         g_autofree char *name = g_path_get_basename(value);
         g_autofree char *title = g_strdup_printf("%s — Porta", name);
+        g_autofree char *uri = g_filename_to_uri(value, NULL, NULL);
         g_free(self->project_key);
         self->project_key = project_key(value);
-        gtk_window_set_title(GTK_WINDOW(self->window), title);
+        g_free(self->title);
+        self->title = g_steal_pointer(&title);
+        gtk_window_set_title(GTK_WINDOW(self->window), self->title);
+        /* The desktop's recent list: file choosers and launchers offer the project again. */
+        if (NULL != uri) {
+            gtk_recent_manager_add_item(gtk_recent_manager_get_default(), uri);
+        }
+        self->ready = TRUE;
+        send_appearance(self);
+    }
+    if (PORTA_MESSAGE_STATE == kind && NULL != self->title) {
+        /* A mark in the title: closing this window would lose work. */
+        g_autofree char *marked = g_strdup_printf("• %s", self->title);
+        gtk_window_set_title(GTK_WINDOW(self->window), 0 == g_strcmp0(value, "0") ? self->title : marked);
     }
     g_debug("message %d from Porta", kind);
     if (PORTA_MESSAGE_MENU == kind) {
@@ -334,6 +414,48 @@ static gboolean sync_size(GtkWidget *widget, GdkFrameClock *clock, gpointer data
     return G_SOURCE_CONTINUE;
 }
 
+static void start_porta(PortaWindow *self);
+
+static void recovery_answered(GObject *source, GAsyncResult *result, gpointer data)
+{
+    PortaWindow *self = data;
+    int answer = gtk_alert_dialog_choose_finish(GTK_ALERT_DIALOG(source), result, NULL);
+
+    if (self->closed) {
+        return;
+    }
+    if (0 == answer) {
+        /* The same project, started again in this window: RIS clears what the stopped one left. */
+        vte_terminal_feed(self->terminal, "\x1b" "c", -1);
+        porta_filter_free(self->filter);
+        self->filter = porta_filter_new();
+        memset(&self->flow, 0, sizeof self->flow);
+        self->exited = FALSE;
+        self->ready = FALSE;
+        self->holds++;
+        gtk_window_set_title(GTK_WINDOW(self->window), "Porta");
+        start_porta(self);
+    } else if (1 == answer) {
+        g_autofree char *log = g_build_filename(NULL != self->project_key ? self->project_key : g_get_home_dir(), ".porta", "error.log", NULL);
+        g_autoptr(GFile) file = g_file_new_for_path(log);
+        g_autoptr(GtkFileLauncher) launcher = gtk_file_launcher_new(file);
+        gtk_file_launcher_launch(launcher, GTK_WINDOW(self->window), NULL, NULL, NULL);
+    } else {
+        gtk_window_destroy(GTK_WINDOW(self->window));
+    }
+}
+
+/* A window whose Porta stopped says what can be done, rather than just staying. */
+static void offer_recovery(PortaWindow *self)
+{
+    static const char *const buttons[] = {"Reopen", "Show Log", "Close", NULL};
+    g_autoptr(GtkAlertDialog) dialog = gtk_alert_dialog_new("Porta stopped");
+
+    gtk_alert_dialog_set_detail(dialog, "What it printed is in the window. The project's .porta/error.log may say more.");
+    gtk_alert_dialog_set_buttons(dialog, buttons);
+    gtk_alert_dialog_choose(dialog, GTK_WINDOW(self->window), NULL, recovery_answered, self);
+}
+
 static void on_child_exit(GPid pid, int status, gpointer data)
 {
     PortaWindow *self = data;
@@ -347,6 +469,7 @@ static void on_child_exit(GPid pid, int status, gpointer data)
             destroy_window(self);
         } else {
             gtk_window_set_title(GTK_WINDOW(self->window), "Porta — stopped");
+            offer_recovery(self);
         }
     }
     release(self);
@@ -421,18 +544,49 @@ static void on_active(GObject *window, GParamSpec *spec, gpointer data)
     }
 }
 
+/* Porta, on a new PTY, in this window. Holds one reference for the child, released when it ends. */
+static void start_porta(PortaWindow *self)
+{
+    g_autoptr(GError) error = NULL;
+    g_autofree char *runtime = runtime_dir();
+
+    if (0 != self->reader) {
+        g_source_remove(self->reader);
+        self->reader = 0;
+    }
+    g_clear_object(&self->pty);
+    self->pty = vte_pty_new_sync(VTE_PTY_DEFAULT, NULL, &error);
+    if (NULL == self->pty) {
+        vte_terminal_feed(self->terminal, error->message, -1);
+        self->exited = TRUE;
+        release(self);
+        return;
+    }
+    self->master = vte_pty_get_fd(self->pty);
+    /* VTE turns packet mode on, which puts a status byte before every read.
+     * This window reads the PTY itself, so it wants the bytes alone. */
+    int packets = 0;
+    ioctl(self->master, TIOCPKT, &packets);
+    g_unix_set_fd_nonblocking(self->master, TRUE, NULL);
+    self->reader = g_unix_fd_add(self->master, G_IO_IN | G_IO_HUP | G_IO_ERR, on_readable, self);
+
+    g_auto(GStrv) argv = porta_launch_argv(runtime, self->project);
+    g_auto(GStrv) inherited = g_get_environ();
+    g_auto(GStrv) env = porta_launch_env(inherited, self->token, desktop_shows_menus());
+    vte_pty_spawn_async(self->pty, NULL != self->project ? self->project : g_get_home_dir(), argv, env, G_SPAWN_DEFAULT, NULL, NULL, NULL, -1, NULL, (GAsyncReadyCallback) on_spawned, self);
+}
+
 static void open_window(GtkApplication *application, const char *project)
 {
     PortaWindow *self = g_new0(PortaWindow, 1);
     g_autoptr(GKeyFile) settings = load_settings();
-    g_autoptr(GError) error = NULL;
-    g_autofree char *runtime = runtime_dir();
     int width = g_key_file_get_integer(settings, "window", "width", NULL);
     int height = g_key_file_get_integer(settings, "window", "height", NULL);
     double scale = g_key_file_get_double(settings, "window", "scale", NULL);
     GtkEventController *keys = gtk_event_controller_key_new();
 
     self->holds = 2;
+    self->project = g_strdup(project);
     self->filter = porta_filter_new();
     self->token = porta_new_token();
     self->project_key = NULL != project ? project_key(project) : NULL;
@@ -462,25 +616,7 @@ static void open_window(GtkApplication *application, const char *project)
     gtk_widget_add_tick_callback(GTK_WIDGET(self->terminal), sync_size, self, NULL);
     gtk_window_present(GTK_WINDOW(self->window));
 
-    self->pty = vte_pty_new_sync(VTE_PTY_DEFAULT, NULL, &error);
-    if (NULL == self->pty) {
-        vte_terminal_feed(self->terminal, error->message, -1);
-        self->exited = TRUE;
-        release(self);
-        return;
-    }
-    self->master = vte_pty_get_fd(self->pty);
-    /* VTE turns packet mode on, which puts a status byte before every read.
-     * This window reads the PTY itself, so it wants the bytes alone. */
-    int packets = 0;
-    ioctl(self->master, TIOCPKT, &packets);
-    g_unix_set_fd_nonblocking(self->master, TRUE, NULL);
-    self->reader = g_unix_fd_add(self->master, G_IO_IN | G_IO_HUP | G_IO_ERR, on_readable, self);
-
-    g_auto(GStrv) argv = porta_launch_argv(runtime, project);
-    g_auto(GStrv) inherited = g_get_environ();
-    g_auto(GStrv) env = porta_launch_env(inherited, self->token, desktop_shows_menus());
-    vte_pty_spawn_async(self->pty, NULL != project ? project : g_get_home_dir(), argv, env, G_SPAWN_DEFAULT, NULL, NULL, NULL, -1, NULL, (GAsyncReadyCallback) on_spawned, self);
+    start_porta(self);
 }
 
 /* The system menu: one action per item, since each is enabled and ticked on its own. */
@@ -581,6 +717,12 @@ static void on_open(GApplication *application, GFile **files, int count, const c
             if (0 == g_strcmp0(window->project_key, key)) {
                 gtk_window_present(GTK_WINDOW(window->window));
                 found = TRUE;
+            } else if (NULL != window->project_key && window->ready && g_str_has_prefix(key, window->project_key) && '/' == key[strlen(window->project_key)]) {
+                /* A file, or a folder inside a project already open, goes to that window. */
+                g_autofree char *request = porta_open_request(window->token, key);
+                write_to_porta(window, request, -1);
+                gtk_window_present(GTK_WINDOW(window->window));
+                found = TRUE;
             }
         }
         if (!found) {
@@ -596,5 +738,6 @@ int main(int argc, char **argv)
     g_set_application_name("Porta");
     g_signal_connect(application, "activate", G_CALLBACK(on_activate), NULL);
     g_signal_connect(application, "open", G_CALLBACK(on_open), NULL);
+    g_signal_connect(application, "startup", G_CALLBACK(follow_appearance), NULL);
     return g_application_run(G_APPLICATION(application), argc, argv);
 }

@@ -31,6 +31,17 @@ public class CoreTests
     }
 
     [Fact]
+    public void TheNewerMessagesAreTheContracts()
+    {
+        var token = Example("token");
+
+        Assert.Equal(Example("open"), DesktopMessage.OpenRequest(token, Example("openPath")));
+        Assert.Equal(Example("appearance"), DesktopMessage.Appearance(token, dark: true));
+        Assert.Equal((MessageKind.State, "2"), DesktopMessage.Parse(Payload(Example("state")), token));
+        Assert.Equal(MessageKind.None, DesktopMessage.Parse($"porta-desktop;{token};state;-1", token).Kind);
+    }
+
+    [Fact]
     public void AnotherSessionsTokenIsNotListenedTo()
     {
         Assert.Equal(MessageKind.None, DesktopMessage.Parse(Payload(Example("closing")), new string('f', 32)).Kind);

@@ -184,6 +184,9 @@ PortaMessageKind porta_message_parse(const char *payload, const char *token, cha
     } else if (4 == count && 0 == g_strcmp0(fields[2], "ready")) {
         kind = PORTA_MESSAGE_READY;
         *value = decoded(fields[3]);
+    } else if (4 == count && 0 == g_strcmp0(fields[2], "state") && '\0' != fields[3][0] && strspn(fields[3], "0123456789") == strlen(fields[3])) {
+        kind = PORTA_MESSAGE_STATE;
+        *value = g_strdup(fields[3]);
     } else if (4 == count && 0 == g_strcmp0(fields[2], "menu")) {
         kind = PORTA_MESSAGE_MENU;
         *value = decoded(fields[3]);
@@ -194,6 +197,17 @@ PortaMessageKind porta_message_parse(const char *payload, const char *token, cha
 char *porta_close_request(const char *token)
 {
     return g_strdup_printf("\x1b]7777;" NAMESPACE ";%s;close\x1b\\", token);
+}
+
+char *porta_open_request(const char *token, const char *path)
+{
+    g_autofree char *encoded = g_base64_encode((const guchar *) path, strlen(path));
+    return g_strdup_printf("\x1b]7777;" NAMESPACE ";%s;open;%s\x1b\\", token, encoded);
+}
+
+char *porta_appearance(const char *token, gboolean dark)
+{
+    return g_strdup_printf("\x1b]7777;" NAMESPACE ";%s;appearance;%s\x1b\\", token, dark ? "dark" : "light");
 }
 
 char *porta_menu_choice(const char *token, const char *generation, int menu, int item)

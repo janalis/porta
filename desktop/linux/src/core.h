@@ -25,11 +25,14 @@ typedef enum {
     PORTA_MESSAGE_ACCEPTED,
     PORTA_MESSAGE_CLOSING,
     PORTA_MESSAGE_MENU,
+    PORTA_MESSAGE_STATE,
 } PortaMessageKind;
 
-/* `value` is the decoded root for READY and the decoded JSON for MENU; the caller frees it. */
+/* `value` is the decoded root for READY, the decoded JSON for MENU and the unsaved count for STATE; the caller frees it. */
 PortaMessageKind porta_message_parse(const char *payload, const char *token, char **value);
 char *porta_close_request(const char *token);
+char *porta_open_request(const char *token, const char *path);
+char *porta_appearance(const char *token, gboolean dark);
 char *porta_menu_choice(const char *token, const char *generation, int menu, int item);
 
 typedef enum {

@@ -2,15 +2,18 @@ import AppKit
 import PortaDesktopCore
 
 /// The system menu bar: the application's own menu, Porta's menus, then the window's.
-final class MainMenu: NSObject {
+final class MainMenu: NSObject, NSMenuDelegate {
     typealias Choose = (_ generation: String, _ menu: Int, _ item: Int) -> Void
 
     private let bar = NSMenu()
     private var shown: [NSMenuItem] = []
     private var generation: String?
     private var choose: Choose?
+    private weak var recentTarget: AppDelegate?
 
     func install(target: AppDelegate) {
+        // Before the menus: the Window menu holds Open Recent, which needs it.
+        recentTarget = target
         bar.addItem(Self.submenu("Porta", [
             NSMenuItem(title: "About Porta", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: ""),
             .separator(),
@@ -24,6 +27,7 @@ final class MainMenu: NSObject {
         let window = Self.submenu("Window", [
             Self.item("New Window", #selector(AppDelegate.newWindow(_:)), "n", target),
             Self.item("Open Folder…", #selector(AppDelegate.openFolder(_:)), "o", target),
+            recentMenu(target: target),
             NSMenuItem(title: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"),
             .separator(),
             Self.item("Bigger", #selector(AppDelegate.zoomIn(_:)), "+", target),
@@ -89,6 +93,28 @@ final class MainMenu: NSObject {
         return item
     }
 
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let recent = NSDocumentController.shared.recentDocumentURLs
+        for url in recent {
+            let item = NSMenuItem(title: url.lastPathComponent, action: #selector(AppDelegate.openRecent(_:)), keyEquivalent: "")
+            item.target = recentTarget
+            item.representedObject = url
+            item.image = NSWorkspace.shared.icon(forFile: url.path)
+            item.image?.size = NSSize(width: 16, height: 16)
+            item.toolTip = url.path
+            menu.addItem(item)
+        }
+        if !recent.isEmpty {
+            menu.addItem(.separator())
+        }
+        let clear = NSMenuItem(title: "Clear Menu", action: #selector(NSDocumentController.clearRecentDocuments(_:)), keyEquivalent: "")
+        clear.target = NSDocumentController.shared
+        clear.isEnabled = !recent.isEmpty
+        menu.autoenablesItems = false
+        menu.addItem(clear)
+    }
+
     @objc private func chosen(_ sender: NSMenuItem) {
         guard let generation else { return }
         choose?(generation, sender.tag >> 16, sender.tag & 0xffff)
@@ -104,6 +130,16 @@ final class MainMenu: NSObject {
             title.append(NSAttributedString(string: "\t" + entry.shortcut, attributes: [.font: font, .paragraphStyle: style, .foregroundColor: NSColor.secondaryLabelColor]))
         }
         return title
+    }
+
+    /// The folders opened lately, as the system remembers them, read each time the menu opens.
+    private func recentMenu(target: AppDelegate) -> NSMenuItem {
+        let holder = NSMenuItem(title: "Open Recent", action: nil, keyEquivalent: "")
+        let menu = NSMenu(title: "Open Recent")
+        menu.delegate = self
+        recentTarget = target
+        holder.submenu = menu
+        return holder
     }
 
     private static func item(_ title: String, _ action: Selector, _ key: String, _ target: AnyObject) -> NSMenuItem {

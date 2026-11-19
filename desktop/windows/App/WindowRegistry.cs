@@ -48,11 +48,22 @@ namespace Porta.Desktop.App
                 return;
             }
 
+            // A file, or a folder inside a project already open, goes to that window.
+            var holder = windows.FirstOrDefault(window => root != null && window.Root != null && root.StartsWith(window.Root + "/", StringComparison.Ordinal));
+            if (holder != null)
+            {
+                holder.OpenPath(root!);
+                return;
+            }
+
             var opened = new ProjectWindow(runtime, architecture, root);
             opened.Closed += (_, _) => windows.Remove(opened);
             windows.Add(opened);
             opened.Show();
         }
+
+        /// <summary>A path inside WSL as Windows spells it; null when WSL cannot answer.</summary>
+        public static string? WindowsPath(string path) => Wsl("wslpath", "-w", path);
 
         /// <summary>The path as WSL spells it; null when WSL cannot answer.</summary>
         private static string? WslPath(string path)

@@ -8,13 +8,16 @@
     "namespace": "porta-desktop",
     "hostToPorta": [
         "close",
-        "menu"
+        "menu",
+        "open",
+        "appearance"
     ],
     "portaToHost": [
         "ready",
         "accepted",
         "closing",
-        "menu"
+        "menu",
+        "state"
     ],
     "examples": {
         "token": "0123456789abcdef0123456789abcdef",
@@ -55,6 +58,10 @@
             ]
         },
         "menu": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;menu;eyJnZW5lcmF0aW9uIjoiYWJjMTIzIiwibWVudXMiOlt7InRpdGxlIjoiRmlsZSIsIml0ZW1zIjpbeyJsYWJlbCI6IlNhdmUiLCJzaG9ydGN1dCI6IkN0cmwrUyIsInNlcGFyYXRvciI6ZmFsc2UsImVuYWJsZWQiOnRydWUsImNoZWNrZWQiOm51bGx9LHsibGFiZWwiOiIiLCJzaG9ydGN1dCI6IiIsInNlcGFyYXRvciI6dHJ1ZSwiZW5hYmxlZCI6ZmFsc2UsImNoZWNrZWQiOm51bGx9LHsibGFiZWwiOiJXb3JkIFdyYXAiLCJzaG9ydGN1dCI6IiIsInNlcGFyYXRvciI6ZmFsc2UsImVuYWJsZWQiOmZhbHNlLCJjaGVja2VkIjp0cnVlfV19XX0=\u001b\\",
-        "menuChoice": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;menu;abc123;0;2\u001b\\"
+        "menuChoice": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;menu;abc123;0;2\u001b\\",
+        "openPath": "/work/shop/src/a.php",
+        "open": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;open;L3dvcmsvc2hvcC9zcmMvYS5waHA=\u001b\\",
+        "appearance": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;appearance;dark\u001b\\",
+        "state": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;state;2\u001b\\"
     }
 }

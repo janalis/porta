@@ -7,11 +7,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let menus = MainMenu()
     private var quitting = false
     private var openedAtLaunch = false
+    private var appearance: NSKeyValueObservation?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         menus.install(target: self)
         NSWindow.allowsAutomaticWindowTabbing = false
         KeyForwarding.install { [weak self] in self?.focused }
+        appearance = NSApp.observe(\.effectiveAppearance) { [weak self] _, _ in
+            DispatchQueue.main.async { self?.windows.forEach { $0.sendAppearance() } }
+        }
         if !openedAtLaunch {
             openWindow(project: nil)
         }
@@ -51,13 +55,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         windows.first { $0.window?.isKeyWindow == true }
     }
 
-    private func open(project: String) {
-        let key = ProjectKey.of(project)
+    private func open(project path: String) {
+        let key = ProjectKey.of(path)
         if let existing = windows.first(where: { $0.projectKey == key }) {
             existing.focus()
             return
         }
-        openWindow(project: project)
+        // A file, or a folder inside a project already open, goes to that window.
+        if let holder = windows.first(where: { $0.projectKey.map { ProjectKey.contains($0, path) } ?? false }) {
+            holder.open(path: path)
+            return
+        }
+        openWindow(project: path)
     }
 
     private func openWindow(project: String?) {
@@ -72,6 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 NSApp.reply(toApplicationShouldTerminate: true)
             }
         }
+        controller.sendAppearance()
         controller.onMenuChanged = { [weak self] window in
             guard window.window?.isKeyWindow == true else { return }
             self?.menus.show(window.menuBar, choose: { [weak window] generation, menu, item in
@@ -93,6 +103,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         if panel.runModal() == .OK, let url = panel.url {
+            open(project: url.path)
+        }
+    }
+
+    @objc func openRecent(_ sender: NSMenuItem) {
+        if let url = sender.representedObject as? URL {
             open(project: url.path)
         }
     }

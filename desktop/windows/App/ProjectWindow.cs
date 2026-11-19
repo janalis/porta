@@ -18,24 +18,28 @@ namespace Porta.Desktop.App
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Porta", "window.txt");
 
         private readonly string token = LaunchPlan.NewToken();
-        private readonly CloseFlow flow = new CloseFlow();
-        private readonly RelayConnection connection;
+        private CloseFlow flow = new CloseFlow();
         private readonly DispatcherTimer answer = new DispatcherTimer { Interval = AnswerTime };
         private bool exited;
+        private bool ready;
+        private string? name;
+        private readonly string runtime;
+        private readonly string architecture;
+        private RelayConnection connection;
+        private readonly TerminalControl terminal = new TerminalControl();
 
         public ProjectWindow(string runtime, string architecture, string? project)
         {
             Root = project;
+            this.runtime = runtime;
+            this.architecture = architecture;
             Title = "Porta";
             Background = Brushes.Black;
             RestorePlacement();
 
-            connection = new RelayConnection(runtime, architecture, project, token);
-            connection.PrivateSequence += (code, payload) => Dispatcher.Invoke(() => Received(code, payload));
-            connection.Exited += status => Dispatcher.Invoke(() => PortaExited(status));
+            connection = Connect();
             answer.Tick += (_, _) => AnswerTimedOut();
-
-            var terminal = new TerminalControl();
+            Microsoft.Win32.SystemEvents.UserPreferenceChanged += (_, _) => Dispatcher.Invoke(SendAppearance);
             Content = terminal;
             Loaded += (_, _) =>
             {
@@ -89,7 +93,17 @@ namespace Porta.Desktop.App
             if (kind == MessageKind.Ready)
             {
                 Root = root;
-                Title = root.Substring(root.LastIndexOf('/') + 1) + " — Porta";
+                name = root.Substring(root.LastIndexOf('/') + 1) + " — Porta";
+                Title = name;
+                ready = true;
+                SendAppearance();
+                RememberRecent(root);
+            }
+
+            if (kind == MessageKind.State && name != null)
+            {
+                // A mark in the title: closing this window would lose work.
+                Title = root == "0" ? name : "• " + name;
             }
 
             var step = flow.Received(kind);
@@ -149,9 +163,59 @@ namespace Porta.Desktop.App
             }
         }
 
+        private RelayConnection Connect()
+        {
+            var relay = new RelayConnection(runtime, architecture, Root, token);
+            relay.PrivateSequence += (code, payload) => Dispatcher.Invoke(() => Received(code, payload));
+            relay.Exited += status => Dispatcher.Invoke(() => PortaExited(status));
+            return relay;
+        }
+
+        /// <summary>A file or folder for this window's project, from Explorer or a second launch.</summary>
+        public void OpenPath(string path)
+        {
+            if (ready)
+            {
+                connection.WriteInput(DesktopMessage.OpenRequest(token, path));
+            }
+
+            Activate();
+        }
+
+        private void SendAppearance()
+        {
+            if (!ready)
+            {
+                return;
+            }
+
+            using var personalize = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+            var light = personalize?.GetValue("AppsUseLightTheme") is int value && value == 1;
+            connection.WriteInput(DesktopMessage.Appearance(token, dark: !light));
+        }
+
+        /// <summary>The project among Windows' recent items, as Explorer and the Start menu list them.</summary>
+        private static void RememberRecent(string root)
+        {
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                var windows = WindowRegistry.WindowsPath(root);
+                if (windows != null)
+                {
+                    SHAddToRecentDocs(ShardPathW, windows);
+                }
+            });
+        }
+
+        private const uint ShardPathW = 3;
+
+        [System.Runtime.InteropServices.DllImport("shell32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        private static extern void SHAddToRecentDocs(uint flags, string path);
+
         private void PortaExited(int status)
         {
             exited = true;
+            ready = false;
             answer.Stop();
             if (flow.ClosesWhenPortaExits(status))
             {
@@ -160,6 +224,45 @@ namespace Porta.Desktop.App
             }
 
             Title = "Porta — stopped";
+            var choice = MessageBox.Show(
+                this,
+                "Porta stopped. What it printed is in the window, and the project's .porta/error.log may say more.\n\nReopen it?\n\nYes reopens it here, No shows the log, Cancel closes the window.",
+                "Porta stopped",
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Warning);
+            switch (choice)
+            {
+                case MessageBoxResult.Yes:
+                    Reopen();
+                    break;
+                case MessageBoxResult.No:
+                    ShowLog();
+                    break;
+                default:
+                    Close();
+                    break;
+            }
+        }
+
+        /// <summary>The same project, started again in this window.</summary>
+        private void Reopen()
+        {
+            exited = false;
+            flow = new CloseFlow();
+            Title = "Porta";
+            connection = Connect();
+            terminal.Connection = connection;
+        }
+
+        private void ShowLog()
+        {
+            var windows = Root == null ? null : WindowRegistry.WindowsPath(Root + "/.porta/error.log");
+            if (windows != null)
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(windows) { UseShellExecute = true });
+            }
+
+            PortaExited(1);
         }
 
         private static DesktopSettings ReadSettings()

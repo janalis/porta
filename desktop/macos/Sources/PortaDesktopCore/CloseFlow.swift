@@ -53,7 +53,7 @@ public struct CloseFlow: Equatable {
         case .closing:
             state = .closing
             return .waitForExit
-        case .menu:
+        case .menu, .state:
             return .wait
         }
     }

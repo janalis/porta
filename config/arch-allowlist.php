@@ -78,6 +78,7 @@ return [
         'Desktop>Container',
         'Desktop>Editor', // what is unsaved is kept when a session ends unasked
         'Desktop>History', // the picker offers the recent projects
+        'Desktop>Settings', // the window follows the system's light or dark mode through the live theme switch
         'Desktop>Support', // a folder's name is made safe to draw
         'Desktop>Ui', // the picker draws on the same non-blocking terminal as the IDE
         'Desktop>Widget', // the system menu shows what the menu bar holds

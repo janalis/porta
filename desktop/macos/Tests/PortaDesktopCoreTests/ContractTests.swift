@@ -46,6 +46,16 @@ final class ContractTests: XCTestCase {
         XCTAssertEqual(DesktopMessage.menuChoice(token: try XCTUnwrap(examples["token"]), generation: "abc123", menu: 0, item: 2), examples["menuChoice"])
     }
 
+    func testTheNewerMessagesAreTheContracts() throws {
+        let examples = try strings()
+        let token = try XCTUnwrap(examples["token"])
+
+        XCTAssertEqual(DesktopMessage.openRequest(token: token, path: try XCTUnwrap(examples["openPath"])), examples["open"])
+        XCTAssertEqual(DesktopMessage.appearance(token: token, dark: true), examples["appearance"])
+        XCTAssertEqual(DesktopMessage.parse(payload: payload(try XCTUnwrap(examples["state"])), token: token), .state(unsaved: 2))
+        XCTAssertNil(DesktopMessage.parse(payload: "porta-desktop;\(token);state;-1", token: token))
+    }
+
     func testAnotherSessionsTokenIsNotListenedTo() throws {
         let examples = try strings()
 

@@ -10,13 +10,18 @@ use Porta\Desktop\DesktopProtocol;
 use Porta\Desktop\DesktopSession;
 use Porta\Desktop\SystemMenu;
 use Porta\Editor\BufferManager;
+use Porta\Event\ThemeChanged;
+use Porta\Settings\SettingsProvenance;
 use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\Services;
+use Porta\Tests\Support\TempProject;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\WorkbenchActions;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Event\InputEvent;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Tui;
@@ -25,14 +30,15 @@ use Symfony\Component\Tui\Tui;
 final class DesktopProtocolTest extends TestCase
 {
     use BootsIde;
+    use PumpsLoop;
 
-    /** @var array{examples: array{token: string, root: string, close: string, ready: string, accepted: string, closing: string}} */
+    /** @var array{examples: array{token: string, root: string, close: string, ready: string, accepted: string, closing: string, open: string, openPath: string, appearance: string, state: string}} */
     private array $contract;
 
     #[\Override]
     protected function setUp(): void
     {
-        /** @var array{examples: array{token: string, root: string, close: string, ready: string, accepted: string, closing: string}} $contract */
+        /** @var array{examples: array{token: string, root: string, close: string, ready: string, accepted: string, closing: string, open: string, openPath: string, appearance: string, state: string}} $contract */
         $contract = \json_decode((string) \file_get_contents(\dirname(__DIR__, 3).'/desktop/contract/protocol.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->contract = $contract;
     }
@@ -279,5 +285,77 @@ final class DesktopProtocolTest extends TestCase
         $menuBar->runMenuItem(5, 0);
 
         $this->assertSame(0, $ran);
+    }
+
+    private function request(string $message): InputEvent
+    {
+        return new InputEvent("\x1b]7777;porta-desktop;{$this->contract['examples']['token']};{$message}\x1b\\");
+    }
+
+    public function testTheWindowIsToldHowManyFilesAreUnsaved(): void
+    {
+        $protocol = $this->bootDesktop();
+        $protocol->announceReady($this->project->dir);
+        $this->assertStringContainsString(';state;0'."\x1b\\", $this->terminal->getOutput());
+        $this->terminal->clearOutput();
+
+        Services::resolve($this->ide, BufferManager::class)->open($this->project->path('a.php'), content: "<?php\n")->document->insert('x');
+        // Several polls: a count that has not changed again must not be sent again.
+        $this->pump(0.9);
+        $protocol->detach();
+
+        $this->assertStringContainsString(';state;1'."\x1b\\", $this->terminal->getOutput());
+        $this->assertSame(1, \substr_count($this->terminal->getOutput(), ';state;'), 'told once per change, not per poll');
+    }
+
+    public function testAFileOfThisProjectOpensHere(): void
+    {
+        $protocol = $this->bootDesktop();
+
+        $protocol->onInput($this->request('open;'.\base64_encode($this->project->path('a.php'))));
+
+        $this->assertSame(\realpath($this->project->path('a.php')), Services::resolve($this->ide, BufferManager::class)->active()?->path);
+        $this->assertNull($this->ide->reopenAt());
+    }
+
+    public function testAnythingElseIsAnotherProject(): void
+    {
+        $protocol = $this->bootDesktop();
+        $elsewhere = new TempProject(['composer.json' => '{}', 'src/b.php' => "<?php\n"]);
+
+        $protocol->onInput($this->request('open;'.\base64_encode($elsewhere->path('src/b.php'))));
+
+        $this->assertSame(\realpath($elsewhere->path('src')), $this->ide->reopenAt(), 'a file elsewhere opens its folder');
+    }
+
+    public function testTheSystemAppearanceIsFollowedUntilAThemeIsChosen(): void
+    {
+        $protocol = $this->bootDesktop();
+        $themes = [];
+        Services::resolve($this->ide, EventDispatcherInterface::class)->addListener(ThemeChanged::class, static function (ThemeChanged $event) use (&$themes): void {
+            $themes[] = $event->theme->value;
+        });
+
+        $protocol->onInput($this->request('appearance;light'));
+        $this->project->write('.porta.json', content: '{"settings":{"theme":"dark"}}');
+        Services::resolve($this->ide, SettingsProvenance::class)->invalidate();
+        $protocol->onInput($this->request('appearance;light'));
+
+        $this->assertSame(['light'], $themes, 'a theme chosen for the project stays');
+    }
+
+    public function testTheContractsExamplesAreTheMessagesPortaReads(): void
+    {
+        $protocol = $this->bootDesktop();
+        $themes = [];
+        Services::resolve($this->ide, EventDispatcherInterface::class)->addListener(ThemeChanged::class, static function (ThemeChanged $event) use (&$themes): void {
+            $themes[] = $event->theme->value;
+        });
+
+        $protocol->onInput(new InputEvent($this->contract['examples']['appearance']));
+
+        $this->assertSame(['dark'], $themes);
+        $this->assertSame($this->contract['examples']['openPath'], \base64_decode(\explode(';', \rtrim($this->contract['examples']['open'], "\x1b\\"))[4], strict: true));
+        $this->assertMatchesRegularExpression('/;state;\d+\x1b\\\\$/', $this->contract['examples']['state']);
     }
 }

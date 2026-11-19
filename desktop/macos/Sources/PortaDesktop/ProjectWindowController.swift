@@ -25,6 +25,7 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
     private var flow = CloseFlow()
     private var answerTimer: Timer?
     private var exited = false
+    private var ready = false
 
     init(runtime: String, project: String?) {
         token = LaunchPlan.newToken()
@@ -65,6 +66,24 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
     func focus() {
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// A file or folder for this window's project, from Finder or the Dock.
+    func open(path: String) {
+        guard ready else { return }
+        send(DesktopMessage.openRequest(token: token, path: path))
+        focus()
+    }
+
+    /// The system's light or dark mode, for Porta and for the window around it.
+    func sendAppearance() {
+        let dark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        terminal.nativeBackgroundColor = dark ? .black : .white
+        terminal.nativeForegroundColor = dark ? NSColor(white: 0.85, alpha: 1) : NSColor(white: 0.1, alpha: 1)
+        window?.backgroundColor = terminal.nativeBackgroundColor
+        if ready {
+            send(DesktopMessage.appearance(token: token, dark: dark))
+        }
     }
 
     func pasteClipboard() {
@@ -143,6 +162,16 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
         }
         if case let .ready(root) = message {
             projectKey = ProjectKey.of(root)
+            let folder = URL(fileURLWithPath: root)
+            // Cmd-click on the title shows where the project is; the system remembers it for Open Recent.
+            window?.representedURL = folder
+            NSDocumentController.shared.noteNewRecentDocumentURL(folder)
+            ready = true
+            sendAppearance()
+        }
+        if case let .state(unsaved) = message {
+            // The dot in the close button: closing this window would lose work.
+            window?.isDocumentEdited = unsaved > 0
         }
         if case let .menu(bar) = message {
             menuBar = bar
@@ -201,6 +230,48 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
         }
         window?.title = "Porta — stopped"
         onCloseRefused?()
+        offerRecovery()
+    }
+
+    /// A window whose Porta stopped says what can be done, rather than just staying.
+    private func offerRecovery() {
+        guard let window else { return }
+        let alert = NSAlert()
+        alert.messageText = "Porta stopped"
+        alert.informativeText = "What it printed is behind this message. The project's .porta/error.log may say more."
+        alert.addButton(withTitle: "Reopen")
+        alert.addButton(withTitle: "Show Log")
+        alert.addButton(withTitle: "Close")
+        alert.beginSheetModal(for: window) { [weak self] answer in
+            switch answer {
+            case .alertFirstButtonReturn:
+                self?.restart()
+            case .alertSecondButtonReturn:
+                self?.showLog()
+            default:
+                self?.window?.close()
+            }
+        }
+    }
+
+    private func showLog() {
+        let folder = URL(fileURLWithPath: projectKey ?? NSHomeDirectory()).appendingPathComponent(".porta")
+        let log = folder.appendingPathComponent("error.log")
+        NSWorkspace.shared.activateFileViewerSelecting([FileManager.default.fileExists(atPath: log.path) ? log : folder])
+        offerRecovery()
+    }
+
+    /// The same project, started again in this window.
+    private func restart() {
+        exited = false
+        ready = false
+        flow = CloseFlow()
+        filter = OscFilter()
+        window?.title = "Porta"
+        // RIS: what the stopped Porta left on screen goes.
+        terminal.feed(text: "\u{1b}c")
+        process = LocalProcess(delegate: self, dispatchQueue: .main)
+        process.startProcess(executable: plan.executable, args: plan.arguments, environment: plan.environment, currentDirectory: plan.workingDirectory)
     }
 
     func dataReceived(slice: ArraySlice<UInt8>) {

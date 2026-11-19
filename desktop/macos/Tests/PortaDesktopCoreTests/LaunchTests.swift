@@ -32,6 +32,12 @@ final class LaunchTests: XCTestCase {
         XCTAssertNotEqual(first, LaunchPlan.newToken())
     }
 
+    func testAFileBelongsToTheProjectThatHoldsIt() {
+        XCTAssertTrue(ProjectKey.contains("/tmp", "/tmp/a/b.php"))
+        XCTAssertTrue(ProjectKey.contains("/tmp", "/tmp"))
+        XCTAssertFalse(ProjectKey.contains("/tmp/shop", "/tmp/shopping/a.php"), "a prefix of the name is not the folder")
+    }
+
     func testTwoSpellingsOfAFolderAreOneProject() {
         XCTAssertEqual(ProjectKey.of("/tmp/../tmp/"), ProjectKey.of("/tmp"))
     }

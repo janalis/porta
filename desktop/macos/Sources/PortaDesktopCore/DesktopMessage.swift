@@ -6,6 +6,7 @@ public enum DesktopMessage: Equatable {
     case accepted
     case closing
     case menu(MenuBar)
+    case state(unsaved: Int)
 
     public static let oscCode = 7777
     private static let namespace = "porta-desktop"
@@ -26,6 +27,11 @@ public enum DesktopMessage: Equatable {
             return .accepted
         case ("closing", 3):
             return .closing
+        case ("state", 4):
+            guard let unsaved = Int(fields[3]), unsaved >= 0 else {
+                return nil
+            }
+            return .state(unsaved: unsaved)
         case ("menu", 4):
             guard let data = Data(base64Encoded: fields[3]), let menu = try? JSONDecoder().decode(MenuBar.self, from: data) else {
                 return nil
@@ -39,6 +45,16 @@ public enum DesktopMessage: Equatable {
     /// What choosing a system menu item sends.
     public static func menuChoice(token: String, generation: String, menu: Int, item: Int) -> String {
         "\u{1b}]\(oscCode);\(namespace);\(token);menu;\(generation);\(menu);\(item)\u{1b}\\"
+    }
+
+    /// A file or folder the system handed the application, for the window that has its project.
+    public static func openRequest(token: String, path: String) -> String {
+        "\u{1b}]\(oscCode);\(namespace);\(token);open;\(Data(path.utf8).base64EncodedString())\u{1b}\\"
+    }
+
+    /// The system's light or dark mode, followed while no theme was chosen in Porta.
+    public static func appearance(token: String, dark: Bool) -> String {
+        "\u{1b}]\(oscCode);\(namespace);\(token);appearance;\(dark ? "dark" : "light")\u{1b}\\"
     }
 
     /// The request the close button sends.

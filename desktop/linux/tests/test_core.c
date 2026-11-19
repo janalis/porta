@@ -68,6 +68,27 @@ static void run_filter(const char *first, gsize first_length, const char *second
     porta_filter_free(filter);
 }
 
+static void test_the_newer_messages_are_the_contracts(void)
+{
+    g_autofree char *token = example("token");
+    g_autofree char *path = example("openPath");
+    g_autofree char *open = example("open");
+    g_autofree char *appearance = example("appearance");
+    g_autofree char *state = example("state");
+    g_autofree char *state_payload = payload(state);
+    g_autofree char *request = porta_open_request(token, path);
+    g_autofree char *dark = porta_appearance(token, TRUE);
+    g_autofree char *count = NULL;
+    g_autofree char *nothing = NULL;
+    g_autofree char *bad = g_strdup_printf("porta-desktop;%s;state;-1", token);
+
+    g_assert_cmpstr(request, ==, open);
+    g_assert_cmpstr(dark, ==, appearance);
+    g_assert_cmpint(porta_message_parse(state_payload, token, &count), ==, PORTA_MESSAGE_STATE);
+    g_assert_cmpstr(count, ==, "2");
+    g_assert_cmpint(porta_message_parse(bad, token, &nothing), ==, PORTA_MESSAGE_NONE);
+}
+
 static void test_a_split_at_every_byte_changes_nothing(void)
 {
     const char *whole = "a\x1b]7777;porta-desktop;t;closing\x1b\\" "b";
@@ -192,6 +213,7 @@ int main(int argc, char **argv)
     g_test_add_func("/messages/contract", test_messages_read_as_the_contract_writes_them);
     g_test_add_func("/messages/token", test_another_sessions_token_is_not_listened_to);
     g_test_add_func("/messages/menu-choice", test_the_menu_choice_is_the_contracts);
+    g_test_add_func("/messages/newer", test_the_newer_messages_are_the_contracts);
     g_test_add_func("/filter/split", test_a_split_at_every_byte_changes_nothing);
     g_test_add_func("/filter/foreign", test_a_sequence_written_into_the_payload_goes_to_the_terminal);
     g_test_add_func("/filter/foreign-string", test_a_string_sequence_written_into_the_payload_goes_whole_to_the_terminal);

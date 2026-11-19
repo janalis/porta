@@ -19,7 +19,13 @@ on your `PATH`: **Settings → Command line** does that, if you want it to.
 - **On Linux**, `porta-desktop ~/Sites/shop` from a shell does the same.
 
 Each project gets one window. Opening a project that is already open brings its
-window forward, and opening another project opens another window.
+window forward, and opening another project opens another window. A file opened
+with Porta, or a folder inside a project that is open, goes to that project's
+window.
+
+Projects you open join the system's recent items: **Window → Open Recent** and
+the Dock on macOS, the recent files of the desktop on Linux, and Windows'
+recent items.
 
 A project you open this way is still asked whether it may be trusted, exactly
 as it is in a terminal.
@@ -29,9 +35,19 @@ as it is in a terminal.
 Minimize, maximize, resize, full screen and restore are the system's own. Size
 and text zoom are remembered.
 
-Closing a window with unsaved changes keeps it open and says so. Close it again
+A window with unsaved changes shows it: the dot in the close button on macOS,
+a `•` before the title elsewhere. Closing it keeps it open and says so. Close it again
 within three seconds to discard them. If Porta does not answer, the application
 offers to force quit.
+
+If Porta stops on its own, the window says so and offers to reopen it in
+place, show the project's `.porta/error.log`, or close.
+
+## Light and dark
+
+Until you choose a theme in **Settings**, the application follows the system:
+light when the system is light, dark when it is dark, switching as it does.
+On Linux this needs the desktop's settings portal, which GNOME and KDE provide.
 
 ## Menus
 
