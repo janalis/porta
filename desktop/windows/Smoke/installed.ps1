@@ -29,6 +29,21 @@ do {
 if ($running.Count -eq 0) { throw 'the installer did not open Porta again' }
 Write-Output "smoke: the installer opened Porta: $($running[0].MainWindowTitle)"
 
+# Screen readers: the terminal control answers UI Automation with a text provider of its own.
+if ($running[0].MainWindowTitle -ne 'Porta needs WSL') {
+    Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+    $window = [System.Windows.Automation.AutomationElement]::FromHandle($running[0].MainWindowHandle)
+    $condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::IsTextPatternAvailableProperty, $true)
+    $deadline = (Get-Date).AddSeconds(30)
+    do {
+        Start-Sleep -Seconds 1
+        $text = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
+        $read = if ($text) { $text.GetCurrentPattern([System.Windows.Automation.TextPattern]::Pattern).DocumentRange.GetText(2000).Trim() } else { '' }
+    } until ($read.Length -gt 0 -or (Get-Date) -gt $deadline)
+    if ($read.Length -eq 0) { throw 'no text reaches UI Automation from the terminal' }
+    Write-Output "smoke: a screen reader reads the terminal: $($read.Substring(0, [Math]::Min(60, $read.Length)) -replace '\s+', ' ')"
+}
+
 # A launch on a project hands it to the Porta already running, and leaves.
 $second = Start-Process -FilePath $app -ArgumentList "`"$Project`"" -PassThru
 if (-not $second.WaitForExit(20000)) { throw 'a second launch stayed running' }

@@ -156,12 +156,20 @@ Thread.Sleep(1000);
 System.IO.File.WriteAllText(System.IO.Path.Combine(args[1], "a.php"), "<?php\n");
 AwaitScreen(0, "Welcome", "the welcome card");
 
-// The Escape key on the welcome card closes it, and the keys after it still arrive.
-Thread.Sleep(1000);
+// The Escape key on the welcome card, the moment it is drawn: once, a first run sent it then and
+// Porta drew nothing more. Reported, not failed, until it is understood; a second Escape follows if so.
 var beforeEscape = Screen().Length;
 Type("\u001b");
 Thread.Sleep(3000);
-Console.WriteLine($"smoke: Escape on the welcome card redrew {Screen().Length - beforeEscape} bytes");
+var redrawn = Screen().Length - beforeEscape;
+Console.WriteLine($"smoke: Escape at the welcome card's first paint redrew {redrawn} bytes");
+if (redrawn == 0)
+{
+    var beforeSecond = Screen().Length;
+    Type("\u001b");
+    Thread.Sleep(3000);
+    Console.WriteLine($"smoke: diagnostic: a second Escape redrew {Screen().Length - beforeSecond} bytes");
+}
 var beforeOpen = Screen().Length;
 
 // A file of the project, as the window hands it over, opens here; an edit is told, and so is its save.
