@@ -183,6 +183,18 @@ Type("\u0013");
 AwaitState(unsaved: false);
 Console.WriteLine("smoke: its save was told");
 
+// Escape closes what it opens: Go to File (Ctrl+P, one byte in any terminal), then a lone ESC.
+// Reported, not failed, until the welcome card's Escape is understood.
+var beforeGoTo = Screen().Length;
+Type("\u0010");
+Thread.Sleep(3000);
+var goTo = Screen().Length - beforeGoTo;
+Thread.Sleep(1000);
+var beforeClose = Screen().Length;
+Type("\u001b");
+Thread.Sleep(3000);
+Console.WriteLine($"smoke: diagnostic: Go to File drew {goTo} bytes; a lone Escape then redrew {Screen().Length - beforeClose} bytes");
+
 // The Escape key reaches Porta as a lone ESC byte; the keys after it must still arrive.
 Type("\u001b");
 Thread.Sleep(1000);
