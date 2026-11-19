@@ -545,7 +545,7 @@ final class Ide
         foreach ([\SIGTERM, \SIGINT, \SIGHUP] as $signal) {
             $id = EventLoop::onSignal($signal, function (): void {
                 try {
-                    $this->service(DesktopRecovery::class)->preserve();
+                    $this->service(DesktopRecovery::class)->keep();
                 } finally {
                     // Whatever keeping the work met, the session still ends.
                     $this->tui->stop();
@@ -616,6 +616,7 @@ final class Ide
             }
 
             $this->service(DesktopProtocol::class)->announceReady($this->rootDir);
+            $this->service(DesktopRecovery::class)->start();
 
             // Same reason, for observers: IdeReady lands before the first
             // BufferOpened instead of racing it.
@@ -691,6 +692,7 @@ final class Ide
                 $presence->stop();
                 EventLoop::cancel($graphicsProbe);
                 $this->service(DesktopProtocol::class)->detach();
+                $this->service(DesktopRecovery::class)->stop();
                 foreach ($signals as $signal) {
                     EventLoop::cancel($signal);
                 }

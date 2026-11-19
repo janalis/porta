@@ -107,9 +107,10 @@ the automated tests.
   pixel graphics, Porta falls back to drawing them with half-blocks.
 - **Linux packages use the system's GTK and VTE.** There is no Flatpak: its
   sandbox would stop the IDE running your tools.
-- **Unsaved work survives the application being killed**, a force quit or a
-  logout, and comes back the next time the project opens. It cannot survive
-  Porta itself being killed outright (`kill -9`) or a power cut.
+- **Unsaved work survives the application being killed**, a force quit, a
+  logout, a crash or a power cut, and comes back the next time the project
+  opens. It is copied every 30 seconds, so a crash can lose what was typed in
+  the last half minute. Work you discard on purpose does not come back.
 
 ## Packaging
 

@@ -10,12 +10,14 @@ use Porta\Desktop\DesktopSession;
 use Porta\Editor\BufferManager;
 use Porta\History\RestartSnapshot;
 use Porta\Tests\Support\PreservesPortaHome;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 
 /** What was unsaved when a desktop session ended without asking. */
 final class DesktopRecoveryTest extends TestCase
 {
     use PreservesPortaHome;
+    use PumpsLoop;
 
     private TempProject $disk;
 
@@ -37,11 +39,21 @@ final class DesktopRecoveryTest extends TestCase
         return $buffers;
     }
 
+    private function recovery(BufferManager $buffers, ?DesktopSession $session = null): DesktopRecovery
+    {
+        return new DesktopRecovery($session ?? $this->desktop, $buffers, $this->disk->path('shop'));
+    }
+
+    private function pending(?DesktopSession $session = null): ?string
+    {
+        return DesktopRecovery::pending($this->disk->path('shop'), $session ?? $this->desktop);
+    }
+
     public function testUnsavedWorkComesBackWhenTheProjectOpensAgain(): void
     {
-        new DesktopRecovery($this->desktop, $this->edited(), $this->disk->path('shop'))->preserve();
+        $this->recovery($this->edited())->keep();
 
-        $directory = DesktopRecovery::pending($this->disk->path('shop'), $this->desktop);
+        $directory = $this->pending();
         $this->assertNotNull($directory);
         $restored = new BufferManager();
         $this->assertSame([], new RestartSnapshot()->restore($directory, $this->disk->path('shop'), $restored));
@@ -49,40 +61,97 @@ final class DesktopRecoveryTest extends TestCase
         $this->assertSame("<?php\n", \file_get_contents($this->disk->path('shop/a.php')), 'the project file is left alone');
     }
 
+    public function testACopyIsKeptWhileTheSessionRunsSoACrashLosesLittle(): void
+    {
+        $recovery = $this->recovery($this->edited());
+
+        $recovery->preserve();
+        $recovery->preserve();
+
+        $this->assertCount(1, (array) \glob($this->disk->path('home').'/.porta/recovery/*/*/session.json'), 'each copy replaces the last');
+    }
+
+    public function testEndingOnPurposeForgetsTheCopy(): void
+    {
+        $recovery = $this->recovery($this->edited());
+        $recovery->preserve();
+
+        $recovery->stop();
+
+        $this->assertNull($this->pending(), 'work discarded on purpose does not return');
+    }
+
+    public function testAHangupKeepsTheCopyThroughTheTeardown(): void
+    {
+        $recovery = $this->recovery($this->edited());
+
+        $recovery->keep();
+        $recovery->stop();
+
+        $this->assertNotNull($this->pending());
+    }
+
+    public function testSavingEverythingLeavesNoCopy(): void
+    {
+        $buffers = $this->edited();
+        $recovery = $this->recovery($buffers);
+        $recovery->preserve();
+
+        $buffers->get($this->disk->path('shop/a.php'))?->document->markSaved();
+        $recovery->preserve();
+
+        $this->assertNull($this->pending());
+    }
+
+    public function testTheCopyIsTakenOnItsOwnWhileTheSessionRuns(): void
+    {
+        $recovery = new DesktopRecovery($this->desktop, $this->edited(), $this->disk->path('shop'), everySeconds: 0.05);
+
+        $recovery->start();
+        $recovery->start();
+        $this->pump(0.2);
+
+        $this->assertNotNull($this->pending());
+        $recovery->stop();
+        $this->assertNull($this->pending());
+    }
+
     public function testTwoWindowsEndedTogetherKeepBoth(): void
     {
-        new DesktopRecovery($this->desktop, $this->edited(), $this->disk->path('shop'))->preserve();
-        new DesktopRecovery($this->desktop, $this->edited(), $this->disk->path('shop'))->preserve();
+        $this->recovery($this->edited())->keep();
+        $this->recovery($this->edited())->keep();
 
-        $first = DesktopRecovery::pending($this->disk->path('shop'), $this->desktop);
+        $first = $this->pending();
         $this->assertNotNull($first);
         new RestartSnapshot()->acknowledge($first);
-        $second = DesktopRecovery::pending($this->disk->path('shop'), $this->desktop);
+        $second = $this->pending();
         $this->assertNotNull($second, 'the other window\'s work is still there');
         $this->assertNotSame($first, $second);
     }
 
     public function testNothingUnsavedKeepsNothing(): void
     {
-        new DesktopRecovery($this->desktop, new BufferManager(), $this->disk->path('shop'))->preserve();
+        $this->recovery(new BufferManager())->keep();
 
-        $this->assertNull(DesktopRecovery::pending($this->disk->path('shop'), $this->desktop));
+        $this->assertNull($this->pending());
     }
 
-    public function testATerminalLaunchNeitherKeepsNorResumes(): void
+    public function testATerminalLaunchNeitherCopiesNorResumes(): void
     {
         $terminal = new DesktopSession(active: false, token: '');
+        $recovery = $this->recovery($this->edited(), $terminal);
 
-        new DesktopRecovery($terminal, $this->edited(), $this->disk->path('shop'))->preserve();
-        $this->assertNull(DesktopRecovery::pending($this->disk->path('shop'), $this->desktop));
+        $recovery->start();
+        $recovery->keep();
+        $this->assertNull($this->pending());
 
-        new DesktopRecovery($this->desktop, $this->edited(), $this->disk->path('shop'))->preserve();
-        $this->assertNull(DesktopRecovery::pending($this->disk->path('shop'), $terminal));
+        $this->recovery($this->edited())->keep();
+        $this->assertNull($this->pending($terminal));
     }
 
     public function testAnotherProjectDoesNotResumeThisOne(): void
     {
-        new DesktopRecovery($this->desktop, $this->edited(), $this->disk->path('shop'))->preserve();
+        $this->recovery($this->edited())->keep();
 
         $this->assertNull(DesktopRecovery::pending($this->disk->path('home'), $this->desktop));
     }

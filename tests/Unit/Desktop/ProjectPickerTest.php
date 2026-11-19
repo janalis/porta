@@ -56,13 +56,11 @@ final class ProjectPickerTest extends TestCase
             if (1 !== \preg_match('/\pL{3}/u', \substr($output, $drawn))) {
                 return;
             }
-            if ([] === $keys) {
-                EventLoop::cancel($id);
-
-                return;
-            }
             $drawn = \strlen($output);
             $this->terminal->simulateInput((string) \array_shift($keys));
+            if ([] === $keys) {
+                EventLoop::cancel($id);
+            }
         });
     }
 
