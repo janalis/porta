@@ -124,9 +124,14 @@ static void apply_font(PortaWindow *self)
         return;
     }
     settings = json_node_get_object(root);
-    font = pango_font_description_from_string(json_object_get_string_member_with_default(settings, "fontFamily", "Monospace"));
-    double size = json_object_get_double_member_with_default(settings, "fontSize", 11);
-    pango_font_description_set_size(font, (int) (CLAMP(size, 6, 72) * PANGO_SCALE));
+    /* As every host reads it: a value of the wrong kind, or out of range, is not set. */
+    JsonNode *family = json_object_get_member(settings, "fontFamily");
+    JsonNode *size = json_object_get_member(settings, "fontSize");
+    const char *name = NULL != family && JSON_NODE_HOLDS_VALUE(family) && G_TYPE_STRING == json_node_get_value_type(family) ? json_node_get_string(family) : NULL;
+    gboolean number = NULL != size && JSON_NODE_HOLDS_VALUE(size) && (G_TYPE_DOUBLE == json_node_get_value_type(size) || G_TYPE_INT64 == json_node_get_value_type(size));
+    double points = number ? json_node_get_double(size) : 0;
+    font = pango_font_description_from_string(NULL != name && '\0' != name[0] ? name : "Monospace");
+    pango_font_description_set_size(font, (int) ((points >= 6 && points <= 72 ? points : 11) * PANGO_SCALE));
     vte_terminal_set_font(self->terminal, font);
     pango_font_description_free(font);
 }

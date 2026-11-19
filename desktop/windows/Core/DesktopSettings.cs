@@ -20,9 +20,22 @@ namespace Porta.Desktop
 
         public string? FontFamily => family is string name && name.Length > 0 ? name : null;
 
-        public double? FontSize => size is double points && points >= SmallestFont && points <= LargestFont
-            ? points
-            : size is int whole && whole >= SmallestFont && whole <= LargestFont ? whole : (double?)null;
+        public double? FontSize
+        {
+            get
+            {
+                // The serializer gives a number back as int, long, double or decimal, whichever fits.
+                double? points = size switch
+                {
+                    int whole => whole,
+                    long whole => whole,
+                    double real => real,
+                    decimal exact => (double)exact,
+                    _ => null,
+                };
+                return points >= SmallestFont && points <= LargestFont ? points : null;
+            }
+        }
 
         public static DesktopSettings Parse(string? json)
         {

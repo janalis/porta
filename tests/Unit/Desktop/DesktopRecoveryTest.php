@@ -49,14 +49,17 @@ final class DesktopRecoveryTest extends TestCase
         $this->assertSame("<?php\n", \file_get_contents($this->disk->path('shop/a.php')), 'the project file is left alone');
     }
 
-    public function testAnOlderKeptSessionIsReplaced(): void
+    public function testTwoWindowsEndedTogetherKeepBoth(): void
     {
-        $recovery = new DesktopRecovery($this->desktop, $this->edited(), $this->disk->path('shop'));
+        new DesktopRecovery($this->desktop, $this->edited(), $this->disk->path('shop'))->preserve();
+        new DesktopRecovery($this->desktop, $this->edited(), $this->disk->path('shop'))->preserve();
 
-        $recovery->preserve();
-        $recovery->preserve();
-
-        $this->assertNotNull(DesktopRecovery::pending($this->disk->path('shop'), $this->desktop));
+        $first = DesktopRecovery::pending($this->disk->path('shop'), $this->desktop);
+        $this->assertNotNull($first);
+        new RestartSnapshot()->acknowledge($first);
+        $second = DesktopRecovery::pending($this->disk->path('shop'), $this->desktop);
+        $this->assertNotNull($second, 'the other window\'s work is still there');
+        $this->assertNotSame($first, $second);
     }
 
     public function testNothingUnsavedKeepsNothing(): void

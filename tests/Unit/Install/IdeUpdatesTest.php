@@ -12,6 +12,7 @@ use Porta\Install\IdeUpdateState;
 use Porta\Install\Installation;
 use Porta\Install\InstallMethod;
 use Porta\Tests\Support\StoreFixture;
+use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
 use Porta\Workbench\UpdateRestart;
 
@@ -28,13 +29,13 @@ final class IdeUpdatesTest extends TestCase
     }
 
     /** @param array<string, int|bool|string> $settings */
-    private function updates(array $settings = [], InstallMethod $method = InstallMethod::Phar, ?string $restartCheckAfter = null): IdeUpdates
+    private function updates(array $settings = [], InstallMethod $method = InstallMethod::Phar, ?string $restartCheckAfter = null, ?Installation $installation = null): IdeUpdates
     {
         return new IdeUpdates(
             $settings,
             $this->store->http->fetch(),
             new IdeUpdateState($this->store->home->path('ide-update.json')),
-            new Installation($method, '/porta'),
+            $installation ?? new Installation($method, '/porta'),
             $this->restart,
             $this->store->notifier,
             $this->store->translator,
@@ -113,12 +114,18 @@ final class IdeUpdatesTest extends TestCase
         $this->assertTrue($this->restart->updatesCore());
     }
 
-    public function testADesktopInstallUpdatesItselfLikeAPhar(): void
+    public function testADesktopInstallWaitsForItsOwnPackageThenUpdatesItself(): void
     {
-        $this->store->http->bodies[IdeUpdates::RELEASE] = '{"tag_name":"v2.0.0"}';
+        $bundle = new TempProject(['runtime/porta.phar' => 'OLD', 'runtime/desktop-package' => "porta-desktop-macos-arm64.dmg\n"]);
+        $installation = new Installation(InstallMethod::Desktop, $bundle->path('runtime/porta.phar'));
+        $this->store->http->bodies[IdeUpdates::RELEASE] = '{"tag_name":"v2.0.0","assets":[{"name":"porta.phar"}]}';
 
-        $this->updates(['ideAutoUpdate' => true], InstallMethod::Desktop)->checkIfDue();
+        $this->updates(['ideAutoUpdate' => true], installation: $installation)->checkIfDue();
+        $this->assertFalse($this->restart->updatesCore(), 'the release is out, its disk image is not yet');
 
+        $this->now += 86_400;
+        $this->store->http->bodies[IdeUpdates::RELEASE] = '{"tag_name":"v2.0.0","assets":[{"name":"porta.phar"},{"name":"porta-desktop-macos-arm64.dmg"}]}';
+        $this->updates(['ideAutoUpdate' => true], installation: $installation)->checkIfDue();
         $this->assertTrue($this->restart->updatesCore());
     }
 

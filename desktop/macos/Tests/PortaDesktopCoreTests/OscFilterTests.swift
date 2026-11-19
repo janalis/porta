@@ -41,6 +41,15 @@ final class OscFilterTests: XCTestCase {
         XCTAssertEqual(run([others]).1, [])
     }
 
+    func testAStringSequenceWrittenIntoThePayloadGoesWholeToTheTerminal() {
+        let image = "\u{1b}_Ga=T;AAAA\u{1b}\\"
+        let title = "\u{1b}]0;title\u{07}"
+        let (output, payloads) = run(["\u{1b}]7777;ab" + image + "cd" + title + "ef\u{1b}\\"])
+
+        XCTAssertEqual(payloads, ["abcdef"])
+        XCTAssertEqual(output, image + title)
+    }
+
     func testABellEndsThePayloadToo() {
         XCTAssertEqual(run(["\u{1b}]7777;x\u{07}"]).1, ["x"])
     }

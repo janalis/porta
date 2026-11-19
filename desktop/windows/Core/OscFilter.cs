@@ -26,6 +26,7 @@ namespace Porta.Desktop
         private int code;
         private bool sawEscape;
         private List<byte>? foreign;
+        private bool foreignIsString;
 
         public byte[] Consume(byte[] bytes, int count, IList<(int Code, string Payload)> found)
         {
@@ -78,9 +79,12 @@ namespace Porta.Desktop
         {
             if (foreign != null)
             {
-                // A control sequence runs to its final byte, 0x40 to 0x7E.
+                // A CSI runs to its final byte, 0x40 to 0x7E; a string to BEL or ST.
+                var ended = foreignIsString
+                    ? value == Bell || (value == (byte)'\\' && foreign[foreign.Count - 1] == Escape)
+                    : value >= 0x40 && value <= 0x7E;
                 foreign.Add(value);
-                if (value >= 0x40 && value <= 0x7E)
+                if (ended)
                 {
                     output.Write(foreign.ToArray(), 0, foreign.Count);
                     foreign = null;
@@ -101,9 +105,10 @@ namespace Porta.Desktop
                 // Porta's payloads never hold ESC: this is another writer's sequence that
                 // landed mid-payload (symfony/tui answers the kitty query unqueued).
                 sawEscape = false;
-                if (value == (byte)'[')
+                if ("[]P_^X".IndexOf((char)value) >= 0)
                 {
                     foreign = new List<byte> { Escape, value };
+                    foreignIsString = value != (byte)'[';
                 }
                 else
                 {

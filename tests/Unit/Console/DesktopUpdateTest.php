@@ -53,7 +53,12 @@ final class DesktopUpdateTest extends TestCase
         $run = function (array $command, ?string $stdin = null): array {
             $this->ran[] = $command;
 
-            return [$this->fake($command), 'curl' === $command[0] && !\in_array('-o', $command, strict: true) ? $this->release() : ''];
+            $code = $this->fake($command);
+            if (\is_array($code)) {
+                return $code;
+            }
+
+            return [$code, 'curl' === $command[0] && !\in_array('-o', $command, strict: true) ? $this->release() : ''];
         };
         new DesktopUpdate(new SelfUpdate($run, []), $run)->install('v2.0.0', new Installation(InstallMethod::Desktop, $this->disk->path($phar)));
     }
@@ -75,8 +80,12 @@ final class DesktopUpdateTest extends TestCase
         return (string) \json_encode(['tag_name' => 'v2.0.0', 'assets' => $assets], \JSON_THROW_ON_ERROR);
     }
 
-    /** @param list<string> $command */
-    private function fake(array $command): int
+    /**
+     * @param list<string> $command
+     *
+     * @return int|array{int, string}
+     */
+    private function fake(array $command): int|array
     {
         $fs = new Filesystem();
         $out = \array_search('-o', $command, strict: true);
@@ -98,7 +107,11 @@ final class DesktopUpdateTest extends TestCase
             $fs->dumpFile($command[4].'/lib/porta-desktop/runtime/porta.phar', 'NEW');
         }
 
-        return $this->exits[$command[0]] ?? 0;
+        return match (true) {
+            'wslpath' === $command[0] => [$this->exits['wslpath'] ?? 0, 'C:\\Users\\me\\Porta\\updates\\porta-desktop-windows.exe'."\n"],
+            'hdiutil' === $command[0] && 'detach' === $command[1] => '-force' === $command[2] ? 0 : $this->exits['detach'] ?? 0,
+            default => $this->exits[$command[0]] ?? 0,
+        };
     }
 
     /** @return list<string> the commands run, by name */
@@ -206,14 +219,58 @@ final class DesktopUpdateTest extends TestCase
         $this->assertFailsWith('Install it yourself: sudo apt install ', 'usr/porta-desktop/runtime/porta.phar');
     }
 
-    public function testTheWindowsInstallerIsStartedApartAndKept(): void
+    public function testTheWindowsInstallerIsStartedThroughWindowsAndKept(): void
     {
         $this->install('Programs/Porta/runtime/porta.phar');
 
         $started = \end($this->ran);
-        $this->assertSame('/bin/sh', $started[0]);
-        $this->assertStringContainsString('/VERYSILENT', $started[2]);
+        $this->assertSame(
+            ['cmd.exe', '/c', 'start', '', 'C:\\Users\\me\\Porta\\updates\\porta-desktop-windows.exe', '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/FORCECLOSEAPPLICATIONS'],
+            $started,
+        );
         $this->assertFileExists($this->disk->path('Programs/Porta/updates/porta-desktop-windows.exe'), 'it must still be there when it runs');
+    }
+
+    public function testAnInstallerWindowsCannotStartIsReported(): void
+    {
+        $this->exits['cmd.exe'] = 1;
+        $this->exits['wslpath'] = 1;
+
+        $this->assertFailsWith('the update did not install (exit 1)', 'Programs/Porta/runtime/porta.phar');
+    }
+
+    public function testAPackageTheUserMustInstallByHandIsKeptForThem(): void
+    {
+        $this->exits['pkexec'] = 126;
+
+        try {
+            $this->install('usr/porta-desktop/runtime/porta.phar');
+            $this->fail('the update went through');
+        } catch (\RuntimeException $e) {
+            $this->assertSame(1, \preg_match('/sudo apt install (\S+)$/', $e->getMessage(), $named));
+            $this->assertFileExists($named[1], 'the command it names must work');
+        }
+    }
+
+    public function testAnImageThatWillNotLetGoIsForcedOff(): void
+    {
+        $this->exits['detach'] = 16;
+
+        $this->install('Applications/Porta.app/Contents/Resources/runtime/porta.phar');
+
+        $this->assertContains(['hdiutil', 'detach', '-force'], \array_map(static fn (array $c): array => \array_slice($c, 0, 3), $this->ran));
+        $this->assertSame('NEW', \file_get_contents($this->disk->path('Applications/Porta.app/Contents/Resources/runtime/porta.phar')));
+    }
+
+    public function testAFolderSwapThatFailsLeavesNothingStaged(): void
+    {
+        \chmod($this->disk->path('local'), 0o555);
+        try {
+            $this->assertFailsWith('', 'local/porta-desktop/runtime/porta.phar');
+        } finally {
+            \chmod($this->disk->path('local'), 0o755);
+        }
+        $this->assertSame(['porta-desktop'], \array_values(\array_diff((array) \scandir($this->disk->path('local')), ['.', '..'])));
     }
 
     public function testAReleaseWithoutThePackageChangesNothing(): void

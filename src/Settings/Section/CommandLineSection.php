@@ -222,11 +222,12 @@ final class CommandLineSection implements SettingsSection
                 InstallMethod::Checkout => $this->translator->trans('Update it from a shell: %command%', ['%command%' => 'git pull --ff-only && composer install']),
                 InstallMethod::Desktop => match (\pathinfo($installation->desktopPackage(), \PATHINFO_EXTENSION)) {
                     'deb', 'rpm' => $this->translator->trans('Installs the new package; asks for your password'),
+                    '' => $this->translator->trans('Download the new version from %url%', ['%url%' => Installation::RELEASES]),
                     default => $this->translator->trans('Downloads and installs the new version'),
                 },
             },
             fieldset: $this->translator->trans('Updates'),
-            disabled: !$installation->method->updatesItself(),
+            disabled: !$installation->updatesItself(),
         );
     }
 
@@ -258,7 +259,7 @@ final class CommandLineSection implements SettingsSection
     {
         $installation = $this->installation();
         match (true) {
-            !$installation->method->updatesItself() => null, // the row is inert then
+            !$installation->updatesItself() => null, // the row is inert then
             null !== $this->update => $this->notifier->warn($this->translator->trans('An update is already running')),
             null !== $this->restart => $this->restart->core(),
             default => $this->startSelfUpdate($installation),

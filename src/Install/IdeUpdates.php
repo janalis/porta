@@ -98,7 +98,7 @@ final class IdeUpdates
             [self::RELEASE],
             function (array $answers): void {
                 $this->checking = false;
-                $released = self::released($answers);
+                $released = $this->released($answers);
                 $this->state->checked(($this->clock)(), $released);
                 $this->offer($released ?? $this->state->latest());
             },
@@ -121,7 +121,7 @@ final class IdeUpdates
             [self::RELEASE],
             function (array $answers): void {
                 $this->checking = false;
-                $released = self::released($answers);
+                $released = $this->released($answers);
                 if (null === $released) {
                     $this->notifier->error($this->translator->trans('Could not check for updates.'), seconds: 6.0, slot: 'ide-updates');
 
@@ -143,13 +143,17 @@ final class IdeUpdates
      *
      * @param array<string, ?string> $answers each address => its body, or null
      */
-    private static function released(array $answers): ?string
+    private function released(array $answers): ?string
     {
         $data = Decoded::json($answers[self::RELEASE] ?? '');
         $version = \is_string($data['tag_name'] ?? null) ? $data['tag_name'] : '';
         $stable = true !== ($data['prerelease'] ?? false) && true !== ($data['draft'] ?? false) && 1 === \preg_match('/^v?\d+\.\d+\.\d+$/D', $version);
+        // The desktop packages are attached after the release is out: until this
+        // installation's own is there, the release is not one it can take.
+        $package = $this->installation->desktopPackage();
+        $names = \array_column(Decoded::objects($data['assets'] ?? null), 'name');
 
-        return $stable ? $version : null;
+        return $stable && ('' === $package || \in_array($package, $names, strict: true)) ? $version : null;
     }
 
     private function offer(?string $version): void
@@ -163,7 +167,7 @@ final class IdeUpdates
             return;
         }
         $this->handled = $version;
-        if ($this->auto && $this->installation->method->updatesItself()) {
+        if ($this->auto && $this->installation->updatesItself()) {
             $this->restart->core();
 
             return;

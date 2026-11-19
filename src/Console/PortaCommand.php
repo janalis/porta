@@ -378,7 +378,7 @@ final class PortaCommand extends Command
     private function updateSelf(OutputInterface $output, SymfonyStyle $io, bool $dryRun): int
     {
         $installation = $this->installation ?? Installation::detect($this->phar, PortaBinary::packageDir(), $this->env);
-        $runs = $installation->method->updatesItself();
+        $runs = $installation->updatesItself();
         $update = new SelfUpdate($this->process, $this->env);
         try {
             $latest = $update->latest();
@@ -404,6 +404,11 @@ final class PortaCommand extends Command
     // @mago-expect lint:no-boolean-flag-parameter -- --dry-run is the flag being honoured.
     private function tellHow(OutputInterface $output, Installation $installation, bool $dryRun): int
     {
+        if (InstallMethod::Desktop === $installation->method) {
+            $output->writeln(\sprintf('This build of the desktop application does not say which package it came as: download the new version from %s', Installation::RELEASES));
+
+            return $dryRun ? Command::SUCCESS : Command::FAILURE;
+        }
         $output->writeln(\sprintf(
             'This porta is %s %s: update it with `%s`.',
             InstallMethod::Checkout === $installation->method ? 'the git checkout at' : 'a dependency of the project at',

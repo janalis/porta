@@ -80,6 +80,20 @@ public class CoreTests
     }
 
     [Fact]
+    public void AStringSequenceWrittenIntoThePayloadGoesWholeToTheTerminal()
+    {
+        const string image = "\u001b_Ga=T;AAAA\u001b\\";
+        const string title = "\u001b]0;title\u0007";
+        var bytes = Encoding.ASCII.GetBytes("\u001b]7777;ab" + image + "cd" + title + "ef\u001b\\");
+        var found = new List<(int Code, string Payload)>();
+
+        var output = new OscFilter().Consume(bytes, bytes.Length, found);
+
+        Assert.Equal((OscFilter.Private, "abcdef"), Assert.Single(found));
+        Assert.Equal(image + title, Encoding.ASCII.GetString(output));
+    }
+
+    [Fact]
     public void TheCloseFlowProtectsUnsavedWork()
     {
         var flow = new CloseFlow();
@@ -153,6 +167,8 @@ public class CoreTests
     [Theory]
     [InlineData("{\"fontFamily\":\"JetBrains Mono\",\"fontSize\":14}", "JetBrains Mono", 14.0)]
     [InlineData("{\"fontFamily\":\"\",\"fontSize\":500}", null, null)]
+    [InlineData("{\"fontSize\":13.5}", null, 13.5)]
+    [InlineData("{\"fontFamily\":3,\"fontSize\":\"14\"}", null, null)]
     [InlineData("not json", null, null)]
     [InlineData(null, null, null)]
     public void SettingsReadOrReadAsNotSet(string? json, string? family, double? size)

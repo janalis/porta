@@ -111,6 +111,19 @@ static void test_a_sequence_written_into_the_payload_goes_to_the_terminal(void)
     g_assert_cmpmem(output->data, output->len, "x\x1b[>7u\x1bMy", 9);
 }
 
+static void test_a_string_sequence_written_into_the_payload_goes_whole_to_the_terminal(void)
+{
+    g_autoptr(GByteArray) output = g_byte_array_new();
+    g_autoptr(GPtrArray) found = g_ptr_array_new_with_free_func(porta_osc_free);
+    const char *input = "\x1b]7777;ab\x1b_Ga=T;AAAA\x1b\\cd\x1b]0;title\x07" "ef\x1b\\";
+
+    run_filter(input, strlen(input), "", output, found);
+
+    g_assert_cmpuint(found->len, ==, 1);
+    g_assert_cmpstr(((PortaOsc *) found->pdata[0])->payload, ==, "abcdef");
+    g_assert_cmpmem(output->data, output->len, "\x1b_Ga=T;AAAA\x1b\\\x1b]0;title\x07", 23);
+}
+
 static void test_the_close_flow(void)
 {
     PortaCloseFlow flow = {0};
@@ -181,6 +194,7 @@ int main(int argc, char **argv)
     g_test_add_func("/messages/menu-choice", test_the_menu_choice_is_the_contracts);
     g_test_add_func("/filter/split", test_a_split_at_every_byte_changes_nothing);
     g_test_add_func("/filter/foreign", test_a_sequence_written_into_the_payload_goes_to_the_terminal);
+    g_test_add_func("/filter/foreign-string", test_a_string_sequence_written_into_the_payload_goes_whole_to_the_terminal);
     g_test_add_func("/filter/clipboard", test_the_clipboard_is_caught_and_other_escapes_pass);
     g_test_add_func("/flow/close", test_the_close_flow);
     g_test_add_func("/launch/plan", test_the_launch);

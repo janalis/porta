@@ -23,6 +23,9 @@ final readonly class Installation
 {
     public const string PACKAGE = 'janalis/porta';
 
+    /** Where a build that cannot update itself gets its next version. */
+    public const string RELEASES = 'https://github.com/janalis/porta/releases/latest';
+
     private const string FORMULA = 'janalis/tap/porta';
 
     private const string DESKTOP_PACKAGE = 'desktop-package';
@@ -93,6 +96,15 @@ final readonly class Installation
         $marker = \dirname($this->path).'/'.self::DESKTOP_PACKAGE;
 
         return InstallMethod::Desktop === $this->method && \is_file($marker) ? \trim(Files::read($marker)) : '';
+    }
+
+    /**
+     * Whether `--self-update` updates this install itself: its method allows it,
+     * and a desktop install knows which package it came as.
+     */
+    public function updatesItself(): bool
+    {
+        return $this->method->updatesItself() && (InstallMethod::Desktop !== $this->method || '' !== $this->desktopPackage());
     }
 
     /** {@see commands()} as one line to paste into a shell. */

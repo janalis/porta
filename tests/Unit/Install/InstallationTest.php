@@ -151,9 +151,13 @@ final class InstallationTest extends TestCase
         $this->assertSame([], $installation->commands());
         $this->assertSame(\hash('xxh128', 'PHAR'), $installation->fingerprint());
         $this->assertSame('', $installation->desktopPackage(), 'a bundle without its marker names no package');
+        $this->assertFalse($installation->updatesItself(), 'without it, there is nothing to download');
 
         $this->disk->write('Porta.app/Contents/Resources/runtime/desktop-package', content: "porta-desktop-macos-arm64.dmg\n");
         $this->assertSame('porta-desktop-macos-arm64.dmg', $installation->desktopPackage());
+        $this->assertTrue($installation->updatesItself());
+        $this->assertTrue(new Installation(InstallMethod::Phar, '/porta.phar')->updatesItself());
+        $this->assertFalse(new Installation(InstallMethod::Checkout, '/porta')->updatesItself());
         $this->assertSame('', new Installation(InstallMethod::Phar, $this->disk->path('Porta.app/Contents/Resources/runtime/porta.phar'))->desktopPackage(), 'only a desktop install has one');
     }
 }

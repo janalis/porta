@@ -3982,6 +3982,10 @@
         <source>Downloads and installs the new version</source>
         <target>מוריד ומתקין את הגרסה החדשה</target>
       </trans-unit>
+      <trans-unit id="1333">
+        <source>Download the new version from %url%</source>
+        <target>הורידו את הגרסה החדשה מ-%url%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

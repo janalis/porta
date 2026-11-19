@@ -770,6 +770,15 @@ final class PortaCommandTest extends TestCase
         $this->assertSame('OLD', \file_get_contents($bundle->path('runtime/porta.phar')));
     }
 
+    public function testADesktopBuildThatNamesNoPackageIsSentToTheReleases(): void
+    {
+        $bundle = new TempProject(['runtime/porta.phar' => 'OLD']);
+        $tester = new CommandTester($this->updater('v1.2.0', latest: 'v1.3.0', phar: null, installation: new Installation(InstallMethod::Desktop, $bundle->path('runtime/porta.phar'))));
+
+        $this->assertSame(Command::FAILURE, $tester->execute(['--self-update' => true]));
+        $this->assertStringContainsString('download the new version from '.Installation::RELEASES, $tester->getDisplay());
+    }
+
     public function testTheDesktopApplicationCanBeUpdated(): void
     {
         $tester = new CommandTester($this->updater('v1.2.0', latest: 'v1.3.0', phar: null, installation: new Installation(InstallMethod::Desktop, '/Applications/Porta.app/porta.phar')));

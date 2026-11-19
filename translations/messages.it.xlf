@@ -3982,6 +3982,10 @@
         <source>Downloads and installs the new version</source>
         <target>Scarica e installa la nuova versione</target>
       </trans-unit>
+      <trans-unit id="1333">
+        <source>Download the new version from %url%</source>
+        <target>Scarica la nuova versione da %url%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -45,6 +45,7 @@ final readonly class DesktopUpdate
         $asset = $installation->desktopPackage();
         $scratch = \str_ends_with($asset, '.exe') ? \dirname($runtime).'/updates' : \sys_get_temp_dir().'/porta-update-'.\bin2hex(\random_bytes(6));
         $this->filesystem->mkdir($scratch, mode: 0o700);
+        $done = false;
         try {
             $this->update->fetch($tag, [$asset, self::SUMS], $scratch);
             $package = $scratch.'/'.$asset;
@@ -52,18 +53,35 @@ final readonly class DesktopUpdate
                 throw new \RuntimeException($asset.' does not match its checksum; nothing was changed.');
             }
             match (true) {
-                \str_ends_with($asset, '.dmg') => $this->replaceBundle($package, \dirname($runtime, levels: 3), $scratch),
+                \str_ends_with($asset, '.dmg') => $this->replaceBundle($package, \dirname($runtime, levels: 3)),
                 \str_ends_with($asset, '.tar.gz') => $this->replaceFolder($package, \dirname($runtime), $scratch),
                 \str_ends_with($asset, '.deb') => $this->runOrExplain(['pkexec', 'apt-get', 'install', '-y', $package], 'sudo apt install '.$package),
                 \str_ends_with($asset, '.rpm') => $this->runOrExplain(['pkexec', 'dnf', 'install', '-y', $package], 'sudo dnf install '.$package),
-                // Started apart: the installer closes this very application.
-                default => $this->runOrExplain(['/bin/sh', '-c', '"$0" /VERYSILENT /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS > /dev/null 2>&1 &', $package], $package),
+                default => $this->startInstaller($package),
             };
+            $done = true;
         } finally {
-            if (!\str_ends_with($asset, '.exe')) {
+            // The installer must outlive this process, and a package the user is
+            // told to install by hand must still be there to install.
+            $kept = \str_ends_with($asset, '.exe') || (!$done && \preg_match('/\.(?:deb|rpm)$/', $asset));
+            if (!$kept) {
                 $this->filesystem->remove($scratch);
             }
         }
+    }
+
+    /**
+     * Started through Windows, apart from this process: the installer closes the
+     * application, and with it this Porta. `start` returns once it has begun,
+     * and fails when it could not.
+     */
+    private function startInstaller(string $package): void
+    {
+        [$code, $windows] = ($this->run)(['wslpath', '-w', $package]);
+        $this->runOrExplain(
+            ['cmd.exe', '/c', 'start', '', \trim($windows), '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/FORCECLOSEAPPLICATIONS'],
+            0 === $code ? \trim($windows) : $package,
+        );
     }
 
     /** The digest `sha256sum` wrote for $asset, '' when it wrote none. */
@@ -74,12 +92,13 @@ final readonly class DesktopUpdate
         return 1 === \preg_match('/^([0-9a-f]{64}) [ *]'.\preg_quote($asset, delimiter: '/').'$/m', $sums, $match) ? $match[1] : '';
     }
 
-    private function replaceBundle(string $image, string $bundle, string $scratch): void
+    private function replaceBundle(string $image, string $bundle): void
     {
         if (!\str_ends_with($bundle, '.app')) {
             throw new \RuntimeException('Porta is not inside an application bundle here; nothing was changed.');
         }
-        $mounted = $scratch.'/image';
+        // Outside the scratch folder: a mount that will not let go must never be recursed into.
+        $mounted = \sys_get_temp_dir().'/porta-image-'.\bin2hex(\random_bytes(6));
         $this->must(['hdiutil', 'attach', '-nobrowse', '-readonly', '-noautoopen', '-mountpoint', $mounted, $image], problem: 'the disk image would not open');
         try {
             $staged = \dirname($bundle).'/.'.\basename($bundle).'.new';
@@ -92,7 +111,12 @@ final readonly class DesktopUpdate
                 $this->filesystem->remove($staged);
             }
         } finally {
-            ($this->run)(['hdiutil', 'detach', '-quiet', $mounted]);
+            [$detached] = ($this->run)(['hdiutil', 'detach', '-quiet', $mounted]);
+            if (0 !== $detached) {
+                ($this->run)(['hdiutil', 'detach', '-force', '-quiet', $mounted]);
+            }
+            // @mago-expect lint:no-error-control-operator -- an image still mounted leaves the folder in use; it is the system's to clear then
+            @\rmdir($mounted);
         }
     }
 
@@ -105,8 +129,12 @@ final readonly class DesktopUpdate
         }
         $staged = \dirname($folder).'/.'.\basename($folder).'.new';
         $this->filesystem->remove($staged);
-        $this->filesystem->mirror($unpacked, $staged);
-        $this->swap($staged, $folder);
+        try {
+            $this->filesystem->mirror($unpacked, $staged);
+            $this->swap($staged, $folder);
+        } finally {
+            $this->filesystem->remove($staged);
+        }
     }
 
     /** $staged takes $target's place; a failure puts $target back. */

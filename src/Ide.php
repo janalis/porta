@@ -544,8 +544,12 @@ final class Ide
         $signals = [];
         foreach ([\SIGTERM, \SIGINT, \SIGHUP] as $signal) {
             $id = EventLoop::onSignal($signal, function (): void {
-                $this->service(DesktopRecovery::class)->preserve();
-                $this->tui->stop();
+                try {
+                    $this->service(DesktopRecovery::class)->preserve();
+                } finally {
+                    // Whatever keeping the work met, the session still ends.
+                    $this->tui->stop();
+                }
             });
             EventLoop::unreference($id);
             $signals[] = $id;
@@ -632,8 +636,9 @@ final class Ide
             $this->service(PluginUpdates::class)->start();
             $this->service(IdeUpdates::class)->start();
 
+            // A resumed session brings its buffers back; a file asked for still opens on top.
             $openedInitial = $this->restoreRestart();
-            if (!$openedInitial && null !== $this->initialFile) {
+            if (null !== $this->initialFile) {
                 $this->openFile($this->initialFile);
                 if (null !== $this->initialLine) {
                     $this->editor->jumpTo($this->initialLine - 1, utf16Col: 0); // CLI lines are 1-based

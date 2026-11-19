@@ -21,6 +21,7 @@ struct PortaFilter {
     int code; /* 0 outside a private OSC */
     gboolean saw_escape;
     GByteArray *foreign; /* another writer's sequence, landed mid-payload; NULL when none */
+    gboolean foreign_is_string; /* an OSC, DCS, APC, PM or SOS, ended by BEL or ST, rather than a CSI */
 };
 
 PortaFilter *porta_filter_new(void)
@@ -64,9 +65,13 @@ static void read_payload(PortaFilter *filter, guint8 byte, GByteArray *output, G
     static const guint8 escape = ESC;
 
     if (NULL != filter->foreign) {
-        /* A control sequence runs to its final byte, 0x40 to 0x7E. */
+        /* A CSI runs to its final byte, 0x40 to 0x7E; a string to BEL or ST. */
+        guint length = filter->foreign->len;
+        gboolean ended = filter->foreign_is_string
+            ? (byte == BEL || ('\\' == byte && ESC == filter->foreign->data[length - 1]))
+            : (byte >= 0x40 && byte <= 0x7e);
         g_byte_array_append(filter->foreign, &byte, 1);
-        if (byte >= 0x40 && byte <= 0x7e) {
+        if (ended) {
             g_byte_array_append(output, filter->foreign->data, filter->foreign->len);
             g_byte_array_unref(filter->foreign);
             filter->foreign = NULL;
@@ -81,7 +86,8 @@ static void read_payload(PortaFilter *filter, guint8 byte, GByteArray *output, G
         /* Porta's payloads never hold ESC: this is another writer's sequence that
          * landed mid-payload (symfony/tui answers the kitty query unqueued). */
         filter->saw_escape = FALSE;
-        if ('[' == byte) {
+        if (NULL != strchr("[]P_^X", byte) && '\0' != byte) {
+            filter->foreign_is_string = '[' != byte;
             filter->foreign = g_byte_array_new();
             g_byte_array_append(filter->foreign, &escape, 1);
             g_byte_array_append(filter->foreign, &byte, 1);

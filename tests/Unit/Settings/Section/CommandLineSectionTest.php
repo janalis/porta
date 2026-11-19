@@ -360,5 +360,10 @@ final class CommandLineSectionTest extends TestCase
 
         $system = self::rows($this->section(new Installation(InstallMethod::Desktop, $bundle->path('system/porta.phar'))))['cli:update'];
         $this->assertSame('Installs the new package; asks for your password', $system->hint);
+
+        $bundle->write('unmarked/porta.phar', content: 'PHAR');
+        $unmarked = self::rows($this->section(new Installation(InstallMethod::Desktop, $bundle->path('unmarked/porta.phar'))))['cli:update'];
+        $this->assertSame('Download the new version from '.Installation::RELEASES, $unmarked->hint);
+        $this->assertTrue($unmarked->disabled);
     }
 }

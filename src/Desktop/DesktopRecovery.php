@@ -29,23 +29,32 @@ final readonly class DesktopRecovery
     /** The session is ending unasked: keeps what would be lost, in a desktop launch only. */
     public function preserve(): void
     {
-        $directory = self::directory($this->rootDir);
-        if (!$this->session->active || 0 === $this->buffers->dirtyCount() || null === $directory) {
+        $folder = self::folder($this->rootDir);
+        if (!$this->session->active || 0 === $this->buffers->dirtyCount() || null === $folder) {
             return;
         }
-        $this->snapshots->acknowledge($directory);
+        // One per session: two windows on one project ended together keep both.
+        $directory = $folder.'/'.\bin2hex(\random_bytes(8));
         $this->snapshots->save($directory, $this->rootDir, $this->buffers);
     }
 
-    /** @return string|null the kept session of $root, when a desktop launch has one to resume */
+    /** @return string|null a kept session of $root, oldest first, when a desktop launch has one to resume */
     public static function pending(string $root, DesktopSession $session): ?string
     {
-        $directory = self::directory($root);
+        $folder = self::folder($root);
+        if (null === $folder || !$session->active) {
+            return null;
+        }
+        $kept = [];
+        foreach ((array) \glob($folder.'/*/session.json') as $file) {
+            $kept[(string) $file] = (int) \filemtime((string) $file);
+        }
+        \asort($kept);
 
-        return $session->active && null !== $directory && \is_file($directory.'/session.json') ? $directory : null;
+        return [] === $kept ? null : \dirname(\array_key_first($kept));
     }
 
-    private static function directory(string $root): ?string
+    private static function folder(string $root): ?string
     {
         $home = PortaHome::base();
 
