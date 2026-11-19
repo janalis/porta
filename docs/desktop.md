@@ -120,6 +120,7 @@ protocol every side is tested against.
 | Step | Command |
 | --- | --- |
 | The static PHP | `desktop/build-php.sh <output>` |
+| macOS disk image | `desktop/macos/build-dmg.sh <Porta.app> <output.dmg>` (needs `pip install dmgbuild`) |
 | macOS | `desktop/macos/build-app.sh --php <php> --phar <phar> --version <x.y.z> --out <dir>` |
 | Linux | `desktop/linux/package.sh --php <php> --phar <phar> --version <x.y.z> --out <dir>` |
 | Windows | `dotnet build desktop/windows/App`, then `desktop/windows/Installer/porta.iss` with Inno Setup |

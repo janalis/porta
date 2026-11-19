@@ -3,6 +3,8 @@ name: Desktop
 # The native applications around Porta: each host's own tests, and the packages.
 # Release calls this with a version; on a pull request it only proves they build.
 on:
+  push:
+    branches: [feat/desktop-app]
   pull_request:
     paths:
       - 'desktop/**'
@@ -137,11 +139,29 @@ jobs:
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: |
           image="dist/porta-desktop-${{ matrix.name }}.dmg"
-          hdiutil create -volname Porta -srcfolder dist/Porta.app -ov -format UDZO "$image"
+          python3 -m pip install --quiet dmgbuild==2.0.0
+          desktop/macos/build-dmg.sh dist/Porta.app "$image"
           if [ -n "$APPLE_ID" ]; then
             xcrun notarytool submit "$image" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
             xcrun stapler staple "$image"
           fi
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+          extensions: mbstring, pcntl, ctype
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - name: An installed application updates itself from the next disk image
+        run: |
+          desktop/macos/build-app.sh --php php-${{ matrix.name }} --phar porta.phar --version 99.0.0 --out next
+          next_image="$RUNNER_TEMP/porta-desktop-${{ matrix.name }}.dmg"
+          desktop/macos/build-dmg.sh next/Porta.app "$next_image"
+          mkdir -p "$RUNNER_TEMP/Applications"
+          ditto dist/Porta.app "$RUNNER_TEMP/Applications/Porta.app"
+          php desktop/update-harness.php "$RUNNER_TEMP/Applications/Porta.app/Contents/Resources/runtime/porta.phar" "$next_image" v99.0.0
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$RUNNER_TEMP/Applications/Porta.app/Contents/Info.plist")" = 99.0.0
+          codesign --verify --deep --strict "$RUNNER_TEMP/Applications/Porta.app"
+          test "$(ls -A "$RUNNER_TEMP/Applications")" = Porta.app
       - uses: actions/upload-artifact@v7
         with:
           name: desktop-package-${{ matrix.name }}
@@ -185,6 +205,21 @@ jobs:
         run: dbus-run-session -- desktop/linux/smoke-session.sh wayland "$PWD/unpacked/lib/porta-desktop"
       - name: It offers its menus to a desktop that shows them
         run: dbus-run-session -- xvfb-run -a desktop/linux/smoke-session.sh menu "$PWD/unpacked/lib/porta-desktop"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+          extensions: mbstring, pcntl, ctype
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - name: An installed tarball updates itself from the next one
+        run: |
+          installed="$RUNNER_TEMP/share/porta-desktop"
+          mkdir -p "$installed"
+          cp -R unpacked/lib/porta-desktop/. "$installed/"
+          echo old > "$installed/runtime/porta.phar"
+          php desktop/update-harness.php "$installed/runtime/porta.phar" dist/porta-desktop-linux-$(uname -m).tar.gz v99.0.0
+          cmp porta.phar "$installed/runtime/porta.phar"
+          test "$(ls -A "$RUNNER_TEMP/share")" = porta-desktop
       - uses: actions/upload-artifact@v7
         with:
           name: desktop-package-${{ matrix.name }}
