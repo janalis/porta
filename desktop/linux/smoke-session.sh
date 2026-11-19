@@ -30,6 +30,13 @@ if [ wayland = "$mode" ]; then
 else
     # No settings daemon on this display: GTK takes the setting from settings.ini.
     export GDK_BACKEND=x11
+    # xvfb-run returns before its server always accepts clients: wait until it does.
+    tries=0
+    until xdotool getdisplaygeometry > /dev/null 2>&1; do
+        tries=$((tries + 1))
+        [ "$tries" -lt 40 ] || { echo 'smoke: the virtual display never came up' >&2; exit 1; }
+        sleep 0.25
+    done
 fi
 
 "$app/porta-desktop" "$work/shop" &

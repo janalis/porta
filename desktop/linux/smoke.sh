@@ -9,6 +9,14 @@ mkdir -p "$work/home" "$work/shop"
 echo '{}' > "$work/shop/composer.json"
 export PORTA_HOME="$work/home" PORTA_CACHE_DIR="$work/cache" GDK_BACKEND=x11
 
+# xvfb-run returns before its server always accepts clients: wait until it does.
+tries=0
+until xdotool getdisplaygeometry > /dev/null 2>&1; do
+    tries=$((tries + 1))
+    [ "$tries" -lt 40 ] || { echo 'smoke: the virtual display never came up' >&2; exit 1; }
+    sleep 0.25
+done
+
 "$app/porta-desktop" "$work/shop" &
 pid=$!
 
