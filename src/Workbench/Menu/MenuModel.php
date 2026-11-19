@@ -165,6 +165,7 @@ final class MenuModel
             'i:ide_welcome',
             'i:ide_help',
             'i:ide_check_updates',
+            'i:ide_install_command',
             self::SEP,
             'i:ide_command_palette',
             'e:quick_doc',

@@ -3994,6 +3994,10 @@
         <source>%title% failed (exit code %code%)</source>
         <target>%title% ist fehlgeschlagen (Exit-Code %code%)</target>
       </trans-unit>
+      <trans-unit id="1336">
+        <source>Install the porta Command…</source>
+        <target>Den Befehl porta installieren…</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -11,7 +11,10 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
+use Porta\Settings\Section\CommandLineSection;
+use Porta\Settings\SettingsViewController;
 use Porta\Tests\Support\EditorState;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
@@ -142,6 +145,22 @@ final class FileCommandsTest extends TestCase
 
             $this->assertNotTrue($buffers->active()?->isViewer(), 'hopped back to a text tab');
             $this->assertTrue(EditorState::promptOpen(Services::resolve($ide, CodeEditorWidget::class)), 'and the prompt is up');
+        } finally {
+            $this->closeIde($ide);
+        }
+    }
+
+    /** The way to the `porta` command from the menus: the Command line page, which says what is there and installs it. */
+    public function testInstallingThePortaCommandOpensItsSettingsPage(): void
+    {
+        $ide = $this->boot();
+        try {
+            Services::resolve($ide, CommandRegistry::class)->run('ide_install_command');
+
+            $settings = Services::resolve($ide, ViewRegistry::class)->find('settings');
+            $this->assertInstanceOf(SettingsViewController::class, $settings);
+            $this->assertTrue($settings->isOpen());
+            $this->assertSame(CommandLineSection::ID, Probe::get($settings, 'section'));
         } finally {
             $this->closeIde($ide);
         }

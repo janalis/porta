@@ -22,6 +22,8 @@ versions follow [Semantic Versioning](https://semver.org/).
   window whose Porta stopped offers to reopen it, show the error log, or close.
 - **Help → Check for Updates…**: asks for a newer release now, whatever the
   cadence set in Settings.
+- **Help → Install the porta Command…**: the Command line page of the settings,
+  where the `porta` command is linked, updated or removed.
 
 ## [0.1.9] - 2026-11-19
 

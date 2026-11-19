@@ -14,6 +14,8 @@ use Porta\Editor\ReferenceCopier;
 use Porta\Editor\ScratchFiles;
 use Porta\Install\IdeUpdates;
 use Porta\Lsp\RefactorController;
+use Porta\Settings\Section\CommandLineSection;
+use Porta\Settings\SettingsViewController;
 use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\ProjectSwitcher;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
@@ -31,6 +33,7 @@ final readonly class FileCommands implements CommandProvider
         private ProjectSwitcher $projects,
         private FileTreeWidget $tree,
         private IdeUpdates $updates,
+        private SettingsViewController $settings,
     ) {}
 
     #[\Override]
@@ -67,6 +70,8 @@ final readonly class FileCommands implements CommandProvider
             )
             // Palette-only: an answer given once, not a verb worth a chord.
             ->add('ide_check_updates', fn () => $this->updates->checkNow(), label: 'Check for Updates…')
+            // The Command line page says where the link goes and what is there now, and installs from there.
+            ->add('ide_install_command', fn () => $this->settings->openOn(CommandLineSection::ID), label: 'Install the porta Command…')
             ->add('ide_trust_project', fn () => $this->projects->trustCurrent(), label: 'Trust This Project')
             ->add('ide_restrict_project', fn () => $this->projects->restrictCurrent(), label: 'Open This Project Restricted')
             // From the tree, the row under the cursor rather than the open file.

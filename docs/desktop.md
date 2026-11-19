@@ -10,7 +10,8 @@ used side by side.
 Get the package for your system from the [Download](download.md) page.
 
 Installing registers the application with the system. It does not put `porta`
-on your `PATH`: **Settings → Command line** does that, if you want it to.
+on your `PATH`: **Help → Install the porta Command…** (or **Settings → Command
+line**) does that, if you want it to.
 
 ## Launch
 
