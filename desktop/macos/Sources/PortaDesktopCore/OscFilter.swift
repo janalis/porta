@@ -9,6 +9,8 @@ public struct OscFilter {
     private var matched = 0
     private var inside = false
     private var sawEscape = false
+    /// A sequence someone else wrote into the middle of a payload, on its way to the terminal.
+    private var foreign: [UInt8]?
     private var payload: [UInt8] = []
 
     public init() {}
@@ -45,14 +47,32 @@ public struct OscFilter {
     }
 
     private mutating func readPayload(_ byte: UInt8, into payloads: inout [String], passing output: inout [UInt8]) {
+        if var sequence = foreign {
+            // A control sequence runs to its final byte, 0x40 to 0x7E.
+            sequence.append(byte)
+            if (0x40...0x7E).contains(byte) {
+                output.append(contentsOf: sequence)
+                foreign = nil
+            } else {
+                foreign = sequence
+            }
+            return
+        }
         if byte == Self.bell || (sawEscape && byte == Self.stringTerminator) {
             payloads.append(String(decoding: payload, as: UTF8.self))
             reset()
             return
         }
         if sawEscape {
-            payload.append(Self.escape)
+            // Porta's payloads never hold ESC: this is another writer's sequence that
+            // landed mid-payload (symfony/tui answers the kitty query unqueued).
             sawEscape = false
+            if byte == UInt8(ascii: "[") {
+                foreign = [Self.escape, byte]
+            } else {
+                output.append(contentsOf: [Self.escape, byte])
+            }
+            return
         }
         if byte == Self.escape {
             sawEscape = true
@@ -70,6 +90,7 @@ public struct OscFilter {
     private mutating func reset() {
         inside = false
         sawEscape = false
+        foreign = nil
         payload = []
     }
 }

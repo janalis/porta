@@ -66,6 +66,20 @@ public class CoreTests
     }
 
     [Fact]
+    public void ASequenceWrittenIntoThePayloadGoesToTheTerminal()
+    {
+        var filter = new OscFilter();
+        var found = new List<(int Code, string Payload)>();
+        var first = Encoding.ASCII.GetBytes("x\u001b]7777;abc\u001b[>7");
+        var second = Encoding.ASCII.GetBytes("ude\u001bMf\u001b\\y");
+
+        var output = filter.Consume(first, first.Length, found).Concat(filter.Consume(second, second.Length, found)).ToArray();
+
+        Assert.Equal((OscFilter.Private, "abcdef"), Assert.Single(found));
+        Assert.Equal("x\u001b[>7u\u001bMy", Encoding.ASCII.GetString(output));
+    }
+
+    [Fact]
     public void TheCloseFlowProtectsUnsavedWork()
     {
         var flow = new CloseFlow();

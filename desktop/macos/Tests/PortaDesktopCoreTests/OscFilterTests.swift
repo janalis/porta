@@ -45,8 +45,11 @@ final class OscFilterTests: XCTestCase {
         XCTAssertEqual(run(["\u{1b}]7777;x\u{07}"]).1, ["x"])
     }
 
-    func testAnEscapeInsideThePayloadIsKept() {
-        XCTAssertEqual(run(["\u{1b}]7777;a\u{1b}b\u{1b}\\"]).1, ["a\u{1b}b"])
+    func testASequenceWrittenIntoThePayloadGoesToTheTerminal() {
+        let (output, payloads) = run(["x\u{1b}]7777;ab", "c\u{1b}[>7", "ude\u{1b}Mf\u{1b}\\y"])
+
+        XCTAssertEqual(payloads, ["abcdef"])
+        XCTAssertEqual(output, "x\u{1b}[>7u\u{1b}My")
     }
 
     func testARunawayPayloadIsHandedBackToTheTerminal() {

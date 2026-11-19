@@ -20,6 +20,7 @@ struct PortaFilter {
     GByteArray *payload;
     int code; /* 0 outside a private OSC */
     gboolean saw_escape;
+    GByteArray *foreign; /* another writer's sequence, landed mid-payload; NULL when none */
 };
 
 PortaFilter *porta_filter_new(void)
@@ -27,6 +28,7 @@ PortaFilter *porta_filter_new(void)
     PortaFilter *filter = g_new0(PortaFilter, 1);
     filter->held = g_byte_array_new();
     filter->payload = g_byte_array_new();
+    filter->foreign = NULL;
     return filter;
 }
 
@@ -34,6 +36,9 @@ void porta_filter_free(PortaFilter *filter)
 {
     g_byte_array_unref(filter->held);
     g_byte_array_unref(filter->payload);
+    if (NULL != filter->foreign) {
+        g_byte_array_unref(filter->foreign);
+    }
     g_free(filter);
 }
 
@@ -58,13 +63,33 @@ static void read_payload(PortaFilter *filter, guint8 byte, GByteArray *output, G
 {
     static const guint8 escape = ESC;
 
+    if (NULL != filter->foreign) {
+        /* A control sequence runs to its final byte, 0x40 to 0x7E. */
+        g_byte_array_append(filter->foreign, &byte, 1);
+        if (byte >= 0x40 && byte <= 0x7e) {
+            g_byte_array_append(output, filter->foreign->data, filter->foreign->len);
+            g_byte_array_unref(filter->foreign);
+            filter->foreign = NULL;
+        }
+        return;
+    }
     if (byte == BEL || (filter->saw_escape && byte == '\\')) {
         finish_payload(filter, found);
         return;
     }
     if (filter->saw_escape) {
-        g_byte_array_append(filter->payload, &escape, 1);
+        /* Porta's payloads never hold ESC: this is another writer's sequence that
+         * landed mid-payload (symfony/tui answers the kitty query unqueued). */
         filter->saw_escape = FALSE;
+        if ('[' == byte) {
+            filter->foreign = g_byte_array_new();
+            g_byte_array_append(filter->foreign, &escape, 1);
+            g_byte_array_append(filter->foreign, &byte, 1);
+        } else {
+            g_byte_array_append(output, &escape, 1);
+            g_byte_array_append(output, &byte, 1);
+        }
+        return;
     }
     if (byte == ESC) {
         filter->saw_escape = TRUE;
