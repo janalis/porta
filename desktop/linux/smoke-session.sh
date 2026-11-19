@@ -14,6 +14,7 @@ echo '{}' > "$work/shop/composer.json"
 printf '[Settings]\ngtk-shell-shows-menubar=true\n' > "$work/config/gtk-4.0/settings.ini"
 export XDG_RUNTIME_DIR="$work/run" XDG_CONFIG_HOME="$work/config"
 export PORTA_HOME="$work/home" PORTA_CACHE_DIR="$work/cache" PORTA_TRUSTED_FOLDERS="$work"
+export G_MESSAGES_DEBUG=porta-desktop
 
 if [ wayland = "$mode" ]; then
     weston --backend=headless --socket=porta-smoke --idle-time=0 > "$work/weston.log" 2>&1 &

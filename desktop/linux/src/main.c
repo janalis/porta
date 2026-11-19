@@ -263,6 +263,7 @@ static void received(PortaWindow *self, PortaOsc *osc)
         self->project_key = project_key(value);
         gtk_window_set_title(GTK_WINDOW(self->window), title);
     }
+    g_debug("message %d from Porta", kind);
     if (PORTA_MESSAGE_MENU == kind) {
         g_free(self->menu_json);
         self->menu_json = g_steal_pointer(&value);
@@ -493,8 +494,11 @@ static void show_menus(GtkApplication *application, PortaWindow *self)
     JsonObject *root;
     JsonArray *menus;
 
+    g_autoptr(GError) error = NULL;
+
     menu_owner = self;
-    if (NULL == self->menu_json || !json_parser_load_from_data(parser, self->menu_json, -1, NULL)) {
+    if (NULL == self->menu_json || !json_parser_load_from_data(parser, self->menu_json, -1, &error)) {
+        g_debug("no menus to show: %s", NULL != error ? error->message : "none received");
         return;
     }
     root = json_node_get_object(json_parser_get_root(parser));
@@ -535,6 +539,7 @@ static void show_menus(GtkApplication *application, PortaWindow *self)
         g_menu_append_submenu(bar, json_object_get_string_member(menu, "title"), G_MENU_MODEL(submenu));
     }
     gtk_application_set_menubar(application, G_MENU_MODEL(bar));
+    g_debug("%u menus shown", json_array_get_length(menus));
 }
 
 static void on_activate(GApplication *application, gpointer data)

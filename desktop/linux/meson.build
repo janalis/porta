@@ -13,6 +13,7 @@ if get_option('app')
       dependency('vte-2.91-gtk4', version: '>=0.70'),
       dependency('json-glib-1.0'),
     ],
+    c_args: ['-DG_LOG_DOMAIN="porta-desktop"'],
     install: true,
     install_dir: get_option('libdir') / 'porta-desktop',
   )
