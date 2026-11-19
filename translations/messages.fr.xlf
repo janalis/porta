@@ -3946,6 +3946,26 @@
         <source>Porta %version% is available. Download it from %url%</source>
         <target>Porta %version% est disponible. Téléchargez-la depuis %url%</target>
       </trans-unit>
+      <trans-unit id="1322">
+        <source>Open a project</source>
+        <target>Ouvrir un projet</target>
+      </trans-unit>
+      <trans-unit id="1323">
+        <source>Open folder…</source>
+        <target>Ouvrir un dossier…</target>
+      </trans-unit>
+      <trans-unit id="1324">
+        <source>↑↓ choose · Enter open · Esc quit</source>
+        <target>↑↓ choisir · Entrée ouvrir · Échap quitter</target>
+      </trans-unit>
+      <trans-unit id="1325">
+        <source>Enter open · Esc back</source>
+        <target>Entrée ouvrir · Échap retour</target>
+      </trans-unit>
+      <trans-unit id="1326">
+        <source>Not a folder: %path%</source>
+        <target>Ce n'est pas un dossier : %path%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

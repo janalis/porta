@@ -84,8 +84,9 @@ the application: it says where to download the new version.
   pixel graphics, Porta falls back to drawing them with half-blocks.
 - **Linux packages use the system's GTK and VTE.** There is no Flatpak: its
   sandbox would stop the IDE running your tools.
-- **A killed application still loses unsaved changes.** The close protocol only
-  protects a window that is asked to close.
+- **Unsaved work survives the application being killed**, a force quit or a
+  logout, and comes back the next time the project opens. It cannot survive
+  Porta itself being killed outright (`kill -9`) or a power cut.
 
 ## Packaging
 

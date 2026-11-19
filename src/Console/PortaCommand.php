@@ -9,6 +9,7 @@ use Porta\Config\WorkspaceTrust;
 use Porta\Container\Ansi;
 use Porta\Container\LspMode;
 use Porta\Container\ToolLaunch;
+use Porta\Desktop\DesktopRecovery;
 use Porta\Desktop\DesktopSession;
 use Porta\Desktop\ProjectPicker;
 use Porta\Filesystem\ProjectLocation;
@@ -503,6 +504,7 @@ final class PortaCommand extends Command
         $line = $workspace->line;
         $plugins = $workspace->plugins;
         $resume = \getenv('PORTA_RESTART_DIRECTORY');
+        $resume = \is_string($resume) && '' !== $resume ? $resume : DesktopRecovery::pending($root, DesktopSession::current()) ?? false;
         // Each project is its own Ide with its own container, run one after the
         // other in the one process. Switching project is therefore an ordinary
         // QUIT — buffers saved, terminal restored, plugins shut down — followed

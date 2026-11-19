@@ -3946,6 +3946,26 @@
         <source>Porta %version% is available. Download it from %url%</source>
         <target>Porta %version% が利用可能です。%url% からダウンロードしてください</target>
       </trans-unit>
+      <trans-unit id="1322">
+        <source>Open a project</source>
+        <target>プロジェクトを開く</target>
+      </trans-unit>
+      <trans-unit id="1323">
+        <source>Open folder…</source>
+        <target>フォルダーを開く…</target>
+      </trans-unit>
+      <trans-unit id="1324">
+        <source>↑↓ choose · Enter open · Esc quit</source>
+        <target>↑↓ 選択 · Enter 開く · Esc 終了</target>
+      </trans-unit>
+      <trans-unit id="1325">
+        <source>Enter open · Esc back</source>
+        <target>Enter 開く · Esc 戻る</target>
+      </trans-unit>
+      <trans-unit id="1326">
+        <source>Not a folder: %path%</source>
+        <target>フォルダーではありません: %path%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

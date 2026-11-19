@@ -3946,6 +3946,26 @@
         <source>Porta %version% is available. Download it from %url%</source>
         <target>Porta %version% זמינה. הורידו אותה מ-%url%</target>
       </trans-unit>
+      <trans-unit id="1322">
+        <source>Open a project</source>
+        <target>פתיחת פרויקט</target>
+      </trans-unit>
+      <trans-unit id="1323">
+        <source>Open folder…</source>
+        <target>פתיחת תיקייה…</target>
+      </trans-unit>
+      <trans-unit id="1324">
+        <source>↑↓ choose · Enter open · Esc quit</source>
+        <target>↑↓ בחירה · Enter פתיחה · Esc יציאה</target>
+      </trans-unit>
+      <trans-unit id="1325">
+        <source>Enter open · Esc back</source>
+        <target>Enter פתיחה · Esc חזרה</target>
+      </trans-unit>
+      <trans-unit id="1326">
+        <source>Not a folder: %path%</source>
+        <target>לא תיקייה: %path%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

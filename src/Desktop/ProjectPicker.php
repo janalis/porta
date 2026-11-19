@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Desktop;
 
+use Porta\Config\IdeConfig;
 use Porta\Config\PortaHome;
 use Porta\History\RecentProjectsStore;
+use Porta\I18n\SystemLocale;
+use Porta\I18n\Translator;
 use Porta\Support\ControlChars;
 use Porta\Ui\NonBlockingTerminal;
 use Porta\Workbench\RecentProjectChoices;
@@ -37,11 +40,15 @@ final class ProjectPicker
     public function __construct(
         private readonly RecentProjectChoices $choices,
         private readonly TerminalInterface $terminal = new NonBlockingTerminal(new Terminal()),
+        private readonly Translator $translator = new Translator('en'),
     ) {}
 
     public static function forUser(): self
     {
-        return new self(new RecentProjectChoices(new RecentProjectsStore()));
+        $language = (string) (IdeConfig::load((string) \getcwd())->settings['language'] ?? 'auto');
+        $system = SystemLocale::fromEnvironment(\getenv(), \extension_loaded('intl') ? \Locale::getDefault() : '');
+
+        return new self(new RecentProjectChoices(new RecentProjectsStore()), translator: new Translator($language, systemLocale: $system));
     }
 
     /** @return string|null the folder to open; null when the user left without choosing */
@@ -65,7 +72,7 @@ final class ProjectPicker
     private function showRecent(Tui $tui, ContainerWidget $screen, array $recent): void
     {
         $items = \array_map(static fn (array $item): array => ['value' => $item['value'], 'label' => $item['label'], 'description' => $item['hint']], $recent);
-        $items[] = ['value' => self::OPEN_FOLDER, 'label' => 'Open folder…'];
+        $items[] = ['value' => self::OPEN_FOLDER, 'label' => $this->translator->trans('Open folder…')];
         $list = new SelectListWidget($items, maxVisible: self::VISIBLE);
         $list->onSelect(function (SelectEvent $event) use ($tui, $screen, $recent): void {
             if (self::OPEN_FOLDER === $event->getValue()) {
@@ -78,9 +85,9 @@ final class ProjectPicker
         $list->onCancel(fn () => $this->finish($tui, folder: null));
 
         $screen->clear();
-        $screen->add(new TextWidget('Open a project'));
+        $screen->add(new TextWidget($this->translator->trans('Open a project')));
         $screen->add($list);
-        $screen->add(new TextWidget('↑↓ choose · Enter open · Esc quit'));
+        $screen->add(new TextWidget($this->translator->trans('↑↓ choose · Enter open · Esc quit')));
         $tui->setFocus($list);
     }
 
@@ -92,7 +99,7 @@ final class ProjectPicker
         $input->onSubmit(function (SubmitEvent $event) use ($tui, $screen, $recent): void {
             $folder = \realpath(PortaHome::expand(\trim($event->getValue())));
             if (false === $folder || !\is_dir($folder)) {
-                $this->askForFolder($tui, $screen, $recent, 'Not a folder: '.ControlChars::line($event->getValue()));
+                $this->askForFolder($tui, $screen, $recent, $this->translator->trans('Not a folder: %path%', ['%path%' => ControlChars::line($event->getValue())]));
 
                 return;
             }
@@ -106,9 +113,9 @@ final class ProjectPicker
         });
 
         $screen->clear();
-        $screen->add(new TextWidget('Open a project'));
+        $screen->add(new TextWidget($this->translator->trans('Open a project')));
         $screen->add($input);
-        $screen->add(new TextWidget('' === $problem ? 'Enter open · Esc back' : $problem));
+        $screen->add(new TextWidget('' === $problem ? $this->translator->trans('Enter open · Esc back') : $problem));
         $tui->setFocus($input);
     }
 

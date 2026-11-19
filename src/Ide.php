@@ -19,6 +19,7 @@ use Porta\Container\ToolMode;
 use Porta\Debug\DebugController;
 use Porta\Debug\DebugStatePersistence;
 use Porta\Desktop\DesktopProtocol;
+use Porta\Desktop\DesktopRecovery;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
@@ -543,6 +544,7 @@ final class Ide
         $signals = [];
         foreach ([\SIGTERM, \SIGINT, \SIGHUP] as $signal) {
             $id = EventLoop::onSignal($signal, function (): void {
+                $this->service(DesktopRecovery::class)->preserve();
                 $this->tui->stop();
             });
             EventLoop::unreference($id);

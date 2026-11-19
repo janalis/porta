@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Desktop;
 use PHPUnit\Framework\TestCase;
 use Porta\Desktop\ProjectPicker;
 use Porta\History\RecentProjectsStore;
+use Porta\I18n\Translator;
 use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\TempProject;
 use Porta\Workbench\RecentProjectChoices;
@@ -122,6 +123,16 @@ final class ProjectPickerTest extends TestCase
     public function testEscapeFromAFirstRunPromptLeaves(): void
     {
         $this->assertNull($this->pick(["\x1b"]));
+    }
+
+    public function testThePickerSpeaksTheUsersLanguage(): void
+    {
+        $this->recordRecent();
+        EventLoop::delay(0.06, fn () => $this->terminal->simulateInput("\r"));
+
+        new ProjectPicker(new RecentProjectChoices(new RecentProjectsStore()), $this->terminal, new Translator('fr'))->pick();
+
+        $this->assertStringContainsString('Ouvrir un projet', $this->terminal->getOutput());
     }
 
     public function testTheUsersOwnPickerIsBuiltOnTheRealStore(): void
