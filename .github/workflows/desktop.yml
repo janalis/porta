@@ -255,6 +255,8 @@ jobs:
     container: fedora:42
     timeout-minutes: 20
     steps:
+      # Without git, checkout fetches the source archive, which leaves out desktop/ (export-ignore).
+      - run: dnf install -y git
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.sha }}
