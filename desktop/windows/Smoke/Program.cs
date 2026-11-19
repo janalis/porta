@@ -24,7 +24,8 @@ var trace = Environment.GetEnvironmentVariable("PORTA_SMOKE_STRACE") == "1";
 if (trace)
 {
     var porta = launch.FindLastIndex(argument => argument.EndsWith("/php", StringComparison.Ordinal));
-    launch.InsertRange(porta, new[] { "strace", "-f", "-tt", "-s", "48", "-e", "trace=read,write,pselect6,poll,epoll_wait", "-o", "/tmp/porta.trace" });
+    // The relay's pcntl_exec() takes a path, not a name looked up on PATH.
+    launch.InsertRange(porta, new[] { "/usr/bin/strace", "-f", "-tt", "-s", "48", "-e", "trace=read,write,pselect6,poll,epoll_wait", "-o", "/tmp/porta.trace" });
 }
 
 var start = new ProcessStartInfo(LaunchPlan.Executable, LaunchPlan.CommandLine(launch))

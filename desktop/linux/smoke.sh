@@ -89,3 +89,14 @@ while kill -0 "$pid" 2>/dev/null; do
     sleep 0.5
 done
 echo 'smoke: the application closed with Porta'
+
+# A Porta that stops on its own leaves its window, to reopen or read the log.
+# A copy whose porta.phar only exits with 3 stands in for one that fails.
+cp -R "$app" "$work/stopping"
+printf '<?php exit(3);\n' > "$work/stopping/runtime/porta.phar"
+"$work/stopping/porta-desktop" "$work/shop" &
+pid=$!
+await_window '^Porta — stopped$'
+kill -0 "$pid" || { echo 'smoke: the application quit when Porta stopped' >&2; exit 1; }
+kill "$pid"
+echo 'smoke: a Porta that stopped left its window, saying so'

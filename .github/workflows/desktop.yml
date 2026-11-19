@@ -139,13 +139,7 @@ jobs:
           fi
           desktop/macos/build-app.sh --php php-${{ matrix.name }} --phar porta.phar --version "$VERSION" --out dist
       - name: It runs
-        run: |
-          dist/Porta.app/Contents/Resources/runtime/porta-cli --version
-          mkdir -p "$RUNNER_TEMP/shop"
-          open -a "$PWD/dist/Porta.app" "$RUNNER_TEMP/shop"
-          for _ in $(seq 1 60); do pgrep -f 'runtime/php' > /dev/null && break; sleep 0.5; done
-          pgrep -f 'runtime/php' > /dev/null
-          pkill -f 'Porta.app/Contents/MacOS/Porta'
+        run: make desktop-e2e-macos DESKTOP_APP="$PWD/dist/Porta.app"
       - name: The disk image
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -239,11 +233,8 @@ jobs:
         run: |
           mkdir unpacked
           tar -xzf dist/*.tar.gz -C unpacked
-          dbus-run-session -- xvfb-run -a desktop/linux/smoke.sh "$PWD/unpacked/lib/porta-desktop"
-      - name: It runs on Wayland
-        run: dbus-run-session -- desktop/linux/smoke-session.sh wayland "$PWD/unpacked/lib/porta-desktop"
-      - name: It offers its menus to a desktop that shows them
-        run: dbus-run-session -- xvfb-run -a desktop/linux/smoke-session.sh menu "$PWD/unpacked/lib/porta-desktop"
+          # On X11, on Wayland, and on a desktop that shows application menus.
+          make desktop-e2e-linux DESKTOP_APP="$PWD/unpacked/lib/porta-desktop"
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'

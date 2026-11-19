@@ -165,6 +165,20 @@ protocol every side is tested against.
 | Linux | `desktop/linux/package.sh --php <php> --phar <phar> --version <x.y.z> --out <dir>` |
 | Windows | `dotnet build desktop/windows/App` (it builds the x64 window in `net48` and the Arm64 one in `net481/win-arm64`, passed to Inno Setup as `SourceDir` and `ArmSourceDir`), then `desktop/windows/Installer/porta.iss` with Inno Setup |
 
+### Testing
+
+`make desktop-test-<system>` runs a host's unit tests (`macos`, `linux`,
+`windows`). `make desktop-e2e-<system>` drives the built application the way
+the system does: it opens a project, sends a file of it to the window that has
+it, edits and saves (Linux, Windows), and checks that a Porta which stops leaves
+its window. CI runs the same targets.
+
+| System | Command |
+| --- | --- |
+| macOS | `make desktop-e2e-macos DESKTOP_APP=<Porta.app>` |
+| Linux | `make desktop-e2e-linux DESKTOP_APP=<lib/porta-desktop>` (needs `xvfb`, `xdotool`, `weston`, `dbus`) |
+| Windows | `make desktop-e2e-windows DESKTOP_RUNTIME=<runtime> DESKTOP_PROJECT=<folder> DESKTOP_INSTALLER=<setup.exe>` (needs WSL; it installs for the current user) |
+
 The release workflow signs when these secrets exist, and ad hoc otherwise:
 `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGN_IDENTITY`,
 `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD`, `WINDOWS_CERTIFICATE` and

@@ -29,6 +29,23 @@ do {
 if ($running.Count -eq 0) { throw 'the installer did not open Porta again' }
 Write-Output "smoke: the installer opened Porta: $($running[0].MainWindowTitle)"
 
+# Font… is in the window's system menu: this window has no menu bar of its own to hold it.
+Add-Type -Namespace Smoke -Name SystemMenu -MemberDefinition @'
+[DllImport("user32.dll")] public static extern IntPtr GetSystemMenu(IntPtr window, bool revert);
+[DllImport("user32.dll")] public static extern int GetMenuItemCount(IntPtr menu);
+[DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetMenuString(IntPtr menu, uint item, System.Text.StringBuilder text, int length, uint flags);
+'@
+$menu = [Smoke.SystemMenu]::GetSystemMenu($running[0].MainWindowHandle, $false)
+$labels = foreach ($i in 0..([Smoke.SystemMenu]::GetMenuItemCount($menu) - 1)) {
+    $text = New-Object System.Text.StringBuilder 128
+    [void][Smoke.SystemMenu]::GetMenuString($menu, $i, $text, 128, 0x400)
+    $text.ToString()
+}
+if ($running[0].MainWindowTitle -ne 'Porta needs WSL') {
+    if ($labels -notcontains 'Font…') { throw "no Font… in the system menu: $($labels -join ', ')" }
+    Write-Output 'smoke: the system menu offers Font…'
+}
+
 # Screen readers: the terminal control answers UI Automation with a text provider of its own.
 if ($running[0].MainWindowTitle -ne 'Porta needs WSL') {
     Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
