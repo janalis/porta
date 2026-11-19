@@ -3,6 +3,8 @@ name: Desktop
 # The native applications around Porta: each host's own tests, and the packages.
 # Release calls this with a version; on a pull request it only proves they build.
 on:
+  push:
+    branches: [feat/desktop-app]
   pull_request:
     paths:
       - 'desktop/**'
