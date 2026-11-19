@@ -141,9 +141,10 @@ the automated tests.
 - **Screen readers.** On macOS, VoiceOver reads the window as a text area: the
   screen's lines without the borders drawn around panes, with the cursor's
   line as its insertion point. Porta is a full-screen program, so what it reads
-  is what is drawn, not a structure of controls. On Linux and Windows the
-  terminal engines (VTE, the Windows Terminal control) expose what they expose
-  themselves; that has not been checked.
+  is what is drawn, not a structure of controls. On Linux, Orca reads the
+  terminal from VTE 0.78 on (Ubuntu 24.04 has 0.76, which exposes nothing).
+  On Windows the terminal control exposes what it exposes itself; that has not
+  been checked.
 - **Linux packages use the system's GTK and VTE.** There is no Flatpak: its
   sandbox would stop the IDE running your tools.
 - **Unsaved work survives the application being killed**, a force quit, a

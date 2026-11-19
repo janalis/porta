@@ -737,6 +737,10 @@ static void open_window(GtkApplication *application, const char *project)
     self->master = -1;
     self->window = GTK_APPLICATION_WINDOW(gtk_application_window_new(application));
     self->terminal = VTE_TERMINAL(vte_terminal_new());
+#if VTE_CHECK_VERSION(0, 78, 0)
+    /* Orca reads the terminal from VTE 0.78, but only from 0.82 without being asked. */
+    vte_terminal_set_enable_a11y(self->terminal, TRUE);
+#endif
     windows = g_list_append(windows, self);
 
     gtk_window_set_title(GTK_WINDOW(self->window), "Porta");
