@@ -35,6 +35,8 @@ case $(uname -m) in
     *) arch=$(uname -m) ;;
 esac
 tar -czf "$out/porta-desktop-$version-linux-$(uname -m).tar.gz" -C "$stage" .
+# nfpm expands the environment in some fields only, and never in a file's source.
+sed -e "s|\${PORTA_ARCH}|$arch|g" -e "s|\${PORTA_VERSION}|$version|g" -e "s|\${PORTA_STAGE}|$stage|g" "$here/data/nfpm.yaml" > "$build/nfpm.yaml"
 for format in deb rpm; do
-    PORTA_ARCH=$arch PORTA_VERSION=$version PORTA_STAGE=$stage nfpm package --config "$here/data/nfpm.yaml" --packager "$format" --target "$out/"
+    nfpm package --config "$build/nfpm.yaml" --packager "$format" --target "$out/"
 done

@@ -1,4 +1,4 @@
-project('porta-desktop', 'c', version: '0.0.0', default_options: ['c_std=gnu11', 'warning_level=2'], meson_version: '>=0.60')
+project('porta-desktop', 'c', version: '0.0.0', default_options: ['c_std=gnu11', 'warning_level=2'], meson_version: '>=1.1')
 
 glib = dependency('glib-2.0', version: '>=2.74')
 core = static_library('porta-desktop-core', 'src/core.c', dependencies: glib)
