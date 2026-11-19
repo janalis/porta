@@ -93,6 +93,10 @@ next time the application starts.
 | Needs | macOS 13 | GTK 4.10, VTE 0.70 | WSL with a Linux distribution |
 | Architectures | arm64, x86-64 | x86-64, arm64 | x86-64, and Arm through Windows' x64 emulation |
 
+On Windows on Arm the application runs under Windows' x64 emulation and runs
+Porta inside an arm64 WSL distribution; that last part is not yet covered by
+the automated tests.
+
 - **Windows needs WSL.** Porta depends on POSIX terminals, signals and process
   control that Windows does not offer. A project under `/mnt/c` works, but is
   slower than one inside the Linux file system.

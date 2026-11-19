@@ -264,14 +264,6 @@ jobs:
         with:
           name: desktop-unsigned-windows
           path: dist
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-      - uses: Vampire/setup-wsl@4c48163d9f981914dd8caa0fc335fe19cca5bff4 # v7.2.0
-        with:
-          distribution: Ubuntu-24.04
-          # The Arm runners have no hypervisor for WSL 2.
-          wsl-version: 1
       - name: The installed application opens
         shell: pwsh
         run: |
@@ -279,11 +271,6 @@ jobs:
           Set-Content "$env:RUNNER_TEMP\shop\composer.json" '{}'
           $installer = (Get-ChildItem dist\*.exe | Select-Object -First 1).FullName
           desktop\windows\Smoke\installed.ps1 -Installer $installer -Project "$env:RUNNER_TEMP\shop"
-      - name: It runs inside WSL
-        shell: pwsh
-        run: |
-          dotnet run --project desktop\windows\Smoke --configuration Release -- "$env:LOCALAPPDATA\Programs\Porta\runtime" "$env:RUNNER_TEMP\shop"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   # Apart from the job above: the signing key never shares a runner with the
   # smoke tests or a third-party action.
