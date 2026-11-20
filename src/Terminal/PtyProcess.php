@@ -160,7 +160,7 @@ final class PtyProcess
     {
         $this->input?->write($data);
         if ("\x03" === $data && $this->interruptsWithoutAKernel()) {
-            // Only where the session has no controlling tty, which macOS always gives it.
+            // Only where the session has no controlling tty: the shim gives one on macOS and Linux.
             // @codeCoverageIgnoreStart
             $this->signalGroup(\SIGINT);
 
@@ -230,7 +230,7 @@ final class PtyProcess
     private function inItsOwnSession(): array
     {
         $shim = \sprintf(
-            '@exec("stty rows %d cols %d 2>/dev/null"); if (function_exists("posix_setsid")) { posix_setsid(); if ("Linux" === PHP_OS_FAMILY && false !== ($name = posix_ttyname(STDIN)) && false !== ($tty = @fopen($name, "r"))) { fclose($tty); } } pcntl_exec("/usr/bin/env", array_slice($argv, 1)); exit(127);',
+            '@exec("stty rows %d cols %d 2>/dev/null"); if (function_exists("posix_setsid")) { posix_setsid(); if ("Linux" === PHP_OS_FAMILY && function_exists("posix_ttyname") && false !== ($name = posix_ttyname(STDIN)) && false !== ($tty = @fopen($name, "r"))) { fclose($tty); } } pcntl_exec("/usr/bin/env", array_slice($argv, 1)); exit(127);',
             $this->rows,
             $this->columns,
         );
