@@ -14,19 +14,28 @@ final class ScriptedNotificationTests: XCTestCase {
     }
 
     func testOsascriptGetsTheWordsAsTheyAre() throws {
-        // The same arguments, the display line swapped for one that returns what it was given: a body
-        // that would break a script it were spliced into reaches it whole.
-        var arguments = ScriptedNotification.arguments(title: "Porta", body: "a \"quoted\" \\ run")
+        // A body that would break a script it were spliced into reaches the script whole.
+        XCTAssertEqual(try returned(title: "Porta", body: "a \"quoted\" \\ run"), "Porta|a \"quoted\" \\ run\n")
+    }
+
+    func testATitleThatLooksLikeAnOptionIsNotScript() throws {
+        // A project folder named like an option: without `--`, osascript compiles it as script.
+        XCTAssertEqual(try returned(title: "-e", body: "return 42"), "-e|return 42\n")
+    }
+
+    /// The same arguments, the display line swapped for one that returns what it was given.
+    private func returned(title: String, body: String) throws -> String {
+        var arguments = ScriptedNotification.arguments(title: title, body: body)
         arguments[3] = "return (item 1 of argv) & \"|\" & (item 2 of argv)"
         let process = Process()
         process.executableURL = URL(fileURLWithPath: ScriptedNotification.executable)
         process.arguments = arguments
         let output = Pipe()
         process.standardOutput = output
+        process.standardError = Pipe()
         try process.run()
         process.waitUntilExit()
-
         XCTAssertEqual(process.terminationStatus, 0)
-        XCTAssertEqual(String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self), "Porta|a \"quoted\" \\ run\n")
+        return String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
     }
 }
