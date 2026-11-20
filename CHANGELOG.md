@@ -5,6 +5,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Linux desktop application**: a file dropped on Porta's window under GNOME
+  on Wayland opened, but GNOME also said "Porta is ready": the window asked to
+  come forward without the token Wayland requires. A drop no longer asks; a
+  file of another project still brings that project's window forward.
+
 ## [0.2.0] - 2026-11-20
 
 ### Added
