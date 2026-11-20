@@ -193,6 +193,26 @@ final class PtyProcessTest extends TestCase
         $this->assertStringContainsString('24 100', $said);
     }
 
+    /** The terminal is the run's controlling tty: composer opens /dev/tty to run a script, and failed without one on Linux. */
+    public function testTheTerminalIsTheRunsControllingTty(): void
+    {
+        $said = '';
+        $exit = null;
+        $p = new PtyProcess(['/bin/sh', '-c', '(: </dev/tty) 2>/dev/null && echo has-a-tty || echo no-tty'], __DIR__);
+        $this->procs[] = $p;
+        $p->onOutput(static function (string $chunk) use (&$said): void {
+            $said .= $chunk;
+        })->onExit(static function (int $code) use (&$exit): void {
+            $exit = $code;
+        });
+        $this->assertTrue($p->start());
+        $this->await(static function () use (&$exit): bool {
+            return null !== $exit;
+        });
+
+        $this->assertStringContainsString('has-a-tty', $said);
+    }
+
     public function testAChildStillAliveAtTheTerminalsEofReportsItsRealExitCode(): void
     {
         $exit = null;

@@ -212,20 +212,25 @@ final class PtyProcess
      * whole. Run in Porta's own group, a `php -S` a composer script started
      * outlived its tab, its re-run and the project, holding its port.
      *
-     * macOS makes the terminal the new session's controlling tty, so Ctrl+C
-     * is the kernel's to deliver, as on any terminal: a SIGINT to the job in
-     * the foreground while `isig` is on, and a plain key to a program in raw
-     * mode — an editor's prefix, fzf's cancel. Where the session gets none,
-     * {@see write()} stands in for it, under the same rule. (Opening the tty
-     * to acquire one would make the session hold it: a child that closed its
-     * terminal would no longer read as EOF.)
+     * The terminal is the new session's controlling tty, so Ctrl+C is the
+     * kernel's to deliver, as on any terminal: a SIGINT to the job in the
+     * foreground while `isig` is on, and a plain key to a program in raw
+     * mode — an editor's prefix, fzf's cancel. macOS gives it on its own;
+     * Linux only to a session leader that opens the terminal, so the shim
+     * opens it there, and only there, and closes it at once: the tty stays
+     * the session's. On macOS even that open, closed again, makes the session
+     * hold the terminal: a child that closed its terminal no longer reads as
+     * EOF. Without a controlling tty, `/dev/tty` does not open, and composer,
+     * which asks for it to run a script, fails "Unable to launch a new
+     * process". Where a session still gets none, {@see write()} stands in for
+     * Ctrl+C, under the same rule.
      *
      * @return list<string>
      */
     private function inItsOwnSession(): array
     {
         $shim = \sprintf(
-            '@exec("stty rows %d cols %d 2>/dev/null"); if (function_exists("posix_setsid")) { posix_setsid(); } pcntl_exec("/usr/bin/env", array_slice($argv, 1)); exit(127);',
+            '@exec("stty rows %d cols %d 2>/dev/null"); if (function_exists("posix_setsid")) { posix_setsid(); if ("Linux" === PHP_OS_FAMILY && false !== ($name = posix_ttyname(STDIN)) && false !== ($tty = @fopen($name, "r"))) { fclose($tty); } } pcntl_exec("/usr/bin/env", array_slice($argv, 1)); exit(127);',
             $this->rows,
             $this->columns,
         );
