@@ -241,4 +241,34 @@ public class CoreTests
     {
         Assert.Equal("Menlo", DesktopSettings.Parse(DesktopSettings.Written(existing, "Menlo", 13)).FontFamily);
     }
+
+    [Theory]
+    // A Windows that never had WSL: the window offers to install it, as an administrator.
+    [InlineData(false, 0, WslNeed.Wsl)]
+    // What a first `wsl --install` left on Windows on Arm, after the restart it asked for:
+    // offering to install WSL again would go round in circles.
+    [InlineData(true, 0, WslNeed.Distribution)]
+    // A distribution that does not answer: installing either again would not help.
+    [InlineData(true, 1, WslNeed.Start)]
+    public void TheWindowOffersWhatIsMissing(bool installed, int distributions, WslNeed need)
+    {
+        Assert.Equal(need, WslCheck.Of(installed, distributions));
+    }
+
+    [Fact]
+    public void WslsOwnWordsAreShownWithoutItsUtf16Padding()
+    {
+        // wsl.exe's answer to `--exec uname -m` without a distribution, as UTF-16 read as UTF-8.
+        var said = string.Join("\0", "Windows Subsystem for Linux has no installed distributions.\r\n\r\nUse 'wsl.exe --list --online' to list available distributions\r\n".ToCharArray());
+
+        Assert.Equal(
+            "Windows Subsystem for Linux has no installed distributions.\nUse 'wsl.exe --list --online' to list available distributions",
+            WslCheck.Reason(said));
+    }
+
+    [Fact]
+    public void ALongAnswerIsCutToAFewLines()
+    {
+        Assert.Equal(6, WslCheck.Reason(string.Join("\n", Enumerable.Range(1, 20))).Split('\n').Length);
+    }
 }

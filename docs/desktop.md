@@ -43,12 +43,16 @@ Porta asks the system for little, and says what and why before the system asks:
 | --- | --- | --- |
 | macOS | **Notifications**, to tell you a run ended while you were elsewhere | the first launch, and **Porta → Permissions…** |
 | macOS | **Files and Folders**, for a project in Desktop, Documents, Downloads, iCloud Drive or on an external disk | a project macOS keeps from Porta, before Porta opens it |
-| Windows | **The Windows Subsystem for Linux**, where Porta runs | at launch, when it is missing |
+| Windows | **The Windows Subsystem for Linux**, where Porta runs, and a **Linux distribution** in it | at launch, when either is missing or Linux does not start |
 
 Each row says whether it is allowed. **Allow** asks the system right there;
 **Open Settings** opens System Settings at the pane that grants it, and the row
-updates when you come back. On Windows, **Install WSL** runs `wsl --install` with
-administrator rights. Linux needs no permission.
+updates when you come back. On Windows, the window names what is missing:
+**Install WSL** runs `wsl --install` with administrator rights; when a first
+install left WSL with no distribution, **Install Ubuntu** adds one in a console
+where Ubuntu asks for a Linux user, and Porta opens by itself once it answers;
+when a distribution does not start, the window shows what WSL said, with
+**Try Again**. Linux needs no permission.
 
 macOS lets only a signed application (a Developer ID) send notifications: in a
 build without one, the sheet says so, and the Dock icon bounces instead.

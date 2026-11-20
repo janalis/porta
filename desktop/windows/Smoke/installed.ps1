@@ -36,13 +36,15 @@ Add-Type -Namespace Smoke -Name SystemMenu -MemberDefinition @'
 [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetMenuString(IntPtr menu, uint item, System.Text.StringBuilder text, int length, uint flags);
 [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
 '@
+# Without a working WSL the window says what is missing, each with the one button that helps.
+$needsButton = @{ 'Porta needs WSL' = 'Install WSL'; 'Porta needs a Linux distribution' = 'Install Ubuntu'; 'Porta could not start Linux' = 'Try Again' }[$running[0].MainWindowTitle]
 $menu = [Smoke.SystemMenu]::GetSystemMenu($running[0].MainWindowHandle, $false)
 $labels = foreach ($i in 0..([Smoke.SystemMenu]::GetMenuItemCount($menu) - 1)) {
     $text = New-Object System.Text.StringBuilder 128
     [void][Smoke.SystemMenu]::GetMenuString($menu, $i, $text, 128, 0x400)
     $text.ToString()
 }
-if ($running[0].MainWindowTitle -ne 'Porta needs WSL') {
+if (-not $needsButton) {
     if ($labels -notcontains 'Font…') { throw "no Font… in the system menu: $($labels -join ', ')" }
     Write-Output 'smoke: the system menu offers Font…'
 
@@ -61,16 +63,15 @@ if ($running[0].MainWindowTitle -ne 'Porta needs WSL') {
     $dialog.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close()
     Write-Output 'smoke: Font… opens the font dialog'
 } else {
-    # Without WSL, the window says what is missing and offers to install it.
     Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
     $needs = [System.Windows.Automation.AutomationElement]::FromHandle($running[0].MainWindowHandle)
-    $install = $needs.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, 'Install WSL')))
-    if (-not $install) { throw 'the window for a missing WSL offers no Install WSL button' }
-    Write-Output 'smoke: without WSL, the window offers to install it'
+    $install = $needs.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, $needsButton)))
+    if (-not $install) { throw "the window '$($running[0].MainWindowTitle)' offers no $needsButton button" }
+    Write-Output "smoke: $($running[0].MainWindowTitle), and the window offers $needsButton"
 }
 
 # Screen readers: the terminal control answers UI Automation with a text provider of its own.
-if ($running[0].MainWindowTitle -ne 'Porta needs WSL') {
+if (-not $needsButton) {
     Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
     $window = [System.Windows.Automation.AutomationElement]::FromHandle($running[0].MainWindowHandle)
     $condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::IsTextPatternAvailableProperty, $true)
