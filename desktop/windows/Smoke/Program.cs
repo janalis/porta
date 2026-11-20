@@ -164,10 +164,12 @@ AwaitScreen(0, "Welcome", "the welcome card");
 
 // The Escape key on the welcome card, the moment it is drawn: once, a first run sent it then and
 // Porta drew nothing more. Reported, not failed, until it is understood; a second Escape follows if so.
-var beforeEscape = Screen().Length;
-// Diagnostic: whether the card is drawn since Porta was ready, or "Welcome" matched something earlier.
-Console.WriteLine($"smoke: diagnostic: 'Welcome' last drawn at {Screen().LastIndexOf("Welcome", StringComparison.Ordinal) - readyAt} bytes after ready, of {beforeEscape - readyAt}; the screen before Escape ends with: {Readable(Screen(), 400)}");
+var shownBeforeEscape = Screen();
+var beforeEscape = shownBeforeEscape.Length;
+// At once, as the card is drawn: work done before it delays the key, and a delay hides the race.
 Type("\u001b");
+// Diagnostic, from the screen as it was: whether the card is drawn since Porta was ready.
+Console.WriteLine($"smoke: diagnostic: 'Welcome' last drawn at {shownBeforeEscape.LastIndexOf("Welcome", StringComparison.Ordinal) - readyAt} bytes after ready, of {beforeEscape - readyAt}; the screen before Escape ends with: {Readable(shownBeforeEscape, 400)}");
 Thread.Sleep(3000);
 var redrawn = Screen().Length - beforeEscape;
 Console.WriteLine($"smoke: Escape at the welcome card's first paint redrew {redrawn} bytes");
