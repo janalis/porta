@@ -169,7 +169,8 @@ var beforeEscape = shownBeforeEscape.Length;
 // At once, as the card is drawn: work done before it delays the key, and a delay hides the race.
 Type("\u001b");
 // Diagnostic, from the screen as it was: whether the card is drawn since Porta was ready.
-Console.WriteLine($"smoke: diagnostic: 'Welcome' last drawn at {shownBeforeEscape.LastIndexOf("Welcome", StringComparison.Ordinal) - readyAt} bytes after ready, of {beforeEscape - readyAt}; the screen before Escape ends with: {Readable(shownBeforeEscape, 400)}");
+var welcomeAt = shownBeforeEscape.LastIndexOf("Welcome", StringComparison.Ordinal);
+Console.WriteLine($"smoke: diagnostic: 'Welcome' last drawn at {welcomeAt - readyAt} bytes after ready, of {beforeEscape - readyAt}; what was drawn after it: {Readable(shownBeforeEscape.Substring(Math.Max(0, welcomeAt)), 2500)}");
 Thread.Sleep(3000);
 var redrawn = Screen().Length - beforeEscape;
 Console.WriteLine($"smoke: Escape at the welcome card's first paint redrew {redrawn} bytes");
