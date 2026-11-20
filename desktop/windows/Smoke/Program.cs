@@ -153,7 +153,6 @@ if (ready.Root != project)
 }
 
 Console.WriteLine("smoke: the IDE is up inside WSL");
-var readyAt = Screen().Length;
 
 Send(RelayFrame.Resize(100, 30));
 Thread.Sleep(1000);
@@ -162,56 +161,34 @@ Thread.Sleep(1000);
 System.IO.File.WriteAllText(System.IO.Path.Combine(args[1], "a.php"), "<?php\n");
 AwaitScreen(0, "Welcome", "the welcome card");
 
-// The Escape key on the welcome card, the moment it is drawn: once, a first run sent it then and
-// Porta drew nothing more. Reported, not failed, until it is understood; a second Escape follows if so.
-var shownBeforeEscape = Screen();
-var beforeEscape = shownBeforeEscape.Length;
-// At once, as the card is drawn: work done before it delays the key, and a delay hides the race.
+// Escape on the welcome card, the moment it is drawn, closes it. It once did nothing in half the
+// runs: a startup tool check blocked Porta's loop for seconds under WSL, and the keys of that time
+// came in together as Alt+Escape. Porta's own logs say where such a stall comes from.
+var beforeEscape = Screen().Length;
 Type("\u001b");
-// Diagnostic, from the screen as it was: whether the card is drawn since Porta was ready.
-var welcomeAt = shownBeforeEscape.LastIndexOf("Welcome", StringComparison.Ordinal);
-Console.WriteLine($"smoke: diagnostic: 'Welcome' last drawn at {welcomeAt - readyAt} bytes after ready, of {beforeEscape - readyAt}; what was drawn after it: {Readable(shownBeforeEscape.Substring(Math.Max(0, welcomeAt)), 2500)}");
 Thread.Sleep(3000);
 var redrawn = Screen().Length - beforeEscape;
-Console.WriteLine($"smoke: Escape at the welcome card's first paint redrew {redrawn} bytes");
 if (redrawn == 0)
 {
-    var beforeSecond = Screen().Length;
-    Type("\u001b");
-    Thread.Sleep(3000);
-    Console.WriteLine($"smoke: diagnostic: a second Escape redrew {Screen().Length - beforeSecond} bytes");
-    // Diagnostic: a loop blocked after the first paint answers late, if at all: how late.
-    var waiting = Stopwatch.StartNew();
-    var silent = Screen().Length;
-    while (Screen().Length == silent && waiting.Elapsed < TimeSpan.FromSeconds(15))
-    {
-        Thread.Sleep(100);
-    }
-
-    Console.WriteLine(Screen().Length > silent
-        ? $"smoke: diagnostic: Porta drew again {waiting.Elapsed.TotalSeconds + 3:F1}s after the second Escape: {Readable(Screen().Substring(silent), 300)}"
-        : "smoke: diagnostic: Porta drew nothing for 18s after the second Escape");
-
-    // An error Porta caught on the way, or a stall its watchdog saw, would say where the key went.
-    foreach (var log in new[] { "error.log", "freeze.log" })
+    foreach (var log in new[] { "freeze.log", "error.log" })
     {
         var path = System.IO.Path.Combine(args[1], ".porta", log);
         // Its start: a backtrace's innermost frames, which name the blocking call, come first.
-        Console.WriteLine(System.IO.File.Exists(path)
-            ? $"smoke: diagnostic: .porta/{log} begins with: " + new string(System.IO.File.ReadAllText(path).Take(6000).ToArray())
-            : $"smoke: diagnostic: no .porta/{log}");
+        Console.Error.WriteLine(System.IO.File.Exists(path)
+            ? $"smoke: .porta/{log} begins with: " + new string(System.IO.File.ReadAllText(path).Take(6000).ToArray())
+            : $"smoke: no .porta/{log}");
     }
+
+    Fail("Escape on the welcome card drew nothing in 3 seconds");
 }
+
+Console.WriteLine($"smoke: Escape closed the welcome card ({redrawn} bytes redrawn)");
 
 var beforeOpen = Screen().Length;
 
 // A file of the project, as the window hands it over, opens here; an edit is told, and so is its save.
 Type(DesktopMessage.OpenRequest(token, project + "/a.php"));
 AwaitScreen(beforeOpen, "a.php", "the opened file's tab");
-// Diagnostic: a held Escape would act now, with the next bytes: does the card close here?
-Thread.Sleep(1000);
-var afterOpen = Screen().Substring(beforeOpen);
-Console.WriteLine($"smoke: diagnostic: opening a.php drew {afterOpen.Length} bytes; 'Welcome' among them: {afterOpen.Contains("Welcome")}; they begin: {Readable(afterOpen.Substring(0, Math.Min(afterOpen.Length, 1500)), 300)}");
 Thread.Sleep(500);
 Type("x");
 AwaitState(unsaved: true);
@@ -221,16 +198,19 @@ AwaitState(unsaved: false);
 Console.WriteLine("smoke: its save was told");
 
 // Escape closes what it opens: Go to File (Ctrl+P, one byte in any terminal), then a lone ESC.
-// Reported, not failed, until the welcome card's Escape is understood.
 var beforeGoTo = Screen().Length;
 Type("\u0010");
-Thread.Sleep(3000);
-var goTo = Screen().Length - beforeGoTo;
+AwaitScreen(beforeGoTo, "Go to File", "Go to File");
 Thread.Sleep(1000);
 var beforeClose = Screen().Length;
 Type("\u001b");
 Thread.Sleep(3000);
-Console.WriteLine($"smoke: diagnostic: Go to File drew {goTo} bytes; a lone Escape then redrew {Screen().Length - beforeClose} bytes");
+if (Screen().Length == beforeClose)
+{
+    Fail("Escape did not close Go to File");
+}
+
+Console.WriteLine("smoke: Escape closes Go to File");
 
 // The Escape key reaches Porta as a lone ESC byte; the keys after it must still arrive.
 Type("\u001b");

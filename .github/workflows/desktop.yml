@@ -233,12 +233,12 @@ jobs:
           tar -xzf dist/*.tar.gz -C unpacked
           # On X11, on Wayland, and on a desktop that shows application menus.
           make desktop-e2e-linux DESKTOP_APP="$PWD/unpacked/lib/porta-desktop"
-      # The relay the Windows window runs Porta through, on a plain Linux PTY: where the welcome
-      # card's Escape is lost under WSL, this tells WSL apart from Linux. Reported, not failed, yet.
+      # The relay the Windows window runs Porta through, on a plain Linux PTY: a first run whose
+      # welcome card an Escape closes.
       - name: The Windows relay, on Linux
         run: |
           chmod +x php-${{ matrix.name }}
-          make desktop-e2e-relay DESKTOP_PHP="$PWD/php-${{ matrix.name }}" DESKTOP_PHAR="$PWD/porta.phar" DESKTOP_RUNS=6
+          make desktop-e2e-relay DESKTOP_PHP="$PWD/php-${{ matrix.name }}" DESKTOP_PHAR="$PWD/porta.phar" DESKTOP_RUNS=3
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
@@ -359,16 +359,18 @@ jobs:
           Set-Content "$env:RUNNER_TEMP\shop\composer.json" '{}'
           dotnet run --project desktop\windows\Smoke --configuration Release -- "$PWD\runtime" "$env:RUNNER_TEMP\shop"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      # The relay alone, inside WSL, with projects in Linux's /tmp and on the Windows drive as the
-      # smoke's: which of them loses the welcome card's Escape. Reported, not failed, yet.
+      # The relay alone, inside WSL, with projects in Linux's /tmp and on the Windows drive, where a
+      # startup stall once swallowed the welcome card's Escape.
       - name: The relay, inside WSL
         shell: pwsh
         timeout-minutes: 12
         run: |
-          wsl -- ./runtime/x86_64/php -n desktop/runtime/relay-smoke.php --php ./runtime/x86_64/php --phar runtime/porta.phar --runs 2 --projects /tmp
+          wsl -- ./runtime/x86_64/php -n desktop/runtime/relay-smoke.php --php ./runtime/x86_64/php --phar runtime/porta.phar --runs 2 --projects /tmp --strict
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # Forward slashes: wsl.exe drops the backslashes of an argument on its way in.
           $drive = (wsl -- wslpath -u ($env:RUNNER_TEMP -replace '\\', '/')).Trim()
-          wsl -- ./runtime/x86_64/php -n desktop/runtime/relay-smoke.php --php ./runtime/x86_64/php --phar runtime/porta.phar --runs 10 --projects "$drive"
+          wsl -- ./runtime/x86_64/php -n desktop/runtime/relay-smoke.php --php ./runtime/x86_64/php --phar runtime/porta.phar --runs 4 --projects "$drive" --strict
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: The installed application opens
         shell: pwsh
         run: |
