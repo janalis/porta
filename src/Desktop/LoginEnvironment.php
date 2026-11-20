@@ -105,10 +105,25 @@ final readonly class LoginEnvironment
         return $variables;
     }
 
+    /**
+     * This PHP without its ini files (`-n`, so no user's php.ini reaches the bundled PHP),
+     * but with the pcntl and posix the detaching shim calls: built into the bundled PHP, they
+     * are modules in $extensionDir for a distribution's, which `-n` would leave out.
+     *
+     * @return list<string>
+     */
+    public static function bareProcess(string $extensionDir): array
+    {
+        $modules = \array_values(\array_filter(['pcntl', 'posix'], static fn (string $name): bool => \is_file($extensionDir.'/'.$name.'.so')));
+        $loads = \array_merge(...\array_map(static fn (string $name): array => ['-d', 'extension='.$name], $modules));
+
+        return [\PHP_BINARY, '-n', ...([] === $modules ? [] : ['-d', 'extension_dir='.$extensionDir, ...$loads])];
+    }
+
     /** @param list<string> $argv */
     private static function runDetached(array $argv, float $deadline, string $folder): ?string
     {
-        $process = new Process([\PHP_BINARY, '-n', '-r', self::DETACH, '--', ...$argv], cwd: $folder, timeout: $deadline);
+        $process = new Process([...self::bareProcess((string) \ini_get('extension_dir')), '-r', self::DETACH, '--', ...$argv], cwd: $folder, timeout: $deadline);
         try {
             $process->run();
         } catch (ProcessTimedOutException) {

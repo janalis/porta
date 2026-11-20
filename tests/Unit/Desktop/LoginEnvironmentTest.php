@@ -154,6 +154,26 @@ final class LoginEnvironmentTest extends TestCase
         $this->assertLessThan(5.0, \microtime(true) - $started);
     }
 
+    public function testABareProcessLoadsTheModulesItsIniWouldHave(): void
+    {
+        // A distribution's PHP: pcntl and posix are modules, which -n would leave out.
+        $modules = new TempProject(['pcntl.so' => '', 'posix.so' => '', 'gd.so' => '']);
+        $dir = \rtrim($modules->dir, characters: '/');
+
+        $this->assertSame(
+            [\PHP_BINARY, '-n', '-d', 'extension_dir='.$dir, '-d', 'extension=pcntl', '-d', 'extension=posix'],
+            LoginEnvironment::bareProcess($dir),
+        );
+    }
+
+    public function testABareProcessOfTheBundledPhpIsJustNoIni(): void
+    {
+        // The bundled PHP has them built in: no module to load, nothing but -n.
+        $empty = new TempProject();
+
+        $this->assertSame([\PHP_BINARY, '-n'], LoginEnvironment::bareProcess(\rtrim($empty->dir, characters: '/')));
+    }
+
     public function testATerminalLaunchIsLeftAlone(): void
     {
         \putenv(DesktopSession::FLAG);

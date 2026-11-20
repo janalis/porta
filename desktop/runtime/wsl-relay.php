@@ -31,7 +31,12 @@ $shim = sprintf(
     $columns,
 );
 $pipes = [];
-$child = proc_open([PHP_BINARY, '-n', '-r', $shim, '--', ...$command], [0 => ['pty'], 1 => ['pty'], 2 => ['pty']], $pipes);
+// The shim's PHP without its ini files, but with the posix it calls: built into the bundled PHP,
+// it is a module for a distribution's, which -n would leave out (Porta's LoginEnvironment does the same).
+$extensionDir = (string) ini_get('extension_dir');
+$modules = array_values(array_filter(['pcntl', 'posix'], static fn (string $name): bool => is_file($extensionDir.'/'.$name.'.so')));
+$bare = [PHP_BINARY, '-n', ...([] === $modules ? [] : ['-d', 'extension_dir='.$extensionDir, ...array_merge(...array_map(static fn (string $name): array => ['-d', 'extension='.$name], $modules))])];
+$child = proc_open([...$bare, '-r', $shim, '--', ...$command], [0 => ['pty'], 1 => ['pty'], 2 => ['pty']], $pipes);
 if (!is_resource($child)) {
     fwrite(STDERR, "wsl-relay: could not start the command\n");
     exit(127);
