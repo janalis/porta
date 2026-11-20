@@ -180,11 +180,26 @@ if (redrawn == 0)
     Type("\u001b");
     Thread.Sleep(3000);
     Console.WriteLine($"smoke: diagnostic: a second Escape redrew {Screen().Length - beforeSecond} bytes");
-    // Diagnostic: an error Porta caught on the way would have taken the key without a word on screen.
-    var errors = System.IO.Path.Combine(args[1], ".porta", "error.log");
-    Console.WriteLine(System.IO.File.Exists(errors)
-        ? "smoke: diagnostic: .porta/error.log ends with: " + new string(System.IO.File.ReadAllText(errors).TakeLast(2500).ToArray())
-        : "smoke: diagnostic: no .porta/error.log");
+    // Diagnostic: a loop blocked after the first paint answers late, if at all: how late.
+    var waiting = Stopwatch.StartNew();
+    var silent = Screen().Length;
+    while (Screen().Length == silent && waiting.Elapsed < TimeSpan.FromSeconds(15))
+    {
+        Thread.Sleep(100);
+    }
+
+    Console.WriteLine(Screen().Length > silent
+        ? $"smoke: diagnostic: Porta drew again {waiting.Elapsed.TotalSeconds + 3:F1}s after the second Escape: {Readable(Screen().Substring(silent), 300)}"
+        : "smoke: diagnostic: Porta drew nothing for 18s after the second Escape");
+
+    // An error Porta caught on the way, or a stall its watchdog saw, would say where the key went.
+    foreach (var log in new[] { "error.log", "freeze.log" })
+    {
+        var path = System.IO.Path.Combine(args[1], ".porta", log);
+        Console.WriteLine(System.IO.File.Exists(path)
+            ? $"smoke: diagnostic: .porta/{log} ends with: " + new string(System.IO.File.ReadAllText(path).TakeLast(2500).ToArray())
+            : $"smoke: diagnostic: no .porta/{log}");
+    }
 }
 
 var beforeOpen = Screen().Length;
