@@ -196,8 +196,9 @@ if (redrawn == 0)
     foreach (var log in new[] { "error.log", "freeze.log" })
     {
         var path = System.IO.Path.Combine(args[1], ".porta", log);
+        // Its start: a backtrace's innermost frames, which name the blocking call, come first.
         Console.WriteLine(System.IO.File.Exists(path)
-            ? $"smoke: diagnostic: .porta/{log} ends with: " + new string(System.IO.File.ReadAllText(path).TakeLast(2500).ToArray())
+            ? $"smoke: diagnostic: .porta/{log} begins with: " + new string(System.IO.File.ReadAllText(path).Take(6000).ToArray())
             : $"smoke: diagnostic: no .porta/{log}");
     }
 }
