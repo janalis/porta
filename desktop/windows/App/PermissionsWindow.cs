@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -20,8 +19,10 @@ namespace Porta.Desktop.App
     public sealed class PermissionsWindow : Window
     {
         private readonly WslNeed need;
-        private readonly Func<bool> ready;
         private readonly ContentControl accessory = new ContentControl { VerticalAlignment = VerticalAlignment.Center };
+        private readonly TextBlock title = new TextBlock();
+        private readonly TextBlock subtitle = new TextBlock();
+        private readonly TextBox detail = new TextBox();
         private DispatcherTimer? watch;
 
         /// <summary>Porta can run now: the registry opens the project again, then closes this window.</summary>
@@ -29,11 +30,9 @@ namespace Porta.Desktop.App
 
         /// <param name="need">what is missing</param>
         /// <param name="reason">WSL's own words, for <see cref="WslNeed.Start"/></param>
-        /// <param name="ready">whether Linux answers now; slow, so called off the interface's thread</param>
-        public PermissionsWindow(WslNeed need, string reason, Func<bool> ready)
+        public PermissionsWindow(WslNeed need, string reason)
         {
             this.need = need;
-            this.ready = ready;
             // The titles the smoke tests and Windows' own task switcher go by.
             Title = need switch
             {
@@ -53,7 +52,7 @@ namespace Porta.Desktop.App
 
         private UIElement Layout(string reason)
         {
-            var (heading, explanation, name, detail) = need switch
+            var (heading, explanation, name, about) = need switch
             {
                 WslNeed.Wsl => (
                     "Porta needs the Windows Subsystem for Linux",
@@ -73,22 +72,16 @@ namespace Porta.Desktop.App
             };
 
             var icon = new Image { Width = 64, Height = 64, Margin = new Thickness(0, 8, 0, 12), Source = AppIcon() };
-            var title = new TextBlock
-            {
-                Text = heading,
-                FontSize = 20,
-                FontWeight = FontWeights.SemiBold,
-                TextAlignment = TextAlignment.Center,
-                TextWrapping = TextWrapping.Wrap,
-            };
-            var subtitle = new TextBlock
-            {
-                Text = explanation,
-                Foreground = SystemColors.GrayTextBrush,
-                TextAlignment = TextAlignment.Center,
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 8, 0, 20),
-            };
+            title.Text = heading;
+            title.FontSize = 20;
+            title.FontWeight = FontWeights.SemiBold;
+            title.TextAlignment = TextAlignment.Center;
+            title.TextWrapping = TextWrapping.Wrap;
+            subtitle.Text = explanation;
+            subtitle.Foreground = SystemColors.GrayTextBrush;
+            subtitle.TextAlignment = TextAlignment.Center;
+            subtitle.TextWrapping = TextWrapping.Wrap;
+            subtitle.Margin = new Thickness(0, 8, 0, 20);
 
             var badge = new Border
             {
@@ -99,7 +92,8 @@ namespace Porta.Desktop.App
                 VerticalAlignment = VerticalAlignment.Top,
                 Child = new TextBlock
                 {
-                    Text = "", // CommandPrompt, in the system's icon font
+                    // CommandPrompt, in the system's icon font: escaped, as a private-use letter is lost in an edit.
+                    Text = "\uE756",
                     FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
                     FontSize = 16,
                     Foreground = Brushes.White,
@@ -110,17 +104,15 @@ namespace Porta.Desktop.App
             var words = new StackPanel { Margin = new Thickness(12, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center };
             words.Children.Add(new TextBlock { Text = name, FontWeight = FontWeights.SemiBold });
             // WSL's answer can be several lines: selectable, so it can be searched for.
-            words.Children.Add(new TextBox
-            {
-                Text = detail,
-                FontSize = 11,
-                Foreground = SystemColors.GrayTextBrush,
-                TextWrapping = TextWrapping.Wrap,
-                IsReadOnly = true,
-                BorderThickness = new Thickness(0),
-                Background = Brushes.Transparent,
-                Padding = new Thickness(0),
-            });
+            detail.Text = about;
+            detail.FontSize = 11;
+            detail.Foreground = SystemColors.GrayTextBrush;
+            detail.TextWrapping = TextWrapping.Wrap;
+            detail.IsReadOnly = true;
+            detail.BorderThickness = new Thickness(0);
+            detail.Background = Brushes.Transparent;
+            detail.Padding = new Thickness(0);
+            words.Children.Add(detail);
 
             var line = new DockPanel { Margin = new Thickness(14, 12, 14, 12) };
             DockPanel.SetDock(badge, Dock.Left);
@@ -183,8 +175,13 @@ namespace Porta.Desktop.App
         /// <summary><c>wsl --install</c>, elevated: Windows asks for administrator rights itself.</summary>
         private void Install()
         {
-            if (!Start(administrator: true))
+            try
             {
+                Process.Start(new ProcessStartInfo(LaunchPlan.Executable, "--install") { UseShellExecute = true, Verb = "runas" })?.Dispose();
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                // Administrator rights refused: nothing was started, and the button stays.
                 return;
             }
 
@@ -193,20 +190,39 @@ namespace Porta.Desktop.App
         }
 
         /// <summary>
-        /// <c>wsl --install</c> again, as the user: with WSL there, it adds Ubuntu, in a console of its
-        /// own where Ubuntu asks for a user. Porta opens by itself once Linux answers.
+        /// Ubuntu, in two steps: installed out of sight, so that a failure is told here rather than in a
+        /// console that closes on it; then started in a console of its own, where it asks for a user.
+        /// Porta opens by itself once Linux answers as that user, or once the console is closed.
         /// </summary>
-        private void InstallDistribution()
+        private async void InstallDistribution()
         {
-            if (!Start(administrator: false))
+            Say("Installing Ubuntu: it is downloaded, which can take a few minutes");
+            var (_, said) = await Task.Run(() => WslShell.Run(new[] { "--install", "--no-launch" }, TimeSpan.FromMinutes(30)));
+            if (WslShell.Distributions() == 0)
             {
+                // Without virtualization, for one: WSL's words say what to change.
+                title.Text = "Ubuntu could not be installed";
+                subtitle.Text = "Porta runs inside WSL, which answered:";
+                detail.Text = WslCheck.Reason(said);
+                ShowAction();
                 return;
             }
 
-            Say("Installing: finish in the window that opened, and Porta opens by itself");
+            Process? console;
+            try
+            {
+                console = Process.Start(new ProcessStartInfo(LaunchPlan.Executable) { UseShellExecute = true });
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                console = null;
+            }
+
+            Say("Choose a Linux user in the window that opened; Porta opens by itself");
             var busy = false;
-            watch = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
-            watch.Tick += async (_, _) =>
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            watch = timer;
+            timer.Tick += async (_, _) =>
             {
                 if (busy)
                 {
@@ -214,33 +230,17 @@ namespace Porta.Desktop.App
                 }
 
                 busy = true;
-                var answers = await Task.Run(ready);
+                // Root until Ubuntu has its user: a project opened as root would leave root's files in it.
+                var user = await Task.Run(() => WslShell.Exec("id", "-u"));
                 busy = false;
-                if (answers && watch.IsEnabled)
+                if (timer.IsEnabled && ((user != null && user != "0") || console == null || console.HasExited))
                 {
-                    watch.Stop();
+                    timer.Stop();
+                    console?.Dispose();
                     Retry?.Invoke();
                 }
             };
-            watch.Start();
-        }
-
-        private static bool Start(bool administrator)
-        {
-            try
-            {
-                Process.Start(new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "wsl.exe"), "--install")
-                {
-                    UseShellExecute = true,
-                    Verb = administrator ? "runas" : "",
-                })?.Dispose();
-                return true;
-            }
-            catch (System.ComponentModel.Win32Exception)
-            {
-                // Administrator rights refused: nothing was started, and the button stays.
-                return false;
-            }
+            timer.Start();
         }
 
         private void Say(string text)

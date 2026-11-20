@@ -49,8 +49,9 @@ Each row says whether it is allowed. **Allow** asks the system right there;
 **Open Settings** opens System Settings at the pane that grants it, and the row
 updates when you come back. On Windows, the window names what is missing:
 **Install WSL** runs `wsl --install` with administrator rights; when a first
-install left WSL with no distribution, **Install Ubuntu** adds one in a console
-where Ubuntu asks for a Linux user, and Porta opens by itself once it answers;
+install left WSL with no distribution, **Install Ubuntu** adds one, then opens
+Ubuntu in a console where it asks for a Linux user, and Porta opens by itself
+once it answers (if Ubuntu cannot be installed, the window says what WSL said);
 when a distribution does not start, the window shows what WSL said, with
 **Try Again**. Linux needs no permission.
 
