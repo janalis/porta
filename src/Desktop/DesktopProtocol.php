@@ -103,6 +103,17 @@ final class DesktopProtocol
         }
     }
 
+    /**
+     * {@see announceReady()} once the event loop runs, which is once tui->run()
+     * has started the terminal. A window resizes on hearing "ready", and a
+     * SIGWINCH that comes before the terminal's handler exists is lost: Porta
+     * then kept drawing at its first size in a window of another.
+     */
+    public function announceReadyOnceStarted(string $root): void
+    {
+        EventLoop::defer(fn () => $this->announceReady($root));
+    }
+
     /** The IDE is up on $root: the window takes its name, and may start asking. */
     public function announceReady(string $root): void
     {

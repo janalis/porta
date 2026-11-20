@@ -161,6 +161,19 @@ final class DesktopProtocolTest extends TestCase
         $this->assertStringContainsString($this->contract['examples']['ready'], $this->terminal->getOutput());
     }
 
+    public function testReadyWaitsForTheLoopSoTheTerminalHearsTheResizeThatFollows(): void
+    {
+        $protocol = $this->bootDesktop();
+
+        $protocol->announceReadyOnceStarted($this->contract['examples']['root']);
+        $this->assertStringNotContainsString($this->contract['examples']['ready'], $this->terminal->getOutput(), 'not before the loop runs');
+
+        $terminal = $this->terminal;
+        $ready = $this->contract['examples']['ready'];
+        // The terminal is captured as the object it is: each call reads its output as it is then.
+        $this->await(static fn (): bool => \str_contains($terminal->getOutput(), $ready), what: 'ready, once the loop runs');
+    }
+
     public function testTheRealInputPathReachesTheProtocolInDesktopMode(): void
     {
         $this->bootDesktop();

@@ -615,7 +615,7 @@ final class Ide
                 $this->service(RecentProjectsStore::class)->record($this->rootDir);
             }
 
-            $this->service(DesktopProtocol::class)->announceReady($this->rootDir);
+            $this->service(DesktopProtocol::class)->announceReadyOnceStarted($this->rootDir);
             $this->service(DesktopRecovery::class)->start();
 
             // Same reason, for observers: IdeReady lands before the first
