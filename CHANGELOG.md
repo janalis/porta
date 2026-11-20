@@ -46,7 +46,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **Composer scripts on Linux**: a run in the terminal panel had no controlling
   terminal on Linux, so anything that opens `/dev/tty` failed there. Composer
   stopped every script with "Unable to launch a new process". A run now has
-  its terminal as on macOS, and Ctrl+C reaches it from the kernel.
+  its terminal as on macOS, and Ctrl+C reaches it from the kernel. As on
+  macOS, a job a run leaves in the background is hung up when the run ends.
 - **Linux desktop application**: the font dialog offered 14.67 for the
   default 11 pt (pixels, not points) until a font was saved, so **Select**
   grew the font by a third; and after the title bar's menu or the font dialog
