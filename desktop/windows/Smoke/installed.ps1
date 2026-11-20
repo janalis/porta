@@ -67,6 +67,9 @@ if (-not $needsButton) {
     $needs = [System.Windows.Automation.AutomationElement]::FromHandle($running[0].MainWindowHandle)
     $install = $needs.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, $needsButton)))
     if (-not $install) { throw "the window '$($running[0].MainWindowTitle)' offers no $needsButton button" }
+    # Screen readers: the badge's icon is a private-use letter, which one read as "?".
+    $glyph = $needs.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, [string][char]0xE756)))
+    if ($glyph) { throw "a screen reader reads the badge's icon as a letter" }
     Write-Output "smoke: $($running[0].MainWindowTitle), and the window offers $needsButton"
 }
 

@@ -93,7 +93,7 @@ namespace Porta.Desktop.App
                 CornerRadius = new CornerRadius(7),
                 Background = new SolidColorBrush(Color.FromRgb(0x00, 0x78, 0xD4)),
                 VerticalAlignment = VerticalAlignment.Top,
-                Child = new TextBlock
+                Child = new Decoration
                 {
                     // CommandPrompt, in the system's icon font: escaped, as a private-use letter is lost in an edit.
                     Text = "\uE756",
@@ -301,5 +301,14 @@ namespace Porta.Desktop.App
             using var icon = System.Drawing.Icon.ExtractAssociatedIcon(Process.GetCurrentProcess().MainModule!.FileName!);
             return icon == null ? null : Imaging.CreateBitmapSourceFromHIcon(icon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
         }
+    }
+
+    /// <summary>
+    /// A glyph that only decorates: left out of UI Automation, where a screen reader read the
+    /// icon font's private-use letter as "?". The row's own words say what it is, as on macOS.
+    /// </summary>
+    internal sealed class Decoration : TextBlock
+    {
+        protected override System.Windows.Automation.Peers.AutomationPeer? OnCreateAutomationPeer() => null;
     }
 }
