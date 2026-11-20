@@ -152,10 +152,12 @@ final class PluginLifecycleTest extends TestCase
 
         $off = $this->boot();
         $this->assertTrue($this->lifecycle($off)->isDisabled('kit'), 'off by default');
+        $this->assertNotContains('kit', $this->lifecycle($off)->enabledNames(), 'and not among the enabled');
         Services::resolve($off, ViewRegistry::class)->closeAll();
         Services::resolve($off, Notifier::class)->dismissAll();
         $ide = $this->boot(plugins: ['kit']);
         $this->assertFalse($this->lifecycle($ide)->isDisabled('kit'));
+        $this->assertContains('kit', $this->lifecycle($ide)->enabledNames());
         $this->assertTrue($this->hasCommand($ide, id: 'kit:go'));
     }
 
@@ -181,6 +183,7 @@ final class PluginLifecycleTest extends TestCase
         $lifecycle = $this->lifecycle($ide);
         $this->assertFalse($this->hasCommand($ide, id: 'kit:go'), 'boot skipped it');
         $this->assertTrue($lifecycle->isDisabled('kit'), 'and its toggle says so');
+        $this->assertNotContains('kit', $lifecycle->enabledNames(), 'disabledPlugins wins over enabledPlugins');
 
         $lifecycle->enable('kit');
 
@@ -407,6 +410,9 @@ final class PluginLifecycleTest extends TestCase
         $lifecycle->disable('acme');
 
         $this->assertContains('acme', $lifecycle->listedNames(), 'a disabled plugin is still listed, just marked disabled');
+        $this->assertNotContains('acme', $lifecycle->enabledNames());
+        $lifecycle->enable('acme');
+        $this->assertContains('acme', $lifecycle->enabledNames(), 'a project plugin is on once enabled');
     }
 
     public function testListedNamesDedupesFirstOccurrencePerName(): void
@@ -533,5 +539,29 @@ final class PluginLifecycleTest extends TestCase
 
         $ids = \array_column(Probe::get($nav, property: 'entries'), 'id');
         $this->assertContains('plugin:acme', $ids, 'refreshNav() syncs the sidebar to the current listedNames()');
+        $this->assertArrayNotHasKey('acme', Probe::get($nav, property: 'disabledPlugins'), 'an enabled plugin\'s page is not marked off');
+        $lifecycle->disable('acme');
+        $this->assertArrayHasKey('acme', Probe::get($nav, property: 'disabledPlugins'), 'and a disabled one\'s is');
+    }
+
+    public function testEnabledNamesIsAListOfTheOnesThatAreOn(): void
+    {
+        $ide = $this->boot();
+        $this->writePlugin('acme');
+        $this->writePlugin('other');
+        $lifecycle = $this->lifecycle($ide);
+        $lifecycle->enable('other');
+        $lifecycle->disable('acme');
+
+        // A list, whatever was left out before a name: the pickers index it from 0.
+        $enabled = $lifecycle->enabledNames();
+        $this->assertSame(\array_values($enabled), $enabled);
+        $this->assertContains('other', $enabled);
+        $this->assertNotContains('acme', $enabled);
+        $this->assertSame(
+            \array_values(\array_filter($lifecycle->listedNames(), static fn (string $name): bool => !$lifecycle->isDisabled($name))),
+            $enabled,
+            'the same answer as asking name by name',
+        );
     }
 }

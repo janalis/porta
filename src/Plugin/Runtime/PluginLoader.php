@@ -239,10 +239,26 @@ final readonly class PluginLoader
      */
     public function mayLoad(string $dir): bool
     {
+        // Each part only when the one before it did not decide: a realpath() is
+        // a stat per component, and on a slow disk (a Windows drive under WSL)
+        // asking it of every installed copy froze the IDE.
+        return $this->trusted || !$this->inProjectPlugins($dir) || $this->projectPluginsShared();
+    }
+
+    /** Whether $dir is a plugin in this project's own `.porta/plugins`. */
+    private function inProjectPlugins(string $dir): bool
+    {
         $projectPlugins = \realpath($this->rootDir.'/.porta/plugins');
+
+        return false !== $projectPlugins && \realpath(\dirname($dir)) === $projectPlugins;
+    }
+
+    /** Whether this project's `.porta/plugins` is also the bundled set or the user's global one. */
+    private function projectPluginsShared(): bool
+    {
         $sharedWith = \array_map(\realpath(...), \array_filter([$this->embeddedDir, null === $this->globalBase ? null : $this->globalBase.'/.porta/plugins']));
 
-        return $this->trusted || false === $projectPlugins || \realpath(\dirname($dir)) !== $projectPlugins || \in_array($projectPlugins, $sharedWith, strict: true);
+        return \in_array(\realpath($this->rootDir.'/.porta/plugins'), $sharedWith, strict: true);
     }
 
     /**

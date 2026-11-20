@@ -155,7 +155,7 @@ final class ToolUpdates
     /** @return list<string> */
     private function enabledPlugins(): array
     {
-        return \array_values(\array_filter($this->plugins->listedNames(), fn (string $plugin): bool => !$this->plugins->isDisabled($plugin)));
+        return $this->plugins->enabledNames();
     }
 
     /** @return list<ToolStatus> every installed tool of the enabled plugins */

@@ -20,4 +20,7 @@ interface PluginEnablement
 
     /** @return list<string> every installed plugin name (disabled ones included) */
     public function listedNames(): array;
+
+    /** @return list<string> every installed plugin name that is on, decided in one look at what is installed */
+    public function enabledNames(): array;
 }

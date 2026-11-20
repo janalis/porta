@@ -50,7 +50,7 @@ final readonly class PluginCommands implements CommandProvider
     private function pickToEnable(): void
     {
         $this->pick(
-            \array_values(\array_filter($this->lifecycle->listedNames(), $this->lifecycle->isDisabled(...))),
+            \array_values(\array_diff($this->lifecycle->listedNames(), $this->lifecycle->enabledNames())),
             $this->translator->trans('Enable plugin'),
             $this->translator->trans('Every plugin is enabled'),
             $this->lifecycle->enable(...),
@@ -98,6 +98,6 @@ final readonly class PluginCommands implements CommandProvider
     /** @return list<string> */
     private function enabled(): array
     {
-        return \array_values(\array_filter($this->lifecycle->listedNames(), fn (string $name): bool => !$this->lifecycle->isDisabled($name)));
+        return $this->lifecycle->enabledNames();
     }
 }

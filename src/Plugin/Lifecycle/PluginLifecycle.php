@@ -102,8 +102,14 @@ final class PluginLifecycle implements PluginLifecycleOps
      */
     private function isBundled(string $name): bool
     {
+        return $this->isBundledIn($this->copies(), $name);
+    }
+
+    /** @param list<array{name: string, scope: InstallScope, dir: string}> $copies {@see copies()} */
+    private function isBundledIn(array $copies, string $name): bool
+    {
         $scope = null;
-        foreach ($this->copies() as $plugin) {
+        foreach ($copies as $plugin) {
             if ($plugin['name'] !== $name) {
                 continue;
             }
@@ -849,9 +855,33 @@ final class PluginLifecycle implements PluginLifecycleOps
     #[\Override]
     public function isDisabled(string $name): bool
     {
+        return $this->isDisabledIn($this->copies(), $name);
+    }
+
+    /**
+     * Every installed plugin name that is on, in {@see listedNames()}'s order.
+     *
+     * One look at the installed copies for the whole list: asked name by name
+     * through {@see isDisabled()}, each name re-read every copy, and the
+     * startup tool check took seconds that way on a slow disk (a project or a
+     * runtime on a Windows drive under WSL), with the IDE frozen meanwhile.
+     *
+     * @return list<string>
+     */
+    #[\Override]
+    public function enabledNames(): array
+    {
+        $copies = $this->copies();
+
+        return \array_values(\array_filter($this->namesIn($copies), fn (string $name): bool => !$this->isDisabledIn($copies, $name)));
+    }
+
+    /** @param list<array{name: string, scope: InstallScope, dir: string}> $copies {@see copies()} */
+    private function isDisabledIn(array $copies, string $name): bool
+    {
         // `disabledPlugins` wins for a bundled plugin too: boot skips every
         // copy of a name it lists, so a toggle drawn on would be a lie.
-        return \array_key_exists($name, $this->disabled) || ($this->isBundled($name) && !\array_key_exists($name, $this->enabled));
+        return \array_key_exists($name, $this->disabled) || ($this->isBundledIn($copies, $name) && !\array_key_exists($name, $this->enabled));
     }
 
     /**
@@ -864,8 +894,18 @@ final class PluginLifecycle implements PluginLifecycleOps
     #[\Override]
     public function listedNames(): array
     {
+        return $this->namesIn($this->copies());
+    }
+
+    /**
+     * @param list<array{name: string, scope: InstallScope, dir: string}> $copies {@see copies()}
+     *
+     * @return list<string>
+     */
+    private function namesIn(array $copies): array
+    {
         $names = [];
-        foreach ($this->copies() as $plugin) {
+        foreach ($copies as $plugin) {
             // Kept as the value: a name in digits would come back from
             // array_keys() as an int, which is not the list<string> promised.
             $names[$plugin['name']] ??= $plugin['name'];
@@ -877,8 +917,9 @@ final class PluginLifecycle implements PluginLifecycleOps
     /** Sync the per-plugin settings pages with the installed set, and which of them are off. */
     public function refreshNav(): void
     {
-        $names = $this->listedNames();
-        $this->pages->refresh($names, \array_values(\array_filter($names, $this->isDisabled(...))));
+        $copies = $this->copies();
+        $names = $this->namesIn($copies);
+        $this->pages->refresh($names, \array_values(\array_filter($names, fn (string $name): bool => $this->isDisabledIn($copies, $name))));
     }
 
     #[\Override]

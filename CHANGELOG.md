@@ -41,7 +41,8 @@ versions follow [Semantic Versioning](https://semver.org/).
   folder of Windows' own PATH, each one slow to reach from WSL, and froze the
   IDE for several seconds after it opened, dropping what was typed meanwhile.
   Those folders are no longer searched for programs; a terminal in Porta keeps
-  the whole PATH.
+  the whole PATH. Which plugins are on is also decided in one look at what is
+  installed, rather than once per plugin, which was slow on a Windows drive.
 
 ## [0.1.9] - 2026-11-19
 

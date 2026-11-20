@@ -94,6 +94,11 @@ final class FakePluginLifecycle implements PluginLifecycleOps
         return $this->names;
     }
 
+    public function enabledNames(): array
+    {
+        return \array_values(\array_diff($this->names, $this->disabledNames));
+    }
+
     public function refreshView(): void
     {
         ++$this->refreshed;
