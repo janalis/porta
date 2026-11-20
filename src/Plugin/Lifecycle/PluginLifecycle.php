@@ -91,7 +91,7 @@ final class PluginLifecycle implements PluginLifecycleOps
      */
     private function copies(): array
     {
-        return \array_values(\array_filter($this->installer->installed(), fn (array $copy): bool => $this->loader->mayLoad($copy['dir'])));
+        return $this->loader->loadable($this->installer->installed());
     }
 
     /**

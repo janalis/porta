@@ -136,7 +136,7 @@ final readonly class WelcomeSteps
      */
     private function isEnabled(RecommendedPlugin $plugin): bool
     {
-        return \in_array($plugin->value, $this->lifecycle->listedNames(), strict: true) && !$this->lifecycle->isDisabled($plugin->value);
+        return \in_array($plugin->value, $this->lifecycle->enabledNames(), strict: true);
     }
 
     /** Enabled, and nothing it requires is missing. */
