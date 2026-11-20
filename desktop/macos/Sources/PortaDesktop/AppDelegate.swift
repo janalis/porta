@@ -178,13 +178,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     @objc func changeFont(_ sender: NSFontManager?) {
         guard let sender, let current = (fontSource ?? focused ?? windows.first)?.currentFont else { return }
         let chosen = sender.convert(current)
-        // The panel lists every font; a terminal's grid needs one whose letters are all as wide.
-        guard chosen.isFixedPitch else {
-            NSSound.beep()
+        let pick = FontPick.judge(currentName: current.fontName, currentSize: Double(current.pointSize), chosenName: chosen.fontName, chosenFamily: chosen.familyName, chosenSize: Double(chosen.pointSize), fixedPitch: chosen.isFixedPitch)
+        guard case let .chosen(family, size) = pick else {
+            // The panel lists every font; a terminal's grid needs one whose letters are all as wide.
+            if pick == .refused {
+                NSSound.beep()
+            }
             return
         }
         do {
-            try ProjectWindowController.choose(family: chosen.familyName ?? chosen.fontName, size: chosen.pointSize)
+            try ProjectWindowController.choose(family: family, size: CGFloat(size))
         } catch {
             let alert = NSAlert()
             alert.messageText = "The font could not be saved"
