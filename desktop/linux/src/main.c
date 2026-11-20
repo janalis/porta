@@ -6,6 +6,7 @@
 #include <glib-unix.h>
 #include <gtk/gtk.h>
 #include <json-glib/json-glib.h>
+#include <pango/pangocairo.h>
 #include <signal.h>
 #include <sys/ioctl.h>
 #include <stdlib.h>
@@ -117,24 +118,23 @@ static void destroy_window(PortaWindow *self)
     gtk_window_destroy(GTK_WINDOW(self->window));
 }
 
-/* `desktop.json`: the font the user chose, Monospace 11 for whatever the file does not say.
- * Set even without a file: VTE's own default reports its size in pixels, and the font dialog,
- * seeded with it, would offer 14.67 for 11 points, and Select would grow the font by a third. */
+/* `desktop.json`: the font the user chose, when the file says anything usable. */
 static void apply_font(PortaWindow *self)
 {
     const char *home = g_getenv("PORTA_HOME");
     g_autofree char *path = g_build_filename(NULL != home && '\0' != home[0] ? home : g_get_home_dir(), ".porta", "desktop.json", NULL);
     g_autoptr(JsonParser) parser = json_parser_new();
     JsonNode *root;
-    JsonObject *settings = NULL;
+    JsonObject *settings;
     PangoFontDescription *font;
 
-    if (json_parser_load_from_file(parser, path, NULL) && NULL != (root = json_parser_get_root(parser)) && JSON_NODE_HOLDS_OBJECT(root)) {
-        settings = json_node_get_object(root);
+    if (!json_parser_load_from_file(parser, path, NULL) || NULL == (root = json_parser_get_root(parser)) || !JSON_NODE_HOLDS_OBJECT(root)) {
+        return;
     }
+    settings = json_node_get_object(root);
     /* As every host reads it: a value of the wrong kind, or out of range, is not set. */
-    JsonNode *family = NULL != settings ? json_object_get_member(settings, "fontFamily") : NULL;
-    JsonNode *size = NULL != settings ? json_object_get_member(settings, "fontSize") : NULL;
+    JsonNode *family = json_object_get_member(settings, "fontFamily");
+    JsonNode *size = json_object_get_member(settings, "fontSize");
     const char *name = NULL != family && JSON_NODE_HOLDS_VALUE(family) && G_TYPE_STRING == json_node_get_value_type(family) ? json_node_get_string(family) : NULL;
     gboolean number = NULL != size && JSON_NODE_HOLDS_VALUE(size) && (G_TYPE_DOUBLE == json_node_get_value_type(size) || G_TYPE_INT64 == json_node_get_value_type(size));
     double points = number ? json_node_get_double(size) : 0;
@@ -157,6 +157,17 @@ static gboolean monospaced(gpointer item, gpointer data)
     return PANGO_IS_FONT_FAMILY(item) && pango_font_family_is_monospace(PANGO_FONT_FAMILY(item));
 }
 
+/* A font's size in points, as desktop.json and the font dialog count it. VTE gives its own default
+ * in pixels: shown as it is, 11 points read 14.67, and Select saved that, a third larger. */
+static void size_in_points(PangoFontDescription *font, GtkWidget *widget)
+{
+    if (!pango_font_description_get_size_is_absolute(font)) {
+        return;
+    }
+    double dpi = NULL != widget ? pango_cairo_context_get_resolution(gtk_widget_get_pango_context(widget)) : -1;
+    pango_font_description_set_size(font, (int) (pango_font_description_get_size(font) * 72.0 / (dpi > 0 ? dpi : 96.0) + 0.5));
+}
+
 /* A font chosen in the dialog: written to desktop.json (the core says how), and every window takes it
  * at its own size, the zoom of each set back. A file that cannot be written changes nothing, and says so. */
 static void font_chosen(GObject *source, GAsyncResult *result, gpointer data)
@@ -173,6 +184,7 @@ static void font_chosen(GObject *source, GAsyncResult *result, gpointer data)
         release(self);
         return; /* cancelled */
     }
+    size_in_points(chosen, self->closed ? NULL : GTK_WIDGET(self->terminal));
     g_file_get_contents(path, &existing, NULL, NULL);
     g_autofree char *written = porta_settings_with_font(existing, pango_font_description_get_family(chosen),
         (double) pango_font_description_get_size(chosen) / PANGO_SCALE);
@@ -207,7 +219,23 @@ static void choose_font(GSimpleAction *action, GVariant *parameter, gpointer dat
     gtk_font_dialog_set_filter(dialog, GTK_FILTER(filter));
     /* The dialog's own reference: the window may close while it is open. */
     self->holds++;
-    gtk_font_dialog_choose_font(dialog, GTK_WINDOW(self->window), vte_terminal_get_font(self->terminal), NULL, font_chosen, self);
+    PangoFontDescription *current = pango_font_description_copy(vte_terminal_get_font(self->terminal));
+    size_in_points(current, GTK_WIDGET(self->terminal));
+    gtk_font_dialog_choose_font(dialog, GTK_WINDOW(self->window), current, NULL, font_chosen, self);
+    pango_font_description_free(current);
+}
+
+/* The keys go back to Porta when the window's menu closes: GTK would leave them on its button, and
+ * after Font… or Escape the next keys would reach nothing until a click in the terminal. Not while
+ * the window goes away: the menu closes then too. */
+static void menu_closed(GtkPopover *popover, gpointer data)
+{
+    GtkWidget *terminal = data;
+
+    (void) popover;
+    if (gtk_widget_get_mapped(terminal)) {
+        gtk_widget_grab_focus(terminal);
+    }
 }
 
 static void write_to_porta(PortaWindow *self, const char *bytes, gssize length)
@@ -765,10 +793,7 @@ static void open_window(GtkApplication *application, const char *project)
     gtk_menu_button_set_icon_name(GTK_MENU_BUTTON(menu_button), "open-menu-symbolic");
     gtk_menu_button_set_menu_model(GTK_MENU_BUTTON(menu_button), G_MENU_MODEL(window_menu));
     gtk_widget_set_tooltip_text(menu_button, "Window");
-    /* The keys go back to Porta when the menu closes: GTK would leave them on this button, and
-     * after Font… or Escape the next keys would reach nothing until a click in the terminal. */
-    g_signal_connect_object(gtk_menu_button_get_popover(GTK_MENU_BUTTON(menu_button)), "closed",
-        G_CALLBACK(gtk_widget_grab_focus), self->terminal, G_CONNECT_SWAPPED);
+    g_signal_connect_object(gtk_menu_button_get_popover(GTK_MENU_BUTTON(menu_button)), "closed", G_CALLBACK(menu_closed), self->terminal, 0);
     GtkWidget *header = gtk_header_bar_new();
     gtk_header_bar_pack_end(GTK_HEADER_BAR(header), menu_button);
     gtk_window_set_titlebar(GTK_WINDOW(self->window), header);
