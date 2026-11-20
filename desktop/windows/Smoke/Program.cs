@@ -180,6 +180,11 @@ if (redrawn == 0)
     Type("\u001b");
     Thread.Sleep(3000);
     Console.WriteLine($"smoke: diagnostic: a second Escape redrew {Screen().Length - beforeSecond} bytes");
+    // Diagnostic: an error Porta caught on the way would have taken the key without a word on screen.
+    var errors = System.IO.Path.Combine(args[1], ".porta", "error.log");
+    Console.WriteLine(System.IO.File.Exists(errors)
+        ? "smoke: diagnostic: .porta/error.log ends with: " + new string(System.IO.File.ReadAllText(errors).TakeLast(2500).ToArray())
+        : "smoke: diagnostic: no .porta/error.log");
 }
 
 var beforeOpen = Screen().Length;
