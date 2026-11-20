@@ -10,7 +10,7 @@ final class PermissionsSheet: NSWindowController {
         case askable
         case refused
         case askedWhenNeeded
-        /// The system will not even ask: notifications need a signed build (a team identity).
+        /// The system will not even ask: Porta's own notifications need a signed build (a team identity), so they come through Script Editor.
         case unavailable
     }
 
@@ -156,7 +156,7 @@ final class PermissionsSheet: NSWindowController {
             done.textColor = .secondaryLabelColor
             return done
         case .unavailable:
-            let none = NSTextField(labelWithString: "Not in this build")
+            let none = NSTextField(labelWithString: "Through Script Editor")
             none.textColor = .tertiaryLabelColor
             none.font = .systemFont(ofSize: 11)
             return none
@@ -190,7 +190,7 @@ final class PermissionsSheet: NSWindowController {
     private func show(notifications: Access) {
         rows.arrangedSubviews.forEach { $0.removeFromSuperview() }
         let detail = notifications == .unavailable
-            ? "macOS lets only a signed Porta send them; the Dock icon bounces instead"
+            ? "This build has no Developer ID: they come from Script Editor, and the Dock icon bounces"
             : "When a run ends while you are in another window or application"
         rows.addArrangedSubview(row(symbol: "bell.badge.fill", tint: .systemRed, title: "Notifications", detail: detail, access: notifications, grant: notifications == .askable ? #selector(askNotifications) : #selector(openNotificationSettings)))
         let separator = NSBox()
@@ -221,7 +221,7 @@ final class PermissionsSheet: NSWindowController {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { [weak self] _, error in
             DispatchQueue.main.async {
                 // Turned down with no question asked (UNErrorDomain 1): say so, rather than leave a button that does nothing.
-                if let error = error as NSError?, error.domain == UNErrorDomain, error.code == UNError.Code.notificationsNotAllowed.rawValue {
+                if ProjectWindowController.refusedToTheBuild(error) {
                     self?.notificationsUnavailable = true
                 }
                 self?.refresh()

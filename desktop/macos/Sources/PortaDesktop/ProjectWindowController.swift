@@ -124,22 +124,43 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
     /// A run ended. Told only when this window is not the one in front: the user is elsewhere.
     private func notify(_ text: String) {
         // Main, not key: the font panel or a sheet can be key while this window is the one in front.
-        guard !(NSApp.isActive && window?.isMainWindow == true), Bundle.main.bundleIdentifier != nil else { return }
+        guard !(NSApp.isActive && window?.isMainWindow == true) else { return }
+        let title = window?.title ?? "Porta"
+        // The notification centre needs an application bundle; the bare executable of a build has none.
+        guard Bundle.main.bundleIdentifier != nil else { return Self.postScripted(title: title, body: text) }
         let content = UNMutableNotificationContent()
-        content.title = window?.title ?? "Porta"
+        content.title = title
         content.body = text
         content.userInfo = ["window": token]
         let center = UNUserNotificationCenter.current()
-        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+        center.requestAuthorization(options: [.alert, .sound]) { granted, error in
             DispatchQueue.main.async {
                 if granted {
                     center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+                } else if Self.refusedToTheBuild(error) {
+                    // No Developer ID: macOS refuses Porta its own notifications, not the user.
+                    Self.postScripted(title: title, body: text)
                 } else {
                     // Notifications turned off for Porta: the Dock icon bounces once instead.
                     NSApp.requestUserAttention(.informationalRequest)
                 }
             }
         }
+    }
+
+    /// macOS turned the request down without asking anyone: a build with no team identity.
+    static func refusedToTheBuild(_ error: Error?) -> Bool {
+        guard let error = error as NSError? else { return false }
+        return error.domain == UNErrorDomain && error.code == UNError.Code.notificationsNotAllowed.rawValue
+    }
+
+    /// Through macOS's scripting, under Script Editor's name, and the Dock icon bounces to say it is Porta's.
+    private static func postScripted(title: String, body: String) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: ScriptedNotification.executable)
+        process.arguments = ScriptedNotification.arguments(title: title, body: body)
+        try? process.run()
+        NSApp.requestUserAttention(.informationalRequest)
     }
 
     /// Whether a notification came from this window.

@@ -56,8 +56,10 @@ says what WSL said);
 when a distribution does not start, the window shows what WSL said, with
 **Try Again**. Linux needs no permission.
 
-macOS lets only a signed application (a Developer ID) send notifications: in a
-build without one, the sheet says so, and the Dock icon bounces instead.
+macOS lets only a signed application (a Developer ID) send notifications of its
+own. A build without one posts them through macOS's scripting instead: they
+show under Script Editor's name (clicking one opens Script Editor, not Porta),
+the Dock icon bounces, and the sheet says so.
 
 ## Windows and closing
 

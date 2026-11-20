@@ -27,6 +27,7 @@ versions follow [Semantic Versioning](https://semver.org/).
   protected folders on macOS, WSL on Windows) and how to allow it; on Windows
   it names what is missing, WSL or a Linux distribution in it, or shows what
   WSL said when Linux does not start.
+  On macOS a build without a Developer ID still notifies, through Script Editor.
   **Font…** picks the window's font in the system's own dialog: the Window menu
   on macOS, the title bar's menu button on Linux, the system menu on Windows.
 - **Help → Check for Updates…**: asks for a newer release now, whatever the
