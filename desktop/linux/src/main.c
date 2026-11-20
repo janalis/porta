@@ -117,23 +117,24 @@ static void destroy_window(PortaWindow *self)
     gtk_window_destroy(GTK_WINDOW(self->window));
 }
 
-/* `desktop.json`: the font the user chose, when the file says anything usable. */
+/* `desktop.json`: the font the user chose, Monospace 11 for whatever the file does not say.
+ * Set even without a file: VTE's own default reports its size in pixels, and the font dialog,
+ * seeded with it, would offer 14.67 for 11 points, and Select would grow the font by a third. */
 static void apply_font(PortaWindow *self)
 {
     const char *home = g_getenv("PORTA_HOME");
     g_autofree char *path = g_build_filename(NULL != home && '\0' != home[0] ? home : g_get_home_dir(), ".porta", "desktop.json", NULL);
     g_autoptr(JsonParser) parser = json_parser_new();
     JsonNode *root;
-    JsonObject *settings;
+    JsonObject *settings = NULL;
     PangoFontDescription *font;
 
-    if (!json_parser_load_from_file(parser, path, NULL) || NULL == (root = json_parser_get_root(parser)) || !JSON_NODE_HOLDS_OBJECT(root)) {
-        return;
+    if (json_parser_load_from_file(parser, path, NULL) && NULL != (root = json_parser_get_root(parser)) && JSON_NODE_HOLDS_OBJECT(root)) {
+        settings = json_node_get_object(root);
     }
-    settings = json_node_get_object(root);
     /* As every host reads it: a value of the wrong kind, or out of range, is not set. */
-    JsonNode *family = json_object_get_member(settings, "fontFamily");
-    JsonNode *size = json_object_get_member(settings, "fontSize");
+    JsonNode *family = NULL != settings ? json_object_get_member(settings, "fontFamily") : NULL;
+    JsonNode *size = NULL != settings ? json_object_get_member(settings, "fontSize") : NULL;
     const char *name = NULL != family && JSON_NODE_HOLDS_VALUE(family) && G_TYPE_STRING == json_node_get_value_type(family) ? json_node_get_string(family) : NULL;
     gboolean number = NULL != size && JSON_NODE_HOLDS_VALUE(size) && (G_TYPE_DOUBLE == json_node_get_value_type(size) || G_TYPE_INT64 == json_node_get_value_type(size));
     double points = number ? json_node_get_double(size) : 0;
@@ -764,6 +765,10 @@ static void open_window(GtkApplication *application, const char *project)
     gtk_menu_button_set_icon_name(GTK_MENU_BUTTON(menu_button), "open-menu-symbolic");
     gtk_menu_button_set_menu_model(GTK_MENU_BUTTON(menu_button), G_MENU_MODEL(window_menu));
     gtk_widget_set_tooltip_text(menu_button, "Window");
+    /* The keys go back to Porta when the menu closes: GTK would leave them on this button, and
+     * after Font… or Escape the next keys would reach nothing until a click in the terminal. */
+    g_signal_connect_object(gtk_menu_button_get_popover(GTK_MENU_BUTTON(menu_button)), "closed",
+        G_CALLBACK(gtk_widget_grab_focus), self->terminal, G_CONNECT_SWAPPED);
     GtkWidget *header = gtk_header_bar_new();
     gtk_header_bar_pack_end(GTK_HEADER_BAR(header), menu_button);
     gtk_window_set_titlebar(GTK_WINDOW(self->window), header);
