@@ -27,7 +27,8 @@ concurrency:
 # ride symfony/polyfill-intl-grapheme — so the test matrix grades both the
 # native path and the polyfill every no-intl user actually runs.
 env:
-  PHP_EXTENSIONS: mbstring, gd, pcntl, simplexml, ctype
+  # posix: the desktop relay and its login shell start a session of their own (posix_setsid).
+  PHP_EXTENSIONS: mbstring, gd, pcntl, posix, simplexml, ctype
   # A hosted runner (4 vCPUs on a public repository) is the job's alone:
   # every core it has. coverage:plugins takes a number, not `auto`.
   PORTA_TEST_PROCESSES: auto
