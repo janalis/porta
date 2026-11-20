@@ -1,0 +1,21 @@
+# Every source the static PHP is built from, at one version: static-php-cli fetches each
+# project's latest release, or a branch's head, unless told otherwise, and FrankenPHP 1.13.6
+# coming out broke a build that php-sources.lock had pinned to 1.13.5. One source per line:
+# <static-php-cli source name> <URL>. Each file's name must differ: they share one folder.
+# Changing one means recording the lock again (desktop/verify-sources.sh says how).
+micro https://github.com/static-php/phpmicro/archive/fb6d497b6f4cf138ee3851a30c905d64b7b19aed.tar.gz
+libiconv https://ftp.gnu.org/gnu/libiconv/libiconv-1.19.1.tar.gz
+xz https://github.com/tukaani-project/xz/releases/download/v5.8.4/xz-5.8.4.tar.xz
+zlib https://github.com/madler/zlib/releases/download/v1.4/zlib-1.4.tar.gz
+libxml2 https://github.com/GNOME/libxml2/archive/refs/tags/v2.15.4.tar.gz
+frankenphp https://github.com/php/frankenphp/archive/refs/tags/v1.13.5.tar.gz
+brotli https://github.com/google/brotli/archive/refs/tags/v1.2.1.tar.gz
+watcher https://github.com/e-dant/watcher/archive/refs/tags/release/0.14.5.tar.gz
+libpng https://github.com/pnggroup/libpng/archive/refs/tags/v1.6.59.tar.gz
+libaom https://storage.googleapis.com/aom-releases/libaom-3.15.3.tar.gz
+libwebp https://github.com/webmproject/libwebp/archive/refs/tags/v1.6.0.tar.gz
+libjpeg https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/3.2.1.tar.gz
+libavif https://github.com/AOMediaCodec/libavif/archive/refs/tags/v1.4.2.tar.gz
+freetype https://github.com/freetype/freetype/archive/refs/tags/VER-2-15-0.tar.gz
+openssl https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
+libsodium https://github.com/jedisct1/libsodium/releases/download/1.0.22-RELEASE/libsodium-1.0.22.tar.gz

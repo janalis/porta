@@ -25,7 +25,16 @@ printf '%s  spc.tar.gz\n' "$sum" | shasum -a 256 -c -
 tar -xzf spc.tar.gz spc
 chmod +x spc
 ./spc doctor --auto-fix
-./spc download --with-php="$version" --for-extensions="$extensions"
+# Every source at its pinned version (php-sources.pins): left to itself, static-php-cli fetches
+# each project's latest, and the lock refuses it the day upstream releases.
+duplicates=$(awk '!/^#/ && NF { n = split($2, part, "/"); print part[n] }' "$here/php-sources.pins" | sort | uniq -d)
+[ -z "$duplicates" ] || { echo "build-php: two pinned sources share a file name: $duplicates" >&2; exit 2; }
+set --
+while read -r name url; do
+    case $name in '' | '#'*) continue ;; esac
+    set -- "$@" "--custom-url=$name:$url"
+done < "$here/php-sources.pins"
+./spc download --with-php="$version" --for-extensions="$extensions" "$@"
 "$here/verify-sources.sh" downloads "$here/php-sources.lock"
 ./spc build "$extensions" --build-cli
 cp buildroot/bin/php "$output"

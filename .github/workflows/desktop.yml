@@ -71,7 +71,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: php-${{ matrix.name }}
-          key: static-php-${{ matrix.name }}-${{ hashFiles('desktop/build-php.sh', 'desktop/verify-sources.sh', 'desktop/php-sources.lock', 'desktop/runtime/check-php.php') }}
+          key: static-php-${{ matrix.name }}-${{ hashFiles('desktop/build-php.sh', 'desktop/verify-sources.sh', 'desktop/php-sources.lock', 'desktop/php-sources.pins', 'desktop/runtime/check-php.php') }}
       - if: steps.cache.outputs.cache-hit != 'true'
         env:
           # static-php-cli asks GitHub where sources are; anonymously, it is rate limited.

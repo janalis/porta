@@ -3,7 +3,8 @@
 #
 #   verify-sources.sh <downloads folder> <lock file>
 #
-# To renew the lock after changing what is built, on each platform:
+# The sources are pinned in php-sources.pins. To renew the lock after changing what is
+# built, or a pin, on each platform:
 #   PORTA_SOURCES_RECORD=<file> desktop/build-php.sh <output>
 # then merge the files into php-sources.lock and review the difference.
 set -eu
