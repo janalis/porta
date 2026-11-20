@@ -168,7 +168,17 @@ var beforeEscape = Screen().Length;
 Type("\u001b");
 Thread.Sleep(3000);
 var redrawn = Screen().Length - beforeEscape;
-if (redrawn == 0)
+// Any drawing would not prove it: a repaint of the tree can come meanwhile. The card swallows
+// every key, so Go to File opening with Ctrl+P is what says it is gone.
+var beforeProof = Screen().Length;
+Type("\u0010");
+var proof = Stopwatch.StartNew();
+while (Screen().IndexOf("Go to File", beforeProof, StringComparison.Ordinal) < 0 && proof.Elapsed < TimeSpan.FromSeconds(10))
+{
+    Thread.Sleep(100);
+}
+
+if (Screen().IndexOf("Go to File", beforeProof, StringComparison.Ordinal) < 0)
 {
     foreach (var log in new[] { "freeze.log", "error.log" })
     {
@@ -179,10 +189,12 @@ if (redrawn == 0)
             : $"smoke: no .porta/{log}");
     }
 
-    Fail("Escape on the welcome card drew nothing in 3 seconds");
+    Fail($"Escape did not close the welcome card ({redrawn} bytes redrawn, and Ctrl+P opened nothing)");
 }
 
 Console.WriteLine($"smoke: Escape closed the welcome card ({redrawn} bytes redrawn)");
+Type("\u001b");
+Thread.Sleep(1000);
 
 var beforeOpen = Screen().Length;
 
@@ -197,29 +209,19 @@ Type("\u0013");
 AwaitState(unsaved: false);
 Console.WriteLine("smoke: its save was told");
 
-// Escape closes what it opens: Go to File (Ctrl+P, one byte in any terminal), then a lone ESC.
+// Escape closes what it opens: Go to File (Ctrl+P, one byte in any terminal), then a lone ESC. A key
+// after it edits the file, which it would not do with the picker still open: it would filter.
 var beforeGoTo = Screen().Length;
 Type("\u0010");
 AwaitScreen(beforeGoTo, "Go to File", "Go to File");
 Thread.Sleep(1000);
-var beforeClose = Screen().Length;
-Type("\u001b");
-Thread.Sleep(3000);
-if (Screen().Length == beforeClose)
-{
-    Fail("Escape did not close Go to File");
-}
-
-Console.WriteLine("smoke: Escape closes Go to File");
-
-// The Escape key reaches Porta as a lone ESC byte; the keys after it must still arrive.
 Type("\u001b");
 Thread.Sleep(1000);
 Type("y");
 AwaitState(unsaved: true);
 Type("\u0013");
 AwaitState(unsaved: false);
-Console.WriteLine("smoke: the keys after a lone Escape still arrive");
+Console.WriteLine("smoke: Escape closes Go to File, and the keys after it arrive");
 
 Type(DesktopMessage.CloseRequest(new string('f', 32)));
 if (messages.TryTake(out var answer, 3000) && answer.Kind == MessageKind.Closing)

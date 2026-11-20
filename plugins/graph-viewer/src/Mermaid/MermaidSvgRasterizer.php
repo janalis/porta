@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Porta\GraphViewer\Mermaid;
 
 use Porta\GraphViewer\Graph\MermaidEngine;
+use Porta\Support\PathExecutables;
 use Porta\Support\SingleSlotProcess;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Component\Process\ExecutableFinder;
 
 /** Rasterize the CLI SVG in its installed browser, preserving HTML/math labels and the exact snapshot. */
 final class MermaidSvgRasterizer
@@ -26,7 +26,6 @@ final class MermaidSvgRasterizer
         private readonly \Closure|string|null $nodePath = null,
         private readonly SingleSlotProcess $slot = new SingleSlotProcess(),
         private readonly Filesystem $files = new Filesystem(),
-        private readonly ExecutableFinder $finder = new ExecutableFinder(),
         private readonly string $script = self::SCRIPT,
         /** @var (\Closure(): ?string)|null asked at each conversion: a trust change applies at the next one */
         private readonly ?\Closure $browserConfig = null,
@@ -100,7 +99,7 @@ final class MermaidSvgRasterizer
     {
         $configured = \trim((string) ($path instanceof \Closure ? $path() : $path));
 
-        return '' === $configured ? $this->finder->find($fallback) : $this->finder->find($configured) ?? $configured;
+        return '' === $configured ? PathExecutables::here()->find($fallback) : PathExecutables::here()->find($configured) ?? $configured;
     }
 
     private function cleanup(): void

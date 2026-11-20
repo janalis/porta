@@ -32,8 +32,8 @@ final readonly class ToolInstaller
     /**
      * @param \Closure(string): (string|null) $find a manager's executable name => its path, or null when absent —
      *        asked only when that manager matters ({@see create()} remembers each
-     *        answer): a lookup the PATH misses shells out to `command -v`, and
-     *        the installer is built at boot
+     *        answer): a lookup stats every PATH folder (and, outside WSL, a
+     *        miss shells out to `command -v`), and the installer is built at boot
      * @param (\Closure(list<string>, string, \Closure(int, string): void, (\Closure(string): void)|null): void)|null $run
      *        how anything is spawned — {@see ProcessRunner::default()}; inject a fake to test without processes
      * @param string $token a GitHub token for the API fallback, or '' — never logged, never toasted
@@ -64,8 +64,8 @@ final readonly class ToolInstaller
      */
     public static function create(string $rootDir, ToolLocator $locator, ToolVersions $versions, RunningProcesses $runs): self
     {
-        // Each manager is looked up the first time it matters, once: a name
-        // the PATH misses shells out to `command -v`, and this runs at boot.
+        // Each manager is looked up the first time it matters, once: a lookup
+        // stats every PATH folder, a miss may shell out, and this runs at boot.
         $finder = PathExecutables::here();
         $found = [];
         $find = static function (string $name) use ($finder, &$found): ?string {

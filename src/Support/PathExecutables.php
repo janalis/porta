@@ -16,15 +16,16 @@ use Symfony\Component\Process\ExecutableFinder;
  * typed meanwhile (`.porta/freeze.log` named ExecutableFinder::find('gh')).
  *
  * Skipping those folders loses nothing a lookup here could find: on Linux it
- * asks for the bare name (`gh`), and Windows' programs are `gh.exe`. The PATH
- * itself is left whole — a terminal in Porta still runs `code .` or
- * `explorer.exe` through it.
+ * asks for the bare name (`gh`), and Windows' programs are `gh.exe`. Neither
+ * does it fall back, as ExecutableFinder does, to a shell's `command -v`, which
+ * would search the same folders. The PATH itself is left whole — a terminal in
+ * Porta still runs `code .` or `explorer.exe` through it.
  */
 final readonly class PathExecutables
 {
     /**
      * @param string|null $wslPath the PATH under WSL, or null elsewhere
-     * @param string $drives where WSL mounts the Windows drives
+     * @param string $drives where WSL mounts the Windows drives, see {@see driveRoot()}
      */
     public function __construct(
         private ?string $wslPath,
@@ -36,8 +37,21 @@ final readonly class PathExecutables
     {
         $path = \getenv('PATH');
         $path = false === $path ? '' : $path;
+        $wsl = false !== \getenv('WSL_DISTRO_NAME');
 
-        return new self(false === \getenv('WSL_DISTRO_NAME') ? null : $path);
+        return new self($wsl ? $path : null, $wsl ? self::driveRoot('/etc/wsl.conf') : '/mnt/');
+    }
+
+    /**
+     * Where WSL mounts the Windows drives, with a trailing slash: `/mnt/`, or the
+     * `root` of `[automount]` in $wslConf (`root = /` puts them at `/c/`).
+     */
+    public static function driveRoot(string $wslConf): string
+    {
+        $conf = \is_file($wslConf) ? \parse_ini_file($wslConf, process_sections: true, scanner_mode: \INI_SCANNER_RAW) : false;
+        $root = \is_array($conf) && \is_array($conf['automount'] ?? null) && \is_string($conf['automount']['root'] ?? null) ? \trim($conf['automount']['root'], characters: " \"'") : '';
+
+        return '' === $root ? '/mnt/' : \rtrim($root, characters: '/').'/';
     }
 
     /** The path of the program $name, or null when it is nowhere on the PATH. */
@@ -46,18 +60,30 @@ final readonly class PathExecutables
         return null === $this->wslPath ? new ExecutableFinder()->find($name) : $this->onLinuxPath($this->wslPath, $name);
     }
 
-    /** The first executable $name in the PATH's folders that are not on a Windows drive. */
+    /**
+     * The first program $name in the PATH's folders that are not on a Windows
+     * drive, as ExecutableFinder reads them: an empty entry is the current
+     * directory, and an entry may name the program itself.
+     */
     private function onLinuxPath(string $path, string $name): ?string
     {
         $found = null;
-        foreach (\explode(\PATH_SEPARATOR, $path) as $dir) {
-            $file = \rtrim($dir, characters: '/').'/'.$name;
-            if (null === $found && !$this->onWindowsDrive($dir) && \is_file($file) && \is_executable($file)) {
-                $found = $file;
-            }
+        foreach (\explode(\PATH_SEPARATOR, $path) as $entry) {
+            $dir = '' === $entry ? '.' : $entry;
+            $found ??= $this->onWindowsDrive($dir) ? null : $this->programIn($dir, $name);
         }
 
         return $found;
+    }
+
+    private function programIn(string $dir, string $name): ?string
+    {
+        $file = \rtrim($dir, characters: '/').'/'.$name;
+        if (\is_file($file) && \is_executable($file)) {
+            return $file;
+        }
+
+        return !\is_dir($dir) && \basename($dir) === $name && \is_executable($dir) ? $dir : null;
     }
 
     private function onWindowsDrive(string $dir): bool

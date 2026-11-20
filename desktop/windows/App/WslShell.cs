@@ -77,13 +77,15 @@ namespace Porta.Desktop.App
                     return new Answer(null, "", late);
                 }
 
-                // A helper wsl.exe started may hold the pipes open after it ended: the limit covers the reading too.
-                if (!Task.WaitAll(new Task[] { output, errors }, Remaining(deadline)))
+                // A helper wsl.exe started may hold a pipe open after it ended: the limit covers the
+                // reading too. Standard output is the answer; standard error only explains, and a
+                // helper holding that one alone must not turn a finished command into no answer.
+                if (!output.Wait(Remaining(deadline)))
                 {
-                    return new Answer(null, output.IsCompleted ? output.Result : "", late);
+                    return new Answer(null, "", late);
                 }
 
-                return new Answer(process.ExitCode, output.Result, errors.Result);
+                return new Answer(process.ExitCode, output.Result, errors.Wait(Remaining(deadline)) ? errors.Result : "");
             }
             catch (System.ComponentModel.Win32Exception exception)
             {

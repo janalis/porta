@@ -81,9 +81,14 @@ for ($run = 1; $run <= $runs; ++$run) {
                 $readFor(3.0);
                 $redrawn = strlen($out) - $before;
                 $welcomeAt = strrpos(substr($out, 0, $before), 'Welcome');
-                $closed += $redrawn > 0 ? 1 : 0;
-                $verdict = sprintf('Escape redrew %d bytes (the card drawn %d bytes after ready, of %d)', $redrawn, $welcomeAt - $readyAt, $before - $readyAt);
-                if (0 === $redrawn) {
+                // Drawing alone proves nothing (the tree may repaint meanwhile): the card swallows
+                // every key, so Go to File opening with Ctrl+P is what says it is gone.
+                $beforeProof = strlen($out);
+                $type("\x10");
+                $gone = $readUntil(static fn (string $o): bool => false !== strpos($o, 'Go to File', $beforeProof), 10);
+                $closed += $gone ? 1 : 0;
+                $verdict = sprintf('Escape %s the card, redrawing %d bytes (it was drawn %d bytes after ready, of %d)', $gone ? 'closed' : 'did not close', $redrawn, $welcomeAt - $readyAt, $before - $readyAt);
+                if (!$gone) {
                     // A loop blocked after the first paint would answer late, if at all: how late.
                     $readUntil(static fn (string $o): bool => strlen($o) > $before, 15);
                     $verdict .= strlen($out) > $before

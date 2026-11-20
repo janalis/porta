@@ -9,8 +9,8 @@ use Janalis\Viz\GraphViz\DotJsonParser;
 use Janalis\Viz\GraphViz\DotPipeline;
 use Janalis\Viz\GraphViz\GraphParseException;
 use Janalis\Viz\Render\Format;
+use Porta\Support\PathExecutables;
 use Porta\Support\SingleSlotProcess;
-use Symfony\Component\Process\ExecutableFinder;
 
 /**
  * The Graphviz-backed {@see LayoutEngine}: `dot -Tjson0` for geometry and
@@ -62,7 +62,7 @@ final readonly class DotLayoutEngine implements LayoutEngine
             return $configured;
         }
 
-        return new ExecutableFinder()->find('dot');
+        return PathExecutables::here()->find('dot');
     }
 
     public function layout(string $dot, \Closure $onDone, \Closure $onError): void

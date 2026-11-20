@@ -100,6 +100,45 @@ final class PathExecutablesTest extends TestCase
         $this->assertSame($tool, new PathExecutables($this->dir('bin').'/', drives: $this->dir(''))->find('tool'));
     }
 
+    public function testUnderWslAnEmptyEntryIsTheCurrentDirectory(): void
+    {
+        $this->program('bin/tool');
+        $cwd = (string) \getcwd();
+        \chdir($this->dir('bin'));
+        try {
+            $this->assertSame('./tool', new PathExecutables(':'.$this->dir('c'), drives: $this->dir(''))->find('tool'));
+        } finally {
+            \chdir($cwd);
+        }
+    }
+
+    public function testUnderWslAnEntryMayNameTheProgramItself(): void
+    {
+        $tool = $this->program('bin/tool');
+
+        $this->assertSame($tool, new PathExecutables($tool, drives: $this->dir(''))->find('tool'));
+        $this->assertNull(new PathExecutables($tool, drives: $this->dir(''))->find('other'), 'only under its own name');
+    }
+
+    public function testTheDrivesAreWhereWslConfMountsThem(): void
+    {
+        $conf = $this->dir('wsl.conf');
+        $this->assertSame('/mnt/', PathExecutables::driveRoot($conf), 'no wsl.conf: the default');
+
+        \file_put_contents($conf, data: "[boot]\nsystemd = true\n");
+        $this->assertSame('/mnt/', PathExecutables::driveRoot($conf), 'no automount root: the default');
+
+        \file_put_contents($conf, data: "[automount]\nroot = /\noptions = \"metadata\"\n");
+        $this->assertSame('/', PathExecutables::driveRoot($conf));
+
+        \file_put_contents($conf, data: "[automount]\nroot = \"/windows\"\n");
+        $this->assertSame('/windows/', PathExecutables::driveRoot($conf));
+
+        // Raw INI keeps single quotes: wsl.conf allows them.
+        \file_put_contents($conf, data: "[automount]\nroot = '/windows'\n");
+        $this->assertSame('/windows/', PathExecutables::driveRoot($conf));
+    }
+
     public function testUnderWslADriveItselfIsNotSearched(): void
     {
         // `/mnt/c` with nothing after it is the drive's root, as much Windows' as its folders.

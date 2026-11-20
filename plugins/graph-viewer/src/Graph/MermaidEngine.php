@@ -7,9 +7,9 @@ namespace Porta\GraphViewer\Graph;
 use Janalis\Viz\Mermaid\MermaidCommand;
 use Janalis\Viz\Render\Format;
 use Porta\Support\Files;
+use Porta\Support\PathExecutables;
 use Porta\Support\SingleSlotProcess;
 use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Component\Process\ExecutableFinder;
 
 /** Local mmdc, with a private output directory per request and live tool discovery. */
 final class MermaidEngine implements DiagramEngine
@@ -42,7 +42,6 @@ final class MermaidEngine implements DiagramEngine
         private readonly \Closure|string|null $toolPath = null,
         private readonly SingleSlotProcess $slot = new SingleSlotProcess(),
         private readonly Filesystem $files = new Filesystem(),
-        private readonly ExecutableFinder $finder = new ExecutableFinder(),
         private readonly ?\Closure $browserConfig = null,
     ) {}
 
@@ -56,7 +55,7 @@ final class MermaidEngine implements DiagramEngine
         $configured = $this->toolPath instanceof \Closure ? ($this->toolPath)() : $this->toolPath;
         $path = \trim((string) $configured);
 
-        return '' !== $path ? $path : $this->finder->find('mmdc');
+        return '' !== $path ? $path : PathExecutables::here()->find('mmdc');
     }
 
     public function render(string $source, int $dpi, \Closure $onPng, \Closure $onError): void

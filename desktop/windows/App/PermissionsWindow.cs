@@ -230,9 +230,12 @@ namespace Porta.Desktop.App
             {
                 console = Process.Start(new ProcessStartInfo(LaunchPlan.Executable) { UseShellExecute = true });
             }
-            catch (System.ComponentModel.Win32Exception)
+            catch (System.ComponentModel.Win32Exception exception)
             {
-                console = null;
+                // No console, no first start to wait for: say so, rather than ask Linux and start it here.
+                detail.Text = "Ubuntu's own window could not be opened: " + exception.Message;
+                AskToOpenUbuntu();
+                return;
             }
 
             Say("Choose a Linux user in the window that opened, then close it: Porta opens");
@@ -240,7 +243,7 @@ namespace Porta.Desktop.App
             watch = timer;
             timer.Tick += async (_, _) =>
             {
-                if (console != null && !console.HasExited)
+                if (console?.HasExited == false)
                 {
                     return;
                 }
@@ -250,11 +253,13 @@ namespace Porta.Desktop.App
                 var user = await Task.Run(() => WslShell.Exec("id", "-u"));
                 if (user == "0")
                 {
-                    // Closed before Ubuntu had its user: a project opened as root would leave root's files in it.
-                    detail.Text = "Ubuntu has no user of its own yet: Porta does not run your projects as root.";
-                    var again = new Button { Content = "Open Ubuntu", Padding = new Thickness(12, 4, 12, 4) };
-                    again.Click += (_, _) => OpenUbuntu();
-                    accessory.Content = again;
+                    // Closed before Ubuntu had its user: a project opened as root would leave root's
+                    // files in it. Ubuntu asks for a user at its first start only, so opening it again
+                    // gives a root shell: the steps that make one are what helps.
+                    detail.Text = "Ubuntu has no user of its own yet, and Porta does not run your projects as root. "
+                        + "In Ubuntu's window: adduser <name>; put \"[user]\" and \"default=<name>\" in /etc/wsl.conf; "
+                        + "then wsl.exe --shutdown, which restarts it as that user and closes the window, and Porta opens.";
+                    AskToOpenUbuntu();
                     return;
                 }
 
@@ -262,6 +267,13 @@ namespace Porta.Desktop.App
                 Retry?.Invoke();
             };
             timer.Start();
+        }
+
+        private void AskToOpenUbuntu()
+        {
+            var again = new Button { Content = "Open Ubuntu", Padding = new Thickness(12, 4, 12, 4) };
+            again.Click += (_, _) => OpenUbuntu();
+            accessory.Content = again;
         }
 
         private void Say(string text)
