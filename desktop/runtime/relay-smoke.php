@@ -76,7 +76,6 @@ for ($run = 1; $run <= $runs; ++$run) {
             $verdict = 'no welcome card';
             if ($readUntil(static fn (string $o): bool => false !== strpos($o, 'Welcome', $readyAt), 30)) {
                 $before = strlen($out);
-                $sent = microtime(true);
                 $type("\x1b");
                 $readFor(3.0);
                 $redrawn = strlen($out) - $before;
@@ -89,11 +88,7 @@ for ($run = 1; $run <= $runs; ++$run) {
                 $closed += $gone ? 1 : 0;
                 $verdict = sprintf('Escape %s the card, redrawing %d bytes (it was drawn %d bytes after ready, of %d)', $gone ? 'closed' : 'did not close', $redrawn, $welcomeAt - $readyAt, $before - $readyAt);
                 if (!$gone) {
-                    // A loop blocked after the first paint would answer late, if at all: how late.
-                    $readUntil(static fn (string $o): bool => strlen($o) > $before, 15);
-                    $verdict .= strlen($out) > $before
-                        ? sprintf('; Porta drew again %.1fs after the Escape', microtime(true) - $sent)
-                        : '; Porta drew nothing for 18s after it';
+                    $verdict .= "\n  after Ctrl+P: ".substr((string) preg_replace('/\e(\[[0-?]*[ -\/]*[@-~]|\][^\a\e]*(\a|\e\\\\)|[@-Z\\\\-_])/', ' ', substr($out, $beforeProof)), 0, 1500);
                     $freezes = (string) @file_get_contents("$project/.porta/freeze.log");
                     $verdict .= "\n  freeze.log: ".('' === $freezes ? '(none)' : substr($freezes, -1500));
                 }
