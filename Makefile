@@ -58,7 +58,7 @@ DESKTOP_RUNTIME ?=
 DESKTOP_PROJECT ?=
 DESKTOP_INSTALLER ?=
 
-.PHONY: desktop-test-macos desktop-test-linux desktop-test-windows desktop-e2e-macos desktop-e2e-linux desktop-e2e-windows desktop-e2e-windows-installed
+.PHONY: desktop-test-macos desktop-test-linux desktop-test-windows desktop-e2e-macos desktop-e2e-linux desktop-e2e-windows desktop-e2e-windows-installed desktop-e2e-relay
 
 desktop-test-macos:
 	cd desktop/macos && swift test
@@ -81,6 +81,12 @@ desktop-e2e-linux:
 	dbus-run-session -- xvfb-run -a desktop/linux/smoke.sh "$(DESKTOP_APP)"
 	dbus-run-session -- desktop/linux/smoke-session.sh wayland "$(DESKTOP_APP)"
 	dbus-run-session -- xvfb-run -a desktop/linux/smoke-session.sh menu "$(DESKTOP_APP)"
+
+# The relay the Windows application runs Porta through, driven on this machine (Linux or macOS):
+# DESKTOP_PHP is the bundled PHP, DESKTOP_PHAR the built porta.phar.
+desktop-e2e-relay:
+	@test -n "$(DESKTOP_PHP)" -a -n "$(DESKTOP_PHAR)" || { echo 'DESKTOP_PHP and DESKTOP_PHAR are needed' >&2; exit 2; }
+	"$(DESKTOP_PHP)" -n desktop/runtime/relay-smoke.php --php "$(DESKTOP_PHP)" --phar "$(DESKTOP_PHAR)" --runs $(or $(DESKTOP_RUNS),5) $(if $(DESKTOP_PROJECTS),--projects "$(DESKTOP_PROJECTS)")
 
 # DESKTOP_RUNTIME: the runtime folder Porta runs from inside WSL; DESKTOP_PROJECT: a
 # Windows folder for it to open; DESKTOP_INSTALLER: the built installer, installed for real.

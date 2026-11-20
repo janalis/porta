@@ -202,6 +202,7 @@ its window. CI runs the same targets.
 | macOS | `make desktop-e2e-macos DESKTOP_APP=<Porta.app>` |
 | Linux | `make desktop-e2e-linux DESKTOP_APP=<lib/porta-desktop>` (needs `xvfb`, `xdotool`, `weston`, `dbus`) |
 | Windows | `make desktop-e2e-windows DESKTOP_RUNTIME=<runtime> DESKTOP_PROJECT=<folder> DESKTOP_INSTALLER=<setup.exe>` (needs WSL; it installs for the current user) |
+| The Windows relay, on Linux or macOS | `make desktop-e2e-relay DESKTOP_PHP=<bundled php> DESKTOP_PHAR=<porta.phar>`: Porta through the relay the Windows window uses, a fresh first run each time (`DESKTOP_RUNS`, `DESKTOP_PROJECTS`) |
 
 The release workflow signs when these secrets exist, and ad hoc otherwise:
 `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGN_IDENTITY`,
