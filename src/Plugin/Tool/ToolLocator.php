@@ -9,7 +9,7 @@ use Porta\Config\WorkspaceTrust;
 use Porta\Plugin\Api\BinarySearch;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Support\Files;
-use Symfony\Component\Process\ExecutableFinder;
+use Porta\Support\PathExecutables;
 
 /**
  * Where a declared tool's binary is on this machine, and who put it there.
@@ -35,7 +35,9 @@ use Symfony\Component\Process\ExecutableFinder;
  *
  * Deliberately not memoised: the setting changes at runtime, and a cached
  * answer would ignore it until restart (chroma's used to). It costs a few stat
- * calls on a path that runs per resolution, never per key.
+ * calls on a path that runs per resolution, never per key: under WSL, Windows'
+ * own PATH folders are left out ({@see \Porta\Support\PathExecutables}), as each
+ * stat there took long enough to freeze the IDE.
  */
 final class ToolLocator
 {
@@ -58,7 +60,7 @@ final class ToolLocator
         public readonly ?string $binDir,
         ?\Closure $find = null,
     ) {
-        $this->find = $find ?? static fn (string $name): ?string => new ExecutableFinder()->find($name);
+        $this->find = $find ?? static fn (string $name): ?string => PathExecutables::here()->find($name);
     }
 
     /** The production wiring: the plugin settings as configured, the session's trust, the user's home. */

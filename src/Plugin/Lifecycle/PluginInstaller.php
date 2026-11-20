@@ -13,10 +13,10 @@ use Porta\Support\AsyncProcess;
 use Porta\Support\FileLock;
 use Porta\Support\Files;
 use Porta\Support\JsonFile;
+use Porta\Support\PathExecutables;
 use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Component\Process\ExecutableFinder;
 
 /**
  * Installs and removes plugin PACKAGES under `<project>/.porta/plugins` and
@@ -107,7 +107,7 @@ final class PluginInstaller
     /** The production wiring: plugin dirs and the git/composer binaries resolved from the environment. */
     public static function create(string $rootDir, Translator $translator): self
     {
-        $finder = new ExecutableFinder();
+        $finder = PathExecutables::here();
 
         return new self($rootDir, PortaHome::base(), $translator, static fn (): ?string => $finder->find('git'), PluginLoader::embeddedDir(), static fn (): ?string => $finder->find('composer'));
     }

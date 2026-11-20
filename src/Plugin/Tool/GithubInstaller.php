@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin\Tool;
 
 use Porta\Support\Files;
-use Symfony\Component\Process\ExecutableFinder;
+use Porta\Support\PathExecutables;
 
 /**
  * Downloads a tool's release binary for this machine: resolve the latest tag
@@ -104,7 +104,7 @@ final readonly class GithubInstaller
         array $versionArgs = ['--version'],
     ) {
         $this->versionArgs = [] === $versionArgs ? ['--version'] : $versionArgs;
-        $this->findTool = $findTool ?? static fn (string $tool): ?string => new ExecutableFinder()->find($tool);
+        $this->findTool = $findTool ?? static fn (string $tool): ?string => PathExecutables::here()->find($tool);
         $this->onProgress = $onProgress ?? static function (InstallStep $step, int $percent): void {};
         // {@see ProcessRunner::default()} carries the reasoning, including why a
         // refused spawn has to become a failed exit rather than silence.

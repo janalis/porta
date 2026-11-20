@@ -9,7 +9,7 @@ use Porta\Config\ConfigScope;
 use Porta\Config\WorkspaceTrust;
 use Porta\Support\Argv;
 use Porta\Support\JsonFile;
-use Symfony\Component\Process\ExecutableFinder;
+use Porta\Support\PathExecutables;
 
 /**
  * Finds the language servers for the current project.
@@ -269,6 +269,6 @@ final class ServerLocator
 
     private static function which(string $binary): ?string
     {
-        return new ExecutableFinder()->find($binary);
+        return PathExecutables::here()->find($binary);
     }
 }

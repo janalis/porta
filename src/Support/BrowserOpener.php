@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Support;
 
-use Symfony\Component\Process\ExecutableFinder;
-
 /**
  * Resolves the platform command that opens a URL in the default browser.
  * Pure command resolution only — spawning is the caller's job (AsyncProcess),
@@ -28,7 +26,7 @@ final class BrowserOpener
             return ['cmd', '/c', 'start', '', $url];
         }
 
-        $opener = new ExecutableFinder()->find('Darwin' === $osFamily ? 'open' : 'xdg-open');
+        $opener = PathExecutables::here()->find('Darwin' === $osFamily ? 'open' : 'xdg-open');
 
         return null === $opener ? null : [$opener, $url];
     }

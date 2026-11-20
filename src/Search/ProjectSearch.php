@@ -8,10 +8,10 @@ use Porta\Editor\DiskText;
 use Porta\Filesystem\RemoteFilesystem;
 use Porta\Support\AsyncProcess;
 use Porta\Support\Files;
+use Porta\Support\PathExecutables;
 use Revolt\EventLoop;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Process\Exception\RuntimeException as ProcessRuntimeException;
-use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -730,11 +730,11 @@ final class ProjectSearch
 
     private function findGrep(): ?string
     {
-        // Resolved once: ExecutableFinder stats every $PATH entry, and this
+        // Resolved once: a lookup stats every $PATH entry, and this
         // ran per debounced keystroke in Find in Files and Search Everywhere.
         if (!$this->grepResolved) {
             $this->grepResolved = true;
-            $this->grep = new ExecutableFinder()->find('grep');
+            $this->grep = PathExecutables::here()->find('grep');
         }
 
         return $this->grep;

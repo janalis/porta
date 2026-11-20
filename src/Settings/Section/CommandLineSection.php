@@ -17,10 +17,10 @@ use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
 use Porta\Settings\SettingsSection;
 use Porta\Support\AsyncProcess;
+use Porta\Support\PathExecutables;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\UpdateRestart;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
-use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
 
 /**
@@ -332,7 +332,7 @@ final class CommandLineSection implements SettingsSection
      */
     private static function runGit(array $args): array
     {
-        $git = new ExecutableFinder()->find('git');
+        $git = PathExecutables::here()->find('git');
         if (null === $git) {
             return [127, ''];
         }

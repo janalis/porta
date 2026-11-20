@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Tool;
 
+use Porta\Support\PathExecutables;
 use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
-use Symfony\Component\Process\ExecutableFinder;
 
 /**
  * Installs and updates one declared tool, through the source that fits.
@@ -66,7 +66,7 @@ final readonly class ToolInstaller
     {
         // Each manager is looked up the first time it matters, once: a name
         // the PATH misses shells out to `command -v`, and this runs at boot.
-        $finder = new ExecutableFinder();
+        $finder = PathExecutables::here();
         $found = [];
         $find = static function (string $name) use ($finder, &$found): ?string {
             if (!\array_key_exists($name, $found)) {

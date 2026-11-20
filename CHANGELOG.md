@@ -35,6 +35,14 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **Help → Install the porta Command…**: the Command line page of the settings,
   where the `porta` command is linked, updated or removed.
 
+### Fixed
+
+- **Freezes under WSL**: looking for a tool that is not installed searched every
+  folder of Windows' own PATH, each one slow to reach from WSL, and froze the
+  IDE for several seconds after it opened, dropping what was typed meanwhile.
+  Those folders are no longer searched for programs; a terminal in Porta keeps
+  the whole PATH.
+
 ## [0.1.9] - 2026-11-19
 
 ### Fixed
