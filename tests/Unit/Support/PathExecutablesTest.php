@@ -100,13 +100,14 @@ final class PathExecutablesTest extends TestCase
         $this->assertSame($tool, new PathExecutables($this->dir('bin').'/', drives: $this->dir(''))->find('tool'));
     }
 
-    public function testUnderWslAnEmptyEntryIsTheCurrentDirectory(): void
+    public function testUnderWslAnEmptyEntryIsNotTheCurrentDirectory(): void
     {
+        // Porta runs in the project: the current directory's `git` is the project's own.
         $this->program('bin/tool');
         $cwd = (string) \getcwd();
         \chdir($this->dir('bin'));
         try {
-            $this->assertSame('./tool', new PathExecutables(':'.$this->dir('c'), drives: $this->dir(''))->find('tool'));
+            $this->assertNull(new PathExecutables(':'.$this->dir('c'), drives: $this->dir(''))->find('tool'));
         } finally {
             \chdir($cwd);
         }
@@ -134,9 +135,20 @@ final class PathExecutablesTest extends TestCase
         \file_put_contents($conf, data: "[automount]\nroot = \"/windows\"\n");
         $this->assertSame('/windows/', PathExecutables::driveRoot($conf));
 
-        // Raw INI keeps single quotes: wsl.conf allows them.
         \file_put_contents($conf, data: "[automount]\nroot = '/windows'\n");
         $this->assertSame('/windows/', PathExecutables::driveRoot($conf));
+
+        // A comment after the value, names in another case, as WSL reads them.
+        \file_put_contents($conf, data: "# drives\n[Automount]\nRoot = /win/  # where Windows lives\n; root = /nowhere/\n");
+        $this->assertSame('/win/', PathExecutables::driveRoot($conf));
+
+        // Indented lines; a value in brackets is no section; a longer key ending in "root" is not root.
+        \file_put_contents($conf, data: "[automount]\n  options = [x]\n  root = /win/\n  chroot = /nope/\n");
+        $this->assertSame('/win/', PathExecutables::driveRoot($conf));
+
+        // Another section's root, and a root that is no absolute path, are not the drives'.
+        \file_put_contents($conf, data: "[automount]\nroot = mnt\n[network]\nroot = /net/\n");
+        $this->assertSame('/mnt/', PathExecutables::driveRoot($conf));
     }
 
     public function testUnderWslADriveItselfIsNotSearched(): void

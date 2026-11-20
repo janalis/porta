@@ -35,23 +35,36 @@ final readonly class PathExecutables
     /** This process's: WSL sets WSL_DISTRO_NAME in everything it starts. */
     public static function here(): self
     {
+        // Read once: git asks for its binary at every spawn, and wsl.conf is read at WSL's own start only.
+        static $drives = null;
         $path = \getenv('PATH');
         $path = false === $path ? '' : $path;
         $wsl = false !== \getenv('WSL_DISTRO_NAME');
+        $drives ??= $wsl ? self::driveRoot('/etc/wsl.conf') : null;
 
-        return new self($wsl ? $path : null, $wsl ? self::driveRoot('/etc/wsl.conf') : '/mnt/');
+        return new self($wsl ? $path : null, $drives ?? '/mnt/');
     }
 
     /**
      * Where WSL mounts the Windows drives, with a trailing slash: `/mnt/`, or the
-     * `root` of `[automount]` in $wslConf (`root = /` puts them at `/c/`).
+     * `root` of `[automount]` in $wslConf (`root = /` puts them at `/c/`). Read
+     * as WSL reads it: comments after `#` or `;`, names in any case, and a root
+     * that is not an absolute path ignored.
      */
     public static function driveRoot(string $wslConf): string
     {
-        $conf = \is_file($wslConf) ? \parse_ini_file($wslConf, process_sections: true, scanner_mode: \INI_SCANNER_RAW) : false;
-        $root = \is_array($conf) && \is_array($conf['automount'] ?? null) && \is_string($conf['automount']['root'] ?? null) ? \trim($conf['automount']['root'], characters: " \"'") : '';
+        $lines = \is_file($wslConf) ? \file($wslConf, flags: \FILE_IGNORE_NEW_LINES) : false;
+        $section = '';
+        $root = '';
+        foreach (\is_array($lines) ? $lines : [] as $line) {
+            $line = \trim((string) \preg_replace('/(^|\s)[#;].*$/', replacement: '', subject: $line));
+            $section = 1 === \preg_match('/^\[\s*(.+?)\s*\]$/', $line, $header) ? \strtolower($header[1]) : $section;
+            if ('automount' === $section && 1 === \preg_match('/^root\s*=\s*(.*)$/i', $line, $setting)) {
+                $root = \trim($setting[1], characters: " \t\"'");
+            }
+        }
 
-        return '' === $root ? '/mnt/' : \rtrim($root, characters: '/').'/';
+        return \str_starts_with($root, '/') ? \rtrim($root, characters: '/').'/' : '/mnt/';
     }
 
     /** The path of the program $name, or null when it is nowhere on the PATH. */
@@ -62,14 +75,15 @@ final readonly class PathExecutables
 
     /**
      * The first program $name in the PATH's folders that are not on a Windows
-     * drive, as ExecutableFinder reads them: an empty entry is the current
-     * directory, and an entry may name the program itself.
+     * drive; an entry may name the program itself, as ExecutableFinder allows.
+     * An empty entry is skipped, where ExecutableFinder reads the current
+     * directory: Porta runs in the project, and a stray `:` would run an
+     * untrusted project's own `./git` for git.
      */
     private function onLinuxPath(string $path, string $name): ?string
     {
         $found = null;
-        foreach (\explode(\PATH_SEPARATOR, $path) as $entry) {
-            $dir = '' === $entry ? '.' : $entry;
+        foreach (\array_filter(\explode(\PATH_SEPARATOR, $path), static fn (string $entry): bool => '' !== $entry) as $dir) {
             $found ??= $this->onWindowsDrive($dir) ? null : $this->programIn($dir, $name);
         }
 

@@ -226,14 +226,22 @@ namespace Porta.Desktop.App
         private void OpenUbuntu()
         {
             Process? console;
+            string? failure = null;
             try
             {
                 console = Process.Start(new ProcessStartInfo(LaunchPlan.Executable) { UseShellExecute = true });
             }
             catch (System.ComponentModel.Win32Exception exception)
             {
-                // No console, no first start to wait for: say so, rather than ask Linux and start it here.
-                detail.Text = "Ubuntu's own window could not be opened: " + exception.Message;
+                console = null;
+                failure = exception.Message;
+            }
+
+            if (console == null)
+            {
+                // No console of ours (none started, or the shell handed it to another process):
+                // nothing to wait for, and asking Linux now could take its first start for itself.
+                detail.Text = "Ubuntu's own window could not be opened" + (failure == null ? "." : ": " + failure);
                 AskToOpenUbuntu();
                 return;
             }

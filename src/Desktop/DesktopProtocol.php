@@ -36,6 +36,9 @@ final class DesktopProtocol
 
     private ?string $menuPoll = null;
 
+    /** The announcement waiting for the loop, which a detach before it comes cancels. */
+    private ?string $readyPending = null;
+
     /** The unsaved count the window was last told; null before it was told any. */
     private ?int $dirty = null;
 
@@ -111,7 +114,10 @@ final class DesktopProtocol
      */
     public function announceReadyOnceStarted(string $root): void
     {
-        EventLoop::defer(fn () => $this->announceReady($root));
+        $this->readyPending = EventLoop::defer(function () use ($root): void {
+            $this->readyPending = null;
+            $this->announceReady($root);
+        });
     }
 
     /** The IDE is up on $root: the window takes its name, and may start asking. */
@@ -130,6 +136,11 @@ final class DesktopProtocol
     /** This IDE is ending: the next project's brings its own menus. */
     public function detach(): void
     {
+        // A boot that failed before the loop ran: its ready must not reach the next project's window.
+        if (null !== $this->readyPending) {
+            EventLoop::cancel($this->readyPending);
+            $this->readyPending = null;
+        }
         if (null !== $this->menuPoll) {
             EventLoop::cancel($this->menuPoll);
             $this->menuPoll = null;

@@ -85,7 +85,8 @@ namespace Porta.Desktop.App
                     return new Answer(null, "", late);
                 }
 
-                return new Answer(process.ExitCode, output.Result, errors.Wait(Remaining(deadline)) ? errors.Result : "");
+                // Half a second for standard error, never the whole deadline: the answer is in.
+                return new Answer(process.ExitCode, output.Result, errors.Wait(Math.Min(Remaining(deadline), 500)) ? errors.Result : "");
             }
             catch (System.ComponentModel.Win32Exception exception)
             {
