@@ -725,6 +725,11 @@ static void start_porta(PortaWindow *self)
 
 static void on_open(GApplication *application, GFile **files, int count, const char *hint, gpointer data);
 
+/* The window a drop is being handled for: what lands in it is already where the user is looking, so it
+ * is not presented. GNOME on Wayland refuses a present without an activation token, which a drop does
+ * not carry, and says "Porta is ready" instead. Another project's window is still brought forward. */
+static PortaWindow *dropped_on = NULL;
+
 /* Files and folders dropped on the window go where opening them with Porta would. */
 static gboolean on_drop(GtkDropTarget *target, const GValue *value, double x, double y, gpointer data)
 {
@@ -744,7 +749,9 @@ static gboolean on_drop(GtkDropTarget *target, const GValue *value, double x, do
     if (0 == count) {
         return FALSE;
     }
+    dropped_on = self;
     on_open(G_APPLICATION(gtk_window_get_application(GTK_WINDOW(self->window))), files, (int) count, "", NULL);
+    dropped_on = NULL;
     return TRUE;
 }
 
@@ -909,7 +916,9 @@ static void on_open(GApplication *application, GFile **files, int count, const c
         for (GList *entry = windows; NULL != entry && !found; entry = entry->next) {
             PortaWindow *window = entry->data;
             if (0 == g_strcmp0(window->project_key, key)) {
-                gtk_window_present(GTK_WINDOW(window->window));
+                if (window != dropped_on) {
+                    gtk_window_present(GTK_WINDOW(window->window));
+                }
                 found = TRUE;
             } else if (NULL != window->project_key && g_str_has_prefix(key, window->project_key) && '/' == key[strlen(window->project_key)]) {
                 /* A file, or a folder inside a project already open, goes to that window,
@@ -920,7 +929,9 @@ static void on_open(GApplication *application, GFile **files, int count, const c
                 } else {
                     g_ptr_array_add(window->pending, g_strdup(key));
                 }
-                gtk_window_present(GTK_WINDOW(window->window));
+                if (window != dropped_on) {
+                    gtk_window_present(GTK_WINDOW(window->window));
+                }
                 found = TRUE;
             }
         }
