@@ -24,16 +24,17 @@ namespace Porta.Desktop
 
         /// <summary>
         /// What wsl.exe said, fit to show in a few lines: it may write UTF-16 read as UTF-8 (a NUL after
-        /// every letter), with blank lines between. Its error code stays: it is what a search finds.
+        /// every letter), with blank lines between. The last lines are kept: its progress comes first,
+        /// and its error and the error code, which is what a search finds, last.
         /// </summary>
         public static string Reason(string output)
         {
             var lines = output.Replace("\0", "").Replace("\r", "").Split('\n')
                 .Select(line => line.Trim())
                 .Where(line => line.Length > 0)
-                .Take(MaxLines);
+                .ToList();
 
-            return string.Join("\n", lines);
+            return string.Join("\n", lines.Skip(System.Math.Max(0, lines.Count - MaxLines)));
         }
 
         private const int MaxLines = 6;

@@ -267,8 +267,26 @@ public class CoreTests
     }
 
     [Fact]
-    public void ALongAnswerIsCutToAFewLines()
+    public void ALongAnswerKeepsItsLastLines()
     {
-        Assert.Equal(6, WslCheck.Reason(string.Join("\n", Enumerable.Range(1, 20))).Split('\n').Length);
+        Assert.Equal("15\n16\n17\n18\n19\n20", WslCheck.Reason(string.Join("\n", Enumerable.Range(1, 20))));
+    }
+
+    [Fact]
+    public void AFailedInstallShowsItsErrorRatherThanItsProgress()
+    {
+        // `wsl --install --no-launch` on Windows on Arm without virtualization, as a VM gives it.
+        var said = "Downloading: Ubuntu\nInstalling: Ubuntu\n"
+            + "WSL2 is unable to start since virtualization is not enabled on this machine.\n"
+            + "Please ensure the \"Virtual Machine Platform\" optional component is enabled and virtualization is turned on in your computer's firmware settings.\n\n"
+            + "Enable \"Virtual Machine Platform\" by running: wsl.exe --install --no-distribution\n\n"
+            + "For information please visit https://aka.ms/enablevirtualization\n"
+            + "Error code: Wsl/InstallDistro/Service/RegisterDistro/CreateVm/HCS/HCS_E_HYPERV_NOT_INSTALLED\n"
+            + "If this error was unexpected, please consider searching for existing issues or filing a new issue at https://github.com/microsoft/WSL/issues.\n";
+
+        var reason = WslCheck.Reason(said);
+
+        Assert.StartsWith("WSL2 is unable to start", reason);
+        Assert.Contains("HCS_E_HYPERV_NOT_INSTALLED", reason);
     }
 }
