@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Desktop;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Desktop\LoginEnvironment;
 
 /** The Windows application's terminal, exercised over real pipes and a real PTY. */
 final class WslRelayTest extends TestCase
@@ -21,7 +22,11 @@ final class WslRelayTest extends TestCase
     private function relay(array $command, int $columns = 100, int $rows = 30): void
     {
         $relay = \dirname(__DIR__, 3).'/desktop/runtime/wsl-relay.php';
-        $process = \proc_open([\PHP_BINARY, '-n', $relay, (string) $columns, (string) $rows, ...$command], [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $this->pipes);
+        $process = \proc_open(
+            [...LoginEnvironment::bareProcess((string) \ini_get('extension_dir')), $relay, (string) $columns, (string) $rows, ...$command],
+            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $this->pipes,
+        );
         $this->assertIsResource($process);
         $this->process = $process;
         \stream_set_blocking($this->pipes[1], enable: false);
