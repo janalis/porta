@@ -70,13 +70,18 @@ string Screen()
     }
 }
 
+// The text Porta drew, without its escape sequences, as a reader can make sense of it: its last `length` characters.
+string Readable(string drawn, int length)
+{
+    var text = System.Text.RegularExpressions.Regex.Replace(drawn, @"\x1b(\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(\x07|\x1b\\)|[@-Z\\-_])", " ");
+    text = System.Text.RegularExpressions.Regex.Replace(text, " {2,}", " ");
+    return new string(text.TakeLast(length).ToArray());
+}
+
 void Fail(string why)
 {
     Console.Error.WriteLine("smoke: " + why);
-    // The text Porta drew, without its escape sequences: what a reader can make sense of.
-    var text = System.Text.RegularExpressions.Regex.Replace(Screen(), "\u001b(\\[[0-?]*[ -/]*[@-~]|\\][^\u0007\u001b]*(\u0007|\u001b\\\\)|[@-Z\\\\-_])", " ");
-    text = System.Text.RegularExpressions.Regex.Replace(text, " {2,}", " ");
-    Console.Error.WriteLine("smoke: the screen ended with: " + new string(text.TakeLast(3000).ToArray()));
+    Console.Error.WriteLine("smoke: the screen ended with: " + Readable(Screen(), 3000));
     process.Kill();
     Environment.Exit(1);
 }
@@ -148,6 +153,7 @@ if (ready.Root != project)
 }
 
 Console.WriteLine("smoke: the IDE is up inside WSL");
+var readyAt = Screen().Length;
 
 Send(RelayFrame.Resize(100, 30));
 Thread.Sleep(1000);
@@ -159,6 +165,8 @@ AwaitScreen(0, "Welcome", "the welcome card");
 // The Escape key on the welcome card, the moment it is drawn: once, a first run sent it then and
 // Porta drew nothing more. Reported, not failed, until it is understood; a second Escape follows if so.
 var beforeEscape = Screen().Length;
+// Diagnostic: whether the card is drawn since Porta was ready, or "Welcome" matched something earlier.
+Console.WriteLine($"smoke: diagnostic: 'Welcome' last drawn at {Screen().LastIndexOf("Welcome", StringComparison.Ordinal) - readyAt} bytes after ready, of {beforeEscape - readyAt}; the screen before Escape ends with: {Readable(Screen(), 400)}");
 Type("\u001b");
 Thread.Sleep(3000);
 var redrawn = Screen().Length - beforeEscape;
@@ -176,6 +184,10 @@ var beforeOpen = Screen().Length;
 // A file of the project, as the window hands it over, opens here; an edit is told, and so is its save.
 Type(DesktopMessage.OpenRequest(token, project + "/a.php"));
 AwaitScreen(beforeOpen, "a.php", "the opened file's tab");
+// Diagnostic: a held Escape would act now, with the next bytes: does the card close here?
+Thread.Sleep(1000);
+var afterOpen = Screen().Substring(beforeOpen);
+Console.WriteLine($"smoke: diagnostic: opening a.php drew {afterOpen.Length} bytes; 'Welcome' among them: {afterOpen.Contains("Welcome")}; they begin: {Readable(afterOpen.Substring(0, Math.Min(afterOpen.Length, 1500)), 300)}");
 Thread.Sleep(500);
 Type("x");
 AwaitState(unsaved: true);
