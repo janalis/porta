@@ -76,12 +76,22 @@ for ($run = 1; $run <= $runs; ++$run) {
             $verdict = 'no welcome card';
             if ($readUntil(static fn (string $o): bool => false !== strpos($o, 'Welcome', $readyAt), 30)) {
                 $before = strlen($out);
+                $sent = microtime(true);
                 $type("\x1b");
                 $readFor(3.0);
                 $redrawn = strlen($out) - $before;
                 $welcomeAt = strrpos(substr($out, 0, $before), 'Welcome');
                 $closed += $redrawn > 0 ? 1 : 0;
                 $verdict = sprintf('Escape redrew %d bytes (the card drawn %d bytes after ready, of %d)', $redrawn, $welcomeAt - $readyAt, $before - $readyAt);
+                if (0 === $redrawn) {
+                    // A loop blocked after the first paint would answer late, if at all: how late.
+                    $readUntil(static fn (string $o): bool => strlen($o) > $before, 15);
+                    $verdict .= strlen($out) > $before
+                        ? sprintf('; Porta drew again %.1fs after the Escape', microtime(true) - $sent)
+                        : '; Porta drew nothing for 18s after it';
+                    $freezes = (string) @file_get_contents("$project/.porta/freeze.log");
+                    $verdict .= "\n  freeze.log: ".('' === $freezes ? '(none)' : substr($freezes, -1500));
+                }
             }
         }
     }

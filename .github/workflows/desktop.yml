@@ -365,10 +365,10 @@ jobs:
         shell: pwsh
         timeout-minutes: 12
         run: |
-          wsl -- ./runtime/x86_64/php -n desktop/runtime/relay-smoke.php --php ./runtime/x86_64/php --phar runtime/porta.phar --runs 4 --projects /tmp
+          wsl -- ./runtime/x86_64/php -n desktop/runtime/relay-smoke.php --php ./runtime/x86_64/php --phar runtime/porta.phar --runs 2 --projects /tmp
           # Forward slashes: wsl.exe drops the backslashes of an argument on its way in.
           $drive = (wsl -- wslpath -u ($env:RUNNER_TEMP -replace '\\', '/')).Trim()
-          wsl -- ./runtime/x86_64/php -n desktop/runtime/relay-smoke.php --php ./runtime/x86_64/php --phar runtime/porta.phar --runs 8 --projects "$drive"
+          wsl -- ./runtime/x86_64/php -n desktop/runtime/relay-smoke.php --php ./runtime/x86_64/php --phar runtime/porta.phar --runs 10 --projects "$drive"
       - name: The installed application opens
         shell: pwsh
         run: |
