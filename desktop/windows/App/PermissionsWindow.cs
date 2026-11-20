@@ -50,9 +50,9 @@ namespace Porta.Desktop.App
             Closed += (_, _) => watch?.Stop();
         }
 
-        private UIElement Layout(string reason)
-        {
-            var (heading, explanation, name, about) = need switch
+        /// <summary>The window's words for what is missing: heading, explanation, and the row's name and detail.</summary>
+        private static (string Heading, string Explanation, string Name, string About) Texts(WslNeed need, string reason) =>
+            need switch
             {
                 WslNeed.Wsl => (
                     "Porta needs the Windows Subsystem for Linux",
@@ -71,6 +71,9 @@ namespace Porta.Desktop.App
                     reason),
             };
 
+        private UIElement Layout(string reason)
+        {
+            var (heading, explanation, name, about) = Texts(need, reason);
             var icon = new Image { Width = 64, Height = 64, Margin = new Thickness(0, 8, 0, 12), Source = AppIcon() };
             title.Text = heading;
             title.FontSize = 20;
@@ -192,22 +195,36 @@ namespace Porta.Desktop.App
         /// <summary>
         /// Ubuntu, in two steps: installed out of sight, so that a failure is told here rather than in a
         /// console that closes on it; then started in a console of its own, where it asks for a user.
-        /// Porta opens by itself once Linux answers as that user, or once the console is closed.
         /// </summary>
         private async void InstallDistribution()
         {
+            // A try after a failed one: the window says what it does now.
+            var (heading, explanation, _, about) = Texts(WslNeed.Distribution, "");
+            title.Text = heading;
+            subtitle.Text = explanation;
+            detail.Text = about;
             Say("Installing Ubuntu: it is downloaded, which can take a few minutes");
-            var (_, said) = await Task.Run(() => WslShell.Run(new[] { "--install", "--no-launch" }, TimeSpan.FromMinutes(30)));
+            var said = await Task.Run(() => WslShell.Run(new[] { "--install", "--no-launch" }, TimeSpan.FromMinutes(30)));
             if (WslShell.Distributions() == 0)
             {
                 // Without virtualization, for one: WSL's words say what to change.
                 title.Text = "Ubuntu could not be installed";
                 subtitle.Text = "Porta runs inside WSL, which answered:";
-                detail.Text = WslCheck.Reason(said);
+                detail.Text = WslCheck.Reason(said.All);
                 ShowAction();
                 return;
             }
 
+            OpenUbuntu();
+        }
+
+        /// <summary>
+        /// Ubuntu's own console, where its first start asks for a user. Linux is left alone while it is
+        /// open (a check from here could take that first start for itself); once it is closed, Porta
+        /// opens as that user, never as root.
+        /// </summary>
+        private void OpenUbuntu()
+        {
             Process? console;
             try
             {
@@ -218,27 +235,31 @@ namespace Porta.Desktop.App
                 console = null;
             }
 
-            Say("Choose a Linux user in the window that opened; Porta opens by itself");
-            var busy = false;
-            var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            Say("Choose a Linux user in the window that opened, then close it: Porta opens");
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             watch = timer;
             timer.Tick += async (_, _) =>
             {
-                if (busy)
+                if (console != null && !console.HasExited)
                 {
                     return;
                 }
 
-                busy = true;
-                // Root until Ubuntu has its user: a project opened as root would leave root's files in it.
+                timer.Stop();
+                console?.Dispose();
                 var user = await Task.Run(() => WslShell.Exec("id", "-u"));
-                busy = false;
-                if (timer.IsEnabled && ((user != null && user != "0") || console == null || console.HasExited))
+                if (user == "0")
                 {
-                    timer.Stop();
-                    console?.Dispose();
-                    Retry?.Invoke();
+                    // Closed before Ubuntu had its user: a project opened as root would leave root's files in it.
+                    detail.Text = "Ubuntu has no user of its own yet: Porta does not run your projects as root.";
+                    var again = new Button { Content = "Open Ubuntu", Padding = new Thickness(12, 4, 12, 4) };
+                    again.Click += (_, _) => OpenUbuntu();
+                    accessory.Content = again;
+                    return;
                 }
+
+                // A user, or no answer at all: the registry checks again, and shows what it finds.
+                Retry?.Invoke();
             };
             timer.Start();
         }

@@ -25,10 +25,11 @@ namespace Porta.Desktop.App
             var runtimeFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "runtime");
             var runtime = await Task.Run(() => WslPath(runtimeFolder));
             var root = project == null ? null : await Task.Run(() => WslPath(project));
-            var architecture = LaunchPlan.Architecture(await Task.Run(() => WslShell.Exec("uname", "-m") ?? ""));
+            var uname = await Task.Run(() => WslShell.Exec("uname", "-m"));
+            var architecture = uname == null ? null : LaunchPlan.Architecture(uname);
             if (runtime == null || architecture == null || (project != null && root == null))
             {
-                await ShowNeeds(project, answered: runtime != null && architecture != null);
+                await ShowNeeds(project, Reason(project, runtimeFolder, runtime, uname, architecture));
                 return;
             }
 
@@ -61,22 +62,29 @@ namespace Porta.Desktop.App
             opened.Show();
         }
 
+        /// <summary>Why Linux, which answered, cannot run Porta; null when it did not answer, and WSL is the one to ask.</summary>
+        private static string? Reason(string? project, string runtimeFolder, string? runtime, string? uname, string? architecture) =>
+            uname == null ? null
+            : architecture == null ? $"Porta brings PHP for x86_64 and aarch64 Linux; this distribution is {uname}."
+            : runtime == null ? $"WSL cannot reach Porta's own files in {runtimeFolder}."
+            : $"WSL cannot reach {project}.";
+
         /// <summary>What is missing, and the one step that helps; the application ends with it when it is alone.</summary>
-        /// <param name="answered">whether Linux answered, and only the project's folder was out of its reach</param>
-        private async Task ShowNeeds(string? project, bool answered)
+        /// <param name="answered">why Linux, which answered, cannot run Porta; null when it did not answer</param>
+        private async Task ShowNeeds(string? project, string? answered)
         {
-            // Linux that answered is installed, whatever the registry says: only the folder was missing.
-            var need = answered ? WslNeed.Start : WslCheck.Of(WslShell.Installed(), WslShell.Distributions());
-            var reason = need != WslNeed.Start ? ""
-                : answered ? $"WSL cannot reach {project}."
-                : WslCheck.Reason(await Task.Run(() => WslShell.Said("uname", "-m")));
+            // Linux that answered is installed, whatever the registry says.
+            var need = answered != null ? WslNeed.Start : WslCheck.Of(WslShell.Installed(), WslShell.Distributions());
+            var reason = answered
+                ?? (need == WslNeed.Start ? WslCheck.Reason(await Task.Run(() => WslShell.Said("uname", "-m"))) : "");
             var needs = new PermissionsWindow(need, reason);
             var retrying = false;
             needs.Retry += async () =>
             {
+                // Before the wait: closed while the check runs, the window must not end the application under it.
+                retrying = true;
                 // The window stays until the next one is up: the application ends with its last window.
                 await OpenAsync(project);
-                retrying = true;
                 needs.Close();
             };
             if (windows.Count == 0)
