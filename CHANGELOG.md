@@ -43,6 +43,14 @@ versions follow [Semantic Versioning](https://semver.org/).
   Those folders are no longer searched for programs; a terminal in Porta keeps
   the whole PATH. Which plugins are on is also decided in one look at what is
   installed, rather than once per plugin, which was slow on a Windows drive.
+- **Composer scripts on Linux**: a run in the terminal panel had no controlling
+  terminal on Linux, so anything that opens `/dev/tty` failed there. Composer
+  stopped every script with "Unable to launch a new process". A run now has
+  its terminal as on macOS, and Ctrl+C reaches it from the kernel.
+- **Linux desktop application**: the font dialog offered 14.67 for the
+  default 11 pt (pixels, not points) until a font was saved, so **Select**
+  grew the font by a third; and after the title bar's menu or the font dialog
+  closed, keys went to the menu button instead of Porta until a click.
 
 ## [0.1.9] - 2026-11-19
 
