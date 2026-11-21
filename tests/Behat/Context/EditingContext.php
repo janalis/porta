@@ -124,6 +124,7 @@ final class EditingContext implements TuinkAwareContextInterface
     public function theCaretIsAt(int $line, int $column): void
     {
         $this->document()->setCursor($line - 1, $column - 1);
+        $this->porta()->tui()->requestRender();
         $this->getSession()->settle();
     }
 
@@ -148,6 +149,7 @@ final class EditingContext implements TuinkAwareContextInterface
         $document->setCursor($fromLine - 1, $fromColumn - 1);
         $document->beginSelect();
         $document->setCursor($toLine - 1, $toColumn - 1, SelectionMode::Keep);
+        $this->porta()->tui()->requestRender();
         $this->getSession()->settle();
     }
 

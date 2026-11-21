@@ -284,25 +284,6 @@ final class ChromeContext implements TuinkAwareContextInterface
         return Widgets::byId($this->porta()->tui(), id: 'tree', class: FileTreeWidget::class);
     }
 
-    // --- Generic: belongs in tuink ---------------------------------------------
-
-    /**
-     * Where a row shows the same glyph twice — a tab's close and a card's close
-     * on the row under the menu bar — "the text" steps take the first.
-     */
-    #[When('I click on the last :text on line :line')]
-    public function iClickOnTheLastTextOnLine(string $text, int $line): void
-    {
-        $session = $this->getSession();
-        $session->waitUntil(
-            static fn (): bool => false !== \mb_strrpos($session->getLine($line), $text),
-            \sprintf('Line %d does not show "%s".', $line, $text),
-        );
-        $row = $session->getLine($line);
-        $column = (int) \mb_strrpos($row, $text);
-        $session->click($line, \mb_strwidth(\mb_substr($row, 0, $column)) + 1);
-    }
-
     private function porta(): PortaContext
     {
         return $this->porta ?? throw new \LogicException('The Porta context is not in this suite.');

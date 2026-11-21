@@ -10,10 +10,8 @@ use Behat\Gherkin\Node\PyStringNode;
 use Behat\Hook\BeforeScenario;
 use Behat\Step\Given;
 use Behat\Step\Then;
-use Behat\Step\When;
 use Janalis\Tuink\Context\TuinkAwareContextInterface;
 use Janalis\Tuink\Context\TuinkAwareTrait;
-use Janalis\Tuink\Style;
 use PHPUnit\Framework\Assert;
 use Porta\Editor\Document;
 use Porta\Tests\Support\LspWireLog;
@@ -54,40 +52,6 @@ final class IntelligenceContext implements TuinkAwareContextInterface
     }
 
     // --- The caret ---------------------------------------------------------------
-
-    #[When('I put the caret at line :line, column :column')]
-    public function iPutTheCaretAt(int $line, int $column): void
-    {
-        $this->document()->setCursor($line - 1, $column - 1);
-        $this->porta->tui()->requestRender();
-        $this->getSession()->settle();
-    }
-
-    #[When('I select from line :fromLine, column :fromColumn to line :toLine, column :toColumn')]
-    public function iSelect(int $fromLine, int $fromColumn, int $toLine, int $toColumn): void
-    {
-        $this->document()->setSelectionRange($fromLine - 1, $fromColumn - 1, $toLine - 1, $toColumn - 1);
-        $this->porta->tui()->requestRender();
-        $this->getSession()->settle();
-    }
-
-    #[Then('the caret should be at line :line, column :column')]
-    public function theCaretShouldBeAt(int $line, int $column): void
-    {
-        $this->getSession()->waitUntil(
-            fn (): bool => $this->document()->cursorLine === ($line - 1) && $this->document()->cursorCol === ($column - 1),
-            fn (): string => \sprintf('The caret is at line %d, column %d.', $this->document()->cursorLine + 1, $this->document()->cursorCol + 1),
-        );
-    }
-
-    #[Then('the caret should be on line :line')]
-    public function theCaretShouldBeOnLine(int $line): void
-    {
-        $this->getSession()->waitUntil(
-            fn (): bool => $this->document()->cursorLine === ($line - 1),
-            fn (): string => \sprintf('The caret is on line %d.', $this->document()->cursorLine + 1),
-        );
-    }
 
     #[Then('line :line of the editor should be :text')]
     public function lineOfTheEditorShouldBe(int $line, string $text): void
@@ -146,11 +110,13 @@ final class IntelligenceContext implements TuinkAwareContextInterface
     // --- Stub tools ---------------------------------------------------------------
 
     /**
-     * A stand-in for a language server or a CLI, in the workspace. `%php%` is
+     * A stand-in for a language server or a CLI, in the workspace, made
+     * executable. Unlike tuink's `an executable file`, it names `%php%`,
+     * `%support%` and `%workspace%`: `%php%` is
      * this PHP binary and `%support%` the PHPUnit rig's directory, where the
      * mock and logging language servers live.
      */
-    #[Given('an executable file :path containing:')]
+    #[Given('a stub tool :path containing:')]
     public function anExecutableFile(string $path, PyStringNode $body): void
     {
         $workspace = $this->getSession()->getWorkspace();
@@ -194,12 +160,6 @@ final class IntelligenceContext implements TuinkAwareContextInterface
     /**
      * What `.porta.json` holds for a core setting, as JSON: `"none"`, `false`.
      */
-    #[Then('the project setting :key should be :value')]
-    public function theProjectSettingShouldBe(string $key, string $value): void
-    {
-        $this->waitForConfig(['settings', $key], $value);
-    }
-
     #[Then('the :plugin plugin setting :key should be :value')]
     public function thePluginSettingShouldBe(string $plugin, string $key, string $value): void
     {
@@ -255,61 +215,6 @@ final class IntelligenceContext implements TuinkAwareContextInterface
         \ksort($decoded);
 
         return $decoded;
-    }
-
-    // --- Generic: belongs in tuink ---------------------------------------------------
-
-    /**
-     * The first screen line showing $anchor, checked for $text: what trails a
-     * line of code, wherever the layout puts it.
-     */
-    #[Then('the line showing :anchor should contain :text')]
-    public function theLineShowingShouldContain(string $anchor, string $text): void
-    {
-        $this->getSession()->waitUntil(
-            fn (): bool => \str_contains((string) $this->lineShowing($anchor), $text),
-            fn (): string => \sprintf('The line showing "%s" does not contain "%s": %s', $anchor, $text, $this->lineShowing($anchor) ?? 'no line shows it'),
-        );
-    }
-
-    #[Then('the line showing :anchor should not contain :text')]
-    public function theLineShowingShouldNotContain(string $anchor, string $text): void
-    {
-        $this->getSession()->waitUntil(
-            fn (): bool => null !== $this->lineShowing($anchor) && !\str_contains((string) $this->lineShowing($anchor), $text),
-            fn (): string => \sprintf('The line showing "%s" contains "%s": %s', $anchor, $text, $this->lineShowing($anchor) ?? 'no line shows it'),
-        );
-    }
-
-    #[Then('the text :text should have no color')]
-    public function theTextShouldHaveNoColor(string $text): void
-    {
-        $session = $this->getSession();
-        $session->waitUntil(
-            static fn (): bool => [] === \array_filter($session->getTextStyles($text), static fn (Style $style): bool => null !== $style->foreground),
-            \sprintf('The text "%s" is colored.', $text),
-        );
-    }
-
-    #[Then('the text :text should have a color')]
-    public function theTextShouldHaveAColor(string $text): void
-    {
-        $session = $this->getSession();
-        $session->waitUntil(
-            static fn (): bool => [] === \array_filter($session->getTextStyles($text), static fn (Style $style): bool => null === $style->foreground),
-            \sprintf('The text "%s" is not colored throughout.', $text),
-        );
-    }
-
-    private function lineShowing(string $anchor): ?string
-    {
-        foreach ($this->getSession()->getLines() as $line) {
-            if (\str_contains($line, $anchor)) {
-                return $line;
-            }
-        }
-
-        return null;
     }
 
     private function document(): Document

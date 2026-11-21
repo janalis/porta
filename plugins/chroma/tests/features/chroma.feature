@@ -7,7 +7,7 @@ Feature: Chroma highlighting
 
   Background:
     Given a PHP project
-    And an executable file "bin/chroma" containing:
+    And a stub tool "bin/chroma" containing:
       """
       #!%php%
       <?php
