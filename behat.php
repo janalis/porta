@@ -9,6 +9,7 @@ use Behat\Config\Profile;
 use Behat\Config\Suite;
 use Janalis\Tuink\Context\TuiContext;
 use Janalis\Tuink\ServiceContainer\TuinkExtension;
+use Porta\Tests\Behat\Context\IntelligenceContext;
 use Porta\Tests\Behat\Context\PortaContext;
 
 require __DIR__.'/tests/Behat/bootstrap.php';
@@ -48,7 +49,7 @@ $paths = [
 ];
 $suite = static fn (string $tags): Suite => new Suite('default')
     ->withPaths(...$paths)
-    ->withContexts(TuiContext::class, PortaContext::class)
+    ->withContexts(TuiContext::class, PortaContext::class, IntelligenceContext::class)
     ->withFilter(new TagFilter($tags));
 
 return new Config()
