@@ -76,6 +76,17 @@ final class FolderCompletionTest extends TestCase
         $this->assertSame([['name' => 'blog', 'path' => $sites.'blog/', 'isProject' => false]], FolderCompletion::candidates($sites.'bl'));
     }
 
+    public function testAPathWithoutASlashIsLookedForHere(): void
+    {
+        $previous = (string) \getcwd();
+        \chdir($this->home->path('Sites'));
+        try {
+            $this->assertSame([['name' => 'blog', 'path' => 'blog/', 'isProject' => false]], FolderCompletion::candidates('bl'));
+        } finally {
+            \chdir($previous);
+        }
+    }
+
     public function testABareTildeIsTheHomeFolder(): void
     {
         $this->assertSame(['Sites'], $this->names('~'));

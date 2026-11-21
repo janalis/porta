@@ -171,7 +171,8 @@ final class ProjectPickerTest extends TestCase
         $picked = $this->pick([$this->typed($this->disk->path('a-file')), "\r", $this->typed($this->disk->path('typed')), "\r"]);
 
         $this->assertSame($real, $picked);
-        $this->assertStringContainsString('Not a folder', $this->terminal->getOutput());
+        // The path, cut to the card: it is long, under the system's temp folder.
+        $this->assertStringContainsString('Not a folder: '.\substr($this->disk->path('a-file'), offset: 0, length: 20), $this->screen());
     }
 
     public function testEscapeOnAFirstRunLeaves(): void
@@ -268,6 +269,29 @@ final class ProjectPickerTest extends TestCase
         // A first run with nothing found: the remote row is the one to choose.
         $this->assertNull($this->pick(["\r", "\x1b"]));
         $this->assertStringContainsString('ftps:// URL', $this->screen());
+        $this->assertStringContainsString('Type the path of a folder to open', $this->screen(), 'a first run says how to name a folder');
+        $this->assertStringContainsString('Tab complete · Enter open', $this->screen());
+    }
+
+    public function testTheFoldersOfATypedPathEndInASlashAndSayWhichAreProjects(): void
+    {
+        $this->disk->write('typed/composer.json', '{}');
+
+        $this->assertNull($this->pick([$this->typed($this->disk->path('t')), "\x1b"]));
+        $this->assertMatchesRegularExpression('/two\/\s+typed\/\s+PHP project/', $this->screen());
+    }
+
+    public function testTabWithNothingToCompleteLeavesTheFieldAlone(): void
+    {
+        $this->assertNull($this->pick([$this->typed('zz'), self::silent("\t"), 'q', "\x1b"]));
+        $this->assertStringContainsString('┃ zzq', $this->screen());
+    }
+
+    public function testANameMatchesWhateverItsCase(): void
+    {
+        $found = static fn (array $except): array => [['label' => 'École', 'hint' => '', 'value' => '/école']];
+
+        $this->assertSame('/école', $this->pickWith($found, [$this->typed('éc'), "\r"]));
     }
 
     public function testTheCardNamesPortaAndItsVersion(): void
@@ -364,11 +388,11 @@ final class ProjectPickerTest extends TestCase
 
     public function testAChosenThemeOutranksTheWindowsMode(): void
     {
-        $this->disk->write('one/.porta.json', '{"settings": {"theme": "dark"}}');
+        $this->disk->write('one/.porta.json', '{"settings": {"theme": "light"}}');
 
-        $this->forUserIn($this->disk->path('one'), 'light');
+        $this->forUserIn($this->disk->path('one'), 'dark');
 
-        $this->assertStringContainsString(self::nameIn('dark'), $this->terminal->getOutput());
+        $this->assertStringContainsString(self::nameIn('light'), $this->terminal->getOutput());
     }
 
     public function testThePickerSpeaksTheUsersLanguage(): void

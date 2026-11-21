@@ -7,6 +7,8 @@ namespace Porta\Tests\Unit\Widget\Desktop;
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\RendersWidget;
+use Porta\Ui\Role;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\Desktop\ProjectPickerWidget;
 use Porta\Widget\Support\PickerRow;
 use Porta\Widget\Support\PickerRowKind;
@@ -58,12 +60,64 @@ final class ProjectPickerWidgetTest extends TestCase
         $screen = $this->screen($this->picker());
 
         $this->assertCount(24, $screen);
-        $this->assertSame('Porta 1.2.3', \trim($screen[1]));
+        $this->assertSame(\str_repeat(' ', 34).'Porta 1.2.3', \rtrim($screen[1]), 'centred');
         $this->assertSame('A terminal IDE for PHP projects', \trim($screen[2]));
         $this->assertStringStartsWith('        ┏ Open a project', $screen[4]);
         $this->assertStringStartsWith('        ─ Recent ─', $screen[8]);
         $this->assertStringStartsWith('        ▌ shop  ~/shop', $screen[9]);
-        $this->assertSame('the keys', \trim($screen[23]));
+        $this->assertSame(\str_repeat(' ', 36).'the keys', \rtrim($screen[23]), 'centred');
+    }
+
+    public function testTheNameShowsFromSixteenRows(): void
+    {
+        $this->assertStringContainsString('Porta 1.2.3', \implode("\n", $this->screen($this->picker(), rows: 16)));
+    }
+
+    public function testAWindowTooShortForTheListIsCutToItsHeight(): void
+    {
+        $this->rows = [self::project('shop')];
+
+        $this->assertCount(5, $this->screen($this->picker(), rows: 5));
+    }
+
+    public function testOnlyTheSelectedRowIsShadedAndEmphasised(): void
+    {
+        $this->rows = [self::project('one'), self::project('two')];
+        $styles = Styles::dark();
+        $shade = \strstr($styles->of(Role::SelectedRow)->apply('x'), 'x', before_needle: true);
+        $bold = \strstr($styles->of(Role::Bright)->withBold()->apply('x'), 'x', before_needle: true);
+
+        $lines = $this->picker()->render(new RenderContext(80, 24));
+
+        $this->assertStringContainsString((string) $shade, $lines[8]);
+        $this->assertStringContainsString((string) $bold, $lines[8]);
+        $this->assertStringNotContainsString((string) $shade, $lines[9]);
+        $this->assertStringNotContainsString((string) $bold, $lines[9]);
+    }
+
+    public function testUpAndPageDownMoveTheSelection(): void
+    {
+        $this->rows = [self::project('one'), self::project('two'), self::project('three')];
+        $picker = $this->picker();
+        $this->screen($picker);
+
+        $picker->handleInput("\x1b[6~");
+        $picker->handleInput("\x1b[A");
+        $picker->handleInput("\r");
+
+        $this->assertSame([[$this->rows[1], '']], $this->submitted);
+    }
+
+    public function testTypingPutsTheSelectionBackOnTheFirstRow(): void
+    {
+        $this->rows = [self::project('one'), self::project('two')];
+        $picker = $this->picker();
+
+        $picker->handleInput(self::DOWN);
+        $picker->handleInput('o');
+        $picker->handleInput("\r");
+
+        $this->assertSame([[$this->rows[0], 'o']], $this->submitted);
     }
 
     public function testAShortWindowGivesTheNameUpToTheList(): void
