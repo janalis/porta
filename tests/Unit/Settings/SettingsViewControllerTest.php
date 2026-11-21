@@ -82,6 +82,7 @@ use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\BidiTui;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\StyleSheetThemer;
 use Porta\Ui\Theme\Themes;
@@ -99,6 +100,7 @@ use Porta\Widget\TabBarWidget;
 use Porta\Workbench\EditorArea;
 use Porta\Workbench\Menu\ListboxOpener;
 use Porta\Workbench\Menu\MenuContributions;
+use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewCommandGate;
@@ -139,6 +141,9 @@ final class SettingsViewControllerTest extends TestCase
     private FakePluginLifecycle $lifecycle;
     private ViewRegions $regions;
     private ContextMenu $contextMenu;
+
+    /** The controller behind the pages, for a value moved by another path than the form. */
+    private SettingsController $settings;
     private Renderer $renderer;
 
     /** The session scope the sections share; set by {@see controller()}. */
@@ -250,6 +255,7 @@ final class SettingsViewControllerTest extends TestCase
             new Identity(),
             TestTools::bare($this->project->dir)->updates,
         );
+        $this->settings = $settings;
         $bootKeys = new Keybindings([]);
         $keysHost = new PluginHost(IdeConfig::load($this->project->dir), new EventDispatcher(), $this->project->dir);
         $keysFactory = new KeybindingsFactory($keysHost, IdeConfig::load($this->project->dir), new ActionRegistry($keysHost->manager));
@@ -505,6 +511,25 @@ final class SettingsViewControllerTest extends TestCase
         $this->contextMenu->handleInput("\x1b[B"); // to Français
         $this->contextMenu->handleInput("\r");
         $this->assertSame('fr', IdeConfig::load($this->project->dir)->settings['language']);
+    }
+
+    public function testAnOpenListFollowsItsValueMovingUnderIt(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->selectSettingsSection($this->nav, id: 'interface');
+        $this->renderer->renderFrame($this->content, columns: 100, rows: 24);
+        $this->form->handleInput("\x1b[B"); // Language
+        $this->form->handleInput("\r");
+        $current = fn (): ?string => \array_find(Probe::get($this->contextMenu, property: 'items'), static fn (MenuItem $item): bool => Glyphs::OPTION_CURRENT === $item->shortcut)?->label;
+        $this->assertSame('System (English)', $current());
+
+        // Moved by another path while the list is open: the window's look does this to Theme.
+        $this->settings->changeSetting('language', value: 'fr');
+        $controller->refresh();
+
+        $this->assertTrue($this->contextMenu->isOpen(), 'still open');
+        $this->assertSame('Français', $current(), 'its check on the value now held');
     }
 
     public function testNavSelectingKeybindingsSwapsTheContent(): void

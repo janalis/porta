@@ -36,6 +36,12 @@ final readonly class ListboxOpener
         private ContextMenu $contextMenu,
     ) {}
 
+    /** Whether an option list is open: a host whose value moved under it opens it again. */
+    public function isOpen(): bool
+    {
+        return $this->contextMenu->isOpen();
+    }
+
     /**
      * Open under a control $host drew: $relRow is the row below the control,
      * $relAbove the control's first row (where an upward list ends), $relCol

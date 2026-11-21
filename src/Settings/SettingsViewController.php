@@ -40,6 +40,9 @@ final class SettingsViewController implements ContributedView
     private readonly ViewRegion $region;
 
     private bool $open = false;
+
+    /** @var array{AbstractWidget, string, array{int, int, int, int}, \Closure(string): void, string}|null the option list last opened: host, row key, where, what a pick runs, the value it was opened on */
+    private ?array $openList = null;
     /** 'general' | 'keybindings' | 'lang:<id>' — the active section. */
     private string $section = 'general';
 
@@ -350,6 +353,7 @@ final class SettingsViewController implements ContributedView
      */
     private function openList(AbstractWidget $host, SettingsRow $row, array $at, \Closure $choose): void
     {
+        $this->openList = [$host, $row->key, $at, $choose, (string) $row->value];
         $options = [];
         foreach ($row->options ?? [] as $option) {
             $options[] = [$option, $row->optionLabels[$option] ?? $option];
@@ -407,12 +411,35 @@ final class SettingsViewController implements ContributedView
         // Any form page: a plugin's set moved, or a value or its default did (the
         // window went light or dark). setRows() keeps an edit and the selection.
         if ($this->form === $this->contentWidget()) {
-            $this->form->setRows($this->rowsForSection(), $this->nav->trailFor($this->section));
+            $rows = $this->rowsForSection();
+            $this->form->setRows($rows, $this->nav->trailFor($this->section));
+            $this->reopenList($rows);
             $this->host->invalidate();
         }
         // The store's buttons follow every install, update and toggle, and
         // its count in the nav follows the updates.
         $this->pushStore();
+    }
+
+    /**
+     * An option list still open over the form whose row's value moved (the
+     * window went light or dark under the Theme list): opened again in place,
+     * its check on the value now held. One that closed is forgotten.
+     *
+     * @param list<SettingsRow> $rows
+     */
+    private function reopenList(array $rows): void
+    {
+        if (null === $this->openList || !$this->listbox->isOpen()) {
+            $this->openList = null;
+
+            return;
+        }
+        [$host, $key, $at, $choose, $value] = $this->openList;
+        $row = \array_find($rows, static fn (SettingsRow $row): bool => $key === $row->key);
+        if ($host === $this->form && null !== $row && (string) $row->value !== $value) {
+            $this->openList($host, $row, $at, $choose);
+        }
     }
 
     /** The store's rows and the nav's count of its updates, read again. */
