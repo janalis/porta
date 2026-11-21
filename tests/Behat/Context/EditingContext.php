@@ -4,23 +4,23 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Behat\Context;
 
+use Behat\Behat\Context\Environment\InitializedContextEnvironment;
+use Behat\Behat\Hook\Scope\BeforeScenarioScope;
 use Behat\Gherkin\Node\PyStringNode;
 use Behat\Hook\BeforeScenario;
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
-use Behat\Behat\Context\Environment\InitializedContextEnvironment;
-use Behat\Behat\Hook\Scope\BeforeScenarioScope;
 use Janalis\Tuink\Context\TuinkAwareContextInterface;
 use Janalis\Tuink\Context\TuinkAwareTrait;
 use Porta\Editor\BufferService;
 use Porta\Editor\Document;
 use Porta\Editor\OpenFocus;
 use Porta\Editor\SelectionMode;
-use Porta\Widget\TabBarWidget;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Widgets;
+use Porta\Widget\TabBarWidget;
 
 /**
  * Files, tabs and editing: where the caret is, what is selected, which tabs
@@ -49,21 +49,27 @@ final class EditingContext implements TuinkAwareContextInterface
     public function aFileOfNumberedLines(string $file, int $count): void
     {
         $lines = \array_map(static fn (int $n): string => \sprintf('// line %d ', $n), \range(1, $count));
-        $this->getSession()->getWorkspace()->write($file, "<?php\n".\implode("\n", $lines)."\n");
+        $this
+            ->getSession()
+            ->getWorkspace()
+            ->write($file, "<?php\n".\implode("\n", $lines)."\n");
     }
 
     #[Given('a file :file containing a class with a :count-line method')]
     public function aFileWithALongMethod(string $file, int $count): void
     {
         $class = \pathinfo($file, \PATHINFO_FILENAME);
-        $body = \str_repeat("        \$x = 1;\n", $count);
+        $body = \str_repeat("        \$x = 1;\n", \max(0, $count));
         $this->getSession()->getWorkspace()->write($file, "<?php\n\nclass {$class}\n{\n    public function handle(): void\n    {\n{$body}    }\n}\n");
     }
 
     #[Given('a file :file containing a line of :count characters ending in :end')]
     public function aFileWithALongLine(string $file, int $count, string $end): void
     {
-        $this->getSession()->getWorkspace()->write($file, "<?php\n// ".\str_repeat('x', \max(0, $count - 3 - \strlen($end))).$end."\n");
+        $this
+            ->getSession()
+            ->getWorkspace()
+            ->write($file, "<?php\n// ".\str_repeat('x', \max(0, $count - 3 - \strlen($end))).$end."\n");
     }
 
     /**
@@ -90,11 +96,15 @@ final class EditingContext implements TuinkAwareContextInterface
     #[Then('the project setting :key should be :value')]
     public function theProjectSettingShouldBe(string $key, string $value): void
     {
-        $expected = \in_array($value, ['true', 'false'], true) || \is_numeric($value) ? \json_decode($value) : $value;
+        $expected = match ($value) {
+            'true' => true,
+            'false' => false,
+            default => \is_numeric($value) ? (int) $value : $value,
+        };
         $porta = $this->porta();
         $this->getSession()->waitUntil(
             static fn (): bool => self::setting($porta, $key) === $expected,
-            static fn (): string => \sprintf('.porta.json has "%s": %s.', $key, \json_encode(self::setting($porta, $key))),
+            static fn (): string => \sprintf('.porta.json has "%s": %s.', $key, \json_encode(self::setting($porta, $key), \JSON_THROW_ON_ERROR)),
         );
     }
 
@@ -174,7 +184,7 @@ final class EditingContext implements TuinkAwareContextInterface
         $expected = \str_replace('\n', "\n", $text);
         $this->getSession()->waitUntil(
             fn (): bool => $expected === $this->document()->getSelectedText(),
-            fn (): string => \sprintf("The selection is \"%s\", not \"%s\".", $this->document()->getSelectedText(), $expected),
+            fn (): string => \sprintf('The selection is "%s", not "%s".', $this->document()->getSelectedText(), $expected),
         );
     }
 
@@ -235,31 +245,29 @@ final class EditingContext implements TuinkAwareContextInterface
     #[Then('the tab :file should be pinned')]
     public function theTabShouldBePinned(string $file): void
     {
-        $this->assertPinned($file, pinned: true);
+        $session = $this->getSession();
+        $session->waitUntil(fn (): bool => $this->isPinned($file), \sprintf('The tab "%s" is not pinned.', $file));
     }
 
     #[Then('the tab :file should not be pinned')]
     public function theTabShouldNotBePinned(string $file): void
     {
-        $this->assertPinned($file, pinned: false);
+        $session = $this->getSession();
+        $session->waitUntil(fn (): bool => !$this->isPinned($file), \sprintf('The tab "%s" is still pinned.', $file));
     }
 
-    private function assertPinned(string $file, bool $pinned): void
+    private function isPinned(string $file): bool
     {
-        $session = $this->getSession();
-        $path = (string) \realpath($session->getWorkspace()->resolve($file));
-        $buffers = $this->porta()->service(BufferService::class);
-        $session->waitUntil(
-            static fn (): bool => $pinned === $buffers->isPinned($path),
-            \sprintf('The tab "%s" is %s.', $file, $pinned ? 'not pinned' : 'still pinned'),
-        );
+        $path = (string) \realpath($this->getSession()->getWorkspace()->resolve($file));
+
+        return $this->porta()->service(BufferService::class)->isPinned($path);
     }
 
     private static function setting(PortaContext $porta, string $key): mixed
     {
-        $settings = $porta->projectConfig()['settings'] ?? [];
+        $config = $porta->projectConfig();
 
-        return \is_array($settings) ? $settings[$key] ?? null : null;
+        return \is_array($config['settings'] ?? null) ? $config['settings'][$key] ?? null : null;
     }
 
     // --- Reads ------------------------------------------------------------------
@@ -290,8 +298,10 @@ final class EditingContext implements TuinkAwareContextInterface
     private function tabNames(): array
     {
         $tabBar = Widgets::byId($this->porta()->tui(), id: 'tabs', class: TabBarWidget::class);
-        $provider = Probe::get($tabBar, property: 'provider');
-        \assert($provider instanceof \Closure);
+        $provider = Probe::object($tabBar, 'provider');
+        if (!$provider instanceof \Closure) {
+            throw new \LogicException('The tab bar has no provider.');
+        }
         /** @var list<array{name: string}> $tabs */
         $tabs = $provider();
 
