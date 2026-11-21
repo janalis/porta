@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Behat\Context;
 
-use Behat\Hook\AfterScenario;
-use Behat\Hook\BeforeScenario;
 use Behat\Behat\Context\Environment\InitializedContextEnvironment;
 use Behat\Behat\Hook\Scope\BeforeScenarioScope;
+use Behat\Hook\AfterScenario;
+use Behat\Hook\BeforeScenario;
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
@@ -17,8 +17,9 @@ use Porta\Config\WorkspaceTrust;
 use Porta\Help\RenderedDoc;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Widgets;
-use Porta\Widget\HelpViewerWidget;
+use Porta\Ui\Graphics\TerminalGraphics;
 use Porta\Widget\FileTreeWidget;
+use Porta\Widget\HelpViewerWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\ReopenRequest;
 use Symfony\Component\Filesystem\Filesystem;
@@ -62,8 +63,7 @@ final class ChromeContext implements TuinkAwareContextInterface
     /**
      * The suite trusts its whole temp dir through PORTA_TRUSTED_FOLDERS, which
      * no answer outranks: these scenarios clear it, and keep the answers in a
-     * home of their own (the shared fixture home's notes copied, so nothing
-     * checks for updates).
+     * home of their own.
      */
     #[Given('the project was trusted')]
     public function theProjectWasTrusted(): void
@@ -97,20 +97,46 @@ final class ChromeContext implements TuinkAwareContextInterface
         );
     }
 
+    #[Given('no project was opened before')]
+    public function noProjectWasOpenedBefore(): void
+    {
+        new Filesystem()->remove($this->home().'/.porta/recent-projects.json');
+    }
+
     private function trust(): WorkspaceTrust
+    {
+        $session = $this->getSession();
+        $session->setLaunch($session->getLaunch()->withEnv('PORTA_TRUSTED_FOLDERS', ''));
+
+        return new WorkspaceTrust($this->home());
+    }
+
+    /**
+     * A home of the scenario's own: the shared fixture home's notes copied, so
+     * nothing checks for updates, and its answers and recent projects kept
+     * apart from every other scenario's.
+     */
+    private function home(): string
     {
         if (null === $this->home) {
             $home = \sys_get_temp_dir().'/porta-behat-home-'.\bin2hex(\random_bytes(4));
             new Filesystem()->mirror(\dirname(__DIR__, 2).'/Support/fixtures/home', $home);
             $this->home = $home;
             $session = $this->getSession();
-            $session->setLaunch($session->getLaunch()->withEnv('PORTA_HOME', $home)->withEnv('PORTA_TRUSTED_FOLDERS', ''));
+            $session->setLaunch($session->getLaunch()->withEnv('PORTA_HOME', $home));
         }
 
-        return new WorkspaceTrust($this->home);
+        return $this->home;
     }
 
     // --- Where the IDE goes next ------------------------------------------------
+
+    #[When('I type the path of the folder :dir')]
+    public function iTypeThePathOf(string $dir): void
+    {
+        $session = $this->getSession();
+        $session->type($session->getWorkspace()->resolve($dir));
+    }
 
     #[Then('the IDE should close to reopen the project in :dir')]
     public function theIdeShouldReopenIn(string $dir): void
@@ -148,9 +174,7 @@ final class ChromeContext implements TuinkAwareContextInterface
 
     private function selectedTreePath(): ?string
     {
-        $node = $this->tree()->selectedNode();
-
-        return $node?->path;
+        return $this->tree()->selectedNode()?->path;
     }
 
     // --- The documentation browser ---------------------------------------------
@@ -180,15 +204,31 @@ final class ChromeContext implements TuinkAwareContextInterface
     private function focusedLink(): ?string
     {
         $viewer = $this->helpViewer();
-        $doc = Probe::get($viewer, property: 'doc');
-        $link = Probe::get($viewer, property: 'currentLink');
+        $doc = Probe::object($viewer, 'doc');
+        $link = (int) Probe::get($viewer, property: 'currentLink');
 
-        return $doc instanceof RenderedDoc && \is_int($link) ? $doc->target($link) : null;
+        return $doc instanceof RenderedDoc ? $doc->target($link) : null;
     }
 
     private function helpViewer(): HelpViewerWidget
     {
         return Widgets::byId($this->porta()->tui(), id: 'help-viewer', class: HelpViewerWidget::class);
+    }
+
+    // --- Appearance ---------------------------------------------------------------
+
+    /**
+     * What a 100% zoom means in the image and graph viewers: no terminal here
+     * draws pixels, so the ratio they would scale by is read where they read it.
+     */
+    #[Then('the viewers should draw :ratio device pixels per logical pixel')]
+    public function theViewersShouldDrawAtRatio(float $ratio): void
+    {
+        $graphics = $this->porta()->service(TerminalGraphics::class);
+        $this->getSession()->waitUntil(
+            static fn (): bool => \abs($graphics->pixelRatio() - $ratio) < 1e-9,
+            static fn (): string => \sprintf('The viewers draw %s device pixels per logical pixel, not %s.', $graphics->pixelRatio(), $ratio),
+        );
     }
 
     // --- Layout -------------------------------------------------------------------
@@ -242,6 +282,25 @@ final class ChromeContext implements TuinkAwareContextInterface
     private function tree(): FileTreeWidget
     {
         return Widgets::byId($this->porta()->tui(), id: 'tree', class: FileTreeWidget::class);
+    }
+
+    // --- Generic: belongs in tuink ---------------------------------------------
+
+    /**
+     * Where a row shows the same glyph twice — a tab's close and a card's close
+     * on the row under the menu bar — "the text" steps take the first.
+     */
+    #[When('I click on the last :text on line :line')]
+    public function iClickOnTheLastTextOnLine(string $text, int $line): void
+    {
+        $session = $this->getSession();
+        $session->waitUntil(
+            static fn (): bool => false !== \mb_strrpos($session->getLine($line), $text),
+            \sprintf('Line %d does not show "%s".', $line, $text),
+        );
+        $row = $session->getLine($line);
+        $column = (int) \mb_strrpos($row, $text);
+        $session->click($line, \mb_strwidth(\mb_substr($row, 0, $column)) + 1);
     }
 
     private function porta(): PortaContext
