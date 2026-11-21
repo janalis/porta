@@ -202,6 +202,13 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
         // the path key is free for a text buffer. A viewer tab holds an empty
         // document, so there is nothing to lose and nothing to confirm.
         if (OpenAs::Text === $as && true === $this->buffers->get($path)?->isViewer()) {
+            // Refused before the viewer goes, not after: a picture's bytes
+            // are no text, and the tab would vanish with nothing in its place.
+            if (self::notText($path)) {
+                $this->notifier->warn($this->translator->trans('Not a UTF-8 text file'));
+
+                return;
+            }
             $this->buffers->close($path);
         }
         if (!$this->buffers->has($path)) {
@@ -256,14 +263,13 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
     /** {@see openFromDisk()} for a readable file small enough to edit, unless it is not UTF-8. */
     private function openAsText(string $path, ?string $preview, OpenFocus $focus): void
     {
-        $content = (string) \file_get_contents($path);
-        if ('' !== $content && !\mb_check_encoding($content, encoding: 'UTF-8')) {
+        if (self::notText($path)) {
             $this->notifier->warn($this->translator->trans('Not a UTF-8 text file'));
 
             return;
         }
 
-        $buffer = $this->buffers->open($path, $content);
+        $buffer = $this->buffers->open($path, (string) \file_get_contents($path));
         // didOpen before showBuffer so the inlay-hint request it fires is
         // ordered after the server knows about the file.
         $this->adopt($buffer, $preview);
@@ -274,6 +280,17 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
             $this->focusEditorArea();
         }
         $this->tui->requestRender();
+    }
+
+    /** A file small enough to edit whose bytes are not UTF-8: the text path refuses it. */
+    private static function notText(string $path): bool
+    {
+        if (!\is_file($path) || (int) \filesize($path) > Files::MAX_TEXT_BYTES) {
+            return false;
+        }
+        $content = (string) \file_get_contents($path);
+
+        return '' !== $content && !\mb_check_encoding($content, encoding: 'UTF-8');
     }
 
     /**
