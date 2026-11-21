@@ -12,7 +12,7 @@ routed below — read the page before working in that area, not after.
 ## Commands
 
 ```bash
-composer verify   composer verify:quick  composer check  composer fix  composer dev   composer test[:unit|:integration|:e2e|:plugins|:serial|:affected]  composer arch  composer container
+composer verify   composer verify:quick  composer check  composer fix  composer dev   composer test[:unit|:integration|:e2e|:plugins|:serial|:affected]  composer behat[:process|:catalog|:check]  composer arch  composer container
 composer analyze  composer lint   composer custos  composer format  composer format:check  composer rector  composer rector:check
 composer coverage:check   composer coverage:src   composer coverage:plugins   composer duplication   composer mutate   composer mutate:clean   composer flake:scan   composer lsp
 ```
@@ -27,7 +27,7 @@ PORTA_SHARD_PROCESSES=4 nice -n 10`, or raise with `auto`; `contributing.md` has
 
 ## Definition of done — `composer verify` green
 
-Nine; `verify:quick` is the first seven, run as format, lint, analyze, rector, arch, duplication, custos, stopping at the first failure; then the two coverage passes, at once.
+Ten; `verify:quick` is the first seven, run as format, lint, analyze, rector, arch, duplication, custos, stopping at the first failure; then the two coverage passes, at once; then `behat:check`, the Behat spec (testing.md).
 
 - `composer format:check` clean; `composer rector:check` **no pending change** — skip, with why.
 - `composer lint` and `composer analyze` — **zero findings each** at any severity: the
@@ -76,7 +76,7 @@ Nine; `verify:quick` is the first seven, run as format, lint, analyze, rector, a
 | touch rendering, input, dock, overlays, git, LSP | `docs/internals/subsystems.md` |
 | change how a control, toast, tab or list LOOKS | `docs/internals/ui-style.md` |
 | change plugin loading, ordering, the API surface | `docs/internals/plugin-system.md` |
-| write a test, or chase a flake | `docs/internals/testing.md` |
+| write a test or a Behat scenario, or chase a flake | `docs/internals/testing.md` |
 | propose a refactor or a new seam | `docs/internals/decisions.md` |
 | add or listen to an event | `docs/events.md` |
 | write a plugin against the public API | `docs/plugins.md` |

@@ -19,7 +19,8 @@ composer rector:check   # rector dry run — fails on any change it would still 
 composer arch           # the architecture ratchet
 composer duplication    # phpcpd — zero copy-paste clones, tree-wide
 composer custos         # custos — zero inspection findings, info included (custos.json)
-composer verify         # all nine: the seven static gates stopping at the first failure, then both coverage passes at once
+composer behat          # the Behat spec in process (behat:process on bin/porta, behat:catalog the completeness gate)
+composer verify         # all ten: the seven static gates stopping at the first failure, both coverage passes at once, then behat:check
 composer verify:quick   # the seven fast ones, stopping at the first failure
 composer check          # the same seven run to the end, then one line naming every red gate — the mid-work check
 composer flake:scan     # run the suite N times and name what failed at least once
