@@ -95,6 +95,27 @@ final class BackgroundRunTest extends TestCase
         $this->assertStringNotContainsString("\x1b", $output['output'], 'plain text, not terminal escapes');
     }
 
+    /**
+     * The exit code joins the tab's title, which the dock strip pulls in its
+     * beforeRender — only reached when something under the root is invalid.
+     * A bare render request repainted the cached tree, and the tab never
+     * showed how the run ended.
+     */
+    public function testARunEndingRepaintsTheTabsThatShowItsTitle(): void
+    {
+        TestRuns::create($this->runs)->start('agent', self::php('exit(0);'));
+        $session = $this->runs->runSession('agent');
+        $this->assertInstanceOf(TerminalSession::class, $session);
+        $revision = $this->panel->getRenderRevision();
+
+        $this->await(static function () use ($session): bool {
+            return null !== $session->process?->exitCode();
+        }, what: 'the run to end');
+
+        $this->assertSame('agent (0)', $session->title);
+        $this->assertGreaterThan($revision, $this->panel->getRenderRevision(), 'the panel was invalidated, so the frame reaches the strip');
+    }
+
     public function testARunEndingIsAFactWithItsTitleAndCode(): void
     {
         $events = new EventDispatcher();
