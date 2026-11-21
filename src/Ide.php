@@ -184,6 +184,8 @@ final class Ide
             // In a window, the window's light or dark look unless a theme was chosen:
             // never dark first and light a moment later, once the window can say.
             LaunchTheme::for($this->rootDir, $config->settings, $desktop ?? new DesktopSession(active: false, token: '')),
+            // ...and what Settings shows for, and resets, a theme no file chose.
+            $desktop?->appearance,
         );
         $locator = $this->container->get('porta.ide');
         \assert($locator instanceof ServiceLocator, description: 'The porta.ide service is the ServiceLocator boundary');

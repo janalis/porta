@@ -12,6 +12,7 @@ use Porta\Desktop\SystemMenu;
 use Porta\Editor\BufferManager;
 use Porta\Event\RunFinished;
 use Porta\Event\ThemeChanged;
+use Porta\Settings\SettingsController;
 use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
@@ -97,6 +98,7 @@ final class DesktopProtocolTest extends TestCase
         $this->bootIde(desktop: new DesktopSession(active: true, token: $this->contract['examples']['token'], appearance: 'light'));
 
         $this->assertSame('light', $_ENV['PORTA_THEME'], 'not dark first and light a moment later');
+        $this->assertSame('light', Services::resolve($this->ide, SettingsController::class)->choice('theme'), 'and Settings says what was drawn');
     }
 
     public function testACleanIdeSaysItIsClosingAndStops(): void

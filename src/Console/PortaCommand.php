@@ -69,7 +69,7 @@ final class PortaCommand extends Command
 {
     use CommandErrorStream;
 
-    /** @var callable(Workspace, ?string, LspMode, Ansi, \Closure): int */
+    /** @var callable(Workspace, ?string, LspMode, Ansi, \Closure, DesktopSession): int */
     private $launch;
 
     /** @var callable(): bool */
@@ -87,7 +87,7 @@ final class PortaCommand extends Command
     private readonly \Closure $pickProject;
 
     /**
-     * @param (callable(Workspace, ?string, LspMode, Ansi, \Closure): int)|null $launch        defaults to booting a real {@see Ide}, returning its exit code; the
+     * @param (callable(Workspace, ?string, LspMode, Ansi, \Closure, DesktopSession): int)|null $launch        defaults to booting a real {@see Ide}, returning its exit code; the
      *                                                                                         trailing closure is called between boot and run, so a crash can say
      *                                                                                         which half died
      * @param (callable(): bool)|null                                           $isInteractive defaults to a POSIX tty check
@@ -249,11 +249,17 @@ final class PortaCommand extends Command
         // output decoration, which we thread to the IDE as its color mode.
         $booted = false;
         try {
-            $exitCode = ($this->launch)($workspace, $lsp, $noLsp ? LspMode::Disabled : LspMode::Enabled, $output->isDecorated() ? Ansi::Enabled : Ansi::Disabled, static function () use (
-                &$booted,
-            ): void {
-                $booted = true;
-            });
+            $exitCode = ($this->launch)(
+                $workspace,
+                $lsp,
+                $noLsp ? LspMode::Disabled : LspMode::Enabled,
+                $output->isDecorated() ? Ansi::Enabled : Ansi::Disabled,
+                static function () use (&$booted): void {
+                    $booted = true;
+                },
+                // The window around this launch, read from the environment it was given.
+                DesktopSession::fromEnvironment($this->env),
+            );
         } catch (\Throwable $e) {
             if ($output->isVerbose()) {
                 throw $e; // -v: let the console runner render the full trace
@@ -507,7 +513,7 @@ final class PortaCommand extends Command
      *
      * @codeCoverageIgnore
      */
-    private static function launchIde(Workspace $workspace, ?string $lspCommand, LspMode $lsp, Ansi $ansi, \Closure $onBooted): int
+    private static function launchIde(Workspace $workspace, ?string $lspCommand, LspMode $lsp, Ansi $ansi, \Closure $onBooted, DesktopSession $desktop): int
     {
         $root = $workspace->rootDir;
         $file = $workspace->initialFile;
@@ -535,7 +541,7 @@ final class PortaCommand extends Command
                 tool: $workspace->tool,
                 plugins: $plugins,
                 restartDirectory: \is_string($resume) && '' !== $resume ? $resume : null,
-                desktop: DesktopSession::current(),
+                desktop: $desktop,
             );
             $onBooted();
             $ide->run();

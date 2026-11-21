@@ -46,6 +46,9 @@ final class SettingsController
     /** @var array<string, Descriptor> */
     private readonly array $descriptors;
 
+    /** @var array<string, int|bool|string> the built-in defaults, a window's look standing in for the theme's */
+    private readonly array $defaults;
+
     /**
      * @param array<string, int|bool|string> $settings         resolved settings (defaults merged)
      */
@@ -68,7 +71,13 @@ final class SettingsController
         // stand; the container always wires it.
         ?PluginUpdates $plugins = null,
         ?IdeUpdates $ideUpdates = null,
+        // A window's light or dark look, standing in for the theme no file
+        // chose: what the IDE drew, so what this shows, and what reset returns to.
+        #[Autowire('%env(default::PORTA_THEME_DEFAULT)%')]
+        ?string $themeDefault = null,
     ) {
+        $this->defaults = null === $themeDefault ? IdeConfig::DEFAULT_SETTINGS : ['theme' => $themeDefault] + IdeConfig::DEFAULT_SETTINGS;
+        $this->standIn($themeDefault);
         $this->descriptors = [
             // --- Interface (the "Interface" settings page) ---
             'language' => [
@@ -411,7 +420,7 @@ final class SettingsController
                 // a live fix — but a loosely-typed default added later would
                 // otherwise make every row on its page read as modified, and
                 // nothing else would catch that.
-                default: self::coerce(IdeConfig::DEFAULT_SETTINGS[$key] ?? '', $descriptor['kind']),
+                default: self::coerce($this->defaults[$key] ?? '', $descriptor['kind']),
                 origin: $this->provenance->originOf(['settings', $key]),
                 shadowed: $this->provenance->shadowsGlobal(['settings', $key]),
                 fieldset: $this->translator->trans($descriptor['fieldset']),
@@ -483,6 +492,14 @@ final class SettingsController
      * key would be a different bug; ON DISK the key is REMOVED, so a default
      * that later moves moves with it.
      */
+    /** What the IDE drew for a theme no file chose, as the value this shows. */
+    private function standIn(?string $themeDefault): void
+    {
+        if (null !== $themeDefault && null === $this->provenance->originOf(['settings', 'theme'])) {
+            $this->settings['theme'] = $themeDefault;
+        }
+    }
+
     public function resetSetting(string $key): void
     {
         $descriptor = $this->descriptors[$key] ?? null;
@@ -492,7 +509,7 @@ final class SettingsController
             return;
         }
 
-        $default = IdeConfig::DEFAULT_SETTINGS[$key] ?? '';
+        $default = $this->defaults[$key] ?? '';
         $this->settings[$key] = $default;
         if (null !== $descriptor['apply']) {
             $descriptor['apply']($default);

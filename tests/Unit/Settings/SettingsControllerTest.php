@@ -106,6 +106,7 @@ final class SettingsControllerTest extends TestCase
         StatusBarWidget $status,
         array $settings = [],
         ?BreadcrumbsWidget $breadcrumbs = null,
+        ?string $themeDefault = null,
     ): SettingsController {
         $breadcrumbs ??= new BreadcrumbsWidget();
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
@@ -168,6 +169,7 @@ final class SettingsControllerTest extends TestCase
             $this->tooltips = new TooltipCenter(new FakeScheduler(), $tui),
             $this->identity = new Identity(),
             TestTools::bare($rootDir)->updates,
+            themeDefault: $themeDefault,
         );
     }
 
@@ -809,6 +811,31 @@ final class SettingsControllerTest extends TestCase
 
         $this->assertTrue($row->value, 'the value coerced to the row kind');
         $this->assertFalse($row->isModified(), 'and so did the default, so they compare equal');
+    }
+
+    public function testAWindowsLookStandsInForTheThemeNoFileChose(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), IdeConfig::DEFAULT_SETTINGS, themeDefault: 'light');
+
+        $row = $this->rowFor($controller->interfaceRows(), key: 'theme');
+
+        $this->assertSame('light', $row->value, 'what the IDE drew');
+        $this->assertFalse($row->isModified(), 'nothing was changed: no file chose a theme');
+        $this->assertSame('light', $controller->choice('theme'));
+    }
+
+    public function testAChosenThemeResetsToTheWindowsLook(): void
+    {
+        $project = new TempProject(['.porta.json' => '{"settings": {"theme": "dark"}}']);
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), ['theme' => 'dark'] + IdeConfig::DEFAULT_SETTINGS, themeDefault: 'light');
+
+        $this->assertSame('dark', $this->rowFor($controller->interfaceRows(), key: 'theme')->value, 'a chosen theme is shown as chosen');
+        $this->assertTrue($this->rowFor($controller->interfaceRows(), key: 'theme')->isModified(), 'and differs from the window\'s look');
+
+        $controller->resetSetting('theme');
+
+        $this->assertSame(['light'], $this->themeChanges, 'back to the window\'s look, not the built-in dark');
     }
 
     public function testTheMarkerFollowsAChangeAndClearsWhenItIsPutBack(): void

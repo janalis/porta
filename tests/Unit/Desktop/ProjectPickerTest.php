@@ -374,6 +374,23 @@ final class ProjectPickerTest extends TestCase
         $this->assertStringContainsString('one/x', $this->screen());
     }
 
+    public function testTabIntoATypedFolderKeepsTheWayItWasTyped(): void
+    {
+        $this->assertNull($this->pick([$this->typed('~'), self::silent("\t"), "\x1b[200~xyz\x1b[201~", "\x1b"]));
+        $this->assertStringContainsString('┃ ~/xyz', $this->screen(), 'not the home folder spelled out');
+    }
+
+    public function testAFolderWhoseNameDiffersOnlyInCaseIsStillOffered(): void
+    {
+        if (\is_dir($this->disk->path('TYPED'))) {
+            $this->markTestSkipped('a case-insensitive disk has one folder for both names');
+        }
+        \mkdir($this->disk->path('Typed'));
+
+        $this->assertNull($this->pick([$this->typed($this->disk->path('typed')), "\x1b"]));
+        $this->assertStringContainsString('Typed/', $this->screen());
+    }
+
     public function testAFolderThatIsTheSameOnDiskUnderAnotherNameIsStillOffered(): void
     {
         \symlink($this->disk->path('typed'), $this->disk->path('typed-alias'));

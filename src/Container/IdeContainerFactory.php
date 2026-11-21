@@ -53,9 +53,20 @@ final readonly class IdeContainerFactory
         private ?bool $trackSources = null,
     ) {}
 
-    /** @param string|null $theme the first frame's theme when the launch knows better than the settings (a window's look); null for the setting */
-    public function build(string $rootDir, IdeConfig $config, Ansi $ansi, ?string $lspCommand = null, LspMode $lsp = LspMode::Enabled, string $docsDir = '', ?string $theme = null): ContainerInterface
-    {
+    /**
+     * @param string|null $theme        the first frame's theme when the launch knows better than the settings (a window's look); null for the setting
+     * @param string|null $themeDefault what stands in for the theme no file chose (a window's look), as Settings shows and resets it; null for the built-in one
+     */
+    public function build(
+        string $rootDir,
+        IdeConfig $config,
+        Ansi $ansi,
+        ?string $lspCommand = null,
+        LspMode $lsp = LspMode::Enabled,
+        string $docsDir = '',
+        ?string $theme = null,
+        ?string $themeDefault = null,
+    ): ContainerInterface {
         // Per-boot values go through $_ENV — the env processor reads $_ENV
         // first, and unlike putenv() nothing leaks into the PTY shells spawned
         // later (PtyProcess merges getenv() into child environments). Config
@@ -68,6 +79,7 @@ final readonly class IdeContainerFactory
         $_ENV['PORTA_HOST_KEYMAP'] = KeymapPlatform::detect(\PHP_OS_FAMILY, \getenv())->value;
         $_ENV['PORTA_ANSI'] = Ansi::Enabled === $ansi ? '1' : '0';
         $_ENV['PORTA_THEME'] = $theme ?? (string) ($config->settings['theme'] ?? 'dark');
+        $_ENV['PORTA_THEME_DEFAULT'] = $themeDefault ?? ''; // '' resolves to null via env(default::…)
         $_ENV['PORTA_LSP_COMMAND'] = $lspCommand ?? ''; // '' resolves to null via env(default::…)
         $_ENV['PORTA_LSP_DISABLED'] = LspMode::Disabled === $lsp ? '1' : '0';
         $_ENV['PORTA_DOCS_DIR'] = $docsDir;
@@ -79,9 +91,7 @@ final readonly class IdeContainerFactory
         // channel (each consumer reads its own via env(json:PORTA_…)); one map,
         // one encode shape.
         $jsonEnv = [
-            // The theme drawn is the one Settings shows: a window's look stands in
-            // for the default when no file chose one ({@see build()}'s $theme).
-            'PORTA_SETTINGS' => null === $theme ? $config->settings : ['theme' => $theme] + $config->settings,
+            'PORTA_SETTINGS' => $config->settings,
             'PORTA_LANGUAGES' => $config->languages,
             'PORTA_LSP_SERVERS' => $config->lspServers,
             'PORTA_DISABLED_PLUGINS' => $config->disabledPlugins,

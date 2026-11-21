@@ -223,7 +223,7 @@ final class ProjectPicker
         }
         foreach (FolderCompletion::candidates($typed) as $candidate) {
             // The folder typed in full is the row above already.
-            if (false !== $real && 0 === \strcasecmp($candidate['path'], \rtrim($typed, characters: '/').'/')) {
+            if (false !== $real && $candidate['path'] === \rtrim($typed, characters: '/').'/') {
                 continue;
             }
             $rows[] = new PickerRow(PickerRowKind::Folder, $candidate['name'].'/', $candidate['isProject'] ? $this->translator->trans('PHP project') : '', $candidate['path']);
@@ -238,10 +238,14 @@ final class ProjectPicker
         $typed = \trim($typed);
 
         // A project's row, "Open this folder" included, goes into it: the way
-        // on from a folder typed in full whose name begins another's.
+        // on from a folder typed in full whose name begins another's. A typed
+        // path keeps the user's own spelling (`~`, `./`, a symlink's name).
+        $intoProject = PickerRowKind::Project === $row?->kind && !\str_ends_with($typed, '/');
+
         return match (true) {
-            PickerRowKind::Project === $row?->kind && !\str_ends_with($typed, '/') => PortaHome::tilde($row->value).'/',
+            $intoProject && FolderCompletion::isPath($typed) => $typed.'/',
             FolderCompletion::isPath($typed) => FolderCompletion::complete($typed, PickerRowKind::Folder === $row?->kind ? $row->value : null),
+            $intoProject => PortaHome::tilde($row->value).'/',
             default => $typed,
         };
     }
