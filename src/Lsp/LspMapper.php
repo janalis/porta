@@ -418,9 +418,9 @@ final class LspMapper
      */
     // @noinspection PackedHashtableOptimizationInspection -- grouped by the kind each maps to, which is what a reader checks
     private const array SCOPE_KINDS = [
-        2 => CodeScopeKind::Namespace, // module
-        3 => CodeScopeKind::Namespace,
-        4 => CodeScopeKind::Namespace, // package
+        2 => CodeScopeKind::NamespaceBlock, // module
+        3 => CodeScopeKind::NamespaceBlock,
+        4 => CodeScopeKind::NamespaceBlock, // package
         5 => CodeScopeKind::Type, // class
         10 => CodeScopeKind::Type, // enum
         11 => CodeScopeKind::Type, // interface
