@@ -18,8 +18,10 @@ use Janalis\Tuink\Context\TuinkAwareTrait;
 use PHPUnit\Framework\Assert;
 use Porta\Editor\ChangeMarkKind;
 use Porta\ReviewPlugin\Tests\Support\FakeForge;
+use Porta\Tests\Behat\Support\AssistPeer;
 use Porta\Tests\Behat\Support\McpPeer;
 use Porta\Tests\Support\DummyServer;
+use Porta\Tests\Support\Toasts;
 use Porta\Tests\Support\Widgets;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 
@@ -50,6 +52,8 @@ final class CollabContext implements TuinkAwareContextInterface
     private ?McpPeer $peer = null;
 
     private ?DummyServer $server = null;
+
+    private ?AssistPeer $assistPeer = null;
 
     /** What the agent's last call was answered. */
     private string $answer = '';
@@ -542,6 +546,123 @@ final class CollabContext implements TuinkAwareContextInterface
     private function agent(): McpPeer
     {
         return $this->peer ??= new McpPeer($this->getSession());
+    }
+
+    // --- Assist: the other end of a session -------------------------------------------
+
+    /**
+     * The assist plugin's own fake magic-wormhole, a process of the
+     * scenario's, named as the host's mailbox server and relay.
+     */
+    #[Given("guests meet the host at the suite's own mailbox and relay")]
+    public function guestsMeetAtTheSuitesMailbox(): void
+    {
+        $this->porta->mergeProjectConfig(['plugins' => ['assist' => ['mailbox' => $this->assist()->mailbox(), 'transit' => $this->assist()->transit()]]]);
+    }
+
+    /** A guest redeems the code the host's toast handed out, and asks in. */
+    #[When('a guest :name asks to join with the code')]
+    public function aGuestAsksToJoin(string $name): void
+    {
+        $this->assist()->askToJoin($this->code(), $name);
+    }
+
+    #[Then('the clipboard should hold the command that joins with the code')]
+    public function theClipboardShouldHoldTheCommand(): void
+    {
+        $this->getSession()->terminal()->assertClipboard('porta assist '.$this->code());
+    }
+
+    /** The code the host's toast handed out, waited for. */
+    private function code(): string
+    {
+        $ide = $this->porta->ide();
+        $code = '';
+        $this->getSession()->waitUntil(static function () use ($ide, &$code): bool {
+            foreach (Toasts::all($ide) as $toast) {
+                if (1 === \preg_match('/porta assist (\S+)\)/', $toast, $match)) {
+                    $code = $match[1];
+                }
+            }
+
+            return '' !== $code;
+        }, 'No toast hands out a code.');
+
+        return $code;
+    }
+
+    #[When('another guest :name asks to join')]
+    public function anotherGuestAsksToJoin(string $name): void
+    {
+        $this->assist()->knock($name);
+    }
+
+    #[Then('the guest should hear a :type message')]
+    public function theGuestShouldHear(string $type): void
+    {
+        $this->assist()->hear($type);
+    }
+
+    #[Then('the guest should hear a :type message with :key :value')]
+    public function theGuestShouldHearWith(string $type, string $key, string $value): void
+    {
+        $message = $this->assist()->hear($type);
+        $said = $message[$key] ?? null;
+        Assert::assertSame($value, \is_scalar($said) ? (string) $said : \json_encode($said), \sprintf('The %s message: %s', $type, \json_encode($message)));
+    }
+
+    #[When("the guest asks for the project's files")]
+    public function theGuestAsksForTheFiles(): void
+    {
+        $this->assist()->tell(['t' => 'manifest']);
+    }
+
+    #[Then('the files offered should include :file but not :other')]
+    public function theFilesOfferedShouldInclude(string $file, string $other): void
+    {
+        $listing = (string) \json_encode($this->assist()->hear('manifest')['files'] ?? null, \JSON_UNESCAPED_SLASHES);
+        Assert::assertStringContainsString('"'.$file.'"', $listing);
+        Assert::assertStringNotContainsString('"'.$other.'"', $listing);
+    }
+
+    /**
+     * The workspace as a guest's copy: the invite `porta assist` stores, to a
+     * host played here — the IDE started on it joins by itself.
+     */
+    #[Given('this is a guest\'s copy of a project shared by a host')]
+    public function thisIsAGuestsCopy(): void
+    {
+        $this->assist()->hostFor($this->getSession()->getWorkspace()->path);
+    }
+
+    #[When('the host :name lets this guest in to :role')]
+    public function theHostLetsThisGuestIn(string $name, string $role): void
+    {
+        $this->assist()->letIn($role, $name);
+    }
+
+    /** What the host says on the wire: one JSON message. */
+    #[When('the host says:')]
+    public function theHostSays(PyStringNode $json): void
+    {
+        $this->assist()->tell(self::json($json->getRaw()));
+    }
+
+    #[Then('the host should hear a :type message')]
+    public function theHostShouldHear(string $type): void
+    {
+        $this->assist()->hear($type);
+    }
+
+    #[Then('the host should hear a :type message with :key :value')]
+    public function theHostShouldHearWith(string $type, string $key, string $value): void
+    {
+        $this->theGuestShouldHearWith($type, $key, $value);
+    }
+
+    private function assist(): AssistPeer
+    {
+        return $this->assistPeer ??= new AssistPeer($this->getSession());
     }
 
     // --- The gutter -------------------------------------------------------------------
