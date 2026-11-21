@@ -13,11 +13,12 @@ use Janalis\Tuink\Context\TuinkAwareTrait;
 use Janalis\Tuink\Driver\InProcessDriver;
 use Porta\Config\ActionCatalog;
 use Porta\Config\CommandRegistry;
+use Porta\Config\IdeConfig;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Behat\PortaApplication;
 use Porta\Tests\Support\Services;
-use Porta\Tests\Support\Widgets;
+use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Tui;
@@ -53,12 +54,15 @@ final class PortaContext implements TuinkAwareContextInterface
     #[Given('the bundled plugins :names are enabled')]
     public function theBundledPluginsAreEnabled(string $names): void
     {
-        // As `porta --plugin=<name>` does: on for this launch, besides what the config enables
+        // In .porta.json, which both drivers read whatever arguments the start step passes. An explicit
+        // list REPLACES the defaults, so it starts from them: the scenario adds a plugin, it does not
+        // turn the default ones off.
         $this->useBundledPlugins();
-        $session = $this->getSession();
-        $launch = $session->getLaunch();
-        $flags = \array_map(static fn (string $name): string => '--plugin='.\trim($name), \explode(',', $names));
-        $session->setLaunch($launch->withArguments([...$launch->arguments, ...$flags]));
+        $config = $this->projectConfig();
+        $enabled = \is_array($config['enabledPlugins'] ?? null) ? $config['enabledPlugins'] : IdeConfig::DEFAULT_ENABLED_PLUGINS;
+        $plugins = \array_map(\trim(...), \explode(',', $names));
+        $config['enabledPlugins'] = \array_values(\array_unique([...$enabled, ...$plugins]));
+        $this->getSession()->getWorkspace()->write(self::PROJECT_CONFIG, self::encode($config));
     }
 
     #[Given('the bundled plugins are available')]
@@ -206,14 +210,31 @@ final class PortaContext implements TuinkAwareContextInterface
         $session = $this->getSession();
         $path = $session->getWorkspace()->resolve($file);
         $session->waitUntil(
-            fn (): bool => \realpath($path) === \realpath((string) Widgets::editor($this->tui())->getFilePath()),
+            fn (): bool => \realpath($path) === \realpath((string) $this->editor()?->getFilePath()),
             \sprintf('The editor does not show "%s".', $file),
         );
     }
 
-    public function editorText(): string
+    /**
+     * The editor's text, or null while no editor is mounted (a viewer has the pane): the checks retry.
+     */
+    public function editorText(): ?string
     {
-        return Widgets::editor($this->tui())->getDocument()->getText();
+        return $this->editor()?->getDocument()->getText();
+    }
+
+    /**
+     * The editor widget, or null while none is mounted.
+     */
+    public function editor(): ?CodeEditorWidget
+    {
+        try {
+            $editor = $this->tui()->getById('editor');
+        } catch (\InvalidArgumentException) {
+            return null;
+        }
+
+        return $editor instanceof CodeEditorWidget ? $editor : null;
     }
 
     /**
@@ -221,7 +242,14 @@ final class PortaContext implements TuinkAwareContextInterface
      */
     private function waitForEditor(\Closure $holds, string $message): void
     {
-        $this->getSession()->waitUntil(fn (): bool => $holds($this->editorText()), fn (): string => $message."\n\nThe editor holds:\n".$this->editorText());
+        $this->getSession()->waitUntil(
+            function () use ($holds): bool {
+                $text = $this->editorText();
+
+                return null !== $text && $holds($text);
+            },
+            fn (): string => $message."\n\nThe editor holds:\n".($this->editorText() ?? '(no editor is mounted)'),
+        );
     }
 
     // --- The running Ide --------------------------------------------------------
@@ -279,6 +307,14 @@ final class PortaContext implements TuinkAwareContextInterface
             ->getSession()
             ->getWorkspace()
             ->write(self::PROJECT_CONFIG, \json_encode($merged, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR)."\n");
+    }
+
+    /**
+     * @param array<array-key, mixed> $config
+     */
+    private static function encode(array $config): string
+    {
+        return \json_encode($config, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR)."\n";
     }
 
     /**

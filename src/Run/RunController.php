@@ -307,6 +307,9 @@ final class RunController
                 if (null !== $waiter) {
                     $waiter($code);
                 }
+                // The new title is pulled by the dock strip, which reads it only
+                // when the frame reaches it: a render alone reuses the cached tree.
+                $this->terminalPanel->invalidate();
                 $this->tui->requestRender();
             });
         $session->attach($process);

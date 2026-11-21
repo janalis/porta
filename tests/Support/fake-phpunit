@@ -1,0 +1,64 @@
+#!/usr/bin/env php
+<?php
+
+// A phpunit stand-in for the Behat features: it finds the test methods of the
+// files it is given (every tests/*Test.php when none), keeps those the
+// `--filter` names, and writes the JUnit report `--log-junit` asks for — a
+// method whose name holds "Fails" failing, every other one passing. Asked
+// for `--coverage-clover`, it copies the project's coverage.xml there, with
+// `{root}` standing for the directory it runs in. No PHPUnit to boot, so a
+// run takes no longer than a PHP start.
+
+declare(strict_types=1);
+
+$args = array_slice($argv, 1);
+$option = static function (string $name) use (&$args): ?string {
+    $at = array_search($name, $args, true);
+    if (false === $at) {
+        return null;
+    }
+    $value = $args[$at + 1] ?? null;
+    array_splice($args, $at, 2);
+
+    return $value;
+};
+$junit = $option('--log-junit');
+$clover = $option('--coverage-clover');
+$filter = $option('--filter');
+$files = [] !== $args ? $args : (glob('tests/*Test.php') ?: []);
+
+$cases = '';
+$failed = 0;
+$ran = 0;
+foreach ($files as $file) {
+    $source = (string) file_get_contents($file);
+    preg_match('/^namespace\s+([^;]+);/m', $source, $namespace);
+    preg_match('/\bclass\s+(\w+)/', $source, $class);
+    $fqcn = (isset($namespace[1]) ? $namespace[1].'\\' : '').($class[1] ?? 'Unknown');
+    foreach (explode("\n", $source) as $index => $line) {
+        if (1 !== preg_match('/function\s+(test\w*)\s*\(/', $line, $method)) {
+            continue;
+        }
+        $name = $fqcn.'::'.$method[1];
+        if (null !== $filter && 1 !== preg_match($filter, $name)) {
+            continue;
+        }
+        ++$ran;
+        $at = sprintf('name="%s" class="%s" file="%s" line="%d"', $method[1], $fqcn, realpath($file), $index + 1);
+        if (str_contains($method[1], 'Fails')) {
+            ++$failed;
+            $cases .= sprintf("<testcase %s><failure>%s\nFailed asserting that false is true.\n\n%s:%d</failure></testcase>", $at, $name, realpath($file), $index + 3);
+        } else {
+            $cases .= sprintf('<testcase %s/>', $at);
+        }
+    }
+}
+if (null !== $junit) {
+    file_put_contents($junit, '<testsuites><testsuite name="stub">'.$cases.'</testsuite></testsuites>');
+}
+if (null !== $clover && is_file('coverage.xml')) {
+    file_put_contents($clover, str_replace('{root}', (string) getcwd(), (string) file_get_contents('coverage.xml')));
+}
+echo 0 === $failed ? "OK ({$ran} tests)\n" : "FAILURES! Tests: {$ran}, Failures: {$failed}.\n";
+
+exit(0 === $failed ? 0 : 1);
