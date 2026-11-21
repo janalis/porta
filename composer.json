@@ -48,10 +48,12 @@
     },
     "require-dev": {
         "ext-simplexml": "*",
+        "behat/behat": "^4.0",
         "brianium/paratest": "^7.23",
         "carthage-software/mago": "1.60.*",
         "infection/infection": "^0.35.4",
         "janalis/custos": "^0.1.13",
+        "janalis/tuink": "dev-porta-steps",
         "phpunit/php-invoker": "^7.0",
         "phpunit/phpunit": "^13.2",
         "rector/rector": "^2.6",
@@ -80,6 +82,9 @@
         "test:integration": "@test --testsuite=Integration",
         "test:serial": "@php vendor/bin/phpunit --order-by=default",
         "test:affected": "@php bin/porta-dev test:affected --processes=${PORTA_TEST_PROCESSES:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))}",
+        "behat": "@php -d memory_limit=1G vendor/bin/behat --strict --format=progress",
+        "behat:process": "@php -d memory_limit=1G vendor/bin/behat --strict --format=progress --profile=process",
+        "behat:catalog": "@php -d memory_limit=1G tests/Behat/catalog.php",
         "coverage": "@php -d pcov.enabled=1 -d pcov.directory=src vendor/bin/paratest --processes=${PORTA_TEST_PROCESSES:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))} --functional --enforce-time-limit --default-time-limit=120 --passthru-php=\"'-d' 'pcov.enabled=1' '-d' 'pcov.directory=src'\" --coverage-clover coverage/clover.xml",
         "coverage:plugins": [
             "@php bin/porta-dev coverage:plugins --processes=${PORTA_SHARD_PROCESSES:-$(( $(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) * 3 / 4 ))}",
@@ -141,5 +146,15 @@
         "platform": {
             "php": "8.5.0"
         }
-    }
+    },
+    "repositories": [
+        {
+            "name": "tuink",
+            "type": "path",
+            "url": "../tuink-porta",
+            "options": {
+                "symlink": true
+            }
+        }
+    ]
 }

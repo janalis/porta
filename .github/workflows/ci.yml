@@ -144,6 +144,37 @@ jobs:
             esac
           done
 
+  # The behaviour spec: every feature in tests/Behat/features, in process,
+  # then the @process subset on the real bin/porta in a pty; and the gate that
+  # every action, command and setting is driven by a feature.
+  behat:
+    if: github.event_name != 'schedule' && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    name: behat
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+          ini-values: zend.assertions=1
+          extensions: ${{ env.PHP_EXTENSIONS }}, intl
+      - uses: actions/cache@v6
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+      - run: composer install --no-interaction --no-progress
+      - name: Catalog
+        run: composer behat:catalog
+      - name: In process
+        timeout-minutes: 30
+        run: composer behat
+      - name: Real entry point
+        timeout-minutes: 10
+        run: composer behat:process
+
   # Two jobs, not one: the src pass and the plugin shards share no state and
   # produce separate reports, so the long pole is now the longer of the two
   # rather than their sum. `coverage:check` still chains both locally.
