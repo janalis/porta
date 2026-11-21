@@ -8,6 +8,7 @@ use Behat\Behat\Context\Environment\InitializedContextEnvironment;
 use Behat\Behat\Hook\Scope\BeforeScenarioScope;
 use Behat\Gherkin\Node\PyStringNode;
 use Behat\Gherkin\Node\TableNode;
+use Behat\Hook\AfterScenario;
 use Behat\Hook\BeforeScenario;
 use Behat\Step\Given;
 use Behat\Step\Then;
@@ -18,6 +19,7 @@ use PHPUnit\Framework\Assert;
 use Porta\Editor\ChangeMarkKind;
 use Porta\ReviewPlugin\Tests\Support\FakeForge;
 use Porta\Tests\Behat\Support\McpPeer;
+use Porta\Tests\Support\DummyServer;
 use Porta\Tests\Support\Widgets;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 
@@ -42,7 +44,12 @@ final class CollabContext implements TuinkAwareContextInterface
 
     private PortaContext $porta;
 
+    /** Porta's home, when a scenario keeps it in the workspace. */
+    private const string HOME = '.home';
+
     private ?McpPeer $peer = null;
+
+    private ?DummyServer $server = null;
 
     /** What the agent's last call was answered. */
     private string $answer = '';
@@ -86,7 +93,88 @@ final class CollabContext implements TuinkAwareContextInterface
             '%support%' => \dirname(__DIR__, 2).'/Support',
             '%plugins%' => \dirname(__DIR__, 3).'/plugins',
             '%workspace%' => $this->getSession()->getWorkspace()->path,
+            '%port%' => (string) $this->server?->port,
+            '%root%' => (string) $this->server?->root,
+            '%ssh-client%' => DummyServer::SSH_CLIENT,
         ]);
+    }
+
+    // --- Remote projects ---------------------------------------------------------------
+
+    /**
+     * A Porta home of the scenario's own, where a remote project's cache and
+     * the global configuration go: the suite's fixture home must not keep
+     * them. It carries the fixture home's notes that keep the update checks
+     * off the network.
+     */
+    #[Given("Porta's home is in the workspace")]
+    public function portasHomeIsInTheWorkspace(): void
+    {
+        $workspace = $this->getSession()->getWorkspace();
+        $fixture = \dirname(__DIR__, 2).'/Support/fixtures/home/.porta/';
+        foreach (['ide-updates.json', 'tool-updates.json', 'cache/store/catalog.json'] as $note) {
+            $workspace->write(self::HOME.'/.porta/'.$note, (string) \file_get_contents($fixture.$note));
+        }
+        $session = $this->getSession();
+        $session->setLaunch($session->getLaunch()->withEnv('PORTA_HOME', $workspace->resolve(self::HOME)));
+    }
+
+    #[Given("Porta's global configuration:")]
+    public function portasGlobalConfiguration(PyStringNode $json): void
+    {
+        $this->getSession()->getWorkspace()->write(self::HOME.'/.porta/config.json', $this->expand($json->getRaw())."\n");
+    }
+
+    /**
+     * The stand-in ssh server (tests/Support/Servers), running commands in
+     * the workspace folder $folder; the stand-in client reaches it.
+     */
+    #[Given('an ssh server serving :folder')]
+    public function anSshServer(string $folder): void
+    {
+        $this->server = DummyServer::ssh((string) \realpath($this->getSession()->getWorkspace()->resolve($folder)));
+    }
+
+    /** The small real FTP server of tests/Support/Servers, serving $folder as `/`. */
+    #[Given('an FTP server serving :folder')]
+    public function anFtpServer(string $folder): void
+    {
+        $this->server = DummyServer::ftp((string) \realpath($this->getSession()->getWorkspace()->resolve($folder)));
+    }
+
+    #[AfterScenario]
+    public function stopTheServer(): void
+    {
+        $this->server?->stop();
+        $this->server = null;
+    }
+
+    /**
+     * Types $address with `%port%` the server's port and `%root%` the folder it serves.
+     */
+    #[When('I type the address :address')]
+    public function iTypeTheAddress(string $address): void
+    {
+        $this->getSession()->type($this->expand($address));
+    }
+
+    /**
+     * The real entry point reopens where the session asked once it ends: so does this.
+     */
+    #[When('Porta reopens on the project it was asked for')]
+    public function portaReopens(): void
+    {
+        $session = $this->getSession();
+        $root = null;
+        $session->waitUntil(function () use (&$root): bool {
+            $root = $this->porta->ide()->reopenAt();
+
+            return null !== $root;
+        }, 'The IDE was asked to open no other project.');
+        \assert(\is_string($root), description: 'waited for');
+        $session->stop();
+        $session->setLaunch($session->getLaunch()->withArguments([$root]));
+        $session->start();
     }
 
     // --- Git ------------------------------------------------------------------------
