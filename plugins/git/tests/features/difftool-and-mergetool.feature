@@ -34,6 +34,24 @@ Feature: Porta as git's difftool and mergetool
     When I press "Escape"
     Then the app should have exited
 
+  Scenario: Two files compare by hand in a folder git does not track
+    Given a file "old.php" containing:
+      """
+      <?php
+      echo 'before';
+      """
+    And a file "new.php" containing:
+      """
+      <?php
+      echo 'after';
+      """
+    When I start the app with the arguments "--diff old.php new.php"
+    Then I should see "-echo 'before';"
+    And I should see "+echo 'after';"
+    And I should not see "Enable the git plugin"
+    When I press "Escape"
+    Then the app should have exited
+
   Scenario: A mergetool run opens the conflicted file in the merge view
     Given a file "a.php" containing:
       """

@@ -190,19 +190,21 @@ return new class('git') extends AbstractPlugin implements DisposablePlugin {
         // they were extractable long before the rest.
         $this->activateBlameAndMarks($api, $settings, $gitPath, $git, $processes);
 
-        if (!$git->isRepository()) {
-            // Every verb below acts on a repository. `when` would not do: it
-            // gates KEY dispatch only, leaving the palette and the menus
-            // running a handler that can only flash. Not registering removes
-            // them from all three at once, and the menu group goes with them.
-            //
-            // Fixed at load, like the settings that carry a `restart` note:
-            // `git init` in a running IDE needs a restart to light the chrome.
-            return;
+        // Every verb below acts on a repository. `when` would not do: it
+        // gates KEY dispatch only, leaving the palette and the menus running a
+        // handler that can only flash. Not registering removes them from all
+        // three at once, and the menu group goes with them. What stays outside
+        // a repository is the answer to `porta --diff`/`--merge`: comparing two
+        // files needs no repository, and the view's comparison asks none.
+        //
+        // Fixed at load, like the settings that carry a `restart` note:
+        // `git init` in a running IDE needs a restart to light the chrome.
+        $inRepository = $git->isRepository();
+        if ($inRepository) {
+            // For agents, through whatever serves registered tools; on the general
+            // lane, so shutdown and the completion barrier reach these too.
+            new GitTools($api, new GitProcessRunner($root, $gitPath, $processes->general))->register();
         }
-        // For agents, through whatever serves registered tools; on the general
-        // lane, so shutdown and the completion barrier reach these too.
-        new GitTools($api, new GitProcessRunner($root, $gitPath, $processes->general))->register();
 
         // Deferred on purpose: PluginApi refuses every IDE action during
         // activate(), so each of these is a closure the callers invoke later.
@@ -238,12 +240,12 @@ return new class('git') extends AbstractPlugin implements DisposablePlugin {
         );
         $remote = new GitRemoteCommands(new GitRemote($root, $gitPath, $processes->remote), $flash, $trans, $events, $modals, $repaint);
 
-        $api->registerListTool(self::COMPARE_TOOL, title: 'Compare');
-        $this->registerCommands($api, $commands, $remote, $worktrees);
-        self::registerMenus($api);
-
-        $operations = self::registerOperations($api, new OperationCommands($git, $refresher, $modals, $flash, $trans, $events, $repaint));
-        $branchMenu = self::registerBranchCell($api, $refresher, $settings, new BranchMenu($commands, $worktrees, $trans, $operations, $refresher), $trans);
+        $operations = new OperationCommands($git, $refresher, $modals, $flash, $trans, $events, $repaint);
+        $branchMenu = new BranchMenu($commands, $worktrees, $trans, $operations, $refresher);
+        if ($inRepository) {
+            $this->registerRepositoryVerbs($api, $commands, $remote, $worktrees, $operations);
+            self::registerBranchCell($api, $refresher, $settings, $branchMenu, $trans);
+        }
         $repository = self::repositoryState($git, $root, $processes->general, $refresher->operation(...));
 
         // The view is built LATER — its factory runs after plugins have
@@ -298,11 +300,6 @@ return new class('git') extends AbstractPlugin implements DisposablePlugin {
             }
         });
 
-        // Toggle, not open: Ctrl+Alt+D has always closed the view it opened.
-        // One call, because "is it open?" is the registry's question — asking
-        // it here would mean keeping the controller alive to read one bool,
-        // and the controller does not exist yet.
-        $api->adoptCommand('ide_git', static fn () => $api->toggleView('git'));
         foreach (GitWiring::VIEW_CORE as $event => $method) {
             $api->on($event, static function (PluginObservable $fact) use ($slot, $method): void {
                 // @mago-expect analysis:string-member-selector -- the method name comes from
@@ -316,15 +313,8 @@ return new class('git') extends AbstractPlugin implements DisposablePlugin {
             fn (ViewServices $services): GitViewController => $slot->view = $this->buildView($api, $services, $git, $settings, $events, $flash, $commands, $remote, $branchMenu, $repository),
         );
 
-        $api->onReady($refresher->refreshBranch(...));
-        // A save, a commit, a completed fetch or pull, or anything else that
-        // moved the working tree: the branch indicator may be stale.
-        $api->onFileSaved(static fn (string $path) => $refresher->refreshBranch());
-        foreach (GitWiring::REFRESHER as $event => $method) {
-            // @mago-expect analysis:less-specific-nested-argument-type -- same const map, same
-            // contract test. A forwarding closure only trades this for the string-member-selector
-            // above. Re-checked 2026-09-02.
-            $api->on($event, \Closure::fromCallable([$refresher, $method]));
+        if ($inRepository) {
+            self::followTheWorkingTree($api, $refresher);
         }
     }
 
@@ -342,11 +332,39 @@ return new class('git') extends AbstractPlugin implements DisposablePlugin {
      * The status bar's branch cell, a contributed segment carrying its own
      * menu — the menu the view's toolbar drops too, so it is handed back.
      */
-    private static function registerBranchCell(PluginApi $api, GitRefresher $refresher, GitSettings $settings, BranchMenu $menu, Translate $trans): BranchMenu
+    /**
+     * The verbs that act on a repository: commands, menus, the operations on
+     * the palette, and the Git view's own toggle.
+     */
+    private function registerRepositoryVerbs(PluginApi $api, GitCommands $commands, GitRemoteCommands $remote, WorktreeCommands $worktrees, OperationCommands $operations): void
+    {
+        $api->registerListTool(self::COMPARE_TOOL, title: 'Compare');
+        $this->registerCommands($api, $commands, $remote, $worktrees);
+        self::registerMenus($api);
+        self::registerOperations($api, $operations);
+        // Toggle, not open: Ctrl+Alt+D has always closed the view it opened.
+        // One call, because "is it open?" is the registry's question — asking
+        // it here would mean keeping the controller alive to read one bool,
+        // and the controller does not exist yet.
+        $api->adoptCommand('ide_git', static fn () => $api->toggleView('git'));
+    }
+
+    /** The branch indicator follows whatever moved the working tree: a save, a commit, a fetch or a pull. */
+    private static function followTheWorkingTree(PluginApi $api, GitRefresher $refresher): void
+    {
+        $api->onReady($refresher->refreshBranch(...));
+        $api->onFileSaved(static fn (string $path) => $refresher->refreshBranch());
+        foreach (GitWiring::REFRESHER as $event => $method) {
+            // @mago-expect analysis:less-specific-nested-argument-type -- same const map, same
+            // contract test. A forwarding closure only trades this for the string-member-selector
+            // above. Re-checked 2026-09-02.
+            $api->on($event, \Closure::fromCallable([$refresher, $method]));
+        }
+    }
+
+    private static function registerBranchCell(PluginApi $api, GitRefresher $refresher, GitSettings $settings, BranchMenu $menu, Translate $trans): void
     {
         $api->registerStatusSegment(new GitBranchSegment($refresher, $settings, $menu, $trans, Worktree::linkedName($api->projectRoot()))->statusCell(...));
-
-        return $menu;
     }
 
     /**
@@ -428,14 +446,12 @@ return new class('git') extends AbstractPlugin implements DisposablePlugin {
         );
     }
 
-    /** Continue, skip and abort a merge or rebase in progress, on the palette — handed back for the branch menus. */
-    private static function registerOperations(PluginApi $api, OperationCommands $operations): OperationCommands
+    /** Continue, skip and abort a merge or rebase in progress, on the palette. */
+    private static function registerOperations(PluginApi $api, OperationCommands $operations): void
     {
         $api->registerCommand('continue', label: 'Git: Continue Merge or Rebase', handler: $operations->continue(...));
         $api->registerCommand('skip', label: 'Git: Skip This Step', handler: $operations->skip(...));
         $api->registerCommand('abort', label: 'Git: Abort Merge or Rebase…', handler: $operations->abort(...));
-
-        return $operations;
     }
 
     /** @param \Closure(): ?OperationState $operation what git is in the middle of, as the status cell knows it */

@@ -298,7 +298,7 @@ final readonly class GitInfo
 
     /**
      * Compare two arbitrary files — neither has to be in the repository, or
-     * even under it. `--no-index` is git's own two-path mode, the same one
+     * even under it, and there need be no repository at all. `--no-index` is git's own two-path mode, the same one
      * {@see untrackedFileDiff()} uses, and it exits 1 when the files differ,
      * which is the interesting case.
      *
@@ -308,7 +308,7 @@ final readonly class GitInfo
      */
     public function compareFiles(string $left, string $right, callable $onDone, ?int $context = null): void
     {
-        $this->runner->runStatus(['diff', '--no-color', '--no-ext-diff', '--no-index', ...(null === $context ? [] : ['-U'.$context]), '--', $left, $right], static fn (
+        $this->runner->runAnywhere(['diff', '--no-color', '--no-ext-diff', '--no-index', ...(null === $context ? [] : ['-U'.$context]), '--', $left, $right], static fn (
             int $code,
             string $out,
         ) => $onDone($out));
