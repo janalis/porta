@@ -15,9 +15,30 @@ line**) does that, if you want it to.
 
 ## Launch
 
-- **Click the icon.** Porta asks which project to open, offering the recent ones.
+- **Click the icon.** Porta asks which project to open (see below).
 - **Open a folder with Porta** from the file manager, or drop one on the dock icon.
 - **On Linux**, `porta-desktop ~/Sites/shop` from a shell does the same.
+
+### Choosing a project
+
+A window with no project starts on one field:
+
+- **A name** narrows the projects you opened recently, then the PHP projects
+  found on this computer: the folders holding a `composer.json` one level down
+  in `~/Sites`, `~/Projects`, `~/code`, `~/Developer`, `~/src`, `~/dev`,
+  `~/workspace`, `~/git`, `~/www` and `~/PhpstormProjects`. On Windows that is
+  your WSL home, not `C:\Users`.
+- **A path**, starting with `~`, `/` or `.`, lists the folders it could go on
+  to name; **Tab** completes it, as a shell does. Tab on a project's name puts
+  its path in the field, to go on from.
+- **Choose a folder…** opens the system's folder dialog.
+- **Open remote…** takes `user@host:/path` or an `ssh://`, `sftp://`, `ftp://`
+  or `ftps://` URL, as **Open Remote Project…** does inside the IDE.
+
+While it waits, the window takes a folder dropped on it, chosen with **Open
+Folder…** or **Open Recent** (macOS), or opened with Porta from the file
+manager, instead of opening a second window beside it. It is drawn in the
+system's light or dark look, unless you chose a theme.
 
 Each project gets one window. Opening a project that is already open brings its
 window forward, and opening another project opens another window. A file opened
