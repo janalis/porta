@@ -10,6 +10,7 @@ use Behat\Config\Suite;
 use Janalis\Tuink\Context\TuiContext;
 use Janalis\Tuink\ServiceContainer\TuinkExtension;
 use Porta\Tests\Behat\Context\ChromeContext;
+use Porta\Tests\Behat\Context\CollabContext;
 use Porta\Tests\Behat\Context\EditingContext;
 use Porta\Tests\Behat\Context\IntelligenceContext;
 use Porta\Tests\Behat\Context\PortaContext;
@@ -53,7 +54,7 @@ $paths = [
 ];
 $suite = static fn (string $tags): Suite => new Suite('default')
     ->withPaths(...$paths)
-    ->withContexts(TuiContext::class, PortaContext::class, ChromeContext::class, EditingContext::class, IntelligenceContext::class, RunContext::class, SettingsContext::class)
+    ->withContexts(TuiContext::class, PortaContext::class, ChromeContext::class, EditingContext::class, IntelligenceContext::class, RunContext::class, SettingsContext::class, CollabContext::class)
     ->withFilter(new TagFilter($tags));
 
 return new Config()
