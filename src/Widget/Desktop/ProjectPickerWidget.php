@@ -82,6 +82,9 @@ final class ProjectPickerWidget extends AbstractWidget implements FocusableInter
     /** @var array<int, int> screen line => the row drawn on it, from the last render: what a click lands on */
     private array $rowOnLine = [];
 
+    /** @var array{int, int} the card's first column and width, from the last render: a click beside it is no choice */
+    private array $cardColumns = [0, 0];
+
     /**
      * @param \Closure(string): list<PickerRow>          $rowsFor  the rows a typed text turns up
      * @param \Closure(self, ?PickerRow, string): void   $onSubmit Enter: this picker, the selected row (null when none) and the text
@@ -172,8 +175,12 @@ final class ProjectPickerWidget extends AbstractWidget implements FocusableInter
 
             return;
         }
+        [$from, $width] = $this->cardColumns;
         $position = \array_search($this->rowOnLine[$mouse->row] ?? -1, $this->selectable(), strict: true);
-        if (MouseEvent::LEFT !== $mouse->button || !$mouse->pressed || $mouse->motion || false === $position) {
+        // A plain left press on the card: a modified click (a secondary click
+        // on macOS is Ctrl+click) or one beside the card means something else.
+        $plain = $mouse->isLeftPress() && !$mouse->ctrl && !$mouse->shift && !$mouse->alt;
+        if (!$plain || false === $position || $mouse->col < $from || $mouse->col >= ($from + $width)) {
             return;
         }
         $this->list->select($position);
@@ -187,7 +194,8 @@ final class ProjectPickerWidget extends AbstractWidget implements FocusableInter
         $width = \max(1, $context->getColumns());
         $height = \max(1, $context->getRows());
         $card = \max(1, \min($width - (2 * self::MARGIN), self::CARD_MAX));
-        $left = AnsiText::blank(\max(0, \intdiv($width - $card, num2: 2)));
+        $this->cardColumns = [\max(0, \intdiv($width - $card, num2: 2)), $card];
+        $left = AnsiText::blank($this->cardColumns[0]);
         $place = static fn (string $line): string => AnsiText::truncate($left.$line, $width, pad: true);
 
         $lines = $height >= self::HEADER_MIN_ROWS ? $this->header($width) : [];
@@ -288,6 +296,8 @@ final class ProjectPickerWidget extends AbstractWidget implements FocusableInter
     private function refresh(): void
     {
         $this->rows = ($this->rowsFor)($this->field->value());
+        // The lines drawn last show the old rows: a click before the next frame lands on nothing.
+        $this->rowOnLine = [];
         $this->list->reset();
         $this->scroll = 0;
         $this->problem = '';

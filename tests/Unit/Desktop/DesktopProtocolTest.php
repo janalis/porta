@@ -52,7 +52,6 @@ final class DesktopProtocolTest extends TestCase
         \putenv(DesktopSession::FLAG);
         \putenv(DesktopSession::TOKEN);
         \putenv(DesktopSession::MENU);
-        \putenv(DesktopSession::APPEARANCE);
     }
 
     private function bootSystemMenu(): DesktopProtocol
@@ -95,9 +94,7 @@ final class DesktopProtocolTest extends TestCase
 
     public function testTheIdeBootsInTheWindowsLookWhenNoThemeWasChosen(): void
     {
-        \putenv(DesktopSession::APPEARANCE.'=light');
-
-        $this->bootDesktop();
+        $this->bootIde(desktop: new DesktopSession(active: true, token: $this->contract['examples']['token'], appearance: 'light'));
 
         $this->assertSame('light', $_ENV['PORTA_THEME'], 'not dark first and light a moment later');
     }

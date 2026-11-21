@@ -362,7 +362,38 @@ final class ProjectPickerTest extends TestCase
     public function testWhatFollowsStartsOnAClearScreen(): void
     {
         $this->assertNull($this->pick(["\x1b"]));
-        $this->assertStringEndsWith("\x1b[H\x1b[2J", $this->terminal->getOutput());
+        $this->assertStringEndsWith("\x1b[?1000l\x1b[?1006l\x1b[H\x1b[2J\x1b[3J", $this->terminal->getOutput(), 'no click reports, a clear screen and scrollback');
+    }
+
+    public function testTabGoesIntoAFolderTypedInFullThatBeginsAnothersName(): void
+    {
+        \mkdir($this->disk->path('one-two'));
+
+        // `one` names a folder and begins `one-two`: Tab on "Open this folder" goes into one.
+        $this->assertNull($this->pick([$this->typed($this->disk->path('one')), "\t", 'x', "\x1b"]));
+        $this->assertStringContainsString('one/x', $this->screen());
+    }
+
+    public function testAFolderThatIsTheSameOnDiskUnderAnotherNameIsStillOffered(): void
+    {
+        \symlink($this->disk->path('typed'), $this->disk->path('typed-alias'));
+
+        $this->assertNull($this->pick([$this->typed($this->disk->path('typed')), "\x1b"]));
+        $this->assertStringContainsString('typed-alias/', $this->screen());
+    }
+
+    public function testAPickerThatFailsStillStopsTheClickReports(): void
+    {
+        $found = static function (array $except): array {
+            throw new \RuntimeException('the disk went away');
+        };
+
+        try {
+            new ProjectPicker(new RecentProjectChoices(new RecentProjectsStore()), $this->terminal, found: $found)->pick();
+            $this->fail('the failure is not swallowed');
+        } catch (\RuntimeException) {
+            $this->assertStringEndsWith("\x1b[?1000l\x1b[?1006l\x1b[H\x1b[2J\x1b[3J", $this->terminal->getOutput());
+        }
     }
 
     public function testTheCardNamesPortaAndItsVersion(): void

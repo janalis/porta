@@ -160,6 +160,9 @@ final class Ide
         private readonly ?ToolLaunch $tool = null,
         array $plugins = [],
         private readonly ?string $restartDirectory = null,
+        // The window around this launch, when a desktop host started it: what
+        // its first frame looks like. Null for a terminal launch.
+        ?DesktopSession $desktop = null,
     ) {
         // Boot-phase evidence: the entrypoint hands in a trace whose prelude
         // covers the interpreter and autoload; test rigs get a fresh one so the
@@ -180,7 +183,7 @@ final class Ide
             $docsDir,
             // In a window, the window's light or dark look unless a theme was chosen:
             // never dark first and light a moment later, once the window can say.
-            LaunchTheme::for($this->rootDir, $config->settings, DesktopSession::current()),
+            LaunchTheme::for($this->rootDir, $config->settings, $desktop ?? new DesktopSession(active: false, token: '')),
         );
         $locator = $this->container->get('porta.ide');
         \assert($locator instanceof ServiceLocator, description: 'The porta.ide service is the ServiceLocator boundary');

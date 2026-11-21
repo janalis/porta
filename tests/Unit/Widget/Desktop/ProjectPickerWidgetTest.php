@@ -267,6 +267,34 @@ final class ProjectPickerWidgetTest extends TestCase
         $this->assertSame([], $this->submitted, 'a right click, a release and a drag are not choices');
     }
 
+    public function testAClickBesideTheCardOrWithAModifierChoosesNothing(): void
+    {
+        $this->rows = [self::project('one')];
+        $picker = $this->picker();
+        $this->screen($picker);
+
+        $picker->handleInput("\x1b[<0;3;9M");
+        $picker->handleInput("\x1b[<0;75;9M");
+        $picker->handleInput(self::mouse(16, 8));
+        $picker->handleInput(self::mouse(4, 8));
+        $picker->handleInput(self::mouse(8, 8));
+
+        $this->assertSame([], $this->submitted, 'beside the card, and Ctrl, Shift or Alt held');
+    }
+
+    public function testAClickBeforeTheListIsRedrawnChoosesNothing(): void
+    {
+        $this->rows = [self::project('one'), self::project('two')];
+        $picker = $this->picker();
+        $this->screen($picker);
+        $this->rows = [self::project('three'), self::project('four')];
+
+        $picker->handleInput('x');
+        $picker->handleInput(self::mouse(0, 9));
+
+        $this->assertSame([], $this->submitted, 'the line showed two, which is no longer there');
+    }
+
     public function testTheWheelMovesTheSelection(): void
     {
         $this->rows = [self::project('one'), self::project('two'), self::project('three')];

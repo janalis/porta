@@ -535,6 +535,7 @@ final class PortaCommand extends Command
                 tool: $workspace->tool,
                 plugins: $plugins,
                 restartDirectory: \is_string($resume) && '' !== $resume ? $resume : null,
+                desktop: DesktopSession::current(),
             );
             $onBooted();
             $ide->run();

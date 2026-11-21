@@ -99,6 +99,21 @@ final class ProjectPicker
     public function pick(): ?string
     {
         $this->tui = new Tui(terminal: $this->terminal);
+        try {
+            $this->run($this->tui);
+        } finally {
+            // However it ended: no click reports for whatever comes next, and
+            // what follows (the trust question, a shell after Esc) starts on a
+            // clear screen and scrollback, not under the picker's last frame.
+            $this->terminal->write(self::MOUSE_OFF."\x1b[H\x1b[2J\x1b[3J");
+        }
+
+        return $this->picked;
+    }
+
+    /** The card on $tui, listening as a window's picker does, until it is done. */
+    private function run(Tui $tui): void
+    {
         $widget = new ProjectPickerWidget(
             $this->translator,
             $this->version,
@@ -112,21 +127,16 @@ final class ProjectPicker
             ],
             styles: $this->styles,
         );
-        $this->tui->add($widget);
-        $this->tui->setFocus($widget);
+        $tui->add($widget);
+        $tui->setFocus($widget);
         // Once the loop runs, which is once the terminal is the picker's.
         EventLoop::defer(fn () => $this->terminal->write(self::MOUSE_ON));
         if ($this->session->active) {
             // Ahead of the field: a frame is never text.
-            $this->tui->addListener($this->onInput(...), priority: 2200);
+            $tui->addListener($this->onInput(...), priority: 2200);
             EventLoop::defer(fn () => $this->send('picking'));
         }
-        $this->tui->run();
-        // What follows on this screen (the trust question, a shell after Esc)
-        // starts on a clear one, not under the picker's last frame.
-        $this->terminal->write("\x1b[H\x1b[2J");
-
-        return $this->picked;
+        $tui->run();
     }
 
     /** @return list<PickerRow> */
@@ -213,7 +223,7 @@ final class ProjectPicker
         }
         foreach (FolderCompletion::candidates($typed) as $candidate) {
             // The folder typed in full is the row above already.
-            if (\realpath(PortaHome::expand($candidate['path'])) === $real) {
+            if (false !== $real && 0 === \strcasecmp($candidate['path'], \rtrim($typed, characters: '/').'/')) {
                 continue;
             }
             $rows[] = new PickerRow(PickerRowKind::Folder, $candidate['name'].'/', $candidate['isProject'] ? $this->translator->trans('PHP project') : '', $candidate['path']);
@@ -227,9 +237,11 @@ final class ProjectPicker
     {
         $typed = \trim($typed);
 
+        // A project's row, "Open this folder" included, goes into it: the way
+        // on from a folder typed in full whose name begins another's.
         return match (true) {
+            PickerRowKind::Project === $row?->kind && !\str_ends_with($typed, '/') => PortaHome::tilde($row->value).'/',
             FolderCompletion::isPath($typed) => FolderCompletion::complete($typed, PickerRowKind::Folder === $row?->kind ? $row->value : null),
-            PickerRowKind::Project === $row?->kind => PortaHome::tilde($row->value).'/',
             default => $typed,
         };
     }
@@ -313,8 +325,6 @@ final class ProjectPicker
     private function finish(?string $folder): void
     {
         $this->picked = $folder;
-        // The IDE that follows asks for the reports it wants; a shell after Esc wants none.
-        $this->terminal->write(self::MOUSE_OFF);
         if ($this->session->active) {
             $this->send('picked');
         }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Support;
 
 use PHPUnit\Framework\Attributes\After;
+use Porta\Desktop\DesktopSession;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Porta\Workbench\Notifier;
@@ -52,8 +53,9 @@ trait BootsIde
     /**
      * @param array<string, string> $files    the project fixture; the composer.json makes it a project root
      * @param string|null           $openFile absolute path to open at boot, as the console entrypoint does
+     * @param DesktopSession|null   $desktop  the window a desktop host would have started it in
      */
-    private function bootIde(array $files = ['composer.json' => '{}'], ?string $openFile = null): Ide
+    private function bootIde(array $files = ['composer.json' => '{}'], ?string $openFile = null, ?DesktopSession $desktop = null): Ide
     {
         $this->project = new TempProject($files);
         new OnboardingState($this->project->dir)->markWelcomeSeen();
@@ -61,7 +63,7 @@ trait BootsIde
         $this->booted = true;
         $this->terminal = new VirtualTerminal($this->columns, $this->rows);
 
-        return $this->ide = new Ide($this->project->dir, $openFile, $this->terminal);
+        return $this->ide = new Ide($this->project->dir, $openFile, $this->terminal, desktop: $desktop);
     }
 
     /** Guarded: a setUp that threw before booting must not fail again in the hook. */
