@@ -17,7 +17,6 @@ use Janalis\Tuink\Context\TuinkAwareContextInterface;
 use Janalis\Tuink\Context\TuinkAwareTrait;
 use PHPUnit\Framework\Assert;
 use Porta\Editor\ChangeMarkKind;
-use Porta\ReviewPlugin\Tests\Support\FakeForge;
 use Porta\Tests\Behat\Support\AssistPeer;
 use Porta\Tests\Behat\Support\McpPeer;
 use Porta\Tests\Support\DummyServer;
@@ -34,6 +33,9 @@ use Symfony\Component\Process\Exception\ProcessFailedException;
 final class CollabContext implements TuinkAwareContextInterface
 {
     use TuinkAwareTrait;
+
+    /** The review plugin's forge stand-in: its FakeForge::SCRIPT, which the analyzer cannot see. */
+    private const string FAKE_FORGE = __DIR__.'/../../../plugins/review/tests/fixtures/fake-forge';
 
     /** Where the forge stand-in logs its calls and finds its answers, in the workspace. */
     private const string FORGE = '.forge';
@@ -126,7 +128,10 @@ final class CollabContext implements TuinkAwareContextInterface
     #[Given("Porta's global configuration:")]
     public function portasGlobalConfiguration(PyStringNode $json): void
     {
-        $this->getSession()->getWorkspace()->write(self::HOME.'/.porta/config.json', $this->expand($json->getRaw())."\n");
+        $this
+            ->getSession()
+            ->getWorkspace()
+            ->write(self::HOME.'/.porta/config.json', $this->expand($json->getRaw())."\n");
     }
 
     /**
@@ -239,7 +244,10 @@ final class CollabContext implements TuinkAwareContextInterface
         if (!\is_dir($this->getSession()->getWorkspace()->resolve($other))) {
             $this->porta->git('clone', '-q', self::REMOTES.'/'.$name.'.git', $other);
         }
-        $this->getSession()->getWorkspace()->write($other.'/'.$file, $message."\n");
+        $this
+            ->getSession()
+            ->getWorkspace()
+            ->write($other.'/'.$file, $message."\n");
         $this->porta->git('-C', $other, 'add', '-A');
         $this->porta->git('-C', $other, 'commit', '-q', '-m', $message);
         $this->porta->git('-C', $other, 'push', '-q', 'origin', 'HEAD');
@@ -292,11 +300,11 @@ final class CollabContext implements TuinkAwareContextInterface
     #[Given('the review plugin runs the forge stand-in as :key')]
     public function theForgeStandIn(string $key): void
     {
-        $this->porta->mergeProjectConfig(['plugins' => ['review' => [$key => FakeForge::SCRIPT]]]);
+        $this->porta->mergeProjectConfig(['plugins' => ['review' => [$key => self::FAKE_FORGE]]]);
     }
 
     /**
-     * @param list<array{author: string, line: string, file: string, comment: string, resolved?: string}> $threads
+     * Each row of $threads: author, line, file, comment, and optionally resolved (yes/no).
      */
     #[Given('GitHub has the pull request :title for this branch, with the threads:')]
     public function gitHubHasThePullRequest(string $title, TableNode $threads): void
@@ -304,28 +312,36 @@ final class CollabContext implements TuinkAwareContextInterface
         $head = \trim($this->porta->git('rev-parse', 'HEAD'));
         $comment = static fn (string $author, string $body): array => ['author' => ['login' => $author], 'body' => $body, 'createdAt' => '2026-09-28T10:00:00Z'];
         $nodes = [];
-        foreach ($threads->getHash() as $n => $row) {
+        foreach (self::rows($threads) as $n => $row) {
             $nodes[] = [
                 'id' => 'PRRT_'.$n,
                 'isResolved' => 'yes' === ($row['resolved'] ?? 'no'),
                 'isOutdated' => false,
-                'path' => $row['file'],
-                'line' => (int) $row['line'],
-                'originalLine' => (int) $row['line'],
+                'path' => $row['file'] ?? '',
+                'line' => (int) ($row['line'] ?? 0),
+                'originalLine' => (int) ($row['line'] ?? 0),
                 'diffSide' => 'RIGHT',
-                'comments' => ['nodes' => [$comment($row['author'], $row['comment'])]],
+                'comments' => ['nodes' => [$comment($row['author'] ?? '', $row['comment'] ?? '')]],
             ];
         }
-        $this->forgeRoute('query(', ['data' => ['repository' => ['pullRequests' => ['nodes' => [[
-            'id' => 'PR_node',
-            'number' => 12,
-            'title' => $title,
-            'url' => 'https://github.com/acme/app/pull/12',
-            'baseRefOid' => $head,
-            'headRefOid' => $head,
-            'comments' => ['nodes' => [$comment('alice', 'Please review.')]],
-            'reviewThreads' => ['nodes' => $nodes],
-        ]]]]]]);
+        $this->forgeRoute('query(', [
+            'data' => [
+                'repository' => [
+                    'pullRequests' => [
+                        'nodes' => [[
+                            'id' => 'PR_node',
+                            'number' => 12,
+                            'title' => $title,
+                            'url' => 'https://github.com/acme/app/pull/12',
+                            'baseRefOid' => $head,
+                            'headRefOid' => $head,
+                            'comments' => ['nodes' => [$comment('alice', 'Please review.')]],
+                            'reviewThreads' => ['nodes' => $nodes],
+                        ]],
+                    ],
+                ],
+            ],
+        ]);
     }
 
     /**
@@ -378,7 +394,7 @@ final class CollabContext implements TuinkAwareContextInterface
     private function localThreads(): array
     {
         $threads = [];
-        foreach (\glob($this->getSession()->getWorkspace()->resolve('.porta/reviews').'/*/*/thread.json') ?: [] as $file) {
+        foreach (self::glob($this->getSession()->getWorkspace()->resolve('.porta/reviews').'/*/*/thread.json') as $file) {
             $threads[] = self::json((string) \file_get_contents($file));
         }
 
@@ -404,7 +420,10 @@ final class CollabContext implements TuinkAwareContextInterface
 
     private function forgeReads(): int
     {
-        $log = $this->getSession()->getWorkspace()->read(self::FORGE.'/calls.jsonl') ?? '';
+        $log = $this
+            ->getSession()
+            ->getWorkspace()
+            ->read(self::FORGE.'/calls.jsonl') ?? '';
 
         return \substr_count($log, 'query(');
     }
@@ -429,10 +448,36 @@ final class CollabContext implements TuinkAwareContextInterface
      */
     private static function json(string $json): array
     {
+        /** @var mixed $decoded */
         $decoded = \json_decode($json, associative: true, flags: \JSON_THROW_ON_ERROR);
         \assert(\is_array($decoded), description: 'a fixture holds an object or a list');
 
         return $decoded;
+    }
+
+    /**
+     * @return list<array<string, string>> a table's rows, by its header's names
+     */
+    private static function rows(TableNode $table): array
+    {
+        $rows = [];
+        $all = $table->getRows();
+        $header = \array_map(\strval(...), \array_shift($all) ?? []);
+        foreach ($all as $cells) {
+            $rows[] = \array_combine($header, \array_map(\strval(...), $cells));
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @return list<string> what $pattern matches, none when it cannot be read
+     */
+    private static function glob(string $pattern): array
+    {
+        $found = \glob($pattern);
+
+        return false === $found ? [] : $found;
     }
 
     // --- Agents: an MCP client, and Claude Code -----------------------------------
@@ -478,6 +523,7 @@ final class CollabContext implements TuinkAwareContextInterface
     #[Then("the agent's answer should report the exit code :code")]
     public function theAgentsAnswerShouldReportTheExitCode(int $code): void
     {
+        /** @var mixed $answer */
         $answer = \json_decode($this->answer, associative: true);
         Assert::assertSame($code, \is_array($answer) ? $answer['exitCode'] ?? null : null, 'The agent was answered: '.$this->answer);
     }
@@ -498,7 +544,7 @@ final class CollabContext implements TuinkAwareContextInterface
     public function claudeCodeIsConnected(): void
     {
         $dir = $this->getSession()->getWorkspace()->resolve(self::CLAUDE);
-        $this->getSession()->waitUntil(static fn (): bool => [] !== (\glob($dir.'/ide/*.lock') ?: []), 'The IDE announced itself to no Claude Code.');
+        $this->getSession()->waitUntil(static fn (): bool => [] !== self::glob($dir.'/ide/*.lock'), 'The IDE announced itself to no Claude Code.');
         $this->agent()->claude($dir);
     }
 
@@ -515,8 +561,9 @@ final class CollabContext implements TuinkAwareContextInterface
     #[Then('Claude Code should hear :verdict')]
     public function claudeCodeShouldHear(string $verdict): void
     {
-        Assert::assertNotNull($this->proposal, 'Claude Code proposed nothing.');
-        Assert::assertSame($verdict, $this->agent()->verdict($this->proposal));
+        $proposal = $this->proposal;
+        \assert(null !== $proposal, description: 'Claude Code proposed something first');
+        Assert::assertSame($verdict, $this->agent()->verdict($proposal));
     }
 
     #[Then('Claude Code should be pointed at :file')]
@@ -529,14 +576,14 @@ final class CollabContext implements TuinkAwareContextInterface
     #[Then('no IDE should be announced to Claude Code')]
     public function noIdeShouldBeAnnounced(): void
     {
-        Assert::assertSame([], \glob($this->getSession()->getWorkspace()->resolve(self::CLAUDE).'/ide/*.lock') ?: []);
+        Assert::assertSame([], self::glob($this->getSession()->getWorkspace()->resolve(self::CLAUDE).'/ide/*.lock'));
     }
 
     #[Then('the IDE should be announced to Claude Code')]
     public function theIdeShouldBeAnnounced(): void
     {
         $dir = $this->getSession()->getWorkspace()->resolve(self::CLAUDE);
-        $this->getSession()->waitUntil(static fn (): bool => [] !== (\glob($dir.'/ide/*.lock') ?: []), 'The IDE announced itself to no Claude Code.');
+        $this->getSession()->waitUntil(static fn (): bool => [] !== self::glob($dir.'/ide/*.lock'), 'The IDE announced itself to no Claude Code.');
     }
 
     /**
@@ -570,7 +617,10 @@ final class CollabContext implements TuinkAwareContextInterface
     #[Then('the clipboard should hold the command that joins with the code')]
     public function theClipboardShouldHoldTheCommand(): void
     {
-        $this->getSession()->terminal()->assertClipboard('porta assist '.$this->code());
+        $this
+            ->getSession()
+            ->terminal()
+            ->assertClipboard('porta assist '.$this->code());
     }
 
     /** The code the host's toast handed out, waited for. */
@@ -580,9 +630,10 @@ final class CollabContext implements TuinkAwareContextInterface
         $code = '';
         $this->getSession()->waitUntil(static function () use ($ide, &$code): bool {
             foreach (Toasts::all($ide) as $toast) {
-                if (1 === \preg_match('/porta assist (\S+)\)/', $toast, $match)) {
-                    $code = $match[1];
+                if (1 !== \preg_match('/porta assist (\S+)\)/', $toast, $match)) {
+                    continue;
                 }
+                $code = $match[1];
             }
 
             return '' !== $code;
@@ -607,8 +658,9 @@ final class CollabContext implements TuinkAwareContextInterface
     public function theGuestShouldHearWith(string $type, string $key, string $value): void
     {
         $message = $this->assist()->hear($type);
+        /** @var mixed $said */
         $said = $message[$key] ?? null;
-        Assert::assertSame($value, \is_scalar($said) ? (string) $said : \json_encode($said), \sprintf('The %s message: %s', $type, \json_encode($message)));
+        Assert::assertSame($value, \is_scalar($said) ? (string) $said : \json_encode($said, \JSON_THROW_ON_ERROR), \sprintf('The %s message: %s', $type, \json_encode($message, \JSON_THROW_ON_ERROR)));
     }
 
     #[When("the guest asks for the project's files")]
@@ -620,7 +672,7 @@ final class CollabContext implements TuinkAwareContextInterface
     #[Then('the files offered should include :file but not :other')]
     public function theFilesOfferedShouldInclude(string $file, string $other): void
     {
-        $listing = (string) \json_encode($this->assist()->hear('manifest')['files'] ?? null, \JSON_UNESCAPED_SLASHES);
+        $listing = \json_encode($this->assist()->hear('manifest')['files'] ?? null, \JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR);
         Assert::assertStringContainsString('"'.$file.'"', $listing);
         Assert::assertStringNotContainsString('"'.$other.'"', $listing);
     }

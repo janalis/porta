@@ -20,6 +20,7 @@ use Porta\AssistPlugin\Tests\Support\TalksAssist;
  */
 final class AssistPeer extends Assert
 {
+    // @mago-expect analysis:non-existent-class-like -- the assist plugin's E2e support, which the analyzer leaves out with the plugin's tests
     use TalksAssist;
 
     /** The ticket a guest's copy is let back in with. */
@@ -27,7 +28,7 @@ final class AssistPeer extends Assert
 
     private ?Invite $invite = null;
 
-    /** @var list<resource|null> the connections of guests who came before the one talking now */
+    /** @var list<mixed> the connections of guests who came before the one talking now, kept open */
     private array $earlier = [];
 
     public function __construct(
@@ -42,18 +43,33 @@ final class AssistPeer extends Assert
 
     public function mailbox(): string
     {
-        return $this->wormhole()->mailbox;
+        return $this->fake()->mailbox;
     }
 
     public function transit(): string
     {
-        return $this->wormhole()->transit;
+        return $this->fake()->transit;
+    }
+
+    /** @return object{mailbox: string, transit: string} the trait's fake magic-wormhole */
+    private function fake(): object
+    {
+        // @mago-expect lint:inline-variable-return -- the @var is the only type the analyzer gets: the trait's class is hidden from it
+        /** @var object{mailbox: string, transit: string} $wormhole */
+        $wormhole = $this->wormhole();
+
+        return $wormhole;
     }
 
     /** Be a guest named $name: redeem $code with the host, as `porta assist <code>` does, and ask in. */
     public function askToJoin(string $code, string $name): void
     {
-        $this->invite ??= $this->redeem(Code::parse($code));
+        if (null === $this->invite) {
+            /** @var mixed $invite */
+            $invite = $this->redeem(Code::parse($code));
+            \assert($invite instanceof Invite, description: 'the host answered the code');
+            $this->invite = $invite;
+        }
         $this->askIn($this->invite, $name);
     }
 
@@ -75,7 +91,10 @@ final class AssistPeer extends Assert
      */
     public function hostFor(string $root): void
     {
-        GuestSession::store($root, ['invite' => $this->listen(), 'ticket' => self::TICKET, 'name' => 'Bo', 'languages' => []]);
+        /** @var mixed $invite */
+        $invite = $this->listen();
+        \assert($invite instanceof Invite, description: 'the trait makes one');
+        GuestSession::store($root, ['invite' => $invite, 'ticket' => self::TICKET, 'name' => 'Bo', 'languages' => []]);
     }
 
     /** As the host: take the guest IDE's connection, hear its hello, and let it in as $role. */
@@ -86,13 +105,17 @@ final class AssistPeer extends Assert
         $this->say(['t' => 'welcome', 'peer' => 'g1', 'role' => $role, 'ticket' => self::TICKET, 'peers' => [['id' => 'host', 'name' => $hostName, 'role' => 'host']]]);
     }
 
-    /** @return array<string, mixed> the next message of $type the other end sends */
+    /** @return array<array-key, mixed> the next message of $type the other end sends */
     public function hear(string $type): array
     {
-        return $this->expect($type);
+        /** @var mixed $message */
+        $message = $this->expect($type);
+        \assert(\is_array($message), description: 'a message is an object on the wire');
+
+        return $message;
     }
 
-    /** @param array<string, mixed> $message */
+    /** @param array<array-key, mixed> $message */
     public function tell(array $message): void
     {
         $this->say($message);
@@ -100,6 +123,6 @@ final class AssistPeer extends Assert
 
     private function await(callable $done, float $timeout = 10.0, string $what = 'condition'): void
     {
-        $this->session->waitUntil(static fn (): bool => (bool) $done(), \sprintf('Waited in vain for %s.', $what), $timeout);
+        $this->session->waitUntil(static fn (): bool => true === $done(), \sprintf('Waited in vain for %s.', $what), $timeout);
     }
 }

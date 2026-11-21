@@ -16,8 +16,13 @@ use Porta\McpPlugin\Tests\Support\TalksMcp;
  */
 final class McpPeer extends Assert
 {
+    // @mago-expect analysis:non-existent-class-like -- the mcp plugin's E2e support, which the analyzer leaves out with the plugin's tests
     use TalksClaudeCode;
+    // @mago-expect analysis:non-existent-class-like -- the same
     use TalksMcp;
+
+    /** Request ids of Claude Code's proposals, apart from the trait's own. */
+    private int $proposals = 1_000;
 
     public function __construct(
         private readonly Session $session,
@@ -41,6 +46,7 @@ final class McpPeer extends Assert
      */
     public function tool(string $name, array $arguments): string
     {
+        /** @var array<string, mixed> $answer */
         $answer = $this->request('tools/call', ['name' => $name, 'arguments' => (object) $arguments]);
         if (!\is_array($answer['result'] ?? null)) {
             return \json_encode($answer, \JSON_THROW_ON_ERROR);
@@ -69,7 +75,7 @@ final class McpPeer extends Assert
     /** Send Claude Code's openDiff, and return its id: the verdict comes when the user gives it. */
     public function propose(string $path, string $text, string $tab): int
     {
-        $id = ++$this->cliId;
+        $id = ++$this->proposals;
         $this->cliWrite(self::clientFrame(\json_encode(
             [
                 'jsonrpc' => '2.0',
@@ -95,7 +101,9 @@ final class McpPeer extends Assert
     /** @return array<array-key, mixed> the next @-mention the IDE sends the CLI */
     public function mention(): array
     {
+        /** @var array<string, mixed> $mention */
         $mention = $this->cliAwait(static fn (array $m): bool => 'at_mentioned' === ($m['method'] ?? null), what: 'the mention');
+        /** @var mixed $params */
         $params = $mention['params'] ?? [];
 
         return \is_array($params) ? $params : [];
@@ -103,6 +111,6 @@ final class McpPeer extends Assert
 
     private function await(callable $done, float $timeout = 10.0, string $what = 'condition'): void
     {
-        $this->session->waitUntil(static fn (): bool => (bool) $done(), \sprintf('Waited in vain for %s.', $what), $timeout);
+        $this->session->waitUntil(static fn (): bool => true === $done(), \sprintf('Waited in vain for %s.', $what), $timeout);
     }
 }
