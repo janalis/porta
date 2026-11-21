@@ -3942,18 +3942,6 @@
         <source>Open a project</source>
         <target>Projekt öffnen</target>
       </trans-unit>
-      <trans-unit id="1323">
-        <source>Open folder…</source>
-        <target>Ordner öffnen…</target>
-      </trans-unit>
-      <trans-unit id="1324">
-        <source>↑↓ choose · Enter open · Esc quit</source>
-        <target>↑↓ wählen · Enter öffnen · Esc beenden</target>
-      </trans-unit>
-      <trans-unit id="1325">
-        <source>Enter open · Esc back</source>
-        <target>Enter öffnen · Esc zurück</target>
-      </trans-unit>
       <trans-unit id="1326">
         <source>Not a folder: %path%</source>
         <target>Kein Ordner: %path%</target>
@@ -3997,6 +3985,58 @@
       <trans-unit id="1336">
         <source>Install the porta Command…</source>
         <target>Den Befehl porta installieren…</target>
+      </trans-unit>
+      <trans-unit id="1337">
+        <source>A terminal IDE for PHP projects</source>
+        <target>Eine Terminal-IDE für PHP-Projekte</target>
+      </trans-unit>
+      <trans-unit id="1338">
+        <source>Type a name or a path</source>
+        <target>Namen oder Pfad eingeben</target>
+      </trans-unit>
+      <trans-unit id="1339">
+        <source>↑↓ choose · Tab complete · Enter open · Esc quit</source>
+        <target>↑↓ wählen · Tab vervollständigen · Enter öffnen · Esc beenden</target>
+      </trans-unit>
+      <trans-unit id="1340">
+        <source>Remote project</source>
+        <target>Entferntes Projekt</target>
+      </trans-unit>
+      <trans-unit id="1341">
+        <source>user@host:/path, or an ssh://, sftp://, ftp:// or ftps:// URL</source>
+        <target>user@host:/pfad oder eine ssh://-, sftp://-, ftp://- oder ftps://-URL</target>
+      </trans-unit>
+      <trans-unit id="1342">
+        <source>Recent</source>
+        <target>Zuletzt verwendet</target>
+      </trans-unit>
+      <trans-unit id="1343">
+        <source>Found on this computer</source>
+        <target>Auf diesem Computer gefunden</target>
+      </trans-unit>
+      <trans-unit id="1344">
+        <source>No project is called that: start a path with ~ or /</source>
+        <target>Kein Projekt heißt so: einen Pfad mit ~ oder / beginnen</target>
+      </trans-unit>
+      <trans-unit id="1345">
+        <source>Type the path of a folder to open, starting with ~ or /</source>
+        <target>Pfad eines zu öffnenden Ordners eingeben, beginnend mit ~ oder /</target>
+      </trans-unit>
+      <trans-unit id="1346">
+        <source>Open remote…</source>
+        <target>Remote öffnen…</target>
+      </trans-unit>
+      <trans-unit id="1347">
+        <source>over SSH, SFTP or FTP</source>
+        <target>über SSH, SFTP oder FTP</target>
+      </trans-unit>
+      <trans-unit id="1348">
+        <source>Open this folder</source>
+        <target>Diesen Ordner öffnen</target>
+      </trans-unit>
+      <trans-unit id="1349">
+        <source>PHP project</source>
+        <target>PHP-Projekt</target>
       </trans-unit>
     </body>
   </file>

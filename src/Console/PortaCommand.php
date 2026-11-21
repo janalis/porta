@@ -117,7 +117,8 @@ final class PortaCommand extends Command
         ?\Closure $pickProject = null,
     ) {
         parent::__construct();
-        $this->pickProject = $pickProject ?? static fn (): ?string => ProjectPicker::forUser()->pick();
+        $version = $this->version;
+        $this->pickProject = $pickProject ?? static fn (): ?string => ProjectPicker::forUser($version)->pick();
         $this->launch = $launch ?? self::launchIde(...);
         // stream_isatty is core PHP — the posix_isatty it replaced needed
         // ext-posix, and a box without it was refused as "not interactive".

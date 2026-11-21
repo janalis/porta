@@ -3942,18 +3942,6 @@
         <source>Open a project</source>
         <target>プロジェクトを開く</target>
       </trans-unit>
-      <trans-unit id="1323">
-        <source>Open folder…</source>
-        <target>フォルダーを開く…</target>
-      </trans-unit>
-      <trans-unit id="1324">
-        <source>↑↓ choose · Enter open · Esc quit</source>
-        <target>↑↓ 選択 · Enter 開く · Esc 終了</target>
-      </trans-unit>
-      <trans-unit id="1325">
-        <source>Enter open · Esc back</source>
-        <target>Enter 開く · Esc 戻る</target>
-      </trans-unit>
       <trans-unit id="1326">
         <source>Not a folder: %path%</source>
         <target>フォルダーではありません: %path%</target>
@@ -3997,6 +3985,58 @@
       <trans-unit id="1336">
         <source>Install the porta Command…</source>
         <target>porta コマンドをインストール…</target>
+      </trans-unit>
+      <trans-unit id="1337">
+        <source>A terminal IDE for PHP projects</source>
+        <target>PHP プロジェクトのためのターミナル IDE</target>
+      </trans-unit>
+      <trans-unit id="1338">
+        <source>Type a name or a path</source>
+        <target>名前またはパスを入力</target>
+      </trans-unit>
+      <trans-unit id="1339">
+        <source>↑↓ choose · Tab complete · Enter open · Esc quit</source>
+        <target>↑↓ 選択 · Tab 補完 · Enter 開く · Esc 終了</target>
+      </trans-unit>
+      <trans-unit id="1340">
+        <source>Remote project</source>
+        <target>リモートプロジェクト</target>
+      </trans-unit>
+      <trans-unit id="1341">
+        <source>user@host:/path, or an ssh://, sftp://, ftp:// or ftps:// URL</source>
+        <target>user@host:/path、または ssh://・sftp://・ftp://・ftps:// の URL</target>
+      </trans-unit>
+      <trans-unit id="1342">
+        <source>Recent</source>
+        <target>最近</target>
+      </trans-unit>
+      <trans-unit id="1343">
+        <source>Found on this computer</source>
+        <target>このコンピューターで見つかったもの</target>
+      </trans-unit>
+      <trans-unit id="1344">
+        <source>No project is called that: start a path with ~ or /</source>
+        <target>その名前のプロジェクトはありません。パスは ~ か / で始めてください</target>
+      </trans-unit>
+      <trans-unit id="1345">
+        <source>Type the path of a folder to open, starting with ~ or /</source>
+        <target>開くフォルダーのパスを ~ か / から入力してください</target>
+      </trans-unit>
+      <trans-unit id="1346">
+        <source>Open remote…</source>
+        <target>リモートを開く…</target>
+      </trans-unit>
+      <trans-unit id="1347">
+        <source>over SSH, SFTP or FTP</source>
+        <target>SSH・SFTP・FTP 経由</target>
+      </trans-unit>
+      <trans-unit id="1348">
+        <source>Open this folder</source>
+        <target>このフォルダーを開く</target>
+      </trans-unit>
+      <trans-unit id="1349">
+        <source>PHP project</source>
+        <target>PHP プロジェクト</target>
       </trans-unit>
     </body>
   </file>

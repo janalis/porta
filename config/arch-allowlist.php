@@ -78,6 +78,8 @@ return [
         'Desktop>Container',
         'Desktop>Event', // a run that ended is told to the window, for the system to notify
         'Desktop>Editor', // what is unsaved is kept when a session ends unasked
+        'Desktop>Filesystem', // the picker opens a server's project from the folder that mirrors it
+        'Desktop>Highlight', // the picker draws in colour, as the IDE it opens will
         'Desktop>History', // the picker offers the recent projects
         'Desktop>Settings', // the window follows the system's light or dark mode through the live theme switch
         'Desktop>Support', // a folder's name is made safe to draw

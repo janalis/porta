@@ -121,7 +121,9 @@ container-built; the standalone maintenance helpers remain plain objects.
 **`Desktop/`** — what a native window needs from the IDE, inert unless a host
 started it (`PORTA_DESKTOP` and a per-launch token): the in-band close and menu
 protocol, the login shell's environment, the pre-boot project picker and the
-system menu export. The hosts themselves are `desktop/<platform>`, outside
+system menu export. The picker decides its rows (`ProjectDiscovery`,
+`FolderCompletion`); `Widget/Desktop/ProjectPickerWidget` draws them on a
+bare Tui, so nothing it uses may need the container. The hosts themselves are `desktop/<platform>`, outside
 `src/`, held to `desktop/contract/` by each side's tests.
 
 **`Console/PluginCommands`** — `porta <name> …` for a bundled plugin's console
