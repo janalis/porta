@@ -201,14 +201,9 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
         // "Open as Text" on a tab that is already a viewer: drop it first, so
         // the path key is free for a text buffer. A viewer tab holds an empty
         // document, so there is nothing to lose and nothing to confirm.
-        if (OpenAs::Text === $as && true === $this->buffers->get($path)?->isViewer()) {
-            // Refused before the viewer goes, not after: a picture's bytes
-            // are no text, and the tab would vanish with nothing in its place.
-            if (self::notText($path)) {
-                $this->notifier->warn($this->translator->trans('Not a UTF-8 text file'));
-
-                return;
-            }
+        // Refused before the viewer goes, not after: a picture's bytes are no
+        // text, and the tab would vanish with nothing in its place.
+        if (OpenAs::Text === $as && true === $this->buffers->get($path)?->isViewer() && !$this->refusesText($path)) {
             $this->buffers->close($path);
         }
         if (!$this->buffers->has($path)) {
@@ -263,9 +258,7 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
     /** {@see openFromDisk()} for a readable file small enough to edit, unless it is not UTF-8. */
     private function openAsText(string $path, ?string $preview, OpenFocus $focus): void
     {
-        if (self::notText($path)) {
-            $this->notifier->warn($this->translator->trans('Not a UTF-8 text file'));
-
+        if ($this->refusesText($path)) {
             return;
         }
 
@@ -282,15 +275,18 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
         $this->tui->requestRender();
     }
 
-    /** A file small enough to edit whose bytes are not UTF-8: the text path refuses it. */
-    private static function notText(string $path): bool
+    /** Whether the text path refuses $path, its bytes not UTF-8 — said, if so. */
+    private function refusesText(string $path): bool
     {
-        if (!\is_file($path) || (int) \filesize($path) > Files::MAX_TEXT_BYTES) {
-            return false;
-        }
-        $content = (string) \file_get_contents($path);
+        return Files::notText($path) && $this->said($this->translator->trans('Not a UTF-8 text file'));
+    }
 
-        return '' !== $content && !\mb_check_encoding($content, encoding: 'UTF-8');
+    /** Warns $message; true, for a condition that refuses once it has said why. */
+    private function said(string $message): bool
+    {
+        $this->notifier->warn($message);
+
+        return true;
     }
 
     /**

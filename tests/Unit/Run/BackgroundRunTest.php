@@ -108,9 +108,7 @@ final class BackgroundRunTest extends TestCase
         $this->assertInstanceOf(TerminalSession::class, $session);
         $revision = $this->panel->getRenderRevision();
 
-        $this->await(static function () use ($session): bool {
-            return null !== $session->process?->exitCode();
-        }, what: 'the run to end');
+        $this->await(static fn (): bool => null !== $session->process?->exitCode(), what: 'the run to end');
 
         $this->assertSame('agent (0)', $session->title);
         $this->assertGreaterThan($revision, $this->panel->getRenderRevision(), 'the panel was invalidated, so the frame reaches the strip');
