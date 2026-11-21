@@ -55,6 +55,7 @@ Feature: Refactoring and quick fixes
     And a toast should say "to 1 file"
 
   Scenario: Apply quick fix applies the first fix without a list
+    Given I should see "✗ 1"
     When I put the caret at line 1, column 1
     And I use the action "apply_quick_fix"
     Then line 2 of the editor should be "use Acme\Imported;"
