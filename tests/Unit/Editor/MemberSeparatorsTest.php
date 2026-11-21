@@ -29,7 +29,7 @@ final class MemberSeparatorsTest extends TestCase
         // Under a class is the file's last brace, and under a namespace,
         // nothing at all — neither separates one member from another.
         $scopes = [
-            ['label' => 'App', 'startLine' => 3, 'endLine' => 40, 'kind' => CodeScopeKind::Namespace],
+            ['label' => 'App', 'startLine' => 3, 'endLine' => 40, 'kind' => CodeScopeKind::NamespaceBlock],
             ['label' => 'Svc', 'startLine' => 5, 'endLine' => 39, 'kind' => CodeScopeKind::Type],
         ];
 

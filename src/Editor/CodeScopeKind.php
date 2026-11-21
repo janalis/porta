@@ -15,7 +15,8 @@ namespace Porta\Editor;
  */
 enum CodeScopeKind
 {
-    case Namespace;
+    /** A namespace block (not `Namespace`: PHP 8.6 deprecates a constant of that name). */
+    case NamespaceBlock;
     /** A class, interface, trait or enum (LSP: class, enum, interface, struct). */
     case Type;
     /** A function or method (LSP: method, constructor, function). */
