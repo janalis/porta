@@ -140,6 +140,8 @@ final class Ide
 
     /** {@see exitCode()} */
     private int $exitCode = 0;
+    /** What boot() armed and shutdown() runs, once. */
+    private ?\Closure $teardown = null;
 
     /** @param list<string> $plugins bundled plugins this launch turns on besides the config: `--plugin` */
     public function __construct(
@@ -491,6 +493,21 @@ final class Ide
 
     public function run(): void
     {
+        $this->boot();
+        try {
+            $this->tui->run();
+        } finally {
+            $this->shutdown();
+        }
+    }
+
+    /**
+     * Everything the session sets up before the loop runs: servers, timers,
+     * the terminal's modes, the layout, the restored session. What it starts,
+     * shutdown() stops; a boot that throws has already shut down again.
+     */
+    public function boot(): void
+    {
         $this->lspBootstrapper->start();
 
         // Poll the filesystem so external edits, branch switches and deletions are
@@ -574,92 +591,9 @@ final class Ide
             });
         }
 
-        try {
-            // Enter the alternate screen so quitting restores the terminal exactly
-            // as it was before launch (like vim/htop). Plus SGR mouse reporting:
-            // 1000 (button press/release), 1003 (any-event motion — a superset of
-            // 1002's button-held drag, so we also see bare hover-moves for row
-            // highlighting) and 1006 (SGR coordinates). VirtualTerminal records
-            // these; tests feed synthetic seqs. Paired teardown is in the finally.
-            // Last, kitty's drag-and-drop opt-in, ignored by every terminal
-            // that has no such protocol (see DragDropProtocol).
-            $this->tui->getTerminal()->write("\x1b[?1049h\x1b[?1000h\x1b[?1003h\x1b[?1006h".DragDropProtocol::OPT_IN);
-            // Whatever this IDE starts ends with it, however it ends — a
-            // closed terminal, a crash, a kill — and not only its servers.
-            $this->service(OrphanGuard::class)->guardGroup($this->tui->getTerminal());
-            // Home the cursor the alternate screen just handed us. The first
-            // frame is appended FROM the cursor, not written to an absolute
-            // origin, and ScreenWriter's row bookkeeping starts from zero -- so
-            // a cursor left anywhere below row 0 costs that many rows off the
-            // top and desynchronises every RELATIVE repaint after it, for the
-            // rest of the session. Measured in a real pty: one row of scroll,
-            // and the menu bar gone.
-            $this->tui->getTerminal()->clearScreen();
-
-            $this->layout->applyLayout();
-
-            // Before any buffer opens: the boot-time BufferSwitched pass then
-            // paints restored breakpoints into the gutter for free.
-            $this->debugState->restore();
-            $this->bookmarkState->restore();
-
-            // This project is now the most recent one, for the switcher's list.
-            // Recorded HERE rather than from an IdeReady listener: core does not
-            // listen to the lifecycle moments — they exist for observers, and a
-            // gate holds them to it — and recorded at READY rather than at
-            // construction so a project that fails to boot never displaces a
-            // working one at the top of the list.
-            // A git tool run is not the user opening their project: it leaves
-            // the recent list, the session and the Welcome exactly as they were.
-            if (null === $this->tool) {
-                $this->service(RecentProjectsStore::class)->record($this->rootDir);
-            }
-
-            $this->service(DesktopProtocol::class)->announceReadyOnceStarted($this->rootDir);
-            $this->service(DesktopRecovery::class)->start();
-
-            // Same reason, for observers: IdeReady lands before the first
-            // BufferOpened instead of racing it.
-            $this->service(EventDispatcherInterface::class)->dispatch(new IdeReady($this->rootDir));
-
-            if (null !== $this->tool) {
-                $this->startTool($this->tool);
-                $this->tui->run();
-
-                return;
-            }
-
-            // The plugins' tools: their versions for the Settings page, and
-            // the background check for newer ones. Not for a git tool run,
-            // which is not the user opening their project.
-            $this->service(ToolUpdates::class)->start();
-            // And the plugins themselves: newer releases in the store.
-            $this->service(PluginUpdates::class)->start();
-            $this->service(IdeUpdates::class)->start();
-
-            // A resumed session brings its buffers back; a file asked for still opens on top.
-            $openedInitial = $this->restoreRestart();
-            if (null !== $this->initialFile) {
-                $this->openFile($this->initialFile);
-                if (null !== $this->initialLine) {
-                    $this->editor->jumpTo($this->initialLine - 1, utf16Col: 0); // CLI lines are 1-based
-                }
-                $this->tui->setFocus($this->editorArea->widget());
-                $openedInitial = true;
-            }
-            if (!$openedInitial && !$this->sessionRestorer->restore()) {
-                $this->tui->setFocus($this->tree);
-            }
-
-            // Last: the initial file and the restored session decide what the
-            // editor shows, and both claim focus. Welcome has to come after so
-            // it takes focus over them, and so Esc reveals a settled editor.
-            $this->showWelcomeOnFirstRun();
-            $readiness = $this->service(UpdateReadiness::class);
-            $this->service(UpdateRestart::class)->start($readiness->busy(...));
-
-            $this->tui->run();
-        } finally {
+        // The teardown, armed before anything below can throw: whatever
+        // ran of the setup, shutdown() undoes.
+        $this->teardown = function () use ($watcher, $watchedFiles, $refresher, $remote, $remotePoll, $remoteFirst, $presence, $graphicsProbe, $signals, $restorer, $ownsErrorHandler): void {
             // The child processes are stopped whatever the rest of the teardown
             // does: with the terminal gone under it, a write below can fail.
             try {
@@ -721,6 +655,107 @@ final class Ide
                 $this->run->stop();
                 $this->debug->stop();
             }
+        };
+
+        try {
+            // Enter the alternate screen so quitting restores the terminal exactly
+            // as it was before launch (like vim/htop). Plus SGR mouse reporting:
+            // 1000 (button press/release), 1003 (any-event motion — a superset of
+            // 1002's button-held drag, so we also see bare hover-moves for row
+            // highlighting) and 1006 (SGR coordinates). VirtualTerminal records
+            // these; tests feed synthetic seqs. Paired teardown is in the finally.
+            // Last, kitty's drag-and-drop opt-in, ignored by every terminal
+            // that has no such protocol (see DragDropProtocol).
+            $this->tui->getTerminal()->write("\x1b[?1049h\x1b[?1000h\x1b[?1003h\x1b[?1006h".DragDropProtocol::OPT_IN);
+            // Whatever this IDE starts ends with it, however it ends — a
+            // closed terminal, a crash, a kill — and not only its servers.
+            $this->service(OrphanGuard::class)->guardGroup($this->tui->getTerminal());
+            // Home the cursor the alternate screen just handed us. The first
+            // frame is appended FROM the cursor, not written to an absolute
+            // origin, and ScreenWriter's row bookkeeping starts from zero -- so
+            // a cursor left anywhere below row 0 costs that many rows off the
+            // top and desynchronises every RELATIVE repaint after it, for the
+            // rest of the session. Measured in a real pty: one row of scroll,
+            // and the menu bar gone.
+            $this->tui->getTerminal()->clearScreen();
+
+            $this->layout->applyLayout();
+
+            // Before any buffer opens: the boot-time BufferSwitched pass then
+            // paints restored breakpoints into the gutter for free.
+            $this->debugState->restore();
+            $this->bookmarkState->restore();
+
+            // This project is now the most recent one, for the switcher's list.
+            // Recorded HERE rather than from an IdeReady listener: core does not
+            // listen to the lifecycle moments — they exist for observers, and a
+            // gate holds them to it — and recorded at READY rather than at
+            // construction so a project that fails to boot never displaces a
+            // working one at the top of the list.
+            // A git tool run is not the user opening their project: it leaves
+            // the recent list, the session and the Welcome exactly as they were.
+            if (null === $this->tool) {
+                $this->service(RecentProjectsStore::class)->record($this->rootDir);
+            }
+
+            $this->service(DesktopProtocol::class)->announceReadyOnceStarted($this->rootDir);
+            $this->service(DesktopRecovery::class)->start();
+
+            // Same reason, for observers: IdeReady lands before the first
+            // BufferOpened instead of racing it.
+            $this->service(EventDispatcherInterface::class)->dispatch(new IdeReady($this->rootDir));
+
+            if (null !== $this->tool) {
+                $this->startTool($this->tool);
+
+                return;
+            }
+
+            // The plugins' tools: their versions for the Settings page, and
+            // the background check for newer ones. Not for a git tool run,
+            // which is not the user opening their project.
+            $this->service(ToolUpdates::class)->start();
+            // And the plugins themselves: newer releases in the store.
+            $this->service(PluginUpdates::class)->start();
+            $this->service(IdeUpdates::class)->start();
+
+            // A resumed session brings its buffers back; a file asked for still opens on top.
+            $openedInitial = $this->restoreRestart();
+            if (null !== $this->initialFile) {
+                $this->openFile($this->initialFile);
+                if (null !== $this->initialLine) {
+                    $this->editor->jumpTo($this->initialLine - 1, utf16Col: 0); // CLI lines are 1-based
+                }
+                $this->tui->setFocus($this->editorArea->widget());
+                $openedInitial = true;
+            }
+            if (!$openedInitial && !$this->sessionRestorer->restore()) {
+                $this->tui->setFocus($this->tree);
+            }
+
+            // Last: the initial file and the restored session decide what the
+            // editor shows, and both claim focus. Welcome has to come after so
+            // it takes focus over them, and so Esc reveals a settled editor.
+            $this->showWelcomeOnFirstRun();
+            $readiness = $this->service(UpdateReadiness::class);
+            $this->service(UpdateRestart::class)->start($readiness->busy(...));
+        } catch (\Throwable $e) {
+            $this->shutdown();
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Tears down what boot() set up, once the loop has stopped. Runs once:
+     * a second call, or one without a boot, does nothing.
+     */
+    public function shutdown(): void
+    {
+        $teardown = $this->teardown;
+        $this->teardown = null;
+        if (null !== $teardown) {
+            $teardown();
         }
     }
 
