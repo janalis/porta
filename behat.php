@@ -26,7 +26,7 @@ $tuink = [
     // want it say so with "in a 80x24 terminal".
     'columns' => 120,
     'rows' => 32,
-    'timeout' => (float) (getenv('PORTA_BEHAT_TIMEOUT') ?: 5.0),
+    'timeout' => is_numeric(getenv('PORTA_BEHAT_TIMEOUT')) ? (float) getenv('PORTA_BEHAT_TIMEOUT') : 5.0,
     'snapshots' => '%paths.base%/tests/Behat/features/__snapshots__',
     'in_process' => ['factory' => 'tests/Behat/factory.php'],
     'process' => [
@@ -38,15 +38,29 @@ $tuink = [
 
 // The real entry point is slow to boot and cannot be read into: it runs
 // only the scenarios tagged @process, and the in-process profile skips them.
+// Core's features, then each bundled plugin's, kept with its code and tests
+$pluginFeatures = glob(__DIR__.'/plugins/*/tests/features', GLOB_ONLYDIR);
+$paths = [
+    '%paths.base%/tests/Behat/features',
+    ...array_map(
+        static fn (string $dir): string => '%paths.base%/'.substr($dir, strlen(__DIR__) + 1),
+        false === $pluginFeatures ? [] : $pluginFeatures,
+    ),
+];
 $suite = static fn (string $tags): Suite => new Suite('default')
-    ->withPaths('%paths.base%/tests/Behat/features')
+    ->withPaths(...$paths)
     ->withContexts(TuiContext::class, PortaContext::class, EditingContext::class)
     ->withFilter(new TagFilter($tags));
 
 return new Config()
-    ->withProfile(new Profile('default')
-        ->withSuite($suite('~@process'))
-        ->withExtension(new Extension(TuinkExtension::class, $tuink)))
-    ->withProfile(new Profile('process')
-        ->withSuite($suite('@process'))
-        ->withExtension(new Extension(TuinkExtension::class, ['default_driver' => 'process'] + $tuink)));
+    ->withProfile(
+        new Profile('default')
+            ->withSuite($suite('~@process'))
+            ->withExtension(new Extension(TuinkExtension::class, $tuink)),
+    )
+    ->withProfile(
+        new Profile('process')
+            ->withSuite($suite('@process'))
+            // A real boot compiles and loads in a process of its own: slower than in process, more so on a busy box
+            ->withExtension(new Extension(TuinkExtension::class, ['default_driver' => 'process', 'timeout' => 3 * $tuink['timeout']] + $tuink)),
+    );

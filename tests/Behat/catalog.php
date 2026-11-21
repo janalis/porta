@@ -13,13 +13,19 @@ use Porta\Tests\Behat\Catalog\Coverage;
 require __DIR__.'/bootstrap.php';
 
 $features = [];
-$files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__.'/features', FilesystemIterator::SKIP_DOTS));
+$root = dirname(__DIR__, 2);
+$files = new AppendIterator();
+$pluginFeatures = glob($root.'/plugins/*/tests/features', GLOB_ONLYDIR);
+foreach ([__DIR__.'/features', ...(false === $pluginFeatures ? [] : $pluginFeatures)] as $dir) {
+    $files->append(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS)));
+}
+/** @var SplFileInfo $file */
 foreach ($files as $file) {
-    if (!$file instanceof SplFileInfo || 'feature' !== $file->getExtension()) {
+    if ('feature' !== $file->getExtension()) {
         continue;
     }
     $path = $file->getPathname();
-    $features[substr($path, strlen(dirname(__DIR__, 2)) + 1)] = (string) file_get_contents($path);
+    $features[substr($path, strlen($root) + 1)] = (string) file_get_contents($path);
 }
 ksort($features);
 
