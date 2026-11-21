@@ -33,6 +33,7 @@ typedef struct {
     char *title;   /* the project's name, without the unsaved mark */
     gboolean ready;
     gboolean picking;   /* Porta's picker is up: a folder sent now is the project it opens */
+    gboolean choosing;  /* the picker's folder dialog is open over this window */
     GPtrArray *pending; /* paths for this project, sent once Porta is ready */
     GPid pid;
     int master;
@@ -451,16 +452,24 @@ static void give_to_picker(PortaWindow *self, const char *path)
     self->picking = FALSE;
 }
 
+static void on_open(GApplication *application, GFile **files, int count, const char *hint, gpointer data);
+static PortaWindow *dropped_on;
+
 static void on_folder_chosen(GObject *source, GAsyncResult *result, gpointer data)
 {
     PortaWindow *self = data;
-    g_autoptr(GFile) folder = gtk_file_dialog_select_folder_finish(GTK_FILE_DIALOG(source), result, NULL);
-    g_autofree char *path = NULL != folder ? g_file_get_path(folder) : NULL;
+    GFile *folder = gtk_file_dialog_select_folder_finish(GTK_FILE_DIALOG(source), result, NULL);
 
-    /* Cancelled, or the window was given a project meanwhile: nothing to send. */
-    if (NULL != path && self->picking && !self->closed) {
-        give_to_picker(self, path);
+    self->choosing = FALSE;
+    /* Cancelled, or the window was given a project meanwhile: nothing to send. Otherwise it goes
+     * where any open goes, this window first: a project open elsewhere is brought forward, not
+     * opened twice. */
+    if (NULL != folder && self->picking && !self->closed) {
+        dropped_on = self;
+        on_open(G_APPLICATION(gtk_window_get_application(GTK_WINDOW(self->window))), &folder, 1, "", NULL);
+        dropped_on = NULL;
     }
+    g_clear_object(&folder);
     release(self);
 }
 
@@ -469,6 +478,11 @@ static void choose_folder(PortaWindow *self)
 {
     g_autoptr(GtkFileDialog) dialog = gtk_file_dialog_new();
 
+    /* Asked again while it is up, a second dialog would stack on the first. */
+    if (self->choosing) {
+        return;
+    }
+    self->choosing = TRUE;
     gtk_file_dialog_set_modal(dialog, TRUE);
     /* The window may close while the dialog is up: the answer still needs somewhere to land. */
     self->holds++;
@@ -515,6 +529,9 @@ static void received(PortaWindow *self, PortaOsc *osc)
     }
     if (PORTA_MESSAGE_CHOOSE_FOLDER == kind && self->picking) {
         choose_folder(self);
+    }
+    if (PORTA_MESSAGE_PICKED == kind) {
+        self->picking = FALSE;
     }
     if (PORTA_MESSAGE_NOTIFY == kind && !gtk_window_is_active(GTK_WINDOW(self->window))) {
         /* A run ended while the user was elsewhere: the desktop says so, and clicking brings this window. */
@@ -651,6 +668,7 @@ static void on_child_exit(GPid pid, int status, gpointer data)
     g_spawn_close_pid(pid);
     self->pid = 0;
     self->exited = TRUE;
+    self->picking = FALSE;
     if (!self->closed) {
         if (porta_flow_closes_on_exit(&self->flow, exited, exited ? WEXITSTATUS(status) : 0)) {
             destroy_window(self);

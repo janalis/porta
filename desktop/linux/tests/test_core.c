@@ -273,6 +273,9 @@ static void test_the_pickers_messages_are_the_contracts(void)
     g_assert_cmpint(porta_message_parse(picking_payload, token, &nothing), ==, PORTA_MESSAGE_PICKING);
     g_assert_null(nothing);
     g_assert_cmpint(porta_message_parse(choose_payload, token, &nothing), ==, PORTA_MESSAGE_CHOOSE_FOLDER);
+    g_autofree char *picked = example("picked");
+    g_autofree char *picked_payload = payload(picked);
+    g_assert_cmpint(porta_message_parse(picked_payload, token, &nothing), ==, PORTA_MESSAGE_PICKED);
     g_assert_cmpint(porta_message_parse(extra, token, &nothing), ==, PORTA_MESSAGE_NONE);
 }
 

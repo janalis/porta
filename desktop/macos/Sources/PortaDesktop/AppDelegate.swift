@@ -94,6 +94,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 self?.open(project: path, picker: index == 0 ? controller : nil)
             }
         }
+        controller.onFolderChosen = { [weak self, weak controller] path in
+            self?.open(project: path, picker: controller)
+        }
         controller.onClosed = { [weak self, weak controller] in
             guard let self, let controller else { return }
             self.windows.removeAll { $0 === controller }

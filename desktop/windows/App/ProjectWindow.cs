@@ -153,7 +153,13 @@ namespace Porta.Desktop.App
 
             if (kind == MessageKind.ChooseFolder && Picking)
             {
-                ChooseFolder();
+                // Posted, not run here: this runs on the relay's read loop, which a modal dialog would stall.
+                Dispatcher.BeginInvoke(new Action(ChooseFolder));
+            }
+
+            if (kind == MessageKind.Picked)
+            {
+                Picking = false;
             }
 
             if (kind == MessageKind.Notify && !IsActive)
@@ -325,6 +331,7 @@ namespace Porta.Desktop.App
         {
             exited = true;
             ready = false;
+            Picking = false;
             answer.Stop();
             if (flow.ClosesWhenPortaExits(status))
             {

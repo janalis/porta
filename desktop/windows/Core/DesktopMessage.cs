@@ -22,6 +22,9 @@ namespace Porta.Desktop
 
         /// <summary>The picker asks for the system's folder dialog.</summary>
         ChooseFolder,
+
+        /// <summary>The picker is done: a folder sent now is the IDE's, or nobody's.</summary>
+        Picked,
     }
 
     /// <summary>The conversation with Porta, as desktop/contract/protocol.json defines it.</summary>
@@ -47,6 +50,8 @@ namespace Porta.Desktop
                     return (MessageKind.Picking, "");
                 case "chooseFolder" when fields.Length == 3:
                     return (MessageKind.ChooseFolder, "");
+                case "picked" when fields.Length == 3:
+                    return (MessageKind.Picked, "");
                 case "state" when fields.Length == 4 && fields[3].Length > 0 && fields[3].All(char.IsDigit):
                     return (MessageKind.State, fields[3]);
                 case "notify" when fields.Length == 4:

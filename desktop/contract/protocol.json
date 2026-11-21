@@ -21,7 +21,8 @@
         "state",
         "notify",
         "picking",
-        "chooseFolder"
+        "chooseFolder",
+        "picked"
     ],
     "examples": {
         "token": "0123456789abcdef0123456789abcdef",
@@ -70,6 +71,7 @@
         "notifyText": "composer test failed (exit code 1)",
         "notify": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;notify;Y29tcG9zZXIgdGVzdCBmYWlsZWQgKGV4aXQgY29kZSAxKQ==\u001b\\",
         "picking": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;picking\u001b\\",
-        "chooseFolder": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;chooseFolder\u001b\\"
+        "chooseFolder": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;chooseFolder\u001b\\",
+        "picked": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;picked\u001b\\"
     }
 }

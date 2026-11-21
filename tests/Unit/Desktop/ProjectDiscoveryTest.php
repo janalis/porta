@@ -72,6 +72,19 @@ final class ProjectDiscoveryTest extends TestCase
         $this->assertSame([$this->root('code/api')], $this->found([$this->root('Sites/shop')]));
     }
 
+    public function testARecentProjectSpelledAnotherWayIsStillNotOfferedTwice(): void
+    {
+        // As macOS's case-insensitive disk spells one folder two ways.
+        \symlink($this->home->path('Sites'), $this->home->path('Elsewhere'));
+
+        $this->assertSame([$this->root('code/api')], $this->found([$this->home->path('Elsewhere/shop')]));
+    }
+
+    public function testARecentProjectSinceDeletedIsNoBother(): void
+    {
+        $this->assertCount(2, $this->found([$this->home->path('gone')]));
+    }
+
     public function testAProjectIsNamedAsAPersonKnowsIt(): void
     {
         $offered = new ProjectDiscovery()->found([$this->root('Sites/shop')]);

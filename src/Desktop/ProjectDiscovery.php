@@ -41,19 +41,19 @@ final readonly class ProjectDiscovery
 
         /** @var array<string, int> $touched root => its composer.json's mtime */
         $touched = [];
-        // A case-insensitive disk (macOS) answers both `code` and `Code` with
-        // one folder: a project is known by its inode, and kept once.
-        $seen = [];
+        // A folder is known by its inode, not its spelling: a case-insensitive
+        // disk (macOS) answers `code` and `Code` alike, and a recent project
+        // reached as ~/code/shop is the one recorded as ~/Code/shop.
+        $seen = \array_fill_keys(\array_filter(\array_map(self::inode(...), $except)), value: true);
         foreach (self::FOLDERS as $folder) {
             foreach (self::children($home.'/'.$folder) as $root) {
+                $inode = self::inode($root);
                 $manifest = $root.'/composer.json';
-                $stat = \is_file($manifest) ? \stat($manifest) : false;
-                $inode = false === $stat ? '' : $stat['dev'].':'.$stat['ino'];
-                if (false === $stat || \array_key_exists($inode, $seen) || \in_array($root, $except, strict: true)) {
+                if (null === $inode || \array_key_exists($inode, $seen) || !\is_file($manifest)) {
                     continue;
                 }
                 $seen[$inode] = true;
-                $touched[$root] = $stat['mtime'];
+                $touched[$root] = (int) \filemtime($manifest);
             }
         }
         \uksort($touched, static fn (string $a, string $b): int => [$touched[$b], $a] <=> [$touched[$a], $b]);
@@ -62,6 +62,15 @@ final readonly class ProjectDiscovery
             static fn (string $root): array => ['label' => ControlChars::line(\basename($root)), 'hint' => ControlChars::line(PortaHome::tilde($root)), 'value' => $root],
             \array_slice(\array_keys($touched), offset: 0, length: self::LIMIT),
         );
+    }
+
+    /** Which folder $path is, however it is spelled; null when it is not there. */
+    private static function inode(string $path): ?string
+    {
+        // @mago-expect lint:no-error-control-operator -- a recent project since deleted warns; the false return is what is answered below
+        $stat = @\stat($path);
+
+        return false === $stat ? null : $stat['dev'].':'.$stat['ino'];
     }
 
     /**

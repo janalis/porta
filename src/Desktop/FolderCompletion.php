@@ -73,25 +73,28 @@ final readonly class FolderCompletion
     }
 
     /**
-     * As much as every candidate's name shares, any case, spelled as the
-     * first; never shorter than $typed: completion only ever adds.
+     * As much as every candidate's name shares, character by character and
+     * any case, spelled as the first; never shorter than $typed: completion
+     * only ever adds. The names as the disk has them, not as they are shown.
      *
      * @param non-empty-list<array{name: string, path: string, isProject: bool}> $candidates
      */
     private static function shared(string $typed, array $candidates): string
     {
         [$folder] = self::split($typed);
-        $shared = $candidates[0]['name'];
-        foreach ($candidates as $candidate) {
+        $names = \array_map(static fn (array $candidate): string => \substr($candidate['path'], \strlen($folder), length: -1), $candidates);
+        $shared = \mb_str_split($names[0]);
+        foreach ($names as $name) {
+            $characters = \mb_str_split($name);
             $length = 0;
-            $limit = \min(\strlen($shared), \strlen($candidate['name']));
-            while ($length < $limit && 0 === \strncasecmp($shared[$length], $candidate['name'][$length], length: 1)) {
+            while ($length < \count($shared) && $length < \count($characters) && \mb_strtolower($shared[$length]) === \mb_strtolower($characters[$length])) {
                 ++$length;
             }
-            $shared = \substr($shared, offset: 0, length: $length);
+            $shared = \array_slice($shared, offset: 0, length: $length);
         }
+        $completed = $folder.\implode('', $shared);
 
-        return \strlen($folder.$shared) > \strlen($typed) ? $folder.$shared : $typed;
+        return \strlen($completed) > \strlen($typed) ? $completed : $typed;
     }
 
     /**

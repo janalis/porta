@@ -119,6 +119,23 @@ final class FolderCompletionTest extends TestCase
         $this->assertSame('~/Sites/sh', FolderCompletion::complete('~/Sites/sh'));
     }
 
+    public function testTabNeverSplitsACharacter(): void
+    {
+        // é and è share their first byte, not their first character.
+        $this->home->write('w/émile/x', '');
+        $this->home->write('w/èva/x', '');
+
+        $this->assertSame('~/w/', FolderCompletion::complete('~/w/'));
+    }
+
+    public function testTabSharesWholeCharactersWhateverTheirCase(): void
+    {
+        $this->home->write('w/Élan/x', '');
+        $this->home->write('w/élite/x', '');
+
+        $this->assertSame('~/w/Él', FolderCompletion::complete('~/w/'));
+    }
+
     public function testTabWithNothingToCompleteChangesNothing(): void
     {
         $this->assertSame('~/Sites/zzz', FolderCompletion::complete('~/Sites/zzz'));

@@ -23,6 +23,7 @@ use Porta\Widget\Support\PickerRow;
 use Porta\Widget\Support\PickerRowKind;
 use Porta\Workbench\RecentProjectChoices;
 use Revolt\EventLoop;
+use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Tui\Event\InputEvent;
 use Symfony\Component\Tui\Terminal\Terminal;
 use Symfony\Component\Tui\Terminal\TerminalInterface;
@@ -50,6 +51,12 @@ final class ProjectPicker
     private ?string $picked = null;
 
     private ?Tui $tui = null;
+
+    /** @var list<array{label: string, hint: string, value: string}>|null read once: a keystroke must not walk the disk again */
+    private ?array $recent = null;
+
+    /** @var list<array{label: string, hint: string, value: string}>|null */
+    private ?array $foundHere = null;
 
     /**
      * @param \Closure(list<string>): list<array{label: string, hint: string, value: string}> $found the projects on this computer, less those given
@@ -123,7 +130,9 @@ final class ProjectPicker
     /** @return list<PickerRow> */
     private function rowsFor(string $typed): array
     {
-        $remote = FolderCompletion::isPath($typed) ? null : RemoteSpec::parse($typed);
+        // A path copied from a terminal often brings a space with it.
+        $typed = \trim($typed);
+        $remote = self::remote($typed);
 
         return match (true) {
             FolderCompletion::isPath($typed) => $this->folderRows($typed),
@@ -142,8 +151,10 @@ final class ProjectPicker
      */
     private function projectRows(string $typed): array
     {
-        $recent = $this->choices->except();
-        $found = null === $this->found ? [] : ($this->found)(\array_column($recent, 'value'));
+        $this->recent ??= $this->choices->except();
+        $this->foundHere ??= null === $this->found ? [] : ($this->found)(\array_column($this->recent, 'value'));
+        $recent = $this->recent;
+        $found = $this->foundHere;
         $rows = [...$this->section($this->translator->trans('Recent'), $recent, $typed), ...$this->section($this->translator->trans('Found on this computer'), $found, $typed)];
         if ('' !== $typed) {
             return [] === $rows ? [PickerRow::note($this->translator->trans('No project is called that: start a path with ~ or /'))] : $rows;
@@ -208,6 +219,8 @@ final class ProjectPicker
     /** Tab: a path completes; a project's name becomes its path, to go on from. */
     private function complete(?PickerRow $row, string $typed): string
     {
+        $typed = \trim($typed);
+
         return match (true) {
             FolderCompletion::isPath($typed) => FolderCompletion::complete($typed, PickerRowKind::Folder === $row?->kind ? $row->value : null),
             PickerRowKind::Project === $row?->kind => PortaHome::tilde($row->value).'/',
@@ -215,8 +228,26 @@ final class ProjectPicker
         };
     }
 
+    /**
+     * The server $typed names, when it names one and no folder here: an
+     * scp-style `host:path` is also how a Windows drive (`C:\Users`) or a
+     * local name with a colon is spelled, and those are not servers.
+     */
+    private static function remote(string $typed): ?RemoteSpec
+    {
+        $spec = FolderCompletion::isPath($typed) ? null : RemoteSpec::parse($typed);
+        // A URL is a server's before anything looks at it: is_dir() on
+        // `ftp://…` is PHP's own FTP client, connecting (as the switcher found).
+        if (null === $spec || \str_contains($typed, '://')) {
+            return $spec;
+        }
+
+        return \str_contains($typed, '\\') || \strlen($spec->host) < 2 || \is_dir($typed) ? null : $spec;
+    }
+
     private function submit(ProjectPickerWidget $widget, ?PickerRow $row, string $typed): void
     {
+        $typed = \trim($typed);
         match ($row?->kind) {
             PickerRowKind::Project => $this->finish($row->value),
             PickerRowKind::Folder => $this->finish((string) \realpath(PortaHome::expand($row->value))),
@@ -241,7 +272,12 @@ final class ProjectPicker
 
             return;
         }
-        $this->finish(ProjectLocation::prepare($spec, $home));
+        try {
+            $this->finish(ProjectLocation::prepare($spec, $home));
+        } catch (IOExceptionInterface $e) {
+            // ~/.porta unwritable, a full disk: said here, where it can be fixed and tried again.
+            $widget->refuse(ControlChars::line($e->getMessage()));
+        }
     }
 
     /**
@@ -267,9 +303,13 @@ final class ProjectPicker
         $this->terminal->write(new DesktopFrames($this->session)->frame($message));
     }
 
+    /** The picker is done, however: the window stops sending it folders, which are the IDE's to handle now. */
     private function finish(?string $folder): void
     {
         $this->picked = $folder;
+        if ($this->session->active) {
+            $this->send('picked');
+        }
         $this->tui?->stop();
     }
 }

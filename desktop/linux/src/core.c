@@ -188,6 +188,8 @@ PortaMessageKind porta_message_parse(const char *payload, const char *token, cha
         kind = PORTA_MESSAGE_PICKING;
     } else if (3 == count && 0 == g_strcmp0(fields[2], "chooseFolder")) {
         kind = PORTA_MESSAGE_CHOOSE_FOLDER;
+    } else if (3 == count && 0 == g_strcmp0(fields[2], "picked")) {
+        kind = PORTA_MESSAGE_PICKED;
     } else if (4 == count && 0 == g_strcmp0(fields[2], "ready")) {
         kind = PORTA_MESSAGE_READY;
         *value = decoded(fields[3]);

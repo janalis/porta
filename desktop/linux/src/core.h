@@ -29,6 +29,7 @@ typedef enum {
     PORTA_MESSAGE_NOTIFY,
     PORTA_MESSAGE_PICKING,       /* no project yet: Porta's picker takes a folder sent as an open request */
     PORTA_MESSAGE_CHOOSE_FOLDER, /* the picker asks for the system's folder dialog */
+    PORTA_MESSAGE_PICKED,        /* the picker is done: a folder sent now is the IDE's, or nobody's */
 } PortaMessageKind;
 
 /* `value` is the decoded root for READY, the decoded JSON for MENU and the unsaved count for STATE and the decoded text for NOTIFY; the caller frees it. */

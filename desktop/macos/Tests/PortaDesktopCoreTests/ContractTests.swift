@@ -64,6 +64,7 @@ final class ContractTests: XCTestCase {
 
         XCTAssertEqual(DesktopMessage.parse(payload: payload(try XCTUnwrap(examples["picking"])), token: token), .picking)
         XCTAssertEqual(DesktopMessage.parse(payload: payload(try XCTUnwrap(examples["chooseFolder"])), token: token), .chooseFolder)
+        XCTAssertEqual(DesktopMessage.parse(payload: payload(try XCTUnwrap(examples["picked"])), token: token), .picked)
         XCTAssertNil(DesktopMessage.parse(payload: "porta-desktop;\(token);picking;extra", token: token))
     }
 

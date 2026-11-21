@@ -30,6 +30,8 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
     private var ready = false
     /// Porta's picker is up: no project yet, and a folder sent now is the one it opens.
     private(set) var picking = false
+    /// A folder chosen in the picker's dialog, for the application to send where it belongs.
+    var onFolderChosen: ((String) -> Void)?
     private var dropView: DropView?
     /// Files and folders dropped on the window, for the application to send where they belong.
     var onDropped: (([String]) -> Void)? {
@@ -196,7 +198,8 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
         panel.allowsMultipleSelection = false
         panel.beginSheetModal(for: window) { [weak self] response in
             guard response == .OK, let url = panel.url, let self, self.picking else { return }
-            self.open(path: url.path)
+            // Where any open goes: a project open in another window is brought forward, not opened twice.
+            self.onFolderChosen?(url.path)
         }
     }
 
@@ -314,8 +317,11 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
         if case let .notify(text) = message {
             notify(text)
         }
-        if case .picking = message {
+        if case .picking = message, !ready {
             picking = true
+        }
+        if case .picked = message {
+            picking = false
         }
         if case .chooseFolder = message, picking {
             chooseFolder()
@@ -374,6 +380,7 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
 
     func processTerminated(_ source: LocalProcess, exitCode: Int32?) {
         exited = true
+        picking = false
         answerTimer?.invalidate()
         if flow.closesWhenPortaExits(status: exitCode) {
             window?.close()

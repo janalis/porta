@@ -264,6 +264,55 @@ final class ProjectPickerTest extends TestCase
         $this->assertStringContainsString('Not a folder: ssh://deploy@example.com/srv/app', $this->screen());
     }
 
+    public function testAPathCopiedWithSpacesAroundItStillOpens(): void
+    {
+        $real = (string) \realpath($this->disk->path('typed'));
+
+        $this->assertSame($real, $this->pick([$this->typed('  '.$this->disk->path('typed').' '), "\r"]));
+    }
+
+    public function testAWindowsPathOrADriveLetterIsNoServer(): void
+    {
+        $this->assertNull($this->pick([$this->typed('C:\\Users\\me\\shop'), "\x1b"]));
+        $this->assertNull($this->pick([$this->typed('C:shop'), "\x1b"]));
+        $this->assertStringNotContainsString('Remote project', $this->screen());
+    }
+
+    public function testAFolderHereWhoseNameHasAColonIsNoServer(): void
+    {
+        \mkdir($this->disk->path('host:dir'));
+        $previous = (string) \getcwd();
+        \chdir($this->disk->path());
+        try {
+            $this->assertNull($this->pick([$this->typed('host:dir'), "\x1b"]));
+        } finally {
+            \chdir($previous);
+        }
+        $this->assertStringNotContainsString('Remote project', $this->screen());
+    }
+
+    public function testAMirrorThatCannotBeMadeIsSaidAndThePickerStays(): void
+    {
+        // ~/.porta is a file: nothing can be made under it.
+        $this->disk->write('home/.porta', '');
+
+        $this->assertNull($this->pick([$this->typed('ssh://deploy@example.com/srv/app'), "\r", "\x1b"]));
+        $this->assertStringContainsString('Failed to create', $this->screen());
+    }
+
+    public function testTheProjectsAreLookedForOnceNotOnEveryKey(): void
+    {
+        $asked = 0;
+        $found = static function (array $except) use (&$asked): array {
+            ++$asked;
+
+            return [];
+        };
+
+        $this->assertNull($this->pickWith($found, [$this->typed('abc'), $this->typed('abcd'), $this->typed('abcde'), "\x1b"]));
+        $this->assertSame(1, $asked);
+    }
+
     public function testOpenRemoteAsksForTheServersLocation(): void
     {
         // A first run with nothing found: the remote row is the one to choose.
@@ -319,6 +368,7 @@ final class ProjectPickerTest extends TestCase
     {
         $this->assertNull($this->pickInAWindow(["\x1b"]));
         $this->assertStringContainsString(self::frame('picking'), $this->terminal->getOutput());
+        $this->assertStringContainsString(self::frame('picked'), $this->terminal->getOutput(), 'leaving says the picker is done too');
         $this->assertStringContainsString('or drop a folder on this window', $this->screen());
     }
 
@@ -342,6 +392,7 @@ final class ProjectPickerTest extends TestCase
         $folder = $this->disk->path('typed');
 
         $this->assertSame($folder, $this->pickInAWindow([self::frame('open;'.\base64_encode($folder))]));
+        $this->assertStringContainsString(self::frame('picked'), $this->terminal->getOutput(), 'the window stops sending folders: the next is the IDE\'s');
     }
 
     public function testAnOpenForWhatIsNotThereOrWithAnotherTokenIsIgnoredAndNeverTyped(): void

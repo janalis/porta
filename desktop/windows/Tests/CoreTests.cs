@@ -51,6 +51,7 @@ public class CoreTests
 
         Assert.Equal((MessageKind.Picking, ""), DesktopMessage.Parse(Payload(Example("picking")), token));
         Assert.Equal((MessageKind.ChooseFolder, ""), DesktopMessage.Parse(Payload(Example("chooseFolder")), token));
+        Assert.Equal((MessageKind.Picked, ""), DesktopMessage.Parse(Payload(Example("picked")), token));
         Assert.Equal(MessageKind.None, DesktopMessage.Parse($"porta-desktop;{token};picking;extra", token).Kind);
     }
 

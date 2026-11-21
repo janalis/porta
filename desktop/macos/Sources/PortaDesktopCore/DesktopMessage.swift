@@ -13,6 +13,8 @@ public enum DesktopMessage: Equatable {
     case picking
     /// The picker asks for the system's folder dialog.
     case chooseFolder
+    /// The picker is done: a folder sent now is the IDE's, or nobody's.
+    case picked
 
     public static let oscCode = 7777
     private static let namespace = "porta-desktop"
@@ -37,6 +39,8 @@ public enum DesktopMessage: Equatable {
             return .picking
         case ("chooseFolder", 3):
             return .chooseFolder
+        case ("picked", 3):
+            return .picked
         case ("state", 4):
             guard let unsaved = Int(fields[3]), unsaved >= 0 else {
                 return nil
