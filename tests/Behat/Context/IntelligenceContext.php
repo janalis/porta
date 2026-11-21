@@ -45,10 +45,20 @@ final class IntelligenceContext implements TuinkAwareContextInterface
      * A request made before `initialize` answers is dropped in silence: the
      * status bar naming the server is the sign it is up.
      */
+    /**
+     * The server is a process of its own, spawned and initialised before the status bar names it: on a loaded box
+     * that outlasts the default check, so this one barrier waits for it longer (testing.md: awaits on external
+     * processes are where load shows).
+     */
     #[Given('the language server is ready')]
     public function theLanguageServerIsReady(): void
     {
-        $this->getSession()->assertSee('LSP:mock-lsp-server');
+        $session = $this->getSession();
+        $session->waitUntil(
+            static fn (): bool => \str_contains($session->getScreenText(), 'LSP:mock-lsp-server'),
+            'The status bar never named the mock language server.',
+            timeout: 4 * $session->getTimeout(),
+        );
     }
 
     // --- The caret ---------------------------------------------------------------

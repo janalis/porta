@@ -87,6 +87,14 @@ mock servers. The doctrine below applies unchanged: await the effect, never a
 fixed gap; `I wait N seconds` is for the real clocks named above, with a comment.
 A generic step any symfony/tui app would want belongs in tuink, not here.
 
+A plugin's features live with its code and tests, in `plugins/<name>/tests/features/`;
+core's in `tests/Behat/features/<area>/`. At its first full count the spec was
+487 scenarios plus the 10 `@process` ones: 19–33 minutes in process at load
+400–570 on the shared box, one run at a time. Its load failures were all awaits
+on a process of the test's own making (a run, a language server, a synchronous
+`git config` on opening Settings' search) outlasting the 5s check
+(`PORTA_BEHAT_TIMEOUT` raises it).
+
 ## Never hand-roll a rig `tests/Support` already provides
 
 Roughly 700 duplicated lines once collapsed onto these.

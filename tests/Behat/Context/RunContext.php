@@ -132,13 +132,11 @@ final class RunContext implements TuinkAwareContextInterface
     #[Given('only PHP is on the PATH')]
     public function onlyPhpIsOnThePath(): void
     {
-        $bin = \sys_get_temp_dir().'/porta-behat-php-only';
-        if (!\is_dir($bin)) {
-            \mkdir($bin, 0o777, recursive: true);
-        }
-        if (!\is_link($bin.'/php')) {
-            \symlink(\PHP_BINARY, $bin.'/php');
-        }
+        // In the workspace: a shared folder would keep a link to whichever PHP ran first, and two runs would race on it
+        $workspace = $this->getSession()->getWorkspace();
+        $workspace->createDirectory('.php-only');
+        $bin = $workspace->resolve('.php-only');
+        \symlink(\PHP_BINARY, $bin.'/php');
         $session = $this->getSession();
         $session->setLaunch($session->getLaunch()->withEnv('PATH', $bin));
     }

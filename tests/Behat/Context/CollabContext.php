@@ -154,6 +154,10 @@ final class CollabContext implements TuinkAwareContextInterface
     #[AfterScenario]
     public function stopTheServer(): void
     {
+        // Before tuink's own stop: the Ide closes its remote connection while the server is still there
+        if (null !== $this->server) {
+            $this->getSession()->stop();
+        }
         $this->server?->stop();
         $this->server = null;
     }

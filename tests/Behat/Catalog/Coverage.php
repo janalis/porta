@@ -85,6 +85,7 @@ final readonly class Coverage
      */
     private static function evidence(string $source): array
     {
+        $source = self::spoken($source);
         $refs = [];
         $matches = [];
         \preg_match_all('/(?<=^|\s)@(action|command|setting):(\S+)/m', $source, $matches, \PREG_SET_ORDER);
@@ -97,6 +98,34 @@ final readonly class Coverage
         }
 
         return $refs;
+    }
+
+    /**
+     * The source without its comment lines and doc strings: a commented-out scenario, or a tag quoted in a
+     * doc string, drives nothing.
+     */
+    private static function spoken(string $source): string
+    {
+        $kept = [];
+        $fence = null;
+        foreach (\explode("\n", $source) as $line) {
+            $trimmed = \trim($line);
+            if (null !== $fence) {
+                $fence = $trimmed === $fence ? null : $fence;
+
+                continue;
+            }
+            if ('"""' === $trimmed || '```' === $trimmed) {
+                $fence = $trimmed;
+
+                continue;
+            }
+            if (!\str_starts_with($trimmed, '#')) {
+                $kept[] = $line;
+            }
+        }
+
+        return \implode("\n", $kept);
     }
 
     /**

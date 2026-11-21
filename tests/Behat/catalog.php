@@ -49,6 +49,7 @@ foreach ($report as $title => $lines) {
         fwrite(STDOUT, '  '.$line."\n");
     }
 }
-fwrite(STDOUT, sprintf("%d of %d catalog ids covered, %d exempted.\n", $total - count($coverage->missing) - count($exemptions), $total, count($exemptions)));
+$standing = count(array_diff_key($exemptions, array_flip($coverage->staleExemptions)));
+fwrite(STDOUT, sprintf("%d of %d catalog ids covered, %d exempted.\n", $total - count($coverage->missing) - $standing, $total, $standing));
 
 exit($coverage->passes() ? 0 : 1);

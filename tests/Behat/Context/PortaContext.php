@@ -210,7 +210,8 @@ final class PortaContext implements TuinkAwareContextInterface
         $session = $this->getSession();
         $path = $session->getWorkspace()->resolve($file);
         $session->waitUntil(
-            fn (): bool => \realpath($path) === \realpath((string) $this->editor()?->getFilePath()),
+            // realpath() is false for a path that does not exist: two of those are not the same file
+            fn (): bool => false !== \realpath($path) && \realpath($path) === \realpath((string) $this->editor()?->getFilePath()),
             \sprintf('The editor does not show "%s".', $file),
         );
     }
@@ -302,11 +303,36 @@ final class PortaContext implements TuinkAwareContextInterface
      */
     public function mergeProjectConfig(array $values): void
     {
-        $merged = \array_replace_recursive($this->projectConfig(), $values);
         $this
             ->getSession()
             ->getWorkspace()
-            ->write(self::PROJECT_CONFIG, \json_encode($merged, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR)."\n");
+            ->write(self::PROJECT_CONFIG, self::encode(self::merge($this->projectConfig(), $values)));
+    }
+
+    /**
+     * $over merged into $base: objects key by key, recursively; a list REPLACES the one it lands on, as an
+     * explicit `enabledPlugins` replaces the defaults (array_replace_recursive would overwrite it slot by slot).
+     *
+     * @param array<array-key, mixed> $base
+     * @param array<array-key, mixed> $over
+     *
+     * @return array<array-key, mixed>
+     */
+    private static function merge(array $base, array $over): array
+    {
+        foreach (\array_keys($over) as $key) {
+            $base[$key] = self::isObject($base[$key] ?? null) && self::isObject($over[$key])
+                ? self::merge(self::object($base[$key]), self::object($over[$key]))
+                : $over[$key];
+        }
+
+        return $base;
+    }
+
+    /** Whether a decoded JSON value is an object, which merges, rather than a list or a scalar, which replaces. */
+    private static function isObject(mixed $value): bool
+    {
+        return \is_array($value) && !\array_is_list($value);
     }
 
     /**

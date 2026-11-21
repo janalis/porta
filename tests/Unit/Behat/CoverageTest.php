@@ -85,6 +85,27 @@ final class CoverageTest extends TestCase
         $this->assertSame(['action:save', 'action:gone', 'setting:theme'], $coverage->staleExemptions);
     }
 
+    public function testCommentsAndDocStringsDriveNothing(): void
+    {
+        $coverage = new Coverage(self::CATALOG, ['a.feature' => <<<'GHERKIN'
+            Feature: A
+              # @action:save
+              Scenario: s
+                Given a file "x" containing:
+                  """
+                  @action:undo
+                  When I use the action "plugins_store"
+                  """
+                And a file "y" containing:
+                  ```
+                  @setting:theme
+                  ```
+                When I use the action "undo"
+            GHERKIN], []);
+
+        $this->assertSame(['action:save', 'command:plugins_store', 'setting:theme'], $coverage->missing);
+    }
+
     public function testATagMustStandAlone(): void
     {
         // An email-ish "x@action:save" in a doc string is not a tag

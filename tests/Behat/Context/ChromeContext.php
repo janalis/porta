@@ -53,6 +53,9 @@ final class ChromeContext implements TuinkAwareContextInterface
     public function removeHome(): void
     {
         if (null !== $this->home) {
+            // Behat runs this hook before tuink stops the app: shut the Ide down first, so its
+            // teardown (the session save, the desktop recovery) does not write into a removed home
+            $this->getSession()->stop();
             new Filesystem()->remove($this->home);
             $this->home = null;
         }
