@@ -44,8 +44,9 @@ Feature: Typing, new lines and indentation
       """
 
   Scenario: Complete a statement by closing its brackets and ending it
-    Given the caret is at line 3, column 12
-    When I type "foo(1, bar(2"
+    Given the caret is at line 3, column 10
+    When I use the action "delete_to_line_end"
+    And I type "foo(1, bar(2"
     And I use the action "complete_statement"
     And I type "done();"
     Then the editor text should be:
@@ -57,10 +58,8 @@ Feature: Typing, new lines and indentation
       """
 
   Scenario: Complete an if into a block
-    Given the caret is at line 3, column 12
+    Given the caret is at line 3, column 5
     When I use the action "delete_to_line_end"
-    And I use the action "cursor_line_start"
-    And I use the action "delete_to_line_end"
     And I type "if ($x > 1"
     And I use the action "complete_statement"
     And I type "go();"
@@ -68,9 +67,9 @@ Feature: Typing, new lines and indentation
       """
       <?php
       function f() {}
-      if ($x > 1) {
-          go();
-      }
+          if ($x > 1) {
+              go();
+          }
       """
 
   Scenario: Tab indents with the file's unit and Shift+Tab outdents
@@ -87,7 +86,12 @@ Feature: Typing, new lines and indentation
       """
     Given the caret is at line 3, column 5
     When I use the action "prev_tab_stop"
-    Then the editor should contain "\n$x = 1;"
+    Then the editor text should be:
+      """
+      <?php
+      function f() {}
+      $x = 1;
+      """
 
   Scenario: Shift+Tab walks back through a live template's tab stops
     Given the caret is at line 4, column 1

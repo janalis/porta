@@ -52,6 +52,61 @@ final class EditingContext implements TuinkAwareContextInterface
         $this->getSession()->getWorkspace()->write($file, "<?php\n".\implode("\n", $lines)."\n");
     }
 
+    #[Given('a file :file containing a class with a :count-line method')]
+    public function aFileWithALongMethod(string $file, int $count): void
+    {
+        $class = \pathinfo($file, \PATHINFO_FILENAME);
+        $body = \str_repeat("        \$x = 1;\n", $count);
+        $this->getSession()->getWorkspace()->write($file, "<?php\n\nclass {$class}\n{\n    public function handle(): void\n    {\n{$body}    }\n}\n");
+    }
+
+    #[Given('a file :file containing a line of :count characters ending in :end')]
+    public function aFileWithALongLine(string $file, int $count, string $end): void
+    {
+        $this->getSession()->getWorkspace()->write($file, "<?php\n// ".\str_repeat('x', \max(0, $count - 3 - \strlen($end))).$end."\n");
+    }
+
+    /**
+     * Replaces the shown file's text in one edit, then saves it with its key.
+     */
+    #[Given('I save the file with the text :text')]
+    public function iSaveAsTheContent(string $text): void
+    {
+        $content = \str_replace('\\n', "\n", $text);
+        $document = $this->document();
+        $document->selectAll();
+        $document->insert($content);
+        $this->porta()->iUseTheAction('save');
+        $path = (string) Widgets::editor($this->porta()->tui())->getFilePath();
+        $this->getSession()->waitUntil(
+            static fn (): bool => \file_get_contents($path) === $content,
+            \sprintf('"%s" was not saved.', $path),
+        );
+    }
+
+    /**
+     * What .porta.json's "settings" hold for $key: `true`, `false` and numbers as JSON, anything else as a string.
+     */
+    #[Then('the project setting :key should be :value')]
+    public function theProjectSettingShouldBe(string $key, string $value): void
+    {
+        $expected = \in_array($value, ['true', 'false'], true) || \is_numeric($value) ? \json_decode($value) : $value;
+        $porta = $this->porta();
+        $this->getSession()->waitUntil(
+            static fn (): bool => self::setting($porta, $key) === $expected,
+            static fn (): string => \sprintf('.porta.json has "%s": %s.', $key, \json_encode(self::setting($porta, $key))),
+        );
+    }
+
+    #[When('I restart the app with the project configuration:')]
+    public function iRestartWithTheProjectConfiguration(PyStringNode $json): void
+    {
+        $session = $this->getSession();
+        $session->stop();
+        $this->porta()->theProjectConfiguration($json);
+        $session->start();
+    }
+
     // --- The caret and the selection -------------------------------------------
 
     #[Given('the caret is at line :line, column :column')]
@@ -60,6 +115,19 @@ final class EditingContext implements TuinkAwareContextInterface
     {
         $this->document()->setCursor($line - 1, $column - 1);
         $this->getSession()->settle();
+    }
+
+    /**
+     * Go to Line, as a user would: the prompt, the number, Enter.
+     */
+    #[When('I go to line :line')]
+    public function iGoToLine(int $line): void
+    {
+        $this->porta()->iUseTheAction('goto_line');
+        $session = $this->getSession();
+        $session->type((string) $line);
+        $session->press('Enter');
+        $this->theCaretShouldBeOnLine($line);
     }
 
     #[Given('I select from line :fromLine, column :fromColumn to line :toLine, column :toColumn')]
@@ -187,6 +255,13 @@ final class EditingContext implements TuinkAwareContextInterface
         );
     }
 
+    private static function setting(PortaContext $porta, string $key): mixed
+    {
+        $settings = $porta->projectConfig()['settings'] ?? [];
+
+        return \is_array($settings) ? $settings[$key] ?? null : null;
+    }
+
     // --- Reads ------------------------------------------------------------------
 
     public function document(): Document
@@ -220,7 +295,8 @@ final class EditingContext implements TuinkAwareContextInterface
         /** @var list<array{name: string}> $tabs */
         $tabs = $provider();
 
-        return \array_column($tabs, 'name');
+        // A pinned tab's name carries the pin glyph; the pin has a step of its own.
+        return \array_map(static fn (string $name): string => \preg_replace('/^⌾ /u', '', $name) ?? $name, \array_column($tabs, 'name'));
     }
 
     /**
