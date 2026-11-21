@@ -20,6 +20,8 @@ use Porta\Debug\DebugController;
 use Porta\Debug\DebugStatePersistence;
 use Porta\Desktop\DesktopProtocol;
 use Porta\Desktop\DesktopRecovery;
+use Porta\Desktop\DesktopSession;
+use Porta\Desktop\LaunchTheme;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
@@ -176,6 +178,9 @@ final class Ide
             // a language server over it would report every class missing.
             $this->lspDisabled || ProjectLocation::forRoot($this->rootDir)->isRemote() ? LspMode::Disabled : LspMode::Enabled,
             $docsDir,
+            // In a window, the window's light or dark look unless a theme was chosen:
+            // never dark first and light a moment later, once the window can say.
+            LaunchTheme::for($this->rootDir, $config->settings, DesktopSession::current()),
         );
         $locator = $this->container->get('porta.ide');
         \assert($locator instanceof ServiceLocator, description: 'The porta.ide service is the ServiceLocator boundary');

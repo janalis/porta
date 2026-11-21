@@ -93,6 +93,16 @@ final class IdeContainerFactoryTest extends TestCase
         $this->assertSame($project->dir.'/translations', $_ENV['PORTA_TRANSLATION_CACHE_DIR'], 'the container-bound translator dumps its catalogs beside the container cache');
     }
 
+    public function testAGivenThemeOutranksTheSetting(): void
+    {
+        $project = new TempProject();
+        \putenv('PORTA_CACHE_DIR='.$project->dir);
+
+        new IdeContainerFactory()->build($project->dir, IdeConfig::load($project->dir), Ansi::Enabled, theme: 'light');
+
+        $this->assertSame('light', $_ENV['PORTA_THEME']);
+    }
+
     public function testAnUnconfiguredLanguageFollowsTheSystemLocale(): void
     {
         $project = new TempProject();

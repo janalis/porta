@@ -38,8 +38,8 @@ A window with no project starts on one field:
 
 While it waits, the window takes a folder dropped on it, chosen with **Open
 Folder…** or **Open Recent** (macOS), or opened with Porta from the file
-manager, instead of opening a second window beside it. It is drawn in the
-system's light or dark look, unless you chose a theme.
+manager, instead of opening a second window beside it. It, and the IDE after
+it, are drawn in the system's light or dark look, unless you chose a theme.
 
 Each project gets one window. Opening a project that is already open brings its
 window forward, and opening another project opens another window. A file opened

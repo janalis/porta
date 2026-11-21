@@ -53,7 +53,8 @@ final readonly class IdeContainerFactory
         private ?bool $trackSources = null,
     ) {}
 
-    public function build(string $rootDir, IdeConfig $config, Ansi $ansi, ?string $lspCommand = null, LspMode $lsp = LspMode::Enabled, string $docsDir = ''): ContainerInterface
+    /** @param string|null $theme the first frame's theme when the launch knows better than the settings (a window's look); null for the setting */
+    public function build(string $rootDir, IdeConfig $config, Ansi $ansi, ?string $lspCommand = null, LspMode $lsp = LspMode::Enabled, string $docsDir = '', ?string $theme = null): ContainerInterface
     {
         // Per-boot values go through $_ENV — the env processor reads $_ENV
         // first, and unlike putenv() nothing leaks into the PTY shells spawned
@@ -66,7 +67,7 @@ final readonly class IdeContainerFactory
         $_ENV['PORTA_SYSTEM_LOCALE'] = SystemLocale::fromEnvironment(\getenv(), \extension_loaded('intl') ? \Locale::getDefault() : '');
         $_ENV['PORTA_HOST_KEYMAP'] = KeymapPlatform::detect(\PHP_OS_FAMILY, \getenv())->value;
         $_ENV['PORTA_ANSI'] = Ansi::Enabled === $ansi ? '1' : '0';
-        $_ENV['PORTA_THEME'] = (string) ($config->settings['theme'] ?? 'dark');
+        $_ENV['PORTA_THEME'] = $theme ?? (string) ($config->settings['theme'] ?? 'dark');
         $_ENV['PORTA_LSP_COMMAND'] = $lspCommand ?? ''; // '' resolves to null via env(default::…)
         $_ENV['PORTA_LSP_DISABLED'] = LspMode::Disabled === $lsp ? '1' : '0';
         $_ENV['PORTA_DOCS_DIR'] = $docsDir;

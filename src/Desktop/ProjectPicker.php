@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Desktop;
 
-use Porta\Config\ConfigFiles;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaHome;
 use Porta\Filesystem\ProjectLocation;
@@ -13,7 +12,6 @@ use Porta\Highlight\ColorMode;
 use Porta\History\RecentProjectsStore;
 use Porta\I18n\SystemLocale;
 use Porta\I18n\Translator;
-use Porta\Settings\SettingsProvenance;
 use Porta\Support\ControlChars;
 use Porta\Ui\NonBlockingTerminal;
 use Porta\Ui\Theme\Styles;
@@ -82,12 +80,7 @@ final class ProjectPicker
         $cwd = (string) \getcwd();
         $settings = IdeConfig::load($cwd)->settings;
         $session = DesktopSession::current();
-        // The system's mode, as the window already shows it, unless a theme was
-        // chosen: the rule the IDE follows once the window can tell it.
-        $theme =
-            null !== $session->appearance && null === new SettingsProvenance(ConfigFiles::for($cwd))->originOf(['settings', 'theme'])
-                ? $session->appearance
-                : (string) ($settings['theme'] ?? 'dark');
+        $theme = LaunchTheme::for($cwd, $settings, $session);
         $language = (string) ($settings['language'] ?? 'auto');
         $system = SystemLocale::fromEnvironment(\getenv(), \extension_loaded('intl') ? \Locale::getDefault() : '');
 
