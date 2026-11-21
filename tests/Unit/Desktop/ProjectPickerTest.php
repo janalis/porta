@@ -399,6 +399,24 @@ final class ProjectPickerTest extends TestCase
         $this->assertStringContainsString('typed-alias/', $this->screen());
     }
 
+    public function testAFailureWhileThePickerIsUpStillStopsTheClickReports(): void
+    {
+        // Once the card is drawn and clicks are reported: mid-loop, not before it.
+        EventLoop::delay(0.3, function (): never {
+            $this->assertStringContainsString("\x1b[?1000h\x1b[?1006h", $this->terminal->getOutput(), 'the premise: reports are on');
+
+            throw new \RuntimeException('the disk went away');
+        });
+
+        try {
+            new ProjectPicker(new RecentProjectChoices(new RecentProjectsStore()), $this->terminal)->pick();
+            $this->fail('the failure is not swallowed');
+        } catch (\Throwable $e) {
+            $this->assertStringContainsString('the disk went away', $e->getMessage().($e->getPrevious()?->getMessage() ?? ''));
+            $this->assertStringEndsWith("\x1b[?1000l\x1b[?1006l\x1b[H\x1b[2J\x1b[3J", $this->terminal->getOutput());
+        }
+    }
+
     public function testAPickerThatFailsStillStopsTheClickReports(): void
     {
         $found = static function (array $except): array {
