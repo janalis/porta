@@ -97,7 +97,7 @@ final class BreadcrumbScannerTest extends TestCase
         foreach ($scopes as $s) {
             $kinds[$s['label']] = $s['kind'];
         }
-        $this->assertSame(CodeScopeKind::Namespace, $kinds['N']);
+        $this->assertSame(CodeScopeKind::NamespaceBlock, $kinds['N']);
         $this->assertSame(CodeScopeKind::Type, $kinds['C']);
         $this->assertSame(CodeScopeKind::Function, $kinds['m']);
     }
@@ -137,7 +137,7 @@ final class BreadcrumbScannerTest extends TestCase
 
         $this->assertCount(1, $scopes);
         $this->assertSame('A\\X', $scopes[0]['label']);
-        $this->assertSame(CodeScopeKind::Namespace, $scopes[0]['kind']);
+        $this->assertSame(CodeScopeKind::NamespaceBlock, $scopes[0]['kind']);
     }
 
     public function testUnclosedSingleLineScopeEndsOnItsOwnLineNotLineTwo(): void
@@ -179,9 +179,9 @@ final class BreadcrumbScannerTest extends TestCase
     {
         $src = "<?php\nnamespace A;\nclass X {}\nnamespace B;\nclass Y {}\n";
         $scopes = BreadcrumbScanner::scan($src);
-        $namespaces = \array_values(\array_filter($scopes, static fn (array $s): bool => CodeScopeKind::Namespace === $s['kind']));
+        $namespaces = \array_values(\array_filter($scopes, static fn (array $s): bool => CodeScopeKind::NamespaceBlock === $s['kind']));
 
-        $this->assertSame(['label' => 'A', 'startLine' => 2, 'endLine' => 3, 'kind' => CodeScopeKind::Namespace], $namespaces[0]);
+        $this->assertSame(['label' => 'A', 'startLine' => 2, 'endLine' => 3, 'kind' => CodeScopeKind::NamespaceBlock], $namespaces[0]);
         $this->assertSame('B', $namespaces[1]['label']);
         $this->assertSame(4, $namespaces[1]['startLine']);
     }
