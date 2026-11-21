@@ -16,6 +16,7 @@ use Porta\Ui\Role;
 use Porta\Ui\Theme\Themes;
 use Porta\Workbench\RecentProjectChoices;
 use Revolt\EventLoop;
+use Revolt\EventLoop\UncaughtThrowable;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 
@@ -408,13 +409,16 @@ final class ProjectPickerTest extends TestCase
             throw new \RuntimeException('the disk went away');
         });
 
+        $failed = null;
         try {
             new ProjectPicker(new RecentProjectChoices(new RecentProjectsStore()), $this->terminal)->pick();
-            $this->fail('the failure is not swallowed');
-        } catch (\Throwable $e) {
-            $this->assertStringContainsString('the disk went away', $e->getMessage().($e->getPrevious()?->getMessage() ?? ''));
-            $this->assertStringEndsWith("\x1b[?1000l\x1b[?1006l\x1b[H\x1b[2J\x1b[3J", $this->terminal->getOutput());
+        } catch (\RuntimeException|UncaughtThrowable $e) {
+            $failed = $e;
         }
+
+        $this->assertNotNull($failed, 'the failure is not swallowed');
+        $this->assertStringContainsString('the disk went away', $failed->getMessage().($failed->getPrevious()?->getMessage() ?? ''));
+        $this->assertStringEndsWith("\x1b[?1000l\x1b[?1006l\x1b[H\x1b[2J\x1b[3J", $this->terminal->getOutput());
     }
 
     public function testAPickerThatFailsStillStopsTheClickReports(): void

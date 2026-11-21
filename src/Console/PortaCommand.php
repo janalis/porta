@@ -545,12 +545,7 @@ final class PortaCommand extends Command
             );
             $onBooted();
             $ide->run();
-            // The window may have gone light or dark meanwhile: the next IDE in
-            // it, a project switched to or this one restarted, starts as it is now.
-            $desktop = $desktop->withAppearance($ide->followedAppearance());
-            if (null !== $desktop->appearance) {
-                \putenv(DesktopSession::APPEARANCE.'='.$desktop->appearance);
-            }
+            $desktop = self::handOver($desktop, $ide->followedAppearance());
 
             $directory = $ide->restartDirectory();
             if (null !== $directory) {
@@ -569,6 +564,21 @@ final class PortaCommand extends Command
             $file = null;
             $line = null;
         }
+    }
+
+    /**
+     * The window may have gone light or dark while an IDE ran in it: the next
+     * one, a project switched to in-process or this one restarted as a new
+     * process (which reads the environment), starts as the window is now.
+     */
+    public static function handOver(DesktopSession $desktop, ?string $followed): DesktopSession
+    {
+        $next = $desktop->withAppearance($followed);
+        if (null !== $next->appearance) {
+            \putenv(DesktopSession::APPEARANCE.'='.$next->appearance);
+        }
+
+        return $next;
     }
 
     /**

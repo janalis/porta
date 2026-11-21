@@ -13,14 +13,18 @@ use Porta\Editor\BufferManager;
 use Porta\Event\RunFinished;
 use Porta\Event\ThemeChanged;
 use Porta\Settings\SettingsController;
+use Porta\Settings\SettingsRow;
+use Porta\Settings\SettingsViewController;
 use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\Services;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\MenuBarWidget;
+use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuItem;
+use Porta\Workbench\View\ViewRegistry;
 use Porta\Workbench\WorkbenchActions;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Event\InputEvent;
@@ -393,6 +397,22 @@ final class DesktopProtocolTest extends TestCase
         $protocol->onInput($this->request('appearance;dark'));
         $settings->resetSetting('theme');
         $this->assertSame('dark', $settings->choice('theme'));
+    }
+
+    public function testAnOpenSettingsPageShowsTheLookTheWindowTurnsTo(): void
+    {
+        $protocol = $this->bootDesktop();
+        $settingsView = Services::resolve($this->ide, ViewRegistry::class)->find('settings');
+        $this->assertInstanceOf(SettingsViewController::class, $settingsView);
+        $settingsView->openOn('interface');
+        $form = Probe::get($settingsView, 'form');
+        $this->assertInstanceOf(SettingsFormWidget::class, $form);
+        $theme = static fn (): string => (string) \array_find(Probe::get($form, 'rows'), static fn (SettingsRow $row): bool => 'theme' === $row->key)?->value;
+        $this->assertSame('dark', $theme());
+
+        $protocol->onInput($this->request('appearance;light'));
+
+        $this->assertSame('light', $theme(), 'the page open while the window went light says so');
     }
 
     public function testARunEndingIsToldToTheWindowOnceItIsReady(): void

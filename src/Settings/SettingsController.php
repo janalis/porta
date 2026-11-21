@@ -49,6 +49,9 @@ final class SettingsController
     /** @var array<string, int|bool|string> the built-in defaults, a window's look standing in for the theme's */
     private array $defaults;
 
+    /** @var array<string, true> the settings changed here this session, which no stand-in overrides */
+    private array $picked = [];
+
     /**
      * @param array<string, int|bool|string> $settings         resolved settings (defaults merged)
      */
@@ -485,14 +488,6 @@ final class SettingsController
     }
 
     /**
-     * Put a setting back to the product's default.
-     *
-     * The asymmetry is the point: IN MEMORY the default is restored and applied
-     * live, because {@see $settings} is indexed unconditionally and a missing
-     * key would be a different bug; ON DISK the key is REMOVED, so a default
-     * that later moves moves with it.
-     */
-    /**
      * The window's look changed: it is what a theme no file chose now stands
      * for, shown as such and reset to. The live switch is the caller's.
      */
@@ -502,14 +497,25 @@ final class SettingsController
         $this->standIn($theme);
     }
 
-    /** What the IDE drew for a theme no file chose, as the value this shows. */
+    /**
+     * What the IDE drew for a theme no file chose, as the value this shows; a
+     * theme picked here this session stays, saved or not (a write can fail).
+     */
     private function standIn(?string $themeDefault): void
     {
-        if (null !== $themeDefault && null === $this->provenance->originOf(['settings', 'theme'])) {
+        if (null !== $themeDefault && !\array_key_exists('theme', $this->picked) && null === $this->provenance->originOf(['settings', 'theme'])) {
             $this->settings['theme'] = $themeDefault;
         }
     }
 
+    /**
+     * Put a setting back to the product's default.
+     *
+     * The asymmetry is the point: IN MEMORY the default is restored and applied
+     * live, because {@see $settings} is indexed unconditionally and a missing
+     * key would be a different bug; ON DISK the key is REMOVED, so a default
+     * that later moves moves with it.
+     */
     public function resetSetting(string $key): void
     {
         $descriptor = $this->descriptors[$key] ?? null;
@@ -521,6 +527,7 @@ final class SettingsController
 
         $default = $this->defaults[$key] ?? '';
         $this->settings[$key] = $default;
+        unset($this->picked[$key]);
         if (null !== $descriptor['apply']) {
             $descriptor['apply']($default);
         }
@@ -545,6 +552,7 @@ final class SettingsController
         }
 
         $this->settings[$key] = $value;
+        $this->picked[$key] = true;
         if (null !== $descriptor['apply']) {
             $descriptor['apply']($value);
         }

@@ -92,6 +92,20 @@ final class PortaCommandTest extends TestCase
         $this->assertSame('light', $desktop->appearance, 'the IDE is drawn in the window\'s look from its first frame');
     }
 
+    public function testTheNextIdeInAWindowStartsInTheLookItLastReported(): void
+    {
+        $launched = new DesktopSession(active: true, token: \str_repeat('a', 32), appearance: 'light');
+        try {
+            $next = PortaCommand::handOver($launched, 'dark');
+
+            $this->assertSame('dark', $next->appearance, 'a project switched to in-process');
+            $this->assertSame('dark', \getenv(DesktopSession::APPEARANCE), 'and a restart, a new process reading the environment');
+            $this->assertSame($launched, PortaCommand::handOver($launched, null), 'nothing reported: as launched');
+        } finally {
+            \putenv(DesktopSession::APPEARANCE);
+        }
+    }
+
     public function testFileLineShorthandOpensAtLine(): void
     {
         $project = new TempProject(['composer.json' => '{}', 'src/Foo.php' => "<?php\n"]);

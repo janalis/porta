@@ -109,11 +109,11 @@ final class ProcessEnvironmentTest extends TestCase
 
     public function testADesktopSessionStopsAtPortaItself(): void
     {
-        $environment = ['PATH' => '/bin', 'PORTA_DESKTOP' => '1', 'PORTA_DESKTOP_TOKEN' => \str_repeat('a', 32), 'PORTA_RESTART_DIRECTORY' => '/handoff'];
+        $environment = ['PATH' => '/bin', 'PORTA_DESKTOP' => '1', 'PORTA_DESKTOP_TOKEN' => \str_repeat('a', 32), 'PORTA_DESKTOP_APPEARANCE' => 'light', 'PORTA_RESTART_DIRECTORY' => '/handoff'];
 
         $this->assertSame(['PATH' => '/bin'], ProcessEnvironment::withoutRestart($environment), 'a tool or a shell is not the window\'s');
         $this->assertSame(
-            ['PATH' => '/bin', 'PORTA_DESKTOP' => '1', 'PORTA_DESKTOP_TOKEN' => \str_repeat('a', 32)],
+            ['PATH' => '/bin', 'PORTA_DESKTOP' => '1', 'PORTA_DESKTOP_TOKEN' => \str_repeat('a', 32), 'PORTA_DESKTOP_APPEARANCE' => 'light'],
             ProcessEnvironment::forNestedPorta($environment),
             'a Porta taking over this terminal still answers to the window',
         );

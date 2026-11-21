@@ -7,6 +7,7 @@ namespace Porta\Settings;
 use Porta\Container\AsEager;
 use Porta\Event\SettingsRowsStale;
 use Porta\Event\SettingsSectionRequested;
+use Porta\Event\ThemeChanged;
 use Porta\I18n\Translator;
 use Porta\Layout\ViewRegion;
 use Porta\Layout\ViewRegions;
@@ -391,6 +392,19 @@ final class SettingsViewController implements ContributedView
     public function onSettingsRowsStale(SettingsRowsStale $event): void
     {
         $this->refresh();
+    }
+
+    /**
+     * The theme changed under an open page (the window went light or dark): a
+     * form page reads its rows again, so the Theme row says what is drawn.
+     */
+    #[AsEventListener]
+    public function onThemeChanged(ThemeChanged $event): void
+    {
+        if ($this->open && $this->form === $this->contentWidget()) {
+            $this->form->setRows($this->rowsForSection(), $this->nav->trailFor($this->section));
+            $this->host->invalidate();
+        }
     }
 
     public function refresh(): void

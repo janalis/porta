@@ -838,6 +838,23 @@ final class SettingsControllerTest extends TestCase
         $this->assertSame(['light'], $this->themeChanges, 'back to the window\'s look, not the built-in dark');
     }
 
+    public function testAThemePickedHereOutlastsTheWindowsLookEvenUnsaved(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), IdeConfig::DEFAULT_SETTINGS, themeDefault: 'light');
+
+        $controller->changeSetting('theme', value: 'high-contrast');
+        // As if the write had failed: no file says so.
+        \unlink($project->path('.porta.json'));
+        $controller->followTheme('dark');
+
+        $this->assertSame('high-contrast', $controller->choice('theme'), 'picked this session, it stays');
+
+        $controller->resetSetting('theme');
+        $controller->followTheme('light');
+        $this->assertSame('light', $controller->choice('theme'), 'once reset, the window\'s look applies again');
+    }
+
     public function testTheMarkerFollowsAChangeAndClearsWhenItIsPutBack(): void
     {
         $project = new TempProject();
