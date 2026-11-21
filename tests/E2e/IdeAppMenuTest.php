@@ -20,6 +20,8 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Widgets;
 use Porta\Widget\MenuBarWidget;
+use Porta\Workbench\Menu\Menu;
+use Porta\Workbench\Menu\MenuItem;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -310,6 +312,46 @@ final class IdeAppMenuTest extends TestCase
                 600 => function (Tui $tui): void {
                     $this->assertFalse(Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class)->isOpen(), 'Esc closed the menu');
                     $this->assertSame('editor', $tui->getFocus()?->getId());
+                },
+            ],
+        );
+    }
+
+    /**
+     * An item that moves the focus keeps it: the menu gives back the focus it
+     * took only when the item left it on the menu. Focus Project Tree used to
+     * land on the tree and be handed straight back to the editor.
+     */
+    public function testAnItemThatMovesTheFocusKeepsIt(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\necho 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                200 => static function (Tui $tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1b[21~"); // F10 arms the bar
+                    $tui->handleInput('v'); // View
+                },
+                300 => function (Tui $tui): void {
+                    $menu = Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class);
+                    $menus = Probe::get($menu, property: 'menus');
+                    $this->assertIsArray($menus);
+                    $view = $menus[$menu->openIndex()] ?? null;
+                    $this->assertInstanceOf(Menu::class, $view);
+                    $labels = \array_map(static fn (MenuItem $item): string => $item->label, $view->items);
+                    $index = \array_search('Focus Project Tree', $labels, strict: true);
+                    $this->assertIsInt($index, 'the View menu offers Focus Project Tree');
+                    $menu->runItem($index);
+                    $this->assertFalse($menu->isOpen());
+                    $this->assertSame('tree', $tui->getFocus()?->getId(), 'the tree keeps the focus the item gave it');
+
+                    $tui->handleInput("\x1b[21~"); // F10, then Esc: nothing ran, so the menu hands the focus on
+                    $tui->handleInput("\x1b");
+                    $this->assertSame('editor', $tui->getFocus()?->getId(), 'a menu left with nothing run gives the focus to the editor area');
                 },
             ],
         );
