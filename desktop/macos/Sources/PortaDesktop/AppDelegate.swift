@@ -62,7 +62,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         windows.first { $0.window?.isKeyWindow == true }
     }
 
-    private func open(project path: String) {
+    /// `picker` is the window waiting for a project that should take this one, when nothing has it yet.
+    private func open(project path: String, picker: ProjectWindowController? = nil) {
         let key = ProjectKey.of(path)
         if let existing = windows.first(where: { $0.projectKey == key }) {
             existing.focus()
@@ -73,6 +74,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             holder.open(path: path)
             return
         }
+        // A window still waiting for a project takes it, the one in front first: no second window beside it.
+        let waiting = [picker, focused].compactMap { $0 } + windows
+        if let window = waiting.first(where: { $0.picking }) {
+            window.open(path: path)
+            return
+        }
         openWindow(project: path)
     }
 
@@ -81,8 +88,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             return
         }
         let controller = ProjectWindowController(runtime: runtime, project: project)
-        controller.onDropped = { [weak self] paths in
-            paths.forEach { self?.open(project: $0) }
+        controller.onDropped = { [weak self, weak controller] paths in
+            // Dropped on a window waiting for a project: the first one not open elsewhere is its project.
+            for (index, path) in paths.enumerated() {
+                self?.open(project: path, picker: index == 0 ? controller : nil)
+            }
         }
         controller.onClosed = { [weak self, weak controller] in
             guard let self, let controller else { return }

@@ -9,6 +9,10 @@ public enum DesktopMessage: Equatable {
     case state(unsaved: Int)
     /// A run ended; the text says which and how.
     case notify(text: String)
+    /// No project yet: Porta's picker is up, and takes a folder sent as an open request.
+    case picking
+    /// The picker asks for the system's folder dialog.
+    case chooseFolder
 
     public static let oscCode = 7777
     private static let namespace = "porta-desktop"
@@ -29,6 +33,10 @@ public enum DesktopMessage: Equatable {
             return .accepted
         case ("closing", 3):
             return .closing
+        case ("picking", 3):
+            return .picking
+        case ("chooseFolder", 3):
+            return .chooseFolder
         case ("state", 4):
             guard let unsaved = Int(fields[3]), unsaved >= 0 else {
                 return nil

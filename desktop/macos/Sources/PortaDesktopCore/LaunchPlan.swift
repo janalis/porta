@@ -10,7 +10,8 @@ public struct LaunchPlan: Equatable {
     /// Inherited variables that would change what the bundled PHP loads or how the IDE reads its terminal.
     private static let dropped: Set<String> = ["PHPRC", "PHP_INI_SCAN_DIR", "WT_SESSION", "TERM_PROGRAM", "TERM_PROGRAM_VERSION", "TMUX", "TMUX_PANE"]
 
-    public init(runtime: String, project: String?, inherited: [String: String], token: String, home: String) {
+    /// `dark` says how the system looks at launch, for the screen Porta draws before the window can tell it; nil when unknown.
+    public init(runtime: String, project: String?, inherited: [String: String], token: String, home: String, dark: Bool? = nil) {
         executable = runtime + "/php"
         arguments = ["-n", "-d", "memory_limit=-1", "-d", "display_errors=0", runtime + "/porta.phar"] + (project.map { [$0] } ?? [])
         workingDirectory = project ?? home
@@ -21,6 +22,7 @@ public struct LaunchPlan: Equatable {
         variables["PORTA_DESKTOP"] = "1"
         variables["PORTA_DESKTOP_TOKEN"] = token
         variables["PORTA_DESKTOP_MENU"] = "system"
+        variables["PORTA_DESKTOP_APPEARANCE"] = dark.map { $0 ? "dark" : "light" }
         variables["TERM"] = "xterm-256color"
         variables["COLORTERM"] = "truecolor"
         environment = variables.map { "\($0.key)=\($0.value)" }.sorted()

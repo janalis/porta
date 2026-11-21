@@ -28,6 +28,8 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
     private var answerTimer: Timer?
     private var exited = false
     private var ready = false
+    /// Porta's picker is up: no project yet, and a folder sent now is the one it opens.
+    private(set) var picking = false
     private var dropView: DropView?
     /// Files and folders dropped on the window, for the application to send where they belong.
     var onDropped: (([String]) -> Void)? {
@@ -42,7 +44,7 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
         token = LaunchPlan.newToken()
         self.runtime = runtime
         self.project = project
-        plan = LaunchPlan(runtime: runtime, project: project, inherited: ProcessInfo.processInfo.environment, token: token, home: NSHomeDirectory())
+        plan = LaunchPlan(runtime: runtime, project: project, inherited: ProcessInfo.processInfo.environment, token: token, home: NSHomeDirectory(), dark: Self.systemIsDark)
         projectKey = project.map(ProjectKey.of)
         terminal = AccessibleTerminalView(frame: NSRect(x: 0, y: 0, width: 1100, height: 720))
 
@@ -111,10 +113,12 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    /// A file or folder for this window's project, from Finder or the Dock.
+    /// A file or folder for this window's project, from Finder or the Dock; or, while the picker is up, the project itself.
     func open(path: String) {
-        if ready {
+        if ready || picking {
             send(DesktopMessage.openRequest(token: token, path: path))
+            // Handed its project: the next folder is not this window's to take.
+            picking = false
         } else {
             pending.append(path)
         }
@@ -170,12 +174,29 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
 
     /// The system's light or dark mode, for Porta and for the window around it.
     func sendAppearance() {
-        let dark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let dark = Self.systemIsDark
         terminal.nativeBackgroundColor = dark ? .black : .white
         terminal.nativeForegroundColor = dark ? NSColor(white: 0.85, alpha: 1) : NSColor(white: 0.1, alpha: 1)
         window?.backgroundColor = terminal.nativeBackgroundColor
         if ready {
             send(DesktopMessage.appearance(token: token, dark: dark))
+        }
+    }
+
+    private static var systemIsDark: Bool {
+        NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+    }
+
+    /// The picker's "Choose a folder…": the system's dialog, over this window; the folder chosen is the project.
+    private func chooseFolder() {
+        guard let window, window.attachedSheet == nil else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard response == .OK, let url = panel.url, let self, self.picking else { return }
+            self.open(path: url.path)
         }
     }
 
@@ -283,6 +304,7 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
             window?.representedURL = folder
             NSDocumentController.shared.noteNewRecentDocumentURL(folder)
             ready = true
+            picking = false
             // Reopen starts what is open now, which a switch may have changed.
             plan = LaunchPlan(runtime: runtime, project: root, inherited: ProcessInfo.processInfo.environment, token: token, home: NSHomeDirectory())
             sendAppearance()
@@ -291,6 +313,12 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
         }
         if case let .notify(text) = message {
             notify(text)
+        }
+        if case .picking = message {
+            picking = true
+        }
+        if case .chooseFolder = message, picking {
+            chooseFolder()
         }
         if case let .state(unsaved) = message {
             // The dot in the close button: closing this window would lose work.

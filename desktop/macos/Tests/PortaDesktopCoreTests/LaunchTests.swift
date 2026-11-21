@@ -25,6 +25,16 @@ final class LaunchTests: XCTestCase {
         XCTAssertEqual(environment, ["COLORTERM=truecolor", "PATH=/bin", "PORTA_DESKTOP=1", "PORTA_DESKTOP_MENU=system", "PORTA_DESKTOP_TOKEN=\(token)", "TERM=xterm-256color"])
     }
 
+    func testTheSystemsModeAtLaunchIsSaidAndNeverInherited() {
+        let launched = { (dark: Bool?) in
+            LaunchPlan(runtime: "/App/runtime", project: nil, inherited: ["PORTA_DESKTOP_APPEARANCE": "sepia"], token: self.token, home: "/Users/me", dark: dark).environment
+        }
+
+        XCTAssertTrue(launched(true).contains("PORTA_DESKTOP_APPEARANCE=dark"))
+        XCTAssertTrue(launched(false).contains("PORTA_DESKTOP_APPEARANCE=light"))
+        XCTAssertFalse(launched(nil).contains { $0.hasPrefix("PORTA_DESKTOP_APPEARANCE=") })
+    }
+
     func testTokensAreLongEnoughAndNeverRepeat() {
         let first = LaunchPlan.newToken()
 

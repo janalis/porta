@@ -58,6 +58,22 @@ final class ContractTests: XCTestCase {
         XCTAssertNil(DesktopMessage.parse(payload: "porta-desktop;\(token);notify;not base64!", token: token))
     }
 
+    func testThePickersMessagesAreTheContracts() throws {
+        let examples = try strings()
+        let token = try XCTUnwrap(examples["token"])
+
+        XCTAssertEqual(DesktopMessage.parse(payload: payload(try XCTUnwrap(examples["picking"])), token: token), .picking)
+        XCTAssertEqual(DesktopMessage.parse(payload: payload(try XCTUnwrap(examples["chooseFolder"])), token: token), .chooseFolder)
+        XCTAssertNil(DesktopMessage.parse(payload: "porta-desktop;\(token);picking;extra", token: token))
+    }
+
+    func testTheLaunchSetsTheVariablesTheContractNames() throws {
+        let names = try XCTUnwrap(contract("protocol")["environment"] as? [String: String])
+        let variables = Set(LaunchPlan(runtime: "/r", project: nil, inherited: [:], token: "t", home: "/h", dark: true).environment.map { String($0.split(separator: "=")[0]) })
+
+        XCTAssertTrue(Set(names.values).isSubset(of: variables), "every variable the contract names is set")
+    }
+
     func testAnotherSessionsTokenIsNotListenedTo() throws {
         let examples = try strings()
 
