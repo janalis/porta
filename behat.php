@@ -37,8 +37,13 @@ $tuink = [
 
 // The real entry point is slow to boot and cannot be read into: it runs
 // only the scenarios tagged @process, and the in-process profile skips them.
+// Core's features, then each bundled plugin's, kept with its code and tests
+$paths = ['%paths.base%/tests/Behat/features', ...array_map(
+    static fn (string $dir): string => '%paths.base%/'.substr($dir, strlen(__DIR__) + 1),
+    glob(__DIR__.'/plugins/*/tests/features', GLOB_ONLYDIR) ?: [],
+)];
 $suite = static fn (string $tags): Suite => new Suite('default')
-    ->withPaths('%paths.base%/tests/Behat/features')
+    ->withPaths(...$paths)
     ->withContexts(TuiContext::class, PortaContext::class)
     ->withFilter(new TagFilter($tags));
 
@@ -48,4 +53,5 @@ return new Config()
         ->withExtension(new Extension(TuinkExtension::class, $tuink)))
     ->withProfile(new Profile('process')
         ->withSuite($suite('@process'))
-        ->withExtension(new Extension(TuinkExtension::class, ['default_driver' => 'process'] + $tuink)));
+        // A real boot compiles and loads in a process of its own: slower than in process, more so on a busy box
+        ->withExtension(new Extension(TuinkExtension::class, ['default_driver' => 'process', 'timeout' => 3 * $tuink['timeout']] + $tuink)));
