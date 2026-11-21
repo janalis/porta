@@ -32,6 +32,7 @@ A window with no project starts on one field:
   to name; **Tab** completes it, as a shell does. Tab on a project's name puts
   its path in the field, to go on from.
 - **Choose a folder…** opens the system's folder dialog.
+- **A click** on a row opens it; the wheel moves the selection.
 - **Open remote…** takes `user@host:/path` or an `ssh://`, `sftp://`, `ftp://`
   or `ftps://` URL, as **Open Remote Project…** does inside the IDE.
 

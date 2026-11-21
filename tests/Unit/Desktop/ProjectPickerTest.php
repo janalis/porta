@@ -376,6 +376,12 @@ final class ProjectPickerTest extends TestCase
     {
         $this->assertNull($this->pick(["\x1b"]));
         $this->assertStringNotContainsString('porta-desktop', $this->terminal->getOutput());
+        $this->assertStringContainsString("\x1b[?1000h\x1b[?1006h", $this->terminal->getOutput(), 'clicks are reported while it is up');
+        $this->assertGreaterThan(
+            (int) \strrpos($this->terminal->getOutput(), "\x1b[?1000h"),
+            (int) \strrpos($this->terminal->getOutput(), "\x1b[?1000l\x1b[?1006l"),
+            'and no longer once it is done',
+        );
         $this->assertStringNotContainsString('Choose a folder', $this->screen());
     }
 

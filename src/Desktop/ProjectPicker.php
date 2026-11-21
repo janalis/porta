@@ -48,6 +48,11 @@ final class ProjectPicker
 
     private const string CHOOSE_FOLDER = "\0choose-folder";
 
+    /** Clicks and the wheel, as SGR reports: no motion, which nothing here follows. */
+    private const string MOUSE_ON = "\x1b[?1000h\x1b[?1006h";
+
+    private const string MOUSE_OFF = "\x1b[?1000l\x1b[?1006l";
+
     private ?string $picked = null;
 
     private ?Tui $tui = null;
@@ -116,10 +121,11 @@ final class ProjectPicker
         );
         $this->tui->add($widget);
         $this->tui->setFocus($widget);
+        // Once the loop runs, which is once the terminal is the picker's.
+        EventLoop::defer(fn () => $this->terminal->write(self::MOUSE_ON));
         if ($this->session->active) {
             // Ahead of the field: a frame is never text.
             $this->tui->addListener($this->onInput(...), priority: 2200);
-            // Once the loop runs, which is once the terminal is the picker's.
             EventLoop::defer(fn () => $this->send('picking'));
         }
         $this->tui->run();
@@ -307,6 +313,8 @@ final class ProjectPicker
     private function finish(?string $folder): void
     {
         $this->picked = $folder;
+        // The IDE that follows asks for the reports it wants; a shell after Esc wants none.
+        $this->terminal->write(self::MOUSE_OFF);
         if ($this->session->active) {
             $this->send('picked');
         }

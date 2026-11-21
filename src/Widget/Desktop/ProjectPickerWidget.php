@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget\Desktop;
 
 use Porta\I18n\Translator;
+use Porta\Input\MouseEvent;
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\ListNavigation;
@@ -78,6 +79,9 @@ final class ProjectPickerWidget extends AbstractWidget implements FocusableInter
 
     private string $problem;
 
+    /** @var array<int, int> screen line => the row drawn on it, from the last render: what a click lands on */
+    private array $rowOnLine = [];
+
     /**
      * @param \Closure(string): list<PickerRow>          $rowsFor  the rows a typed text turns up
      * @param \Closure(self, ?PickerRow, string): void   $onSubmit Enter: this picker, the selected row (null when none) and the text
@@ -134,6 +138,12 @@ final class ProjectPickerWidget extends AbstractWidget implements FocusableInter
     #[\Override]
     public function handleInput(string $data): void
     {
+        $mouse = MouseEvent::parse($data);
+        if (null !== $mouse) {
+            $this->pointer($mouse);
+
+            return;
+        }
         $kb = $this->getKeybindings();
         $selectable = \count($this->selectable());
 
@@ -146,6 +156,29 @@ final class ProjectPickerWidget extends AbstractWidget implements FocusableInter
             $kb->matches($data, action: 'backspace') ? $this->field->backspace() : $this->field->editKey($data, $kb) || $this->field->insert($data) => $this->refresh(),
             default => null,
         };
+    }
+
+    /**
+     * The wheel moves the selection; a click on a row chooses it, as Enter
+     * would. A launcher's list opens on one click: there is nothing else a
+     * click on a project could mean here.
+     */
+    private function pointer(MouseEvent $mouse): void
+    {
+        if (0 !== $mouse->wheelDelta) {
+            $count = \count($this->selectable());
+            -1 === $mouse->wheelDelta ? $this->list->moveUp() : $this->list->moveDown($count);
+            $this->invalidate();
+
+            return;
+        }
+        $position = \array_search($this->rowOnLine[$mouse->row] ?? -1, $this->selectable(), strict: true);
+        if (MouseEvent::LEFT !== $mouse->button || !$mouse->pressed || $mouse->motion || false === $position) {
+            return;
+        }
+        $this->list->select($position);
+        $this->invalidate();
+        ($this->onSubmit)($this, $this->selected(), $this->field->value());
     }
 
     #[\Override]
@@ -165,7 +198,9 @@ final class ProjectPickerWidget extends AbstractWidget implements FocusableInter
 
         $footer = \array_map(fn (string $hint): string => $this->centred($this->styles->of(Role::Dim)->apply($hint), $width), $this->footer);
         $this->page = \max(1, $height - \count($lines) - \count($footer) - 1);
-        foreach ($this->listRows($card, $this->page) as $row) {
+        $this->rowOnLine = [];
+        foreach ($this->listRows($card, $this->page) as [$row, $index]) {
+            $this->rowOnLine[\count($lines)] = $index;
             $lines[] = $place($row);
         }
         $lines = \array_pad($lines, \max(\count($lines), $height - \count($footer)), AnsiText::blank($width));
@@ -203,7 +238,7 @@ final class ProjectPickerWidget extends AbstractWidget implements FocusableInter
      * the selection in it — and the heading above it, when the selection is
      * a section's first row, so a row is never shown without its section.
      *
-     * @return list<string>
+     * @return list<array{string, int}> each line, and the row it draws
      */
     private function listRows(int $card, int $room): array
     {
@@ -219,7 +254,7 @@ final class ProjectPickerWidget extends AbstractWidget implements FocusableInter
         $labelWidth = \min(self::LABEL_MAX, \max([0, ...$labels]));
         $lines = [];
         foreach (\array_slice($this->rows, $this->scroll, $room, preserve_keys: true) as $index => $row) {
-            $lines[] = $this->row($row, RowSelection::of($index === $at, hovered: false), $card, $labelWidth);
+            $lines[] = [$this->row($row, RowSelection::of($index === $at, hovered: false), $card, $labelWidth), $index];
         }
 
         return $lines;

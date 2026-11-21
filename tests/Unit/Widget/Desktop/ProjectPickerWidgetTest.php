@@ -221,6 +221,63 @@ final class ProjectPickerWidgetTest extends TestCase
         $this->assertStringContainsString('Type a name or a path', $this->screen($picker)[5]);
     }
 
+    /** An SGR mouse report at the 0-based screen $line. */
+    private static function mouse(int $code, int $line, string $end = 'M'): string
+    {
+        return "\x1b[<{$code};20;".($line + 1).$end;
+    }
+
+    public function testAClickOnARowChoosesIt(): void
+    {
+        $this->rows = [PickerRow::heading('Recent'), self::project('one'), self::project('two')];
+        $picker = $this->picker();
+        $this->screen($picker);
+
+        $picker->handleInput(self::mouse(0, 10));
+
+        $this->assertSame([[$this->rows[2], '']], $this->submitted);
+    }
+
+    public function testAClickOnAHeadingTheFieldOrBelowTheListIsNothing(): void
+    {
+        $this->rows = [PickerRow::heading('Recent'), self::project('one')];
+        $picker = $this->picker();
+        $this->screen($picker);
+
+        $picker->handleInput(self::mouse(0, 8));
+        $picker->handleInput(self::mouse(0, 5));
+        $picker->handleInput(self::mouse(0, 15));
+
+        $this->assertSame([], $this->submitted);
+    }
+
+    public function testOnlyALeftPressChooses(): void
+    {
+        $this->rows = [self::project('one')];
+        $picker = $this->picker();
+        $this->screen($picker);
+
+        $picker->handleInput(self::mouse(2, 8));
+        $picker->handleInput(self::mouse(0, 8, 'm'));
+        $picker->handleInput(self::mouse(32, 8));
+
+        $this->assertSame([], $this->submitted, 'a right click, a release and a drag are not choices');
+    }
+
+    public function testTheWheelMovesTheSelection(): void
+    {
+        $this->rows = [self::project('one'), self::project('two'), self::project('three')];
+        $picker = $this->picker();
+        $this->screen($picker);
+
+        $picker->handleInput(self::mouse(65, 8));
+        $picker->handleInput(self::mouse(65, 8));
+        $picker->handleInput(self::mouse(64, 8));
+        $picker->handleInput("\r");
+
+        $this->assertSame([[$this->rows[1], '']], $this->submitted);
+    }
+
     public function testEscapeCancels(): void
     {
         $cancelled = false;
