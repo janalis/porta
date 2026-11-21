@@ -11,11 +11,13 @@ use Behat\Gherkin\Node\TableNode;
 use Behat\Hook\BeforeScenario;
 use Behat\Step\Given;
 use Behat\Step\Then;
+use Behat\Step\When;
 use Janalis\Tuink\Context\TuinkAwareContextInterface;
 use Janalis\Tuink\Context\TuinkAwareTrait;
 use PHPUnit\Framework\Assert;
 use Porta\Editor\ChangeMarkKind;
 use Porta\ReviewPlugin\Tests\Support\FakeForge;
+use Porta\Tests\Behat\Support\McpPeer;
 use Porta\Tests\Support\Widgets;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 
@@ -35,7 +37,18 @@ final class CollabContext implements TuinkAwareContextInterface
     /** Where the bare remotes and their other clones live, in the workspace. */
     private const string REMOTES = '.remote';
 
+    /** Claude Code's configuration folder, in the workspace. */
+    private const string CLAUDE = '.claude';
+
     private PortaContext $porta;
+
+    private ?McpPeer $peer = null;
+
+    /** What the agent's last call was answered. */
+    private string $answer = '';
+
+    /** The request id of Claude Code's last proposal, its verdict still to come. */
+    private ?int $proposal = null;
 
     #[BeforeScenario]
     public function gatherContexts(BeforeScenarioScope $scope): void
@@ -49,7 +62,8 @@ final class CollabContext implements TuinkAwareContextInterface
 
     /**
      * A script standing in for a tool, in the workspace: `%php%` is this PHP,
-     * `%workspace%` the workspace, `%support%` the PHPUnit rig's folder.
+     * `%workspace%` the workspace, `%support%` the PHPUnit rig's folder,
+     * `%plugins%` the bundled plugins'.
      */
     #[Given('a stand-in :path running:')]
     public function aStandIn(string $path, PyStringNode $script): void
@@ -59,11 +73,18 @@ final class CollabContext implements TuinkAwareContextInterface
         \chmod($workspace->resolve($path), 0o755);
     }
 
+    #[Given('the project configuration, its paths filled in:')]
+    public function theProjectConfigurationWithPaths(PyStringNode $json): void
+    {
+        $this->porta->mergeProjectConfig(self::json($this->expand($json->getRaw())));
+    }
+
     public function expand(string $text): string
     {
         return \strtr($text, [
             '%php%' => \PHP_BINARY,
             '%support%' => \dirname(__DIR__, 2).'/Support',
+            '%plugins%' => \dirname(__DIR__, 3).'/plugins',
             '%workspace%' => $this->getSession()->getWorkspace()->path,
         ]);
     }
@@ -320,6 +341,119 @@ final class CollabContext implements TuinkAwareContextInterface
         \assert(\is_array($decoded), description: 'a fixture holds an object or a list');
 
         return $decoded;
+    }
+
+    // --- Agents: an MCP client, and Claude Code -----------------------------------
+
+    /**
+     * Where the claude CLI looks for editors, kept in the workspace: the lock
+     * file the IDE writes there is this scenario's alone.
+     */
+    #[Given("Claude Code's configuration is in the workspace")]
+    public function claudeCodesConfiguration(): void
+    {
+        $session = $this->getSession();
+        $session->getWorkspace()->createDirectory(self::CLAUDE.'/ide');
+        $session->setLaunch($session->getLaunch()->withEnv('CLAUDE_CONFIG_DIR', $session->getWorkspace()->resolve(self::CLAUDE)));
+    }
+
+    #[Given('an agent is connected over MCP')]
+    public function anAgentIsConnected(): void
+    {
+        $socket = $this->getSession()->getWorkspace()->resolve('.porta/mcp.sock');
+        $this->getSession()->waitUntil(static fn (): bool => \file_exists($socket), 'The IDE does not listen on .porta/mcp.sock.');
+        $this->agent()->open($socket);
+    }
+
+    #[When('the agent calls :tool')]
+    public function theAgentCalls(string $tool): void
+    {
+        $this->answer = $this->agent()->tool($tool, []);
+    }
+
+    #[When('the agent calls :tool with:')]
+    public function theAgentCallsWith(string $tool, PyStringNode $arguments): void
+    {
+        $this->answer = $this->agent()->tool($tool, self::json($this->expand($arguments->getRaw())));
+    }
+
+    #[Then("the agent's answer should contain :text")]
+    public function theAgentsAnswerShouldContain(string $text): void
+    {
+        Assert::assertStringContainsString($text, $this->answer, 'The agent was answered: '.$this->answer);
+    }
+
+    #[Then("the agent's answer should report the exit code :code")]
+    public function theAgentsAnswerShouldReportTheExitCode(int $code): void
+    {
+        $answer = \json_decode($this->answer, associative: true);
+        Assert::assertSame($code, \is_array($answer) ? $answer['exitCode'] ?? null : null, 'The agent was answered: '.$this->answer);
+    }
+
+    #[Then('the agent should be offered :tool')]
+    public function theAgentShouldBeOffered(string $tool): void
+    {
+        Assert::assertContains($tool, $this->agent()->tools(), 'The tools offered');
+    }
+
+    #[Then('the agent should not be offered :tool')]
+    public function theAgentShouldNotBeOffered(string $tool): void
+    {
+        Assert::assertNotContains($tool, $this->agent()->tools(), 'The tools offered');
+    }
+
+    #[Given('Claude Code is connected to the IDE')]
+    public function claudeCodeIsConnected(): void
+    {
+        $dir = $this->getSession()->getWorkspace()->resolve(self::CLAUDE);
+        $this->getSession()->waitUntil(static fn (): bool => [] !== (\glob($dir.'/ide/*.lock') ?: []), 'The IDE announced itself to no Claude Code.');
+        $this->agent()->claude($dir);
+    }
+
+    /**
+     * Claude Code's openDiff, as the CLI sends it before an edit it would ask about: it waits for the verdict.
+     */
+    #[When('Claude Code proposes to change :file to:')]
+    public function claudeCodeProposes(string $file, PyStringNode $text): void
+    {
+        $path = (string) \realpath($this->getSession()->getWorkspace()->resolve($file));
+        $this->proposal = $this->agent()->propose($path, $text->getRaw()."\n", \basename($file).' (proposed)');
+    }
+
+    #[Then('Claude Code should hear :verdict')]
+    public function claudeCodeShouldHear(string $verdict): void
+    {
+        Assert::assertNotNull($this->proposal, 'Claude Code proposed nothing.');
+        Assert::assertSame($verdict, $this->agent()->verdict($this->proposal));
+    }
+
+    #[Then('Claude Code should be pointed at :file')]
+    public function claudeCodeShouldBePointedAt(string $file): void
+    {
+        $mention = $this->agent()->mention();
+        Assert::assertSame((string) \realpath($this->getSession()->getWorkspace()->resolve($file)), $mention['filePath'] ?? null, 'The mention: '.\json_encode($mention, \JSON_THROW_ON_ERROR));
+    }
+
+    #[Then('no IDE should be announced to Claude Code')]
+    public function noIdeShouldBeAnnounced(): void
+    {
+        Assert::assertSame([], \glob($this->getSession()->getWorkspace()->resolve(self::CLAUDE).'/ide/*.lock') ?: []);
+    }
+
+    #[Then('the IDE should be announced to Claude Code')]
+    public function theIdeShouldBeAnnounced(): void
+    {
+        $dir = $this->getSession()->getWorkspace()->resolve(self::CLAUDE);
+        $this->getSession()->waitUntil(static fn (): bool => [] !== (\glob($dir.'/ide/*.lock') ?: []), 'The IDE announced itself to no Claude Code.');
+    }
+
+    /**
+     * One peer per scenario, speaking MCP the way the mcp plugin's own E2e
+     * tests do — their traits, the loop pumped by tuink while it waits.
+     */
+    private function agent(): McpPeer
+    {
+        return $this->peer ??= new McpPeer($this->getSession());
     }
 
     // --- The gutter -------------------------------------------------------------------
