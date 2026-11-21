@@ -154,6 +154,15 @@ final class SettingsContext implements TuinkAwareContextInterface
         $session->press('Enter');
     }
 
+    #[Then('the selected setting should be :label')]
+    public function theSelectedSettingShouldBe(string $label): void
+    {
+        $this->getSession()->waitUntil(
+            fn (): bool => $label === $this->selectedLabel($this->form()),
+            fn (): string => \sprintf('The selected setting is "%s", not "%s".', $this->selectedLabel($this->form()) ?? 'none', $label),
+        );
+    }
+
     #[Then('the setting :label should be :value')]
     public function theSettingShouldBe(string $label, string $value): void
     {
@@ -668,7 +677,8 @@ final class SettingsContext implements TuinkAwareContextInterface
     #[Given('another Porta is at work on :file as :name')]
     public function anotherPortaIsAtWork(string $file, string $name): void
     {
-        $id = \str_pad(\strtolower(\preg_replace('/\W/', '', $name) ?? ''), 16, 'x');
+        // An id is sixteen hex digits, as Beacon::newId() mints them
+        $id = \substr(\hash('sha256', $name), 0, 16);
         $beacon = new Beacon($id, $name, 'local', $file, 1, 0, -1, 0, \time());
         $this->getSession()->getWorkspace()->write(PresenceBoard::DIR.'/'.$id.'.json', $beacon->toJson());
     }
