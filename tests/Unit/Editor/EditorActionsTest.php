@@ -474,6 +474,27 @@ final class EditorActionsTest extends TestCase
         $this->assertSame('b', $this->doc->getSelectedText());
     }
 
+    public function testSortJoinAndToggleCaseAreReachedFromTheirKeys(): void
+    {
+        // They were bound in the keymap and run from the menu, and the key
+        // cascade never asked for them: Ctrl+Shift+S, J and U did nothing.
+        $kb = new Keybindings(['sort_lines' => ['ctrl+shift+s'], 'join_lines' => ['ctrl+shift+j'], 'toggle_case' => ['ctrl+shift+u']]);
+
+        $actions = $this->actions("b\na\n");
+        $this->doc->setSelectionRange(0, startCol: 0, endLine: 1, endCol: 1);
+        $actions->handleKey("\x1b[115;6u", $kb);
+        $this->assertSame("a\nb\n", $this->doc->getText());
+
+        $this->doc->setSelectionRange(0, startCol: 0, endLine: 1, endCol: 1);
+        $actions->handleKey("\x1b[117;6u", $kb);
+        $this->assertSame("A\nB\n", $this->doc->getText());
+
+        $this->doc->clearSelection();
+        $this->doc->setCursor(0, col: 0);
+        $actions->handleKey("\x1b[106;6u", $kb);
+        $this->assertSame("A B\n", $this->doc->getText());
+    }
+
     public function testCursorVerticalMovementClearsTheSignatureHint(): void
     {
         $kb = new Keybindings(['cursor_down' => ['down']]);

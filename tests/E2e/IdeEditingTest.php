@@ -418,6 +418,29 @@ final class IdeEditingTest extends TestCase
         );
     }
 
+    public function testAKeyBoundCommandAsksForTheFrameThatShowsIt(): void
+    {
+        // F11 runs a key-bound command: the dispatcher stops the key there, so
+        // the Tui's own "the focused widget changed, paint it" never runs, and
+        // a bookmark's gutter mark — no flash to ask for a frame — stayed
+        // unpainted until some other key came along.
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => function (Tui $tui): void {
+                    $tui->processRender();
+                    $this->assertFalse(Probe::get($tui, property: 'renderRequested'), 'nothing is pending before the key');
+                    $tui->handleInput("\x1b[23~"); // F11: Toggle Bookmark
+                    $this->assertTrue(Probe::get($tui, property: 'renderRequested'), 'the key asked for the frame that shows the mark');
+                },
+            ],
+        );
+    }
+
     public function testMultiCursorThroughRunningIde(): void
     {
         \putenv('PATH=/nonexistent');

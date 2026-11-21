@@ -194,7 +194,11 @@ final readonly class InputDispatcher
             $this->gate?->before('i', $id);
             $this->commands->run($id);
 
-            return true;
+            // The key stops here, so the Tui's own "the focused widget
+            // changed, paint it" never runs: ask for the frame, or an effect
+            // with no flash of its own (a bookmark's gutter mark) waits for
+            // the next key.
+            return $this->rendered();
         }
 
         return false;

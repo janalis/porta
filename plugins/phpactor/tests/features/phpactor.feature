@@ -7,7 +7,7 @@ Feature: Phpactor
   Scenario: The binary setting names the server that serves PHP
     Given a PHP project
     And the environment variable "PATH" is "/usr/bin:/bin"
-    And an executable file "bin/phpactor" containing:
+    And a stub tool "bin/phpactor" containing:
       """
       #!%php%
       <?php

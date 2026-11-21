@@ -95,11 +95,7 @@ final readonly class WidgetHooks
         $this->menuBar->onNavigate(function (): void {
             $this->overlay->refreshMenu();
         });
-        $this->menuBar->onClose(function (): void {
-            $this->overlay->refreshMenu();
-            $this->tui->setFocus($this->views->focusTarget() ?? $this->editorArea->widget());
-            $this->tui->requestRender();
-        });
+        $this->menuBar->onClose($this->menuClosed(...));
         $this->contextMenu->onNavigate(function (): void {
             $this->overlay->refreshContextMenu();
         });
@@ -107,5 +103,18 @@ final readonly class WidgetHooks
             $this->overlay->refreshContextMenu();
             $this->tui->requestRender();
         });
+    }
+
+    /**
+     * The menu gives back the focus it took — unless the item it ran put the
+     * focus somewhere itself (Focus Project Tree, a dock tool).
+     */
+    private function menuClosed(): void
+    {
+        $this->overlay->refreshMenu();
+        if ($this->tui->getFocus() === $this->menuBar) {
+            $this->tui->setFocus($this->views->focusTarget() ?? $this->editorArea->widget());
+        }
+        $this->tui->requestRender();
     }
 }

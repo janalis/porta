@@ -7,7 +7,7 @@ Feature: PHPantom
   Background:
     Given a PHP project
     And the environment variable "PATH" is "/usr/bin:/bin"
-    And an executable file "bin/phpantom_lsp" containing:
+    And a stub tool "bin/phpantom_lsp" containing:
       """
       #!%php%
       <?php

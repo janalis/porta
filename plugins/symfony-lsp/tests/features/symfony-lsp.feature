@@ -7,7 +7,7 @@ Feature: Symfony language server
   Background:
     Given a PHP project
     And the environment variable "PATH" is "/usr/bin:/bin"
-    And an executable file "bin/symfony-lsp" containing:
+    And a stub tool "bin/symfony-lsp" containing:
       """
       #!/bin/sh
       exec "%php%" "%support%/logging-lsp-server.php" "%workspace%/lsp.log"
