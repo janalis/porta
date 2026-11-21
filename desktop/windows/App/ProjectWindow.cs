@@ -22,6 +22,7 @@ namespace Porta.Desktop.App
         private readonly DispatcherTimer answer = new DispatcherTimer { Interval = AnswerTime };
         private bool exited;
         private bool ready;
+        private bool choosing;
         private bool? sentDark;
         private readonly System.Collections.Generic.List<string> pending = new System.Collections.Generic.List<string>();
         private string? name;
@@ -81,6 +82,12 @@ namespace Porta.Desktop.App
         /// <summary>A file or folder dropped on the window, as Windows names it.</summary>
         public event Action<string>? Dropped;
 
+        /// <summary>A folder chosen in the picker's dialog, as Windows names it: this window's project.</summary>
+        public event Action<string>? FolderChosen;
+
+        /// <summary>Porta's picker is up: no project yet, and a folder sent now is the one it opens.</summary>
+        public bool Picking { get; private set; }
+
         /// <summary>The project, as WSL names it.</summary>
         public string? Root { get; private set; }
 
@@ -127,6 +134,7 @@ namespace Porta.Desktop.App
                 name = root.Substring(root.LastIndexOf('/') + 1) + " — Porta";
                 Title = name;
                 ready = true;
+                Picking = false;
                 sentDark = null;
                 SendAppearance();
                 RememberRecent(root);
@@ -136,6 +144,16 @@ namespace Porta.Desktop.App
                 }
 
                 pending.Clear();
+            }
+
+            if (kind == MessageKind.Picking && !ready)
+            {
+                Picking = true;
+            }
+
+            if (kind == MessageKind.ChooseFolder && Picking)
+            {
+                ChooseFolder();
             }
 
             if (kind == MessageKind.Notify && !IsActive)
@@ -209,7 +227,7 @@ namespace Porta.Desktop.App
 
         private RelayConnection Connect()
         {
-            var relay = new RelayConnection(runtime, architecture, Root, token);
+            var relay = new RelayConnection(runtime, architecture, Root, token, SystemIsDark());
             relay.PrivateSequence += (code, payload) => Dispatcher.Invoke(() => Received(code, payload));
             relay.Exited += status => Dispatcher.Invoke(() => PortaExited(status));
             return relay;
@@ -218,9 +236,11 @@ namespace Porta.Desktop.App
         /// <summary>A file or folder for this window's project, from Explorer or a second launch.</summary>
         public void OpenPath(string path)
         {
-            if (ready)
+            if (ready || Picking)
             {
                 connection.WriteInput(DesktopMessage.OpenRequest(token, path));
+                // Handed its project: the next folder is not this window's to take.
+                Picking = false;
             }
             else
             {
@@ -247,8 +267,7 @@ namespace Porta.Desktop.App
                 return;
             }
 
-            using var personalize = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-            var dark = !(personalize?.GetValue("AppsUseLightTheme") is int value && value == 1);
+            var dark = SystemIsDark();
             // Sent when it changes: Porta rebuilds every pane's styles for a theme.
             if (sentDark != dark)
             {
@@ -399,6 +418,32 @@ namespace Porta.Desktop.App
             }
 
             return IntPtr.Zero;
+        }
+
+        /// <summary>Whether apps use the dark theme; dark when Windows does not say.</summary>
+        private static bool SystemIsDark()
+        {
+            using var personalize = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+            return !(personalize?.GetValue("AppsUseLightTheme") is int value && value == 1);
+        }
+
+        /// <summary>The picker's "Choose a folder…": Windows' folder dialog, owned by this window.</summary>
+        private void ChooseFolder()
+        {
+            // Asked again while the dialog is up, a second one would stack on the first.
+            if (choosing)
+            {
+                return;
+            }
+
+            choosing = true;
+            using var dialog = new System.Windows.Forms.FolderBrowserDialog { Description = "Open a project", ShowNewFolderButton = false };
+            var chosen = dialog.ShowDialog(new Owner(new System.Windows.Interop.WindowInteropHelper(this).Handle)) == System.Windows.Forms.DialogResult.OK;
+            choosing = false;
+            if (chosen && Picking)
+            {
+                FolderChosen?.Invoke(dialog.SelectedPath);
+            }
         }
 
         private void ChooseFont()

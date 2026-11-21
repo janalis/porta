@@ -45,6 +45,28 @@ public class CoreTests
     }
 
     [Fact]
+    public void ThePickersMessagesAreTheContracts()
+    {
+        var token = Example("token");
+
+        Assert.Equal((MessageKind.Picking, ""), DesktopMessage.Parse(Payload(Example("picking")), token));
+        Assert.Equal((MessageKind.ChooseFolder, ""), DesktopMessage.Parse(Payload(Example("chooseFolder")), token));
+        Assert.Equal(MessageKind.None, DesktopMessage.Parse($"porta-desktop;{token};picking;extra", token).Kind);
+    }
+
+    [Fact]
+    public void TheLookAtLaunchCrossesIntoWslWhenKnown()
+    {
+        var light = LaunchPlan.Environment("tok", dark: false);
+
+        Assert.Equal("light", light["PORTA_DESKTOP_APPEARANCE"]);
+        Assert.EndsWith(":PORTA_DESKTOP_APPEARANCE/u", light["WSLENV"]);
+        Assert.Equal("dark", LaunchPlan.Environment("tok", dark: true)["PORTA_DESKTOP_APPEARANCE"]);
+        Assert.False(LaunchPlan.Environment("tok").ContainsKey("PORTA_DESKTOP_APPEARANCE"));
+        Assert.DoesNotContain("APPEARANCE", LaunchPlan.Environment("tok")["WSLENV"]);
+    }
+
+    [Fact]
     public void AnotherSessionsTokenIsNotListenedTo()
     {
         Assert.Equal(MessageKind.None, DesktopMessage.Parse(Payload(Example("closing")), new string('f', 32)).Kind);

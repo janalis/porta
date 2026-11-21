@@ -13,14 +13,26 @@ namespace Porta.Desktop
         /// <summary>Always System32's: by bare name, Windows would look in the working directory first.</summary>
         public static string Executable { get; } = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.System), "wsl.exe");
 
-        public static IReadOnlyDictionary<string, string> Environment(string token) => new Dictionary<string, string>
+        /// <param name="token">the session's secret</param>
+        /// <param name="dark">how Windows looks at launch, for the screen Porta draws before the window can tell it; null when unknown</param>
+        public static IReadOnlyDictionary<string, string> Environment(string token, bool? dark = null)
         {
-            ["PORTA_DESKTOP"] = "1",
-            ["PORTA_DESKTOP_TOKEN"] = token,
-            ["TERM"] = "xterm-256color",
-            ["COLORTERM"] = "truecolor",
-            ["WSLENV"] = "PORTA_DESKTOP/u:PORTA_DESKTOP_TOKEN/u:TERM/u:COLORTERM/u",
-        };
+            var variables = new Dictionary<string, string>
+            {
+                ["PORTA_DESKTOP"] = "1",
+                ["PORTA_DESKTOP_TOKEN"] = token,
+                ["TERM"] = "xterm-256color",
+                ["COLORTERM"] = "truecolor",
+                ["WSLENV"] = "PORTA_DESKTOP/u:PORTA_DESKTOP_TOKEN/u:TERM/u:COLORTERM/u",
+            };
+            if (dark is bool isDark)
+            {
+                variables["PORTA_DESKTOP_APPEARANCE"] = isDark ? "dark" : "light";
+                variables["WSLENV"] += ":PORTA_DESKTOP_APPEARANCE/u";
+            }
+
+            return variables;
+        }
 
         /// <summary>The folder of the bundled PHP for what `uname -m` said; null when Porta ships none.</summary>
         public static string? Architecture(string uname)

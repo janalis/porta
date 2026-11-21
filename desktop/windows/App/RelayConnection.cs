@@ -23,13 +23,16 @@ namespace Porta.Desktop.App
         private int columns = 120;
         private int rows = 36;
 
-        public RelayConnection(string runtime, string architecture, string? project, string token)
+        public RelayConnection(string runtime, string architecture, string? project, string token, bool dark)
         {
             this.runtime = runtime;
             this.architecture = architecture;
             this.project = project;
             this.token = token;
+            this.dark = dark;
         }
+
+        private readonly bool dark;
 
         public event EventHandler<TerminalOutputEventArgs>? TerminalOutput;
 
@@ -46,7 +49,7 @@ namespace Porta.Desktop.App
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
             };
-            foreach (var variable in LaunchPlan.Environment(token))
+            foreach (var variable in LaunchPlan.Environment(token, dark))
             {
                 start.EnvironmentVariables[variable.Key] = variable.Value;
             }

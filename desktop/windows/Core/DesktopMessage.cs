@@ -16,6 +16,12 @@ namespace Porta.Desktop
 
         /// <summary>A run ended; the second field says which and how.</summary>
         Notify,
+
+        /// <summary>No project yet: Porta's picker is up, and takes a folder sent as an open request.</summary>
+        Picking,
+
+        /// <summary>The picker asks for the system's folder dialog.</summary>
+        ChooseFolder,
     }
 
     /// <summary>The conversation with Porta, as desktop/contract/protocol.json defines it.</summary>
@@ -37,6 +43,10 @@ namespace Porta.Desktop
                     return (MessageKind.Accepted, "");
                 case "closing" when fields.Length == 3:
                     return (MessageKind.Closing, "");
+                case "picking" when fields.Length == 3:
+                    return (MessageKind.Picking, "");
+                case "chooseFolder" when fields.Length == 3:
+                    return (MessageKind.ChooseFolder, "");
                 case "state" when fields.Length == 4 && fields[3].Length > 0 && fields[3].All(char.IsDigit):
                     return (MessageKind.State, fields[3]);
                 case "notify" when fields.Length == 4:

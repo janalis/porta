@@ -14,7 +14,9 @@ namespace Porta.Desktop.App
 
         public async void Open(string? project) => await OpenAsync(project);
 
-        private async Task OpenAsync(string? project)
+        /// <param name="project">the folder or file, as Windows names it; null for an icon click</param>
+        /// <param name="picker">the window waiting for a project that should take this one, when nothing has it yet</param>
+        private async Task OpenAsync(string? project, ProjectWindow? picker = null)
         {
             if (project == null && windows.Count > 0)
             {
@@ -48,8 +50,17 @@ namespace Porta.Desktop.App
                 return;
             }
 
+            // A window still waiting for a project takes it, the one in front first: no second window beside it.
+            var waiting = new[] { picker }.Concat(windows.Where(window => window.IsActive)).Concat(windows).FirstOrDefault(window => window != null && window.Picking);
+            if (root != null && waiting != null)
+            {
+                waiting.OpenPath(root);
+                return;
+            }
+
             var opened = new ProjectWindow(runtime, architecture, root);
-            opened.Dropped += Open;
+            opened.Dropped += async path => await OpenAsync(path, opened);
+            opened.FolderChosen += async path => await OpenAsync(path, opened);
             opened.FontChosen += () =>
             {
                 foreach (var window in windows)
