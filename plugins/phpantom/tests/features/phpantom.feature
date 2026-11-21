@@ -31,11 +31,7 @@ Feature: PHPantom
       <?php
       $x=1;
       """
-    And the bundled plugins are available
-    And the project configuration:
-      """
-      {"enabledPlugins": ["phpantom"]}
-      """
+    And the bundled plugin "phpantom" is enabled
 
   @setting:phpantom.binary
   Scenario: The binary setting names the server that serves PHP

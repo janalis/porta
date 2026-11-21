@@ -19,11 +19,7 @@ Feature: Phpactor
       <?php
 
       """
-    And the bundled plugins are available
-    And the project configuration:
-      """
-      {"enabledPlugins": ["phpactor"]}
-      """
+    And the bundled plugin "phpactor" is enabled
     And the "phpactor" plugin setting "binary" is the workspace path "bin/phpactor"
     And I start the app with the arguments "src/A.php"
     And I should see "LSP:phpactor"
@@ -37,10 +33,6 @@ Feature: Phpactor
     Given a PHP project
     And the environment variable "PATH" is "/usr/bin:/bin"
     And a file "src/A.php" containing "<?php"
-    And the bundled plugins are available
-    And the project configuration:
-      """
-      {"enabledPlugins": ["phpactor"]}
-      """
+    And the bundled plugin "phpactor" is enabled
     When I start the app with the arguments "src/A.php"
     Then I should see "LSP:phpactor not found"

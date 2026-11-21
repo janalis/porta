@@ -13,11 +13,7 @@ Feature: Symfony language server
       exec "%php%" "%support%/logging-lsp-server.php" "%workspace%/lsp.log"
       """
     And a file "templates/base.twig" containing "{{ app.user }}"
-    And the bundled plugins are available
-    And the project configuration:
-      """
-      {"enabledPlugins": ["symfony-lsp"]}
-      """
+    And the bundled plugin "symfony-lsp" is enabled
 
   @setting:symfony-lsp.binary
   Scenario: The binary setting names the server that serves Twig

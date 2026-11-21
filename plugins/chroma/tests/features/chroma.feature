@@ -17,10 +17,10 @@ Feature: Chroma highlighting
       """
     And a file "main.rs" containing "fn main() {}"
     And a file "main.go" containing "package main"
-    And the bundled plugins are available
+    And the bundled plugin "chroma" is enabled
     And the project configuration:
       """
-      {"enabledPlugins": ["chroma"], "disabledPlugins": ["tempest"]}
+      {"disabledPlugins": ["tempest"]}
       """
     And the "chroma" plugin setting "binary" is the workspace path "bin/chroma"
 
