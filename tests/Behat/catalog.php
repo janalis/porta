@@ -19,8 +19,9 @@ $pluginFeatures = glob($root.'/plugins/*/tests/features', GLOB_ONLYDIR);
 foreach ([__DIR__.'/features', ...(false === $pluginFeatures ? [] : $pluginFeatures)] as $dir) {
     $files->append(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS)));
 }
+/** @var SplFileInfo $file */
 foreach ($files as $file) {
-    if (!$file instanceof SplFileInfo || 'feature' !== $file->getExtension()) {
+    if ('feature' !== $file->getExtension()) {
         continue;
     }
     $path = $file->getPathname();
