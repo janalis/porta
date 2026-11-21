@@ -46,7 +46,11 @@ final class DesktopProtocolTest extends TestCase
         /** @var array{examples: array{token: string, root: string, close: string, ready: string, accepted: string, closing: string, open: string, openPath: string, appearance: string, state: string, notify: string, notifyText: string}} $contract */
         $contract = \json_decode((string) \file_get_contents(\dirname(__DIR__, 3).'/desktop/contract/protocol.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->contract = $contract;
+        $this->appearanceBefore = \getenv(DesktopSession::APPEARANCE);
     }
+
+    /** What the environment held before: a report of the window's look rewrites it. */
+    private string|false $appearanceBefore = false;
 
     #[After]
     protected function leaveDesktopMode(): void
@@ -58,7 +62,7 @@ final class DesktopProtocolTest extends TestCase
         \putenv(DesktopSession::TOKEN);
         \putenv(DesktopSession::MENU);
         // A report of the window's look writes it for a Porta started from this one.
-        \putenv(DesktopSession::APPEARANCE);
+        \putenv(false === $this->appearanceBefore ? DesktopSession::APPEARANCE : DesktopSession::APPEARANCE.'='.$this->appearanceBefore);
     }
 
     private function bootSystemMenu(): DesktopProtocol

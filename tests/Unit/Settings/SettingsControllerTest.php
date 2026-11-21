@@ -842,20 +842,35 @@ final class SettingsControllerTest extends TestCase
     {
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), IdeConfig::DEFAULT_SETTINGS, themeDefault: 'light');
-        // Nothing can be written there: the pick is this session's alone.
-        \chmod($project->dir, 0o555);
-        try {
-            $controller->changeSetting('theme', value: 'high-contrast');
-            if (\is_file($project->path('.porta.json'))) {
-                $this->markTestSkipped('this user writes through a read-only folder');
-            }
-            $controller->followTheme('dark');
+        \mkdir($project->path('.porta.json')); // a directory blocks the file write, root or not
 
-            $this->assertSame('high-contrast', $controller->choice('theme'), 'picked this session, it stays');
-            $this->assertFalse($controller->followsWindow(), 'and what is drawn follows the same answer');
-        } finally {
-            \chmod($project->dir, 0o755);
-        }
+        $controller->changeSetting('theme', value: 'high-contrast');
+        $controller->followTheme('dark');
+
+        $this->assertSame('high-contrast', $controller->choice('theme'), 'picked this session, it stays');
+        $this->assertFalse($controller->followsWindow(), 'and what is drawn follows the same answer');
+
+        // Saved the next time: the file says it, and once the file no longer
+        // does, the window's look applies again.
+        \rmdir($project->path('.porta.json'));
+        $controller->changeSetting('theme', value: 'high-contrast');
+        \unlink($project->path('.porta.json'));
+        Probe::get($controller, 'provenance')->invalidate();
+        $this->assertTrue($controller->followsWindow(), 'an unsaved pick saved later is the file\'s to say');
+    }
+
+    public function testAResetLetsTheWindowsLookApplyAgainAfterAnUnsavedPick(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), IdeConfig::DEFAULT_SETTINGS, themeDefault: 'light');
+        \mkdir($project->path('.porta.json'));
+
+        $controller->changeSetting('theme', value: 'high-contrast');
+        $controller->resetSetting('theme');
+        $controller->followTheme('dark');
+
+        $this->assertTrue($controller->followsWindow());
+        $this->assertSame('dark', $controller->choice('theme'));
     }
 
     public function testASavedThemeRemovedByHandLetsTheWindowsLookApplyAgain(): void

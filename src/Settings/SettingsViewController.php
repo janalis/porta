@@ -377,7 +377,8 @@ final class SettingsViewController implements ContributedView
     }
 
     /**
-     * The plugin set moved under us. Core used to reach this through a
+     * The plugin set, or a value or its default (the window went light or
+     * dark), moved under us. Core used to reach this through a
      * concrete SettingsViewController field on the view registry, which is
      * exactly the coupling that put Workbench -> Settings in the graph.
      */

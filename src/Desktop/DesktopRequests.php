@@ -48,6 +48,7 @@ final class DesktopRequests
     public function followAppearance(string $mode): void
     {
         $theme = 'light' === $mode ? 'light' : 'dark';
+        $moved = $theme !== $this->followed;
         $this->followed = $theme;
         // A Porta started from this one (a remote project in this terminal)
         // inherits the process environment: it starts as the window is now.
@@ -59,8 +60,11 @@ final class DesktopRequests
         if ($this->controller->followsWindow()) {
             $this->settings->applyTheme($theme);
         }
-        // An open Settings page reads its rows again: the value, or only its default, moved.
-        $this->events->dispatch(new SettingsRowsStale());
+        // An open Settings page reads its rows again when the value, or only
+        // its default, moved: a report of the same look again changes nothing.
+        if ($moved) {
+            $this->events->dispatch(new SettingsRowsStale());
+        }
     }
 
     /** The look the window last reported, for the next project in this window to start in; null when it reported none. */

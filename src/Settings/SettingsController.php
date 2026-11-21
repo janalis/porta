@@ -508,8 +508,9 @@ final class SettingsController
     }
 
     /**
-     * What the IDE drew for a theme no file chose, as the value this shows; a
-     * theme picked here this session stays, saved or not (a write can fail).
+     * What the IDE drew for a theme no file chose, as the value this shows. A
+     * theme picked here and not saved (a write can fail) is held in memory and
+     * stays; a saved one lasts as long as its file says so.
      */
     private function standIn(?string $themeDefault): void
     {
