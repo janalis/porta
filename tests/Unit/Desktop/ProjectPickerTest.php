@@ -243,6 +243,15 @@ final class ProjectPickerTest extends TestCase
         $this->assertSame($real, $this->pick(["\t", "\r"]));
     }
 
+    public function testTabOnAProjectEndsItsPathInASlashToGoOnFrom(): void
+    {
+        $this->recordRecent();
+
+        $this->assertNull($this->pick(["\t", 'x', "\x1b"]));
+        $this->assertStringContainsString('one/x', $this->screen());
+        $this->assertStringNotContainsString('onex', $this->screen());
+    }
+
     public function testAServersProjectOpensFromTheFolderThatMirrorsIt(): void
     {
         $picked = (string) $this->pick([$this->typed('ssh://deploy@example.com/srv/app'), "\r"]);
