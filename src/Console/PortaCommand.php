@@ -520,7 +520,7 @@ final class PortaCommand extends Command
         $line = $workspace->line;
         $plugins = $workspace->plugins;
         $resume = \getenv('PORTA_RESTART_DIRECTORY');
-        $resume = \is_string($resume) && '' !== $resume ? $resume : DesktopRecovery::pending($root, DesktopSession::current()) ?? false;
+        $resume = \is_string($resume) && '' !== $resume ? $resume : DesktopRecovery::pending($root, $desktop) ?? false;
         // Each project is its own Ide with its own container, run one after the
         // other in the one process. Switching project is therefore an ordinary
         // QUIT — buffers saved, terminal restored, plugins shut down — followed
@@ -545,6 +545,12 @@ final class PortaCommand extends Command
             );
             $onBooted();
             $ide->run();
+            // The window may have gone light or dark meanwhile: the next IDE in
+            // it, a project switched to or this one restarted, starts as it is now.
+            $desktop = $desktop->withAppearance($ide->followedAppearance());
+            if (null !== $desktop->appearance) {
+                \putenv(DesktopSession::APPEARANCE.'='.$desktop->appearance);
+            }
 
             $directory = $ide->restartDirectory();
             if (null !== $directory) {

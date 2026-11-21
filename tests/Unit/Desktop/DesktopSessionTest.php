@@ -42,6 +42,14 @@ final class DesktopSessionTest extends TestCase
         $this->assertNull(DesktopSession::fromEnvironment([DesktopSession::APPEARANCE => 'light'])->appearance, 'not without a session');
     }
 
+    public function testTheLookTheWindowReportsLaterReplacesTheOneAtLaunch(): void
+    {
+        $session = new DesktopSession(active: true, token: self::SESSION, systemMenu: true, appearance: 'light');
+
+        $this->assertEquals(new DesktopSession(active: true, token: self::SESSION, systemMenu: true, appearance: 'dark'), $session->withAppearance('dark'));
+        $this->assertSame($session, $session->withAppearance(null), 'nothing reported keeps the launch\'s');
+    }
+
     /** @return iterable<string, array{array<string, string|false>}> */
     public static function terminalLaunches(): iterable
     {

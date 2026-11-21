@@ -47,7 +47,7 @@ final class SettingsController
     private readonly array $descriptors;
 
     /** @var array<string, int|bool|string> the built-in defaults, a window's look standing in for the theme's */
-    private readonly array $defaults;
+    private array $defaults;
 
     /**
      * @param array<string, int|bool|string> $settings         resolved settings (defaults merged)
@@ -492,6 +492,16 @@ final class SettingsController
      * key would be a different bug; ON DISK the key is REMOVED, so a default
      * that later moves moves with it.
      */
+    /**
+     * The window's look changed: it is what a theme no file chose now stands
+     * for, shown as such and reset to. The live switch is the caller's.
+     */
+    public function followTheme(string $theme): void
+    {
+        $this->defaults['theme'] = $theme;
+        $this->standIn($theme);
+    }
+
     /** What the IDE drew for a theme no file chose, as the value this shows. */
     private function standIn(?string $themeDefault): void
     {

@@ -42,6 +42,12 @@ final readonly class DesktopSession
         public ?string $appearance = null,
     ) {}
 
+    /** This session in the look the window has now, $appearance; the same one when it reported none. */
+    public function withAppearance(?string $appearance): self
+    {
+        return null === $appearance ? $this : new self($this->active, $this->token, $this->systemMenu, $appearance);
+    }
+
     public static function current(): self
     {
         return self::fromEnvironment(\getenv());

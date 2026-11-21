@@ -6,6 +6,7 @@ namespace Porta\Desktop;
 
 use Porta\Container\AsIdeService;
 use Porta\Settings\LiveSettingsApplier;
+use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsProvenance;
 use Porta\Workbench\DropZone;
 use Porta\Workbench\ExternalDrop;
@@ -15,12 +16,16 @@ use Porta\Workbench\ExternalDrop;
  * it, and follow the system's light or dark mode.
  */
 #[AsIdeService]
-final readonly class DesktopRequests
+final class DesktopRequests
 {
+    /** The look the window last reported; null before it reported one. */
+    private ?string $followed = null;
+
     public function __construct(
-        private ExternalDrop $drops,
-        private LiveSettingsApplier $settings,
-        private SettingsProvenance $provenance,
+        private readonly ExternalDrop $drops,
+        private readonly LiveSettingsApplier $settings,
+        private readonly SettingsProvenance $provenance,
+        private readonly SettingsController $controller,
     ) {}
 
     /**
@@ -39,10 +44,20 @@ final readonly class DesktopRequests
      */
     public function followAppearance(string $mode): void
     {
+        $theme = 'light' === $mode ? 'light' : 'dark';
+        $this->followed = $theme;
         // Read afresh: a theme may have been chosen in another window, or by hand.
         $this->provenance->invalidate();
+        // What Settings shows for a theme no file chose, and resets to, moves too.
+        $this->controller->followTheme($theme);
         if (null === $this->provenance->originOf(['settings', 'theme'])) {
-            $this->settings->applyTheme('light' === $mode ? 'light' : 'dark');
+            $this->settings->applyTheme($theme);
         }
+    }
+
+    /** The look the window last reported, for the next project in this window to start in; null when it reported none. */
+    public function followed(): ?string
+    {
+        return $this->followed;
     }
 }

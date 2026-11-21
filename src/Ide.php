@@ -20,6 +20,7 @@ use Porta\Debug\DebugController;
 use Porta\Debug\DebugStatePersistence;
 use Porta\Desktop\DesktopProtocol;
 use Porta\Desktop\DesktopRecovery;
+use Porta\Desktop\DesktopRequests;
 use Porta\Desktop\DesktopSession;
 use Porta\Desktop\LaunchTheme;
 use Porta\Editor\Buffer;
@@ -450,6 +451,12 @@ final class Ide
     public function reopenAt(): ?string
     {
         return $this->service(ReopenRequest::class)->root();
+    }
+
+    /** The look the window last reported to this IDE, for the next project it opens to start in; null when it reported none. */
+    public function followedAppearance(): ?string
+    {
+        return $this->service(DesktopRequests::class)->followed();
     }
 
     public function restartDirectory(): ?string

@@ -377,6 +377,24 @@ final class DesktopProtocolTest extends TestCase
         $this->assertSame(['light'], $themes, 'a theme chosen for the project stays');
     }
 
+    public function testSettingsAndTheNextIdeFollowTheWindowsLookWhenItChanges(): void
+    {
+        $protocol = $this->bootDesktop();
+        $settings = Services::resolve($this->ide, SettingsController::class);
+        $this->assertNull($this->ide->followedAppearance(), 'nothing reported yet');
+
+        $protocol->onInput($this->request('appearance;light'));
+
+        $this->assertSame('light', $settings->choice('theme'), 'Settings shows what is drawn');
+        $this->assertSame('light', $this->ide->followedAppearance(), 'and the next IDE in this window starts so');
+
+        // Chosen in a file: drawn and shown as chosen, but reset now returns to the window's dark.
+        $this->project->write('.porta.json', content: '{"settings":{"theme":"high-contrast"}}');
+        $protocol->onInput($this->request('appearance;dark'));
+        $settings->resetSetting('theme');
+        $this->assertSame('dark', $settings->choice('theme'));
+    }
+
     public function testARunEndingIsToldToTheWindowOnceItIsReady(): void
     {
         $protocol = $this->bootDesktop();
