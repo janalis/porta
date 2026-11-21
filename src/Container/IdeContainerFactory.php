@@ -79,7 +79,9 @@ final readonly class IdeContainerFactory
         // channel (each consumer reads its own via env(json:PORTA_…)); one map,
         // one encode shape.
         $jsonEnv = [
-            'PORTA_SETTINGS' => $config->settings,
+            // The theme drawn is the one Settings shows: a window's look stands in
+            // for the default when no file chose one ({@see build()}'s $theme).
+            'PORTA_SETTINGS' => null === $theme ? $config->settings : ['theme' => $theme] + $config->settings,
             'PORTA_LANGUAGES' => $config->languages,
             'PORTA_LSP_SERVERS' => $config->lspServers,
             'PORTA_DISABLED_PLUGINS' => $config->disabledPlugins,

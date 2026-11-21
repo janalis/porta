@@ -101,6 +101,7 @@ final class IdeContainerFactoryTest extends TestCase
         new IdeContainerFactory()->build($project->dir, IdeConfig::load($project->dir), Ansi::Enabled, theme: 'light');
 
         $this->assertSame('light', $_ENV['PORTA_THEME']);
+        $this->assertSame('light', \json_decode((string) $_ENV['PORTA_SETTINGS'], associative: true)['theme'] ?? null, 'and Settings shows the theme drawn');
     }
 
     public function testAnUnconfiguredLanguageFollowsTheSystemLocale(): void
