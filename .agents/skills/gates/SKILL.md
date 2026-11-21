@@ -60,7 +60,8 @@ killing it, then kill that runner and re-run.
 
 `composer check` is `verify:quick` without the stop at the first red; `verify` itself
 still stops after a red static gate, then runs both coverage passes at once and names
-every red one.
+every red one, then `behat:check` (the catalog gate, every scenario in process, the
+`@process` ones on `bin/porta`).
 
 ## The lint rules agents trip most
 
