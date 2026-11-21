@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Desktop;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Config\PlatformKeymap;
+use Porta\Desktop\DesktopSession;
 use Symfony\Component\Tui\Input\KeyParser;
 
 /** What the native hosts send, held against what Porta actually reads. Each host's own tests read the same files. */
@@ -28,6 +29,17 @@ final class DesktopContractTest extends TestCase
         \sort($bound);
 
         $this->assertSame($bound, $forwarded);
+    }
+
+    public function testTheHostsSetTheVariablesPortaReads(): void
+    {
+        /** @var array{environment: array<string, string>} $protocol */
+        $protocol = \json_decode((string) \file_get_contents(\dirname(__DIR__, 3).'/desktop/contract/protocol.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
+
+        $this->assertSame(
+            ['flag' => DesktopSession::FLAG, 'token' => DesktopSession::TOKEN, 'menu' => DesktopSession::MENU, 'appearance' => DesktopSession::APPEARANCE],
+            $protocol['environment'],
+        );
     }
 
     public function testEverySequenceParsesAsItsChordWithoutTheKittyProtocol(): void

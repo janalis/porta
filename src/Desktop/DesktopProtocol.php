@@ -29,8 +29,6 @@ use Symfony\Component\Tui\Tui;
 #[AsIdeService]
 final class DesktopProtocol
 {
-    private const string PREFIX = "\x1b]7777;porta-desktop;";
-
     /** Often enough that a menu or the unsaved dot is right after a keystroke, rarely enough to cost nothing. */
     private const float MENU_POLL_SECONDS = 0.25;
 
@@ -72,15 +70,14 @@ final class DesktopProtocol
     public function onInput(InputEvent $event): void
     {
         $data = $event->getData();
-        if (!\str_starts_with($data, self::PREFIX)) {
+        if (!DesktopFrames::isFrame($data)) {
             return;
         }
         $event->stopPropagation();
-        $own = self::PREFIX.$this->session->token.';';
-        if (!\hash_equals($own, \substr($data, offset: 0, length: \strlen($own)))) {
-            return;
+        $request = new DesktopFrames($this->session)->request($data);
+        if (null !== $request) {
+            $this->handle($request);
         }
-        $this->handle(\substr($data, \strlen($own)));
     }
 
     /** What the window asked for, past the token that proves it was the window. */
@@ -90,8 +87,9 @@ final class DesktopProtocol
         if ("close\x1b\\" === $request && !$this->actions->closeWindow(fn () => $this->send('closing'))) {
             $this->send('accepted');
         }
-        if (1 === \preg_match('/^open;([A-Za-z0-9+\/=]+)\x1b\\\\$/D', $request, $choice)) {
-            $this->requests->open((string) \base64_decode($choice[1], strict: true));
+        $open = DesktopFrames::openPath($request);
+        if (null !== $open) {
+            $this->requests->open($open);
             $this->tui->requestRender();
         }
         if (1 === \preg_match('/^appearance;(dark|light)\x1b\\\\$/D', $request, $choice)) {
@@ -191,6 +189,6 @@ final class DesktopProtocol
 
     private function send(string $message): void
     {
-        $this->tui->getTerminal()->write(self::PREFIX.$this->session->token.';'.$message."\x1b\\");
+        $this->tui->getTerminal()->write(new DesktopFrames($this->session)->frame($message));
     }
 }

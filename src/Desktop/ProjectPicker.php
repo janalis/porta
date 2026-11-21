@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Desktop;
 
+use Porta\Config\ConfigFiles;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaHome;
 use Porta\Filesystem\ProjectLocation;
@@ -12,6 +13,7 @@ use Porta\Highlight\ColorMode;
 use Porta\History\RecentProjectsStore;
 use Porta\I18n\SystemLocale;
 use Porta\I18n\Translator;
+use Porta\Settings\SettingsProvenance;
 use Porta\Support\ControlChars;
 use Porta\Ui\NonBlockingTerminal;
 use Porta\Ui\Theme\Styles;
@@ -20,6 +22,8 @@ use Porta\Widget\Desktop\ProjectPickerWidget;
 use Porta\Widget\Support\PickerRow;
 use Porta\Widget\Support\PickerRowKind;
 use Porta\Workbench\RecentProjectChoices;
+use Revolt\EventLoop;
+use Symfony\Component\Tui\Event\InputEvent;
 use Symfony\Component\Tui\Terminal\Terminal;
 use Symfony\Component\Tui\Terminal\TerminalInterface;
 use Symfony\Component\Tui\Tui;
@@ -41,6 +45,8 @@ final class ProjectPicker
 {
     private const string REMOTE = "\0remote";
 
+    private const string CHOOSE_FOLDER = "\0choose-folder";
+
     private ?string $picked = null;
 
     private ?Tui $tui = null;
@@ -55,20 +61,32 @@ final class ProjectPicker
         private readonly ?\Closure $found = null,
         private readonly ?Styles $styles = null,
         private readonly string $version = '',
+        private readonly DesktopSession $session = new DesktopSession(active: false, token: ''),
     ) {}
 
-    public static function forUser(string $version = ''): self
+    /** @param TerminalInterface|null $terminal null for the process's own */
+    public static function forUser(string $version = '', ?TerminalInterface $terminal = null): self
     {
-        $settings = IdeConfig::load((string) \getcwd())->settings;
+        $cwd = (string) \getcwd();
+        $settings = IdeConfig::load($cwd)->settings;
+        $session = DesktopSession::current();
+        // The system's mode, as the window already shows it, unless a theme was
+        // chosen: the rule the IDE follows once the window can tell it.
+        $theme =
+            null !== $session->appearance && null === new SettingsProvenance(ConfigFiles::for($cwd))->originOf(['settings', 'theme'])
+                ? $session->appearance
+                : (string) ($settings['theme'] ?? 'dark');
         $language = (string) ($settings['language'] ?? 'auto');
         $system = SystemLocale::fromEnvironment(\getenv(), \extension_loaded('intl') ? \Locale::getDefault() : '');
 
         return new self(
             new RecentProjectChoices(new RecentProjectsStore()),
+            terminal: $terminal ?? new NonBlockingTerminal(new Terminal()),
             translator: new Translator($language, systemLocale: $system),
             found: new ProjectDiscovery()->found(...),
-            styles: Themes::createSwitchable(ColorMode::Ansi, (string) ($settings['theme'] ?? 'dark')),
+            styles: Themes::createSwitchable(ColorMode::Ansi, $theme),
             version: $version,
+            session: $session,
         );
     }
 
@@ -83,11 +101,20 @@ final class ProjectPicker
             onSubmit: $this->submit(...),
             onTab: $this->complete(...),
             onCancel: fn () => $this->finish(null),
-            footer: [$this->translator->trans('↑↓ choose · Tab complete · Enter open · Esc quit')],
+            footer: [
+                $this->translator->trans('↑↓ choose · Tab complete · Enter open · Esc quit'),
+                ...($this->session->active ? [$this->translator->trans('or drop a folder on this window')] : []),
+            ],
             styles: $this->styles,
         );
         $this->tui->add($widget);
         $this->tui->setFocus($widget);
+        if ($this->session->active) {
+            // Ahead of the field: a frame is never text.
+            $this->tui->addListener($this->onInput(...), priority: 2200);
+            // Once the loop runs, which is once the terminal is the picker's.
+            EventLoop::defer(fn () => $this->send('picking'));
+        }
         $this->tui->run();
 
         return $this->picked;
@@ -128,6 +155,11 @@ final class ProjectPicker
         return [
             ...$rows,
             PickerRow::heading(''),
+            ...(
+                $this->session->active
+                    ? [new PickerRow(PickerRowKind::Action, $this->translator->trans('Choose a folder…'), $this->translator->trans('in the system’s dialog'), self::CHOOSE_FOLDER)]
+                    : []
+            ),
             new PickerRow(PickerRowKind::Action, $this->translator->trans('Open remote…'), $this->translator->trans('over SSH, SFTP or FTP'), self::REMOTE),
         ];
     }
@@ -189,7 +221,7 @@ final class ProjectPicker
             PickerRowKind::Project => $this->finish($row->value),
             PickerRowKind::Folder => $this->finish((string) \realpath(PortaHome::expand($row->value))),
             PickerRowKind::Remote => $this->openRemote($widget, $row->value),
-            PickerRowKind::Action => $widget->setText('ssh://'),
+            PickerRowKind::Action => self::CHOOSE_FOLDER === $row->value ? $this->send('chooseFolder') : $widget->setText('ssh://'),
             // A name that matched nothing already says so in the list.
             default => FolderCompletion::isPath($typed) ? $widget->refuse($this->translator->trans('Not a folder: %path%', ['%path%' => ControlChars::line($typed)])) : null,
         };
@@ -210,6 +242,29 @@ final class ProjectPicker
             return;
         }
         $this->finish(ProjectLocation::prepare($spec, $home));
+    }
+
+    /**
+     * What the window says while the picker is up: a folder chosen in its
+     * dialog, dropped on it, or opened with Porta while this window was the
+     * one waiting for a project. Every frame is swallowed, the window's or not.
+     */
+    private function onInput(InputEvent $event): void
+    {
+        if (!DesktopFrames::isFrame($event->getData())) {
+            return;
+        }
+        $event->stopPropagation();
+        $request = new DesktopFrames($this->session)->request($event->getData());
+        $path = null === $request ? null : DesktopFrames::openPath($request);
+        if (null !== $path && \file_exists($path)) {
+            $this->finish($path);
+        }
+    }
+
+    private function send(string $message): void
+    {
+        $this->terminal->write(new DesktopFrames($this->session)->frame($message));
     }
 
     private function finish(?string $folder): void

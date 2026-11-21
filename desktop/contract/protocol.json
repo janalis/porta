@@ -2,7 +2,8 @@
     "environment": {
         "flag": "PORTA_DESKTOP",
         "token": "PORTA_DESKTOP_TOKEN",
-        "menu": "PORTA_DESKTOP_MENU"
+        "menu": "PORTA_DESKTOP_MENU",
+        "appearance": "PORTA_DESKTOP_APPEARANCE"
     },
     "osc": 7777,
     "namespace": "porta-desktop",
@@ -18,7 +19,9 @@
         "closing",
         "menu",
         "state",
-        "notify"
+        "notify",
+        "picking",
+        "chooseFolder"
     ],
     "examples": {
         "token": "0123456789abcdef0123456789abcdef",
@@ -65,6 +68,8 @@
         "appearance": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;appearance;dark\u001b\\",
         "state": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;state;2\u001b\\",
         "notifyText": "composer test failed (exit code 1)",
-        "notify": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;notify;Y29tcG9zZXIgdGVzdCBmYWlsZWQgKGV4aXQgY29kZSAxKQ==\u001b\\"
+        "notify": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;notify;Y29tcG9zZXIgdGVzdCBmYWlsZWQgKGV4aXQgY29kZSAxKQ==\u001b\\",
+        "picking": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;picking\u001b\\",
+        "chooseFolder": "\u001b]7777;porta-desktop;0123456789abcdef0123456789abcdef;chooseFolder\u001b\\"
     }
 }

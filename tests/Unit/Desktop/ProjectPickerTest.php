@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Desktop;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Desktop\DesktopSession;
 use Porta\Desktop\ProjectPicker;
+use Porta\Highlight\ColorMode;
 use Porta\History\RecentProjectsStore;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\Role;
+use Porta\Ui\Theme\Themes;
 use Porta\Workbench\RecentProjectChoices;
 use Revolt\EventLoop;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -21,6 +25,11 @@ final class ProjectPickerTest extends TestCase
     use PreservesPortaHome;
 
     private const string DOWN = "\x1b[B";
+
+    private const string SILENT = "\0silent:";
+
+    /** The window's secret, as a host makes one. */
+    private const string SESSION = '0123456789abcdef0123456789abcdef';
 
     private TempProject $disk;
 
@@ -53,33 +62,49 @@ final class ProjectPickerTest extends TestCase
         return new ProjectPicker(new RecentProjectChoices(new RecentProjectsStore()), $this->terminal, found: $found)->pick();
     }
 
-    /** What was drawn, its styling and cursor moves left out. */
+    /** What was drawn, its styling, cursor moves and the window's frames left out. */
     private function screen(): string
     {
-        return AnsiUtils::stripAnsiCodes($this->terminal->getOutput());
+        return AnsiUtils::stripAnsiCodes(self::withoutWindowFrames($this->terminal->getOutput()));
+    }
+
+    private static function withoutWindowFrames(string $output): string
+    {
+        return (string) \preg_replace('/\x1b\]7777;[^\x1b]*\x1b\\\\/', '', $output);
     }
 
     /**
      * Each key once the screen has drawn what the previous one did: a key
      * pressed before the picker is up would be a key nobody could press.
+     * A key {@see silent()} draws nothing, so the next goes a turn after it.
      *
      * @param list<string> $keys
      */
     private function type(array $keys): void
     {
         $drawn = 0;
-        EventLoop::repeat(0.005, function (string $id) use (&$keys, &$drawn): void {
+        $wait = true;
+        EventLoop::repeat(0.005, function (string $id) use (&$keys, &$drawn, &$wait): void {
             $output = $this->terminal->getOutput();
-            // A frame, not the cursor bookkeeping before it: some text has been drawn since.
-            if (1 !== \preg_match('/\pL{3}/u', \substr($output, $drawn))) {
+            // A frame, not the cursor bookkeeping before it nor a word to the
+            // window: some text has been drawn since.
+            if ($wait && 1 !== \preg_match('/\pL{3}/u', self::withoutWindowFrames(\substr($output, $drawn)))) {
                 return;
             }
             $drawn = \strlen($output);
-            $this->terminal->simulateInput((string) \array_shift($keys));
+            $key = (string) \array_shift($keys);
+            $wait = !\str_starts_with($key, self::SILENT);
+            $this->terminal->simulateInput($wait ? $key : \substr($key, \strlen(self::SILENT)));
             if ([] === $keys) {
                 EventLoop::cancel($id);
             }
         });
+    }
+
+    /** $key, marked as one that draws nothing for {@see type()} to wait for. */
+    private static function silent(string $key): string
+    {
+        return self::SILENT.$key;
     }
 
     private function recordRecent(): void
@@ -251,6 +276,99 @@ final class ProjectPickerTest extends TestCase
         new ProjectPicker(new RecentProjectChoices(new RecentProjectsStore()), $this->terminal, version: '9.9.9')->pick();
 
         $this->assertStringContainsString('Porta 9.9.9', $this->screen());
+    }
+
+    /** @param list<string> $keys */
+    private function pickInAWindow(array $keys): ?string
+    {
+        $this->type($keys);
+
+        return new ProjectPicker(new RecentProjectChoices(new RecentProjectsStore()), $this->terminal, session: new DesktopSession(active: true, token: self::SESSION))->pick();
+    }
+
+    private static function frame(string $message, #[\SensitiveParameter] string $token = self::SESSION): string
+    {
+        return "\x1b]7777;porta-desktop;{$token};{$message}\x1b\\";
+    }
+
+    public function testInAWindowThePickerSaysItIsWaitingForAProject(): void
+    {
+        $this->assertNull($this->pickInAWindow(["\x1b"]));
+        $this->assertStringContainsString(self::frame('picking'), $this->terminal->getOutput());
+        $this->assertStringContainsString('or drop a folder on this window', $this->screen());
+    }
+
+    public function testOutsideAWindowItSaysNothingAndOffersNoDialog(): void
+    {
+        $this->assertNull($this->pick(["\x1b"]));
+        $this->assertStringNotContainsString('porta-desktop', $this->terminal->getOutput());
+        $this->assertStringNotContainsString('Choose a folder', $this->screen());
+    }
+
+    public function testChooseAFolderAsksTheWindowForItsDialog(): void
+    {
+        // A first run, nothing found: the dialog is the first row. The letter
+        // rides with Enter, which draws nothing of its own to wait for.
+        $this->assertNull($this->pickInAWindow(["\rq", "\x1b"]));
+        $this->assertStringContainsString(self::frame('chooseFolder'), $this->terminal->getOutput());
+    }
+
+    public function testAFolderTheWindowOpensIsTheProject(): void
+    {
+        $folder = $this->disk->path('typed');
+
+        $this->assertSame($folder, $this->pickInAWindow([self::frame('open;'.\base64_encode($folder))]));
+    }
+
+    public function testAnOpenForWhatIsNotThereOrWithAnotherTokenIsIgnoredAndNeverTyped(): void
+    {
+        $gone = self::frame('open;'.\base64_encode($this->disk->path('gone')));
+        $forged = self::frame('open;'.\base64_encode($this->disk->path('typed')), \str_repeat('f', 32));
+
+        $this->assertNull($this->pickInAWindow([self::silent($gone), self::silent($forged), 'q', "\x1b"]));
+        $this->assertStringContainsString('┃ q ', $this->screen(), 'only the letter reached the field');
+    }
+
+    /** Porta's name in the header as $theme draws it: what tells one theme's card from another's. */
+    private static function nameIn(string $theme): string
+    {
+        return Themes::createSwitchable(ColorMode::Ansi, $theme)->of(Role::Bright)->withBold()->apply('Porta');
+    }
+
+    /** The user's own picker, launched by a window on a $mode system, from $cwd. */
+    private function forUserIn(string $cwd, string $mode): void
+    {
+        $previous = (string) \getcwd();
+        \chdir($cwd);
+        \putenv(DesktopSession::FLAG.'=1');
+        \putenv(DesktopSession::TOKEN.'='.self::SESSION);
+        \putenv(DesktopSession::APPEARANCE.'='.$mode);
+        try {
+            $this->type(["\x1b"]);
+            ProjectPicker::forUser(terminal: $this->terminal)->pick();
+        } finally {
+            \chdir($previous);
+            \putenv(DesktopSession::FLAG);
+            \putenv(DesktopSession::TOKEN);
+            \putenv(DesktopSession::APPEARANCE);
+        }
+    }
+
+    public function testTheWindowsModeIsFollowedWhenNoThemeWasChosen(): void
+    {
+        $this->forUserIn($this->disk->path('one'), 'light');
+
+        $this->assertStringContainsString(self::nameIn('light'), $this->terminal->getOutput());
+        $this->assertStringNotContainsString(self::nameIn('dark'), $this->terminal->getOutput());
+    }
+
+    public function testAChosenThemeOutranksTheWindowsMode(): void
+    {
+        $this->disk->write('one/.porta.json', '{"settings": {"theme": "dark"}}');
+
+        $this->forUserIn($this->disk->path('one'), 'light');
+
+        $this->assertStringContainsString(self::nameIn('dark'), $this->terminal->getOutput());
     }
 
     public function testThePickerSpeaksTheUsersLanguage(): void

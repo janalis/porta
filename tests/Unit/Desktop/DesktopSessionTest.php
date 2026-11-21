@@ -31,6 +31,17 @@ final class DesktopSessionTest extends TestCase
         $this->assertFalse(DesktopSession::fromEnvironment([DesktopSession::MENU => 'system'])->systemMenu, 'not without a session');
     }
 
+    public function testTheSystemsModeAtLaunchIsLightOrDarkOrUnknown(): void
+    {
+        $session = [DesktopSession::FLAG => '1', DesktopSession::TOKEN => self::SESSION];
+
+        $this->assertNull(DesktopSession::fromEnvironment($session)->appearance);
+        $this->assertSame('light', DesktopSession::fromEnvironment([...$session, DesktopSession::APPEARANCE => 'light'])->appearance);
+        $this->assertSame('dark', DesktopSession::fromEnvironment([...$session, DesktopSession::APPEARANCE => 'dark'])->appearance);
+        $this->assertNull(DesktopSession::fromEnvironment([...$session, DesktopSession::APPEARANCE => 'sepia'])->appearance);
+        $this->assertNull(DesktopSession::fromEnvironment([DesktopSession::APPEARANCE => 'light'])->appearance, 'not without a session');
+    }
+
     /** @return iterable<string, array{array<string, string|false>}> */
     public static function terminalLaunches(): iterable
     {

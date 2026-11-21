@@ -4038,6 +4038,18 @@
         <source>PHP project</source>
         <target>proyecto PHP</target>
       </trans-unit>
+      <trans-unit id="1350">
+        <source>or drop a folder on this window</source>
+        <target>o suelte una carpeta en esta ventana</target>
+      </trans-unit>
+      <trans-unit id="1351">
+        <source>Choose a folder…</source>
+        <target>Elegir una carpeta…</target>
+      </trans-unit>
+      <trans-unit id="1352">
+        <source>in the system’s dialog</source>
+        <target>en el diálogo del sistema</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -28,6 +28,9 @@ final readonly class DesktopSession
     /** Set by a host whose operating system shows application menus itself. */
     public const string MENU = 'PORTA_DESKTOP_MENU';
 
+    /** The system's light or dark mode at launch: what the window looks like before Porta can be told. */
+    public const string APPEARANCE = 'PORTA_DESKTOP_APPEARANCE';
+
     /** 128 bits, hex: long enough that it cannot be guessed from inside a paste. */
     private const string TOKEN_SHAPE = '/^[0-9a-f]{32,}$/D';
 
@@ -36,6 +39,7 @@ final readonly class DesktopSession
         #[\SensitiveParameter]
         public string $token,
         public bool $systemMenu = false,
+        public ?string $appearance = null,
     ) {}
 
     public static function current(): self
@@ -51,6 +55,13 @@ final readonly class DesktopSession
             return new self(active: false, token: '');
         }
 
-        return new self(active: true, token: $token, systemMenu: 'system' === ($environment[self::MENU] ?? ''));
+        $appearance = $environment[self::APPEARANCE] ?? null;
+
+        return new self(
+            active: true,
+            token: $token,
+            systemMenu: 'system' === ($environment[self::MENU] ?? ''),
+            appearance: \in_array($appearance, ['dark', 'light'], strict: true) ? $appearance : null,
+        );
     }
 }
