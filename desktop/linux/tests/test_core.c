@@ -226,7 +226,7 @@ static void test_the_launch(void)
 {
     g_auto(GStrv) argv = porta_launch_argv("/usr/lib/porta-desktop/runtime", "/work/shop");
     char *inherited[] = {"PATH=/bin", "PHPRC=/x", "LD_PRELOAD=/y", "TMUX=1", "TERM=dumb", NULL};
-    g_auto(GStrv) env = porta_launch_env(inherited, "tok", TRUE);
+    g_auto(GStrv) env = porta_launch_env(inherited, "tok", TRUE, NULL);
 
     g_assert_cmpstr(argv[0], ==, "/usr/lib/porta-desktop/runtime/php");
     g_assert_cmpstr(argv[1], ==, "-n");
@@ -245,9 +245,35 @@ static void test_the_launch(void)
 static void test_no_system_menu_is_claimed_without_one(void)
 {
     char *inherited[] = {"PORTA_DESKTOP_MENU=system", NULL};
-    g_auto(GStrv) env = porta_launch_env(inherited, "tok", FALSE);
+    g_auto(GStrv) env = porta_launch_env(inherited, "tok", FALSE, NULL);
 
     g_assert_null(g_environ_getenv(env, "PORTA_DESKTOP_MENU"));
+}
+
+static void test_the_desktops_look_at_launch_is_said_and_never_inherited(void)
+{
+    char *inherited[] = {"PORTA_DESKTOP_APPEARANCE=sepia", NULL};
+    g_auto(GStrv) light = porta_launch_env(inherited, "tok", FALSE, "light");
+    g_auto(GStrv) unknown = porta_launch_env(inherited, "tok", FALSE, NULL);
+
+    g_assert_cmpstr(g_environ_getenv(light, "PORTA_DESKTOP_APPEARANCE"), ==, "light");
+    g_assert_null(g_environ_getenv(unknown, "PORTA_DESKTOP_APPEARANCE"));
+}
+
+static void test_the_pickers_messages_are_the_contracts(void)
+{
+    g_autofree char *token = example("token");
+    g_autofree char *picking = example("picking");
+    g_autofree char *picking_payload = payload(picking);
+    g_autofree char *choose = example("chooseFolder");
+    g_autofree char *choose_payload = payload(choose);
+    g_autofree char *extra = g_strdup_printf("porta-desktop;%s;picking;extra", token);
+    g_autofree char *nothing = NULL;
+
+    g_assert_cmpint(porta_message_parse(picking_payload, token, &nothing), ==, PORTA_MESSAGE_PICKING);
+    g_assert_null(nothing);
+    g_assert_cmpint(porta_message_parse(choose_payload, token, &nothing), ==, PORTA_MESSAGE_CHOOSE_FOLDER);
+    g_assert_cmpint(porta_message_parse(extra, token, &nothing), ==, PORTA_MESSAGE_NONE);
 }
 
 static void test_tokens_and_keys(void)
@@ -275,6 +301,8 @@ int main(int argc, char **argv)
     g_test_add_func("/flow/close", test_the_close_flow);
     g_test_add_func("/launch/plan", test_the_launch);
     g_test_add_func("/launch/menu", test_no_system_menu_is_claimed_without_one);
+    g_test_add_func("/launch/appearance", test_the_desktops_look_at_launch_is_said_and_never_inherited);
+    g_test_add_func("/messages/picker", test_the_pickers_messages_are_the_contracts);
     g_test_add_func("/misc/tokens-and-keys", test_tokens_and_keys);
     return g_test_run();
 }

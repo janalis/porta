@@ -184,6 +184,10 @@ PortaMessageKind porta_message_parse(const char *payload, const char *token, cha
         kind = PORTA_MESSAGE_ACCEPTED;
     } else if (3 == count && 0 == g_strcmp0(fields[2], "closing")) {
         kind = PORTA_MESSAGE_CLOSING;
+    } else if (3 == count && 0 == g_strcmp0(fields[2], "picking")) {
+        kind = PORTA_MESSAGE_PICKING;
+    } else if (3 == count && 0 == g_strcmp0(fields[2], "chooseFolder")) {
+        kind = PORTA_MESSAGE_CHOOSE_FOLDER;
     } else if (4 == count && 0 == g_strcmp0(fields[2], "ready")) {
         kind = PORTA_MESSAGE_READY;
         *value = decoded(fields[3]);
@@ -326,9 +330,9 @@ char **porta_launch_argv(const char *runtime, const char *project)
     return argv;
 }
 
-char **porta_launch_env(char **inherited, const char *token, gboolean system_menu)
+char **porta_launch_env(char **inherited, const char *token, gboolean system_menu, const char *appearance)
 {
-    static const char *const DROPPED[] = {"PHPRC", "PHP_INI_SCAN_DIR", "WT_SESSION", "TERM_PROGRAM", "TERM_PROGRAM_VERSION", "TMUX", "TMUX_PANE", "PORTA_DESKTOP_MENU"};
+    static const char *const DROPPED[] = {"PHPRC", "PHP_INI_SCAN_DIR", "WT_SESSION", "TERM_PROGRAM", "TERM_PROGRAM_VERSION", "TMUX", "TMUX_PANE", "PORTA_DESKTOP_MENU", "PORTA_DESKTOP_APPEARANCE"};
     char **env = g_strdupv(inherited);
 
     for (gsize i = 0; i < G_N_ELEMENTS(DROPPED); i++) {
@@ -347,6 +351,9 @@ char **porta_launch_env(char **inherited, const char *token, gboolean system_men
     env = g_environ_setenv(env, "COLORTERM", "truecolor", TRUE);
     if (system_menu) {
         env = g_environ_setenv(env, "PORTA_DESKTOP_MENU", "system", TRUE);
+    }
+    if (NULL != appearance) {
+        env = g_environ_setenv(env, "PORTA_DESKTOP_APPEARANCE", appearance, TRUE);
     }
     return env;
 }

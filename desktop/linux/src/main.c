@@ -32,6 +32,7 @@ typedef struct {
     char *project; /* what this window was opened on, for a restart; NULL for the picker */
     char *title;   /* the project's name, without the unsaved mark */
     gboolean ready;
+    gboolean picking;   /* Porta's picker is up: a folder sent now is the project it opens */
     GPtrArray *pending; /* paths for this project, sent once Porta is ready */
     GPid pid;
     int master;
@@ -442,6 +443,38 @@ static void on_startup(GApplication *application, gpointer data)
     follow_appearance();
 }
 
+/* Hands `path` to a window whose picker is up: it is that window's project now, so the next is not. */
+static void give_to_picker(PortaWindow *self, const char *path)
+{
+    g_autofree char *request = porta_open_request(self->token, path);
+    write_to_porta(self, request, -1);
+    self->picking = FALSE;
+}
+
+static void on_folder_chosen(GObject *source, GAsyncResult *result, gpointer data)
+{
+    PortaWindow *self = data;
+    g_autoptr(GFile) folder = gtk_file_dialog_select_folder_finish(GTK_FILE_DIALOG(source), result, NULL);
+    g_autofree char *path = NULL != folder ? g_file_get_path(folder) : NULL;
+
+    /* Cancelled, or the window was given a project meanwhile: nothing to send. */
+    if (NULL != path && self->picking && !self->closed) {
+        give_to_picker(self, path);
+    }
+    release(self);
+}
+
+/* The picker's "Choose a folder…": the system's dialog, over this window. */
+static void choose_folder(PortaWindow *self)
+{
+    g_autoptr(GtkFileDialog) dialog = gtk_file_dialog_new();
+
+    gtk_file_dialog_set_modal(dialog, TRUE);
+    /* The window may close while the dialog is up: the answer still needs somewhere to land. */
+    self->holds++;
+    gtk_file_dialog_select_folder(dialog, GTK_WINDOW(self->window), NULL, on_folder_chosen, self);
+}
+
 static void received(PortaWindow *self, PortaOsc *osc)
 {
     g_autofree char *value = NULL;
@@ -466,6 +499,7 @@ static void received(PortaWindow *self, PortaOsc *osc)
             gtk_recent_manager_add_item(gtk_recent_manager_get_default(), uri);
         }
         self->ready = TRUE;
+        self->picking = FALSE;
         /* Reopen starts what is open now, which a switch may have changed. */
         g_free(self->project);
         self->project = g_strdup(value);
@@ -475,6 +509,12 @@ static void received(PortaWindow *self, PortaOsc *osc)
             write_to_porta(self, request, -1);
         }
         g_ptr_array_set_size(self->pending, 0);
+    }
+    if (PORTA_MESSAGE_PICKING == kind && !self->ready) {
+        self->picking = TRUE;
+    }
+    if (PORTA_MESSAGE_CHOOSE_FOLDER == kind && self->picking) {
+        choose_folder(self);
     }
     if (PORTA_MESSAGE_NOTIFY == kind && !gtk_window_is_active(GTK_WINDOW(self->window))) {
         /* A run ended while the user was elsewhere: the desktop says so, and clicking brings this window. */
@@ -719,7 +759,7 @@ static void start_porta(PortaWindow *self)
 
     g_auto(GStrv) argv = porta_launch_argv(runtime, self->project);
     g_auto(GStrv) inherited = g_get_environ();
-    g_auto(GStrv) env = porta_launch_env(inherited, self->token, desktop_shows_menus());
+    g_auto(GStrv) env = porta_launch_env(inherited, self->token, desktop_shows_menus(), appearance_known ? (dark_preferred ? "dark" : "light") : NULL);
     vte_pty_spawn_async(self->pty, NULL != self->project ? self->project : g_get_home_dir(), argv, env, G_SPAWN_DEFAULT, NULL, NULL, NULL, -1, NULL, (GAsyncReadyCallback) on_spawned, self);
 }
 
@@ -936,7 +976,28 @@ static void on_open(GApplication *application, GFile **files, int count, const c
             }
         }
         if (!found) {
-            open_window(GTK_APPLICATION(application), path);
+            /* A window still waiting for a project takes it, the one dropped on or in front first:
+             * no second window beside it. */
+            PortaWindow *picker = NULL != dropped_on && dropped_on->picking ? dropped_on : NULL;
+            for (GList *entry = windows; NULL == picker && NULL != entry; entry = entry->next) {
+                PortaWindow *window = entry->data;
+                if (window->picking && gtk_window_is_active(GTK_WINDOW(window->window))) {
+                    picker = window;
+                }
+            }
+            for (GList *entry = windows; NULL == picker && NULL != entry; entry = entry->next) {
+                if (((PortaWindow *) entry->data)->picking) {
+                    picker = entry->data;
+                }
+            }
+            if (NULL == picker) {
+                open_window(GTK_APPLICATION(application), path);
+                continue;
+            }
+            give_to_picker(picker, path);
+            if (picker != dropped_on) {
+                gtk_window_present(GTK_WINDOW(picker->window));
+            }
         }
     }
 }

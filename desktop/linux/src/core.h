@@ -27,6 +27,8 @@ typedef enum {
     PORTA_MESSAGE_MENU,
     PORTA_MESSAGE_STATE,
     PORTA_MESSAGE_NOTIFY,
+    PORTA_MESSAGE_PICKING,       /* no project yet: Porta's picker takes a folder sent as an open request */
+    PORTA_MESSAGE_CHOOSE_FOLDER, /* the picker asks for the system's folder dialog */
 } PortaMessageKind;
 
 /* `value` is the decoded root for READY, the decoded JSON for MENU and the unsaved count for STATE and the decoded text for NOTIFY; the caller frees it. */
@@ -64,7 +66,8 @@ gboolean porta_flow_closes_on_exit(const PortaCloseFlow *flow, gboolean exited, 
 
 char *porta_new_token(void);
 char **porta_launch_argv(const char *runtime, const char *project);
-char **porta_launch_env(char **inherited, const char *token, gboolean system_menu);
+/* `appearance` is "dark" or "light", how the desktop looks at launch; NULL when it is not known. */
+char **porta_launch_env(char **inherited, const char *token, gboolean system_menu, const char *appearance);
 
 /* CSI-u for a chord: lowercase codepoint and modifiers. Porta's parser reads no other spelling. */
 char *porta_key_sequence(guint codepoint, gboolean shift, gboolean alt, gboolean ctrl);
