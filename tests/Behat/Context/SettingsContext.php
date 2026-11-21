@@ -19,11 +19,14 @@ use Porta\Plugin\Store\PackagistMetadata;
 use Porta\Presence\Beacon;
 use Porta\Presence\PresenceBoard;
 use Porta\Settings\SettingsRow;
+use Porta\Support\Decoded;
 use Porta\Tests\Support\FakeComposer;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Toasts;
+use Porta\Ui\ListSelection;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Process\Process;
 
 /**
@@ -65,7 +68,7 @@ final class SettingsContext implements TuinkAwareContextInterface
         $session = $this->getSession();
         if (!$this->settingsOpen()) {
             $this->porta->iUseTheAction('ide_settings');
-            $session->waitUntil(fn (): bool => $this->settingsOpen(), 'The Settings view did not open.');
+            $session->waitUntil($this->settingsOpen(...), 'The Settings view did not open.');
         }
         $session->focus('#settings-nav');
         $nav = $this->nav();
@@ -76,7 +79,7 @@ final class SettingsContext implements TuinkAwareContextInterface
         self::check($page === $this->navLabel($nav), \sprintf('The Settings sidebar has no page "%s".', $page));
         $session->press('Enter');
         $session->waitUntil(
-            fn (): bool => \str_contains($session->getScreenText(), 'Settings › ') && \str_contains($session->getScreenText(), ' '.$page),
+            static fn (): bool => \str_contains($session->getScreenText(), 'Settings › ') && \str_contains($session->getScreenText(), ' '.$page),
             \sprintf('The Settings page "%s" did not open.', $page),
         );
     }
@@ -125,14 +128,15 @@ final class SettingsContext implements TuinkAwareContextInterface
         $row = $this->selectedRow($form);
         $value = \array_search($choice, $row->optionLabels ?? [], strict: true);
         $choice = \is_string($value) ? $value : $choice;
-        $options = \array_map('strval', $row->options ?? []);
-        self::check(\in_array($choice, $options, strict: true), \sprintf('"%s" is not a choice of "%s": %s.', $choice, $label, \implode(', ', $options)));
+        $options = \array_map(\strval(...), $row->options ?? []);
+        $target = \array_search($choice, $options, strict: true);
+        self::check(\is_int($target), \sprintf('"%s" is not a choice of "%s": %s.', $choice, $label, \implode(', ', $options)));
         $current = fn (): string => (string) $this->selectedRow($form)?->value;
-        $key = \array_search($choice, $options, strict: true) > \array_search($current(), $options, strict: true) ? 'Right' : 'Left';
-        for ($i = 0; $i < \count($options) && $choice !== $current(); ++$i) {
+        $key = $target > (int) \array_search($current(), $options, strict: true) ? 'Right' : 'Left';
+        for ($i = 0; $i < \count($options) && $current() !== $choice; ++$i) {
             $session->press($key);
         }
-        self::check($choice === $current(), \sprintf('"%s" did not become %s: it is %s.', $label, $choice, $current()));
+        self::check($current() === $choice, \sprintf('"%s" did not become %s: it is %s.', $label, $choice, $current()));
     }
 
     /**
@@ -207,8 +211,9 @@ final class SettingsContext implements TuinkAwareContextInterface
             return 'Languages';
         }
         $trail = $nav->trailFor($id);
+        $last = \array_last($trail);
 
-        return \preg_replace('/ \(\d+\)$/', '', \end($trail)['label']);
+        return null === $last ? null : \preg_replace('/ \(\d+\)$/', '', $last['label']);
     }
 
     private function selectedLabel(SettingsFormWidget $form): ?string
@@ -218,25 +223,27 @@ final class SettingsContext implements TuinkAwareContextInterface
 
     private function selectedRow(SettingsFormWidget $form): ?SettingsRow
     {
-        $rows = Probe::array($form, 'rows');
         $selection = Probe::object($form, 'list');
-        $index = Probe::invoke($selection, 'selected');
-        $row = \is_int($index) ? $rows[$index] ?? null : null;
+        self::check($selection instanceof ListSelection, 'The Settings form keeps its selection in a ListSelection.');
 
-        return $row instanceof SettingsRow ? $row : null;
+        return $this->rows($form)[$selection->selected()] ?? null;
     }
 
     private function rowLabelled(string $label): ?SettingsRow
     {
-        $row = \array_find(Probe::array($this->form(), 'rows'), static fn (mixed $row): bool => $row instanceof SettingsRow && $label === $row->label);
-
-        return $row instanceof SettingsRow ? $row : null;
+        return \array_find($this->rows($this->form()), static fn (SettingsRow $row): bool => $label === $row->label);
     }
 
     /** @return list<string> the labels of the page's rows */
     private function labels(): array
     {
-        return \array_values(\array_map(static fn (SettingsRow $row): string => $row->label, \array_filter(Probe::array($this->form(), 'rows'), static fn (mixed $row): bool => $row instanceof SettingsRow)));
+        return \array_map(static fn (SettingsRow $row): string => $row->label, $this->rows($this->form()));
+    }
+
+    /** @return list<SettingsRow> the page's rows, as the form holds them */
+    private function rows(SettingsFormWidget $form): array
+    {
+        return \array_values(\array_filter(Probe::array($form, 'rows'), static fn (mixed $row): bool => $row instanceof SettingsRow));
     }
 
     /**
@@ -245,6 +252,7 @@ final class SettingsContext implements TuinkAwareContextInterface
      *
      * @phpstan-assert true $holds
      */
+    // @mago-expect lint:no-boolean-flag-parameter -- the condition a step expects, as PHPUnit's assertTrue() takes it.
     private static function check(bool $holds, string $message): void
     {
         if (!$holds) {
@@ -302,7 +310,10 @@ final class SettingsContext implements TuinkAwareContextInterface
     public function theToolsWereLastCheckedLongAgo(): void
     {
         $this->aPortaHomeOfMyOwn();
-        $this->getSession()->getWorkspace()->write('home/.porta/tool-updates.json', self::encode(['checkedAt' => 0, 'latest' => []]));
+        $this
+            ->getSession()
+            ->getWorkspace()
+            ->write('home/.porta/tool-updates.json', self::encode(['checkedAt' => 0, 'latest' => []]));
     }
 
     /** The IDE update check is due: its note says it last looked at the epoch. */
@@ -310,14 +321,20 @@ final class SettingsContext implements TuinkAwareContextInterface
     public function portaWasLastCheckedLongAgo(): void
     {
         $this->aPortaHomeOfMyOwn();
-        $this->getSession()->getWorkspace()->write('home/.porta/ide-updates.json', self::encode(['checkedAt' => 0]));
+        $this
+            ->getSession()
+            ->getWorkspace()
+            ->write('home/.porta/ide-updates.json', self::encode(['checkedAt' => 0]));
     }
 
     #[Given('my global configuration:')]
     public function myGlobalConfiguration(PyStringNode $json): void
     {
         $this->aPortaHomeOfMyOwn();
-        $this->getSession()->getWorkspace()->write('home/.porta/config.json', $json->getRaw()."\n");
+        $this
+            ->getSession()
+            ->getWorkspace()
+            ->write('home/.porta/config.json', $json->getRaw()."\n");
     }
 
     /** $json is read as JSON where it parses ("true", "4", "[]"), else as the string it is ("yoda"). */
@@ -338,8 +355,8 @@ final class SettingsContext implements TuinkAwareContextInterface
     {
         $config = fn (): array => $this->porta->projectConfig();
         $this->getSession()->waitUntil(
-            static fn (): bool => \in_array($value, (array) self::at($config(), $path)[1], strict: true),
-            static fn (): string => \sprintf("%s does not list %s in %s:\n%s", '.porta.json', $value, $path, \json_encode($config(), \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES)),
+            static fn (): bool => self::lists($config(), $path, $value),
+            static fn (): string => \sprintf("%s does not list %s in %s:\n%s", '.porta.json', $value, $path, self::encode($config())),
         );
     }
 
@@ -348,8 +365,8 @@ final class SettingsContext implements TuinkAwareContextInterface
     {
         $config = fn (): array => $this->porta->projectConfig();
         $this->getSession()->waitUntil(
-            static fn (): bool => !\in_array($value, (array) self::at($config(), $path)[1], strict: true),
-            static fn (): string => \sprintf("%s still lists %s in %s:\n%s", '.porta.json', $value, $path, \json_encode($config(), \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES)),
+            static fn (): bool => !self::lists($config(), $path, $value),
+            static fn (): string => \sprintf("%s still lists %s in %s:\n%s", '.porta.json', $value, $path, self::encode($config())),
         );
     }
 
@@ -365,13 +382,28 @@ final class SettingsContext implements TuinkAwareContextInterface
         $this->assertConfigLacks($this->globalConfig(...), '~/.porta/config.json', $path);
     }
 
+    /** $json decoded where it parses, else the string it is. */
     private static function value(string $json): mixed
     {
         try {
+            /** @var mixed */
             return \json_decode($json, associative: true, flags: \JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
             return $json;
         }
+    }
+
+    /**
+     * Whether the list at $path in $config holds $value.
+     *
+     * @param array<array-key, mixed> $config
+     */
+    private static function lists(array $config, string $path, string $value): bool
+    {
+        /** @var mixed $list */
+        $list = self::at($config, $path)[1];
+
+        return \is_array($list) && \in_array($value, $list, strict: true);
     }
 
     private function home(): string
@@ -382,10 +414,7 @@ final class SettingsContext implements TuinkAwareContextInterface
     /** @return array<array-key, mixed> */
     private function globalConfig(): array
     {
-        $raw = $this->getSession()->getWorkspace()->read('home/.porta/config.json');
-        $decoded = null === $raw ? [] : \json_decode($raw, associative: true);
-
-        return \is_array($decoded) ? $decoded : [];
+        return Decoded::json($this->getSession()->getWorkspace()->read('home/.porta/config.json') ?? '') ?? [];
     }
 
     /**
@@ -393,10 +422,9 @@ final class SettingsContext implements TuinkAwareContextInterface
      */
     private function assertConfigHas(\Closure $config, string $file, string $path, string $json): void
     {
-        $expected = self::value($json);
         $this->getSession()->waitUntil(
-            static fn (): bool => [true, $expected] === self::at($config(), $path),
-            static fn (): string => \sprintf("%s does not set %s to %s:\n%s", $file, $path, $json, \json_encode($config(), \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES)),
+            static fn (): bool => [true, self::value($json)] === self::at($config(), $path),
+            static fn (): string => \sprintf("%s does not set %s to %s:\n%s", $file, $path, $json, self::encode($config())),
         );
     }
 
@@ -407,7 +435,7 @@ final class SettingsContext implements TuinkAwareContextInterface
     {
         $this->getSession()->waitUntil(
             static fn (): bool => !self::at($config(), $path)[0],
-            static fn (): string => \sprintf("%s still sets %s:\n%s", $file, $path, \json_encode($config(), \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES)),
+            static fn (): string => \sprintf("%s still sets %s:\n%s", $file, $path, self::encode($config())),
         );
     }
 
@@ -421,15 +449,17 @@ final class SettingsContext implements TuinkAwareContextInterface
      */
     private static function at(array $config, string $path): array
     {
-        $value = $config;
-        foreach (\explode('.', $path) as $key) {
-            if (!\is_array($value) || !\array_key_exists($key, $value)) {
+        $keys = \explode('.', $path);
+        $last = \array_pop($keys);
+        $node = $config;
+        foreach ($keys as $key) {
+            if (!\is_array($node[$key] ?? null)) {
                 return [false, null];
             }
-            $value = $value[$key];
+            $node = $node[$key];
         }
 
-        return [true, $value];
+        return \array_key_exists($last, $node) ? [true, $node[$last]] : [false, null];
     }
 
     // --- Stand-in tools ---------------------------------------------------------
@@ -474,11 +504,13 @@ final class SettingsContext implements TuinkAwareContextInterface
     {
         [$plugin, $setting] = \explode('.', $key, 2);
         $resolved = \str_replace('%workspace%', $this->getSession()->getWorkspace()->path, $value);
-        $this->porta->mergeProjectConfig(['plugins' => [$plugin => [$setting => match ($resolved) {
-            'true' => true,
-            'false' => false,
-            default => $resolved,
-        }]]]);
+        $this->porta->mergeProjectConfig([
+            'plugins' => [$plugin => [$setting => match ($resolved) {
+                'true' => true,
+                'false' => false,
+                default => $resolved,
+            }]],
+        ]);
     }
 
     /**
@@ -497,12 +529,12 @@ final class SettingsContext implements TuinkAwareContextInterface
     #[Given('brew has installed :formula :version')]
     public function brewHasInstalled(string $formula, string $version): void
     {
-        $brew = new Process([$this->getSession()->getWorkspace()->resolve(self::BIN.'/brew'), 'install', $formula]);
-        $brew->mustRun();
+        $workspace = $this->getSession()->getWorkspace();
+        new Process([$workspace->resolve(self::BIN.'/brew'), 'install', $formula])->mustRun();
         // Not a call the scenario made: its log starts empty.
-        $this->getSession()->getWorkspace()->write(self::BIN.'/brew.log', '');
-        \unlink($this->getSession()->getWorkspace()->resolve(self::BIN.'/brew.log'));
-        self::check(\str_contains((string) \shell_exec(\escapeshellarg($this->getSession()->getWorkspace()->resolve(self::BIN.'/'.$formula)).' --version'), $version), \sprintf('The stand-in brew did not install %s %s.', $formula, $version));
+        new Filesystem()->remove($workspace->resolve(self::BIN.'/brew.log'));
+        $installed = new Process([$workspace->resolve(self::BIN.'/'.$formula), '--version'])->mustRun()->getOutput();
+        self::check(\str_contains($installed, $version), \sprintf('The stand-in brew did not install %s %s: it says %s.', $formula, $version, $installed));
     }
 
     // --- The network ------------------------------------------------------------
@@ -515,8 +547,7 @@ final class SettingsContext implements TuinkAwareContextInterface
     public function theAddressAnswers(string $url, PyStringNode $body): void
     {
         $workspace = $this->getSession()->getWorkspace();
-        $answers = \json_decode($workspace->read(self::BIN.'/net.json') ?? '{}', associative: true);
-        $answers = \is_array($answers) ? $answers : [];
+        $answers = Decoded::json($workspace->read(self::BIN.'/net.json') ?? '') ?? [];
         $answers[$url] = $body->getRaw();
         $workspace->write(self::BIN.'/net.json', self::encode($answers));
         $this->aStandInOnThePathDoing('curl', new PyStringNode([self::CURL], 0));
@@ -549,7 +580,10 @@ final class SettingsContext implements TuinkAwareContextInterface
     /** @return list<string> */
     private function asked(): array
     {
-        $log = $this->getSession()->getWorkspace()->read(self::BIN.'/net.log') ?? '';
+        $log = $this
+            ->getSession()
+            ->getWorkspace()
+            ->read(self::BIN.'/net.log') ?? '';
 
         return \array_values(\array_filter(\explode("\n", $log)));
     }
@@ -621,7 +655,10 @@ final class SettingsContext implements TuinkAwareContextInterface
                 'compatibleVersions' => [$row['version']],
             ];
         }
-        $this->getSession()->getWorkspace()->write('home/.porta/cache/store/catalog.json', self::encode(['fetchedAt' => \time(), 'entries' => $entries]));
+        $this
+            ->getSession()
+            ->getWorkspace()
+            ->write('home/.porta/cache/store/catalog.json', self::encode(['fetchedAt' => \time(), 'entries' => $entries]));
     }
 
     /** The store's copy is older than any cadence: the background check is due. */
@@ -630,8 +667,8 @@ final class SettingsContext implements TuinkAwareContextInterface
     {
         $this->aPortaHomeOfMyOwn();
         $workspace = $this->getSession()->getWorkspace();
-        $cache = \json_decode($workspace->read('home/.porta/cache/store/catalog.json') ?? '{}', associative: true);
-        $workspace->write('home/.porta/cache/store/catalog.json', self::encode(['fetchedAt' => 0] + (\is_array($cache) ? $cache : [])));
+        $cache = Decoded::json($workspace->read('home/.porta/cache/store/catalog.json') ?? '') ?? [];
+        $workspace->write('home/.porta/cache/store/catalog.json', self::encode(['fetchedAt' => 0] + $cache));
     }
 
     /**
@@ -641,14 +678,17 @@ final class SettingsContext implements TuinkAwareContextInterface
     #[Given('Packagist publishes :package at :versions')]
     public function packagistPublishes(string $package, string $versions): void
     {
-        $releases = \array_map(static fn (string $version): array => [
-            'name' => $package,
-            'version' => $version,
-            'version_normalized' => $version.'.0',
-            'type' => 'porta-plugin',
-            'description' => 'Says hello',
-            'time' => '2026-11-01T00:00:00+00:00',
-        ], \array_map(\trim(...), \explode(',', $versions)));
+        $releases = \array_map(
+            static fn (string $version): array => [
+                'name' => $package,
+                'version' => $version,
+                'version_normalized' => $version.'.0',
+                'type' => 'porta-plugin',
+                'description' => 'Says hello',
+                'time' => '2026-11-01T00:00:00+00:00',
+            ],
+            \array_map(\trim(...), \explode(',', $versions)),
+        );
         $this->theAddressAnswers(PackagistMetadata::SEARCH, new PyStringNode([self::encode(['results' => [['name' => $package, 'downloads' => 1200]]])], 0));
         $this->theAddressAnswers(\sprintf(PackagistMetadata::RELEASES, $package), new PyStringNode([self::encode(['packages' => [$package => $releases]])], 0));
     }
@@ -680,7 +720,10 @@ final class SettingsContext implements TuinkAwareContextInterface
         // An id is sixteen hex digits, as Beacon::newId() mints them
         $id = \substr(\hash('sha256', $name), 0, 16);
         $beacon = new Beacon($id, $name, 'local', $file, 1, 0, -1, 0, \time());
-        $this->getSession()->getWorkspace()->write(PresenceBoard::DIR.'/'.$id.'.json', $beacon->toJson());
+        $this
+            ->getSession()
+            ->getWorkspace()
+            ->write(PresenceBoard::DIR.'/'.$id.'.json', $beacon->toJson());
     }
 
     #[Then('this Porta should be on the presence board as :name')]
@@ -706,7 +749,8 @@ final class SettingsContext implements TuinkAwareContextInterface
     private function namesOnTheBoard(): array
     {
         $names = [];
-        foreach (\glob($this->getSession()->getWorkspace()->resolve(PresenceBoard::DIR).'/*.json') ?: [] as $file) {
+        $files = \glob($this->getSession()->getWorkspace()->resolve(PresenceBoard::DIR).'/*.json');
+        foreach (false === $files ? [] : $files as $file) {
             $beacon = Beacon::fromJson((string) \file_get_contents($file));
             if (null !== $beacon) {
                 $names[] = $beacon->name;
