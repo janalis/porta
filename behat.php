@@ -9,6 +9,7 @@ use Behat\Config\Profile;
 use Behat\Config\Suite;
 use Janalis\Tuink\Context\TuiContext;
 use Janalis\Tuink\ServiceContainer\TuinkExtension;
+use Porta\Tests\Behat\Context\ChromeContext;
 use Porta\Tests\Behat\Context\PortaContext;
 
 require __DIR__.'/tests/Behat/bootstrap.php';
@@ -39,7 +40,7 @@ $tuink = [
 // only the scenarios tagged @process, and the in-process profile skips them.
 $suite = static fn (string $tags): Suite => new Suite('default')
     ->withPaths('%paths.base%/tests/Behat/features')
-    ->withContexts(TuiContext::class, PortaContext::class)
+    ->withContexts(TuiContext::class, PortaContext::class, ChromeContext::class)
     ->withFilter(new TagFilter($tags));
 
 return new Config()
