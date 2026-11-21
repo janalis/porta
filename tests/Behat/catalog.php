@@ -15,7 +15,8 @@ require __DIR__.'/bootstrap.php';
 $features = [];
 $root = dirname(__DIR__, 2);
 $files = new AppendIterator();
-foreach ([__DIR__.'/features', ...(glob($root.'/plugins/*/tests/features', GLOB_ONLYDIR) ?: [])] as $dir) {
+$pluginFeatures = glob($root.'/plugins/*/tests/features', GLOB_ONLYDIR);
+foreach ([__DIR__.'/features', ...(false === $pluginFeatures ? [] : $pluginFeatures)] as $dir) {
     $files->append(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS)));
 }
 foreach ($files as $file) {
