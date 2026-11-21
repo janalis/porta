@@ -352,6 +352,19 @@ final class ProjectPickerTest extends TestCase
         $this->assertSame('/école', $this->pickWith($found, [$this->typed('éc'), "\r"]));
     }
 
+    public function testAFolderTypedInFullIsOfferedOnce(): void
+    {
+        $this->assertNull($this->pick([$this->typed($this->disk->path('typed')), "\x1b"]));
+        $this->assertStringContainsString('Open this folder', $this->screen());
+        $this->assertStringNotContainsString('typed/', $this->screen(), 'not again as a folder it could go on to name');
+    }
+
+    public function testWhatFollowsStartsOnAClearScreen(): void
+    {
+        $this->assertNull($this->pick(["\x1b"]));
+        $this->assertStringEndsWith("\x1b[H\x1b[2J", $this->terminal->getOutput());
+    }
+
     public function testTheCardNamesPortaAndItsVersion(): void
     {
         $this->type(["\x1b"]);

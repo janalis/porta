@@ -268,7 +268,12 @@ final class ProjectPickerWidget extends AbstractWidget implements FocusableInter
         }
         $bar = SelectionBar::of($selected, focused: true)->value.' ';
         $label = AnsiText::truncate($row->label, $labelWidth, pad: true);
-        $text = AnsiText::truncate($bar.($selected ? $this->styles->of(Role::Bright)->withBold()->apply($label) : $label).'  '.$this->styles->of(Role::Dim)->apply($row->hint), $card, pad: true);
+        // Dim on the selection's shade is unreadable: there the hint takes the row's own colour.
+        $text = AnsiText::truncate(
+            $bar.($selected ? $this->styles->of(Role::Bright)->withBold()->apply($label) : $label).'  '.($selected ? $row->hint : $this->styles->of(Role::Dim)->apply($row->hint)),
+            $card,
+            pad: true,
+        );
 
         // The selection's own shade; the other rows sit on the card, not a popup's.
         return $selected ? $this->styles->of(ModalRowStyle::role($state))->apply($text) : $text;

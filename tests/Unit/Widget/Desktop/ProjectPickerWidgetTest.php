@@ -93,6 +93,9 @@ final class ProjectPickerWidgetTest extends TestCase
         $this->assertStringContainsString((string) $bold, $lines[8]);
         $this->assertStringNotContainsString((string) $shade, $lines[9]);
         $this->assertStringNotContainsString((string) $bold, $lines[9]);
+        $dim = (string) \strstr($styles->of(Role::Dim)->apply('x'), 'x', before_needle: true);
+        $this->assertStringNotContainsString($dim.'~/one', $lines[8], 'the selection\'s hint is not dimmed into its shade');
+        $this->assertStringContainsString($dim.'~/two', $lines[9]);
     }
 
     public function testUpAndPageDownMoveTheSelection(): void

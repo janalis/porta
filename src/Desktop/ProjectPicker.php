@@ -122,6 +122,9 @@ final class ProjectPicker
             EventLoop::defer(fn () => $this->send('picking'));
         }
         $this->tui->run();
+        // What follows on this screen (the trust question, a shell after Esc)
+        // starts on a clear one, not under the picker's last frame.
+        $this->terminal->write("\x1b[H\x1b[2J");
 
         return $this->picked;
     }
@@ -209,6 +212,10 @@ final class ProjectPicker
             $rows[] = new PickerRow(PickerRowKind::Project, ControlChars::line(PortaHome::tilde($real)), $this->translator->trans('Open this folder'), $real);
         }
         foreach (FolderCompletion::candidates($typed) as $candidate) {
+            // The folder typed in full is the row above already.
+            if (\realpath(PortaHome::expand($candidate['path'])) === $real) {
+                continue;
+            }
             $rows[] = new PickerRow(PickerRowKind::Folder, $candidate['name'].'/', $candidate['isProject'] ? $this->translator->trans('PHP project') : '', $candidate['path']);
         }
 
