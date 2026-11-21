@@ -49,7 +49,7 @@ final class SettingsController
     /** @var array<string, int|bool|string> the built-in defaults, a window's look standing in for the theme's */
     private array $defaults;
 
-    /** @var array<string, true> the settings changed here this session, which no stand-in overrides */
+    /** @var array<string, true> the settings picked here this session but not saved, which no stand-in overrides */
     private array $picked = [];
 
     /**
@@ -488,6 +488,16 @@ final class SettingsController
     }
 
     /**
+     * Whether the window's light or dark look decides the theme: nobody chose
+     * one, in a file or here this session unsaved. The one question for what
+     * Settings shows and for what is drawn ({@see \Porta\Desktop\DesktopRequests}).
+     */
+    public function followsWindow(): bool
+    {
+        return !\array_key_exists('theme', $this->picked) && null === $this->provenance->originOf(['settings', 'theme']);
+    }
+
+    /**
      * The window's look changed: it is what a theme no file chose now stands
      * for, shown as such and reset to. The live switch is the caller's.
      */
@@ -503,7 +513,7 @@ final class SettingsController
      */
     private function standIn(?string $themeDefault): void
     {
-        if (null !== $themeDefault && !\array_key_exists('theme', $this->picked) && null === $this->provenance->originOf(['settings', 'theme'])) {
+        if (null !== $themeDefault && $this->followsWindow()) {
             $this->settings['theme'] = $themeDefault;
         }
     }
@@ -552,12 +562,16 @@ final class SettingsController
         }
 
         $this->settings[$key] = $value;
-        $this->picked[$key] = true;
         if (null !== $descriptor['apply']) {
             $descriptor['apply']($value);
         }
 
         $persisted = $this->writer->persistSetting($this->scope->current(), $key, $value);
+        // Saved, the file says it; unsaved, only this session knows it was picked.
+        unset($this->picked[$key]);
+        if (!$persisted) {
+            $this->picked[$key] = true;
+        }
         $state = \is_bool($value) ? $this->translator->trans($value ? 'on' : 'off') : (string) $value;
         $note = $descriptor['restart'] ? ' · '.$this->translator->trans('applies on restart') : '';
         $saved = SettingsFlash::savedSuffix($this->translator, $persisted);

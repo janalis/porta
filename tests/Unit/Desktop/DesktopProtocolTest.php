@@ -57,6 +57,8 @@ final class DesktopProtocolTest extends TestCase
         \putenv(DesktopSession::FLAG);
         \putenv(DesktopSession::TOKEN);
         \putenv(DesktopSession::MENU);
+        // A report of the window's look writes it for a Porta started from this one.
+        \putenv(DesktopSession::APPEARANCE);
     }
 
     private function bootSystemMenu(): DesktopProtocol
@@ -391,6 +393,7 @@ final class DesktopProtocolTest extends TestCase
 
         $this->assertSame('light', $settings->choice('theme'), 'Settings shows what is drawn');
         $this->assertSame('light', $this->ide->followedAppearance(), 'and the next IDE in this window starts so');
+        $this->assertSame('light', \getenv(DesktopSession::APPEARANCE), 'so does a Porta started from this one');
 
         // Chosen in a file: drawn and shown as chosen, but reset now returns to the window's dark.
         $this->project->write('.porta.json', content: '{"settings":{"theme":"high-contrast"}}');

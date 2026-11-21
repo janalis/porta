@@ -838,21 +838,41 @@ final class SettingsControllerTest extends TestCase
         $this->assertSame(['light'], $this->themeChanges, 'back to the window\'s look, not the built-in dark');
     }
 
-    public function testAThemePickedHereOutlastsTheWindowsLookEvenUnsaved(): void
+    public function testAThemePickedHereButNotSavedOutlastsTheWindowsLook(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), IdeConfig::DEFAULT_SETTINGS, themeDefault: 'light');
+        // Nothing can be written there: the pick is this session's alone.
+        \chmod($project->dir, 0o555);
+        try {
+            $controller->changeSetting('theme', value: 'high-contrast');
+            if (\is_file($project->path('.porta.json'))) {
+                $this->markTestSkipped('this user writes through a read-only folder');
+            }
+            $controller->followTheme('dark');
+
+            $this->assertSame('high-contrast', $controller->choice('theme'), 'picked this session, it stays');
+            $this->assertFalse($controller->followsWindow(), 'and what is drawn follows the same answer');
+        } finally {
+            \chmod($project->dir, 0o755);
+        }
+    }
+
+    public function testASavedThemeRemovedByHandLetsTheWindowsLookApplyAgain(): void
     {
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), IdeConfig::DEFAULT_SETTINGS, themeDefault: 'light');
 
         $controller->changeSetting('theme', value: 'high-contrast');
-        // As if the write had failed: no file says so.
+        // As the form's write does (afterWrite), the files are read again.
+        Probe::get($controller, 'provenance')->invalidate();
+        $this->assertFalse($controller->followsWindow(), 'saved: the file chose it');
         \unlink($project->path('.porta.json'));
+        Probe::get($controller, 'provenance')->invalidate();
         $controller->followTheme('dark');
 
-        $this->assertSame('high-contrast', $controller->choice('theme'), 'picked this session, it stays');
-
-        $controller->resetSetting('theme');
-        $controller->followTheme('light');
-        $this->assertSame('light', $controller->choice('theme'), 'once reset, the window\'s look applies again');
+        $this->assertTrue($controller->followsWindow(), 'removed by hand: nobody chose one any more');
+        $this->assertSame('dark', $controller->choice('theme'));
     }
 
     public function testTheMarkerFollowsAChangeAndClearsWhenItIsPutBack(): void

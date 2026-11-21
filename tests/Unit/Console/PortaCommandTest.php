@@ -95,6 +95,7 @@ final class PortaCommandTest extends TestCase
     public function testTheNextIdeInAWindowStartsInTheLookItLastReported(): void
     {
         $launched = new DesktopSession(active: true, token: \str_repeat('a', 32), appearance: 'light');
+        $before = \getenv(DesktopSession::APPEARANCE);
         try {
             $next = PortaCommand::handOver($launched, 'dark');
 
@@ -102,7 +103,7 @@ final class PortaCommandTest extends TestCase
             $this->assertSame('dark', \getenv(DesktopSession::APPEARANCE), 'and a restart, a new process reading the environment');
             $this->assertSame($launched, PortaCommand::handOver($launched, null), 'nothing reported: as launched');
         } finally {
-            \putenv(DesktopSession::APPEARANCE);
+            \putenv(false === $before ? DesktopSession::APPEARANCE : DesktopSession::APPEARANCE.'='.$before);
         }
     }
 

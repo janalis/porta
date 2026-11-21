@@ -1096,8 +1096,8 @@ final class SettingsViewControllerTest extends TestCase
 
         $controller->refresh();
 
-        $this->assertSame('general', $this->nav->selectedId());
-        $this->assertFalse(Probe::get($this->tui, property: 'renderRequested'), 'an ordinary section is unaffected by refresh() and must not re-render either');
+        $this->assertSame('general', $this->nav->selectedId(), 'an ordinary section stays where it is');
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'), 'and reads its rows again: a value or its default may have moved');
     }
 
     /**

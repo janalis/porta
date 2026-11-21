@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Porta\Desktop;
 
 use Porta\Container\AsIdeService;
+use Porta\Event\SettingsRowsStale;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsProvenance;
 use Porta\Workbench\DropZone;
 use Porta\Workbench\ExternalDrop;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * What the window asks of the IDE beyond closing: open what the system handed
@@ -26,6 +28,7 @@ final class DesktopRequests
         private readonly LiveSettingsApplier $settings,
         private readonly SettingsProvenance $provenance,
         private readonly SettingsController $controller,
+        private readonly EventDispatcherInterface $events,
     ) {}
 
     /**
@@ -46,13 +49,18 @@ final class DesktopRequests
     {
         $theme = 'light' === $mode ? 'light' : 'dark';
         $this->followed = $theme;
+        // A Porta started from this one (a remote project in this terminal)
+        // inherits the process environment: it starts as the window is now.
+        \putenv(DesktopSession::APPEARANCE.'='.$theme);
         // Read afresh: a theme may have been chosen in another window, or by hand.
         $this->provenance->invalidate();
         // What Settings shows for a theme no file chose, and resets to, moves too.
         $this->controller->followTheme($theme);
-        if (null === $this->provenance->originOf(['settings', 'theme'])) {
+        if ($this->controller->followsWindow()) {
             $this->settings->applyTheme($theme);
         }
+        // An open Settings page reads its rows again: the value, or only its default, moved.
+        $this->events->dispatch(new SettingsRowsStale());
     }
 
     /** The look the window last reported, for the next project in this window to start in; null when it reported none. */
