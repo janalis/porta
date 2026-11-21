@@ -7,6 +7,7 @@ namespace Porta\Tests\Behat\Context;
 use Behat\Behat\Context\Environment\InitializedContextEnvironment;
 use Behat\Behat\Hook\Scope\BeforeScenarioScope;
 use Behat\Gherkin\Node\PyStringNode;
+use Behat\Gherkin\Node\TableNode;
 use Behat\Hook\BeforeScenario;
 use Behat\Step\Given;
 use Behat\Step\Then;
@@ -14,12 +15,16 @@ use Behat\Step\When;
 use Janalis\Tuink\Context\TuinkAwareContextInterface;
 use Janalis\Tuink\Context\TuinkAwareTrait;
 use PHPUnit\Framework\Assert;
+use Porta\Plugin\Store\PackagistMetadata;
 use Porta\Presence\Beacon;
 use Porta\Presence\PresenceBoard;
 use Porta\Settings\SettingsRow;
+use Porta\Tests\Support\FakeComposer;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\Toasts;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
+use Symfony\Component\Process\Process;
 
 /**
  * Settings, the keymap and plugins: the Settings view walked by its page and
@@ -106,24 +111,47 @@ final class SettingsContext implements TuinkAwareContextInterface
         $session->press('Enter');
     }
 
-    /** A choice row's list opened with Enter, and $choice picked from it. */
+    /**
+     * A choice row stepped with → (or ←, from the end of the list) until it
+     * shows $choice, named by its value ("macos") or by what the row shows
+     * ("~/.porta/config.json"). Each step applies, as a user's would.
+     */
     #[When('I choose :choice for the setting :label')]
     public function iChooseForTheSetting(string $choice, string $label): void
     {
         $this->iSelectTheSetting($label);
         $session = $this->getSession();
         $form = $this->form();
-        $options = $this->selectedRow($form)->options ?? [];
-        $position = \array_search($choice, \array_map('strval', $options), strict: true);
-        self::check(\is_int($position), \sprintf('"%s" is not a choice of "%s": %s.', $choice, $label, \implode(', ', $options)));
+        $row = $this->selectedRow($form);
+        $value = \array_search($choice, $row->optionLabels ?? [], strict: true);
+        $choice = \is_string($value) ? $value : $choice;
+        $options = \array_map('strval', $row->options ?? []);
+        self::check(\in_array($choice, $options, strict: true), \sprintf('"%s" is not a choice of "%s": %s.', $choice, $label, \implode(', ', $options)));
+        $current = fn (): string => (string) $this->selectedRow($form)?->value;
+        $key = \array_search($choice, $options, strict: true) > \array_search($current(), $options, strict: true) ? 'Right' : 'Left';
+        for ($i = 0; $i < \count($options) && $choice !== $current(); ++$i) {
+            $session->press($key);
+        }
+        self::check($choice === $current(), \sprintf('"%s" did not become %s: it is %s.', $label, $choice, $current()));
+    }
+
+    /**
+     * On the store, its Installed tab (Updates, then the tab after it), the
+     * install field right of the scope select, the address typed in and
+     * Enter: "%workspace%" names the project.
+     */
+    #[When('I install the plugin from :address')]
+    public function iInstallThePluginFrom(string $address): void
+    {
+        $session = $this->getSession();
+        $session->focus('#settings-store');
+        $session->press('u');
+        $session->press(']');
+        $session->waitUntil(static fn (): bool => \str_contains($session->getScreenText(), 'Install from URL or path'), 'The store did not show its Installed tab.');
+        $session->press('Right');
         $session->press('Enter');
-        $session->press('Home');
-        $session->press('Down', $position);
+        $session->type(\str_replace('%workspace%', $session->getWorkspace()->path, $address));
         $session->press('Enter');
-        $session->waitUntil(
-            fn (): bool => $choice === (string) $this->selectedRow($form)?->value,
-            \sprintf('"%s" did not become %s.', $label, $choice),
-        );
     }
 
     #[Then('the setting :label should be :value')]
@@ -225,6 +253,18 @@ final class SettingsContext implements TuinkAwareContextInterface
         };
     }
 
+    /**
+     * What a toast said, whole: a long one wraps on screen, mid-sentence.
+     */
+    #[Then('a notification should say :text')]
+    public function aNotificationShouldSay(string $text): void
+    {
+        $this->getSession()->waitUntil(
+            fn (): bool => \array_any(Toasts::all($this->porta->ide()), static fn (string $toast): bool => \str_contains($toast, $text)),
+            fn (): string => \sprintf("No notification said \"%s\". They said:\n%s", $text, \implode("\n", Toasts::all($this->porta->ide()))),
+        );
+    }
+
     // --- The configuration files -------------------------------------------------
 
     /**
@@ -248,6 +288,22 @@ final class SettingsContext implements TuinkAwareContextInterface
         $session->setLaunch($session->getLaunch()->withEnv('PORTA_HOME', $this->home()));
     }
 
+    /** The background tool-update check is due: its note says it last looked at the epoch. */
+    #[Given('the tools were last checked for updates long ago')]
+    public function theToolsWereLastCheckedLongAgo(): void
+    {
+        $this->aPortaHomeOfMyOwn();
+        $this->getSession()->getWorkspace()->write('home/.porta/tool-updates.json', self::encode(['checkedAt' => 0, 'latest' => []]));
+    }
+
+    /** The IDE update check is due: its note says it last looked at the epoch. */
+    #[Given('Porta was last checked for updates long ago')]
+    public function portaWasLastCheckedLongAgo(): void
+    {
+        $this->aPortaHomeOfMyOwn();
+        $this->getSession()->getWorkspace()->write('home/.porta/ide-updates.json', self::encode(['checkedAt' => 0]));
+    }
+
     #[Given('my global configuration:')]
     public function myGlobalConfiguration(PyStringNode $json): void
     {
@@ -266,6 +322,26 @@ final class SettingsContext implements TuinkAwareContextInterface
     public function theProjectConfigurationShouldNotSet(string $path): void
     {
         $this->assertConfigLacks(fn (): array => $this->porta->projectConfig(), '.porta.json', $path);
+    }
+
+    #[Then('the project configuration should list :value in :path')]
+    public function theProjectConfigurationShouldList(string $value, string $path): void
+    {
+        $config = fn (): array => $this->porta->projectConfig();
+        $this->getSession()->waitUntil(
+            static fn (): bool => \in_array($value, (array) self::at($config(), $path)[1], strict: true),
+            static fn (): string => \sprintf("%s does not list %s in %s:\n%s", '.porta.json', $value, $path, \json_encode($config(), \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES)),
+        );
+    }
+
+    #[Then('the project configuration should not list :value in :path')]
+    public function theProjectConfigurationShouldNotList(string $value, string $path): void
+    {
+        $config = fn (): array => $this->porta->projectConfig();
+        $this->getSession()->waitUntil(
+            static fn (): bool => !\in_array($value, (array) self::at($config(), $path)[1], strict: true),
+            static fn (): string => \sprintf("%s still lists %s in %s:\n%s", '.porta.json', $value, $path, \json_encode($config(), \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES)),
+        );
     }
 
     #[Then('my global configuration should have :path set to :json')]
@@ -396,6 +472,30 @@ final class SettingsContext implements TuinkAwareContextInterface
         }]]]);
     }
 
+    /**
+     * The PHPUnit suites' stand-in composer ({@see FakeComposer}) first on
+     * the PATH: `require` of a path repository symlinks it into vendor/, as
+     * composer does, with no network.
+     */
+    #[Given('the stand-in composer is on the PATH')]
+    public function theStandInComposerIsOnThePath(): void
+    {
+        $this->standInsOnThePath();
+        FakeComposer::write($this->getSession()->getWorkspace()->resolve(self::BIN));
+    }
+
+    /** The stand-in brew run as `brew install <formula>`, before the IDE starts. */
+    #[Given('brew has installed :formula :version')]
+    public function brewHasInstalled(string $formula, string $version): void
+    {
+        $brew = new Process([$this->getSession()->getWorkspace()->resolve(self::BIN.'/brew'), 'install', $formula]);
+        $brew->mustRun();
+        // Not a call the scenario made: its log starts empty.
+        $this->getSession()->getWorkspace()->write(self::BIN.'/brew.log', '');
+        \unlink($this->getSession()->getWorkspace()->resolve(self::BIN.'/brew.log'));
+        self::check(\str_contains((string) \shell_exec(\escapeshellarg($this->getSession()->getWorkspace()->resolve(self::BIN.'/'.$formula)).' --version'), $version), \sprintf('The stand-in brew did not install %s %s.', $formula, $version));
+    }
+
     // --- The network ------------------------------------------------------------
 
     /**
@@ -478,6 +578,89 @@ final class SettingsContext implements TuinkAwareContextInterface
         }
         exit($failed ? 22 : 0);
         PHP;
+
+    // --- The plugin store -------------------------------------------------------
+
+    /**
+     * The store's shelves as it last saw them, fetched just now: what it
+     * opens on without asking Packagist. Columns: package, title,
+     * description, category, version, and optionally readme (an address the
+     * stand-in network answers) and featured.
+     */
+    #[Given('the store lists:')]
+    public function theStoreLists(TableNode $table): void
+    {
+        $this->aPortaHomeOfMyOwn();
+        $entries = [];
+        foreach ($table->getColumnsHash() as $row) {
+            $package = $row['package'];
+            $entries[] = [
+                'package' => $package,
+                'name' => PackagistMetadata::nameOf($package),
+                'title' => $row['title'],
+                'author' => \explode('/', $package)[0],
+                'description' => $row['description'],
+                'category' => $row['category'],
+                'version' => $row['version'],
+                'time' => \time() - 86_400,
+                'downloads' => 1200,
+                'readme' => $row['readme'] ?? null,
+                'license' => 'MIT',
+                'verified' => true,
+                'featured' => 'yes' === ($row['featured'] ?? 'no'),
+                'compatible' => true,
+                'compatibleVersions' => [$row['version']],
+            ];
+        }
+        $this->getSession()->getWorkspace()->write('home/.porta/cache/store/catalog.json', self::encode(['fetchedAt' => \time(), 'entries' => $entries]));
+    }
+
+    /** The store's copy is older than any cadence: the background check is due. */
+    #[Given('the store was last refreshed long ago')]
+    public function theStoreWasLastRefreshedLongAgo(): void
+    {
+        $this->aPortaHomeOfMyOwn();
+        $workspace = $this->getSession()->getWorkspace();
+        $cache = \json_decode($workspace->read('home/.porta/cache/store/catalog.json') ?? '{}', associative: true);
+        $workspace->write('home/.porta/cache/store/catalog.json', self::encode(['fetchedAt' => 0] + (\is_array($cache) ? $cache : [])));
+    }
+
+    /**
+     * Packagist, through the stand-in network: its search lists $package,
+     * whose releases are $versions, newest first, each a Porta plugin.
+     */
+    #[Given('Packagist publishes :package at :versions')]
+    public function packagistPublishes(string $package, string $versions): void
+    {
+        $releases = \array_map(static fn (string $version): array => [
+            'name' => $package,
+            'version' => $version,
+            'version_normalized' => $version.'.0',
+            'type' => 'porta-plugin',
+            'description' => 'Says hello',
+            'time' => '2026-11-01T00:00:00+00:00',
+        ], \array_map(\trim(...), \explode(',', $versions)));
+        $this->theAddressAnswers(PackagistMetadata::SEARCH, new PyStringNode([self::encode(['results' => [['name' => $package, 'downloads' => 1200]]])], 0));
+        $this->theAddressAnswers(\sprintf(PackagistMetadata::RELEASES, $package), new PyStringNode([self::encode(['packages' => [$package => $releases]])], 0));
+    }
+
+    /**
+     * $package installed from Packagist at $version into the project, as
+     * composer leaves it: in .porta/vendor, required with a caret, recorded
+     * in installed.json, its plugin directory linked under .porta/plugins.
+     */
+    #[Given('the plugin :package :version is installed from Packagist in this project:')]
+    public function thePluginIsInstalledFromPackagist(string $package, string $version, PyStringNode $plugin): void
+    {
+        $workspace = $this->getSession()->getWorkspace();
+        $name = (string) PackagistMetadata::nameOf($package);
+        $workspace->write('.porta/vendor/'.$package.'/porta.php', $plugin->getRaw()."\n");
+        $workspace->write('.porta/vendor/'.$package.'/composer.json', self::encode(['name' => $package, 'type' => 'porta-plugin']));
+        $workspace->write('.porta/composer.json', self::encode(['name' => 'porta/local-plugins', 'type' => 'project', 'require' => [$package => '^'.$version]]));
+        $workspace->write('.porta/vendor/composer/installed.json', self::encode(['packages' => [['name' => $package, 'version' => $version]]]));
+        $workspace->createDirectory('.porta/plugins');
+        \symlink($workspace->resolve('.porta/vendor/'.$package), $workspace->resolve('.porta/plugins/'.$name));
+    }
 
     // --- Presence ---------------------------------------------------------------
 
