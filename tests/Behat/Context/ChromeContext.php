@@ -10,11 +10,16 @@ use Behat\Behat\Context\Environment\InitializedContextEnvironment;
 use Behat\Behat\Hook\Scope\BeforeScenarioScope;
 use Behat\Step\Given;
 use Behat\Step\Then;
+use Behat\Step\When;
 use Janalis\Tuink\Context\TuinkAwareContextInterface;
 use Janalis\Tuink\Context\TuinkAwareTrait;
 use Porta\Config\WorkspaceTrust;
+use Porta\Help\RenderedDoc;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Widgets;
+use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\FileTreeWidget;
+use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\ReopenRequest;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -30,6 +35,9 @@ final class ChromeContext implements TuinkAwareContextInterface
 
     /** A home of the scenario's own, where the trust answers are kept. */
     private ?string $home = null;
+
+    /** The bottom panel's height when the scenario noted it. */
+    private ?int $notedPanelRows = null;
 
     #[BeforeScenario]
     public function gatherContexts(BeforeScenarioScope $scope): void
@@ -140,10 +148,100 @@ final class ChromeContext implements TuinkAwareContextInterface
 
     private function selectedTreePath(): ?string
     {
-        $tree = Widgets::byId($this->porta()->tui(), id: 'tree', class: FileTreeWidget::class);
-        $node = $tree->selectedNode();
+        $node = $this->tree()->selectedNode();
 
         return $node?->path;
+    }
+
+    // --- The documentation browser ---------------------------------------------
+
+    /**
+     * Read before Enter: a web link would open the browser of the machine
+     * running the suite.
+     */
+    #[Then('the focused link should lead to :target')]
+    public function theFocusedLinkShouldLeadTo(string $target): void
+    {
+        $this->getSession()->waitUntil(
+            fn (): bool => $this->focusedLink() === $target,
+            fn (): string => \sprintf('The focused link leads to "%s", not "%s".', $this->focusedLink() ?? 'nothing', $target),
+        );
+    }
+
+    #[Then('the documentation should show :file')]
+    public function theDocumentationShouldShow(string $file): void
+    {
+        $this->getSession()->waitUntil(
+            fn (): bool => \str_ends_with($this->helpViewer()->path() ?? '', '/'.$file),
+            fn (): string => \sprintf('The documentation shows "%s", not "%s".', $this->helpViewer()->path() ?? 'nothing', $file),
+        );
+    }
+
+    private function focusedLink(): ?string
+    {
+        $viewer = $this->helpViewer();
+        $doc = Probe::get($viewer, property: 'doc');
+        $link = Probe::get($viewer, property: 'currentLink');
+
+        return $doc instanceof RenderedDoc && \is_int($link) ? $doc->target($link) : null;
+    }
+
+    private function helpViewer(): HelpViewerWidget
+    {
+        return Widgets::byId($this->porta()->tui(), id: 'help-viewer', class: HelpViewerWidget::class);
+    }
+
+    // --- Layout -------------------------------------------------------------------
+
+    #[Then('the tree should be :columns columns wide')]
+    public function theTreeShouldBeWide(int $columns): void
+    {
+        $this->getSession()->waitUntil(
+            fn (): bool => $this->tree()->width() === $columns,
+            fn (): string => \sprintf('The tree is %d columns wide, not %d.', $this->tree()->width(), $columns),
+        );
+    }
+
+    #[When('I note the height of the bottom panel')]
+    public function iNoteTheBottomPanelHeight(): void
+    {
+        $this->notedPanelRows = $this->panelRows() ?? throw new \LogicException('No bottom panel is showing.');
+    }
+
+    #[Then('the bottom panel should be taller than noted')]
+    public function theBottomPanelShouldBeTaller(): void
+    {
+        $this->waitForPanelRows(fn (int $rows): bool => $rows > $this->noted(), 'taller than');
+    }
+
+    #[Then('the bottom panel should be as tall as noted')]
+    public function theBottomPanelShouldBeAsTall(): void
+    {
+        $this->waitForPanelRows(fn (int $rows): bool => $rows === $this->noted(), 'as tall as');
+    }
+
+    /** @param \Closure(int): bool $holds */
+    private function waitForPanelRows(\Closure $holds, string $relation): void
+    {
+        $this->getSession()->waitUntil(
+            fn (): bool => null !== ($rows = $this->panelRows()) && $holds($rows),
+            fn (): string => \sprintf('The bottom panel is %s rows tall, not %s the %d noted.', $this->panelRows() ?? 'no', $relation, $this->noted()),
+        );
+    }
+
+    private function noted(): int
+    {
+        return $this->notedPanelRows ?? throw new \LogicException('No height was noted.');
+    }
+
+    private function panelRows(): ?int
+    {
+        return $this->porta()->service(BottomDock::class)->visiblePanel()?->visibleRows();
+    }
+
+    private function tree(): FileTreeWidget
+    {
+        return Widgets::byId($this->porta()->tui(), id: 'tree', class: FileTreeWidget::class);
     }
 
     private function porta(): PortaContext
