@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f811d6c82882dbf12c4c85cc63e09f0f",
+    "content-hash": "707f6722a6f61405a0fc4609aef3863d",
     "packages": [
         {
             "name": "composer/semver",
@@ -3416,10 +3416,16 @@
         {
             "name": "janalis/tuink",
             "version": "dev-porta-steps",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/janalis/tuink.git",
+                "reference": "366126bff17b40e9df0993f82b1a414ecd8e7dc0"
+            },
             "dist": {
-                "type": "path",
-                "url": "../tuink-porta",
-                "reference": "0821a6b3bad0e92a91bf4dae899d7590c9014867"
+                "type": "zip",
+                "url": "https://api.github.com/repos/janalis/tuink/zipball/366126bff17b40e9df0993f82b1a414ecd8e7dc0",
+                "reference": "366126bff17b40e9df0993f82b1a414ecd8e7dc0",
+                "shasum": ""
             },
             "require": {
                 "behat/behat": "^4.0",
@@ -3491,10 +3497,11 @@
                 "testing",
                 "tui"
             ],
-            "transport-options": {
-                "symlink": true,
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/janalis/tuink/tree/porta-steps",
+                "issues": "https://github.com/janalis/tuink/issues"
+            },
+            "time": "2026-11-22T15:34:14+00:00"
         },
         {
             "name": "jean85/pretty-package-versions",
