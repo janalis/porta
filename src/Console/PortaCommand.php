@@ -69,7 +69,7 @@ final class PortaCommand extends Command
 {
     use CommandErrorStream;
 
-    /** @var callable(Workspace, ?string, LspMode, Ansi, \Closure): int */
+    /** @var callable(Workspace, ?string, LspMode, Ansi, \Closure, DesktopSession): int */
     private $launch;
 
     /** @var callable(): bool */
@@ -87,7 +87,7 @@ final class PortaCommand extends Command
     private readonly \Closure $pickProject;
 
     /**
-     * @param (callable(Workspace, ?string, LspMode, Ansi, \Closure): int)|null $launch        defaults to booting a real {@see Ide}, returning its exit code; the
+     * @param (callable(Workspace, ?string, LspMode, Ansi, \Closure, DesktopSession): int)|null $launch        defaults to booting a real {@see Ide}, returning its exit code; the
      *                                                                                         trailing closure is called between boot and run, so a crash can say
      *                                                                                         which half died
      * @param (callable(): bool)|null                                           $isInteractive defaults to a POSIX tty check
@@ -249,11 +249,17 @@ final class PortaCommand extends Command
         // output decoration, which we thread to the IDE as its color mode.
         $booted = false;
         try {
-            $exitCode = ($this->launch)($workspace, $lsp, $noLsp ? LspMode::Disabled : LspMode::Enabled, $output->isDecorated() ? Ansi::Enabled : Ansi::Disabled, static function () use (
-                &$booted,
-            ): void {
-                $booted = true;
-            });
+            $exitCode = ($this->launch)(
+                $workspace,
+                $lsp,
+                $noLsp ? LspMode::Disabled : LspMode::Enabled,
+                $output->isDecorated() ? Ansi::Enabled : Ansi::Disabled,
+                static function () use (&$booted): void {
+                    $booted = true;
+                },
+                // The window around this launch, read from the environment it was given.
+                DesktopSession::fromEnvironment($this->env),
+            );
         } catch (\Throwable $e) {
             if ($output->isVerbose()) {
                 throw $e; // -v: let the console runner render the full trace
@@ -507,14 +513,14 @@ final class PortaCommand extends Command
      *
      * @codeCoverageIgnore
      */
-    private static function launchIde(Workspace $workspace, ?string $lspCommand, LspMode $lsp, Ansi $ansi, \Closure $onBooted): int
+    private static function launchIde(Workspace $workspace, ?string $lspCommand, LspMode $lsp, Ansi $ansi, \Closure $onBooted, DesktopSession $desktop): int
     {
         $root = $workspace->rootDir;
         $file = $workspace->initialFile;
         $line = $workspace->line;
         $plugins = $workspace->plugins;
         $resume = \getenv('PORTA_RESTART_DIRECTORY');
-        $resume = \is_string($resume) && '' !== $resume ? $resume : DesktopRecovery::pending($root, DesktopSession::current()) ?? false;
+        $resume = \is_string($resume) && '' !== $resume ? $resume : DesktopRecovery::pending($root, $desktop) ?? false;
         // Each project is its own Ide with its own container, run one after the
         // other in the one process. Switching project is therefore an ordinary
         // QUIT — buffers saved, terminal restored, plugins shut down — followed
@@ -535,9 +541,11 @@ final class PortaCommand extends Command
                 tool: $workspace->tool,
                 plugins: $plugins,
                 restartDirectory: \is_string($resume) && '' !== $resume ? $resume : null,
+                desktop: $desktop,
             );
             $onBooted();
             $ide->run();
+            $desktop = self::handOver($desktop, $ide->followedAppearance());
 
             $directory = $ide->restartDirectory();
             if (null !== $directory) {
@@ -556,6 +564,21 @@ final class PortaCommand extends Command
             $file = null;
             $line = null;
         }
+    }
+
+    /**
+     * The window may have gone light or dark while an IDE ran in it: the next
+     * one, a project switched to in-process or this one restarted as a new
+     * process (which reads the environment), starts as the window is now.
+     */
+    public static function handOver(DesktopSession $desktop, ?string $followed): DesktopSession
+    {
+        $next = $desktop->withAppearance($followed);
+        if (null !== $next->appearance) {
+            \putenv(DesktopSession::APPEARANCE.'='.$next->appearance);
+        }
+
+        return $next;
     }
 
     /**

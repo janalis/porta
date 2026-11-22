@@ -12,6 +12,7 @@ use Porta\Console\Workspace;
 use Porta\Container\Ansi;
 use Porta\Container\LspMode;
 use Porta\Container\ToolMode;
+use Porta\Desktop\DesktopSession;
 use Porta\Install\Installation;
 use Porta\Install\InstallMethod;
 use Porta\Tests\Support\Presence;
@@ -68,6 +69,42 @@ final class PortaCommandTest extends TestCase
         $this->assertSame(Command::SUCCESS, $tester->execute(['path' => [$project->dir], '--plugin' => ['assist', 'todo']]));
         [$workspace] = $this->launched;
         $this->assertSame(['assist', 'todo'], $workspace->plugins);
+    }
+
+    public function testTheWindowAroundALaunchReachesTheIde(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $desktop = null;
+        $command = new PortaCommand(
+            launch: static function (Workspace $workspace, ?string $lsp, LspMode $noLsp, Ansi $ansi, \Closure $onBooted, DesktopSession $session) use (&$desktop): int {
+                $onBooted();
+                $desktop = $session;
+
+                return 0;
+            },
+            isInteractive: static fn (): bool => true,
+            env: [DesktopSession::FLAG => '1', DesktopSession::TOKEN => \str_repeat('a', 32), DesktopSession::APPEARANCE => 'light'],
+        );
+
+        new CommandTester($command)->execute(['path' => [$project->dir]]);
+
+        $this->assertInstanceOf(DesktopSession::class, $desktop);
+        $this->assertSame('light', $desktop->appearance, 'the IDE is drawn in the window\'s look from its first frame');
+    }
+
+    public function testTheNextIdeInAWindowStartsInTheLookItLastReported(): void
+    {
+        $launched = new DesktopSession(active: true, token: \str_repeat('a', 32), appearance: 'light');
+        $before = \getenv(DesktopSession::APPEARANCE);
+        try {
+            $next = PortaCommand::handOver($launched, 'dark');
+
+            $this->assertSame('dark', $next->appearance, 'a project switched to in-process');
+            $this->assertSame('dark', \getenv(DesktopSession::APPEARANCE), 'and a restart, a new process reading the environment');
+            $this->assertSame($launched, PortaCommand::handOver($launched, null), 'nothing reported: as launched');
+        } finally {
+            \putenv(false === $before ? DesktopSession::APPEARANCE : DesktopSession::APPEARANCE.'='.$before);
+        }
     }
 
     public function testFileLineShorthandOpensAtLine(): void

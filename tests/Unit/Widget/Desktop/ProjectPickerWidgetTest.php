@@ -93,6 +93,9 @@ final class ProjectPickerWidgetTest extends TestCase
         $this->assertStringContainsString((string) $bold, $lines[8]);
         $this->assertStringNotContainsString((string) $shade, $lines[9]);
         $this->assertStringNotContainsString((string) $bold, $lines[9]);
+        $dim = (string) \strstr($styles->of(Role::Dim)->apply('x'), 'x', before_needle: true);
+        $this->assertStringNotContainsString($dim.'~/one', $lines[8], 'the selection\'s hint is not dimmed into its shade');
+        $this->assertStringContainsString($dim.'~/two', $lines[9]);
     }
 
     public function testUpAndPageDownMoveTheSelection(): void
@@ -219,6 +222,91 @@ final class ProjectPickerWidgetTest extends TestCase
 
         $picker->handleInput("\x15");
         $this->assertStringContainsString('Type a name or a path', $this->screen($picker)[5]);
+    }
+
+    /** An SGR mouse report at the 0-based screen $line. */
+    private static function mouse(int $code, int $line, string $end = 'M'): string
+    {
+        return "\x1b[<{$code};20;".($line + 1).$end;
+    }
+
+    public function testAClickOnARowChoosesIt(): void
+    {
+        $this->rows = [PickerRow::heading('Recent'), self::project('one'), self::project('two')];
+        $picker = $this->picker();
+        $this->screen($picker);
+
+        $picker->handleInput(self::mouse(0, 10));
+
+        $this->assertSame([[$this->rows[2], '']], $this->submitted);
+    }
+
+    public function testAClickOnAHeadingTheFieldOrBelowTheListIsNothing(): void
+    {
+        $this->rows = [PickerRow::heading('Recent'), self::project('one')];
+        $picker = $this->picker();
+        $this->screen($picker);
+
+        $picker->handleInput(self::mouse(0, 8));
+        $picker->handleInput(self::mouse(0, 5));
+        $picker->handleInput(self::mouse(0, 15));
+
+        $this->assertSame([], $this->submitted);
+    }
+
+    public function testOnlyALeftPressChooses(): void
+    {
+        $this->rows = [self::project('one')];
+        $picker = $this->picker();
+        $this->screen($picker);
+
+        $picker->handleInput(self::mouse(2, 8));
+        $picker->handleInput(self::mouse(0, 8, 'm'));
+        $picker->handleInput(self::mouse(32, 8));
+
+        $this->assertSame([], $this->submitted, 'a right click, a release and a drag are not choices');
+    }
+
+    public function testAClickBesideTheCardOrWithAModifierChoosesNothing(): void
+    {
+        $this->rows = [self::project('one')];
+        $picker = $this->picker();
+        $this->screen($picker);
+
+        $picker->handleInput("\x1b[<0;3;9M");
+        $picker->handleInput("\x1b[<0;75;9M");
+        $picker->handleInput(self::mouse(16, 8));
+        $picker->handleInput(self::mouse(4, 8));
+        $picker->handleInput(self::mouse(8, 8));
+
+        $this->assertSame([], $this->submitted, 'beside the card, and Ctrl, Shift or Alt held');
+    }
+
+    public function testAClickBeforeTheListIsRedrawnChoosesNothing(): void
+    {
+        $this->rows = [self::project('one'), self::project('two')];
+        $picker = $this->picker();
+        $this->screen($picker);
+        $this->rows = [self::project('three'), self::project('four')];
+
+        $picker->handleInput('x');
+        $picker->handleInput(self::mouse(0, 9));
+
+        $this->assertSame([], $this->submitted, 'the line showed two, which is no longer there');
+    }
+
+    public function testTheWheelMovesTheSelection(): void
+    {
+        $this->rows = [self::project('one'), self::project('two'), self::project('three')];
+        $picker = $this->picker();
+        $this->screen($picker);
+
+        $picker->handleInput(self::mouse(65, 8));
+        $picker->handleInput(self::mouse(65, 8));
+        $picker->handleInput(self::mouse(64, 8));
+        $picker->handleInput("\r");
+
+        $this->assertSame([[$this->rows[1], '']], $this->submitted);
     }
 
     public function testEscapeCancels(): void

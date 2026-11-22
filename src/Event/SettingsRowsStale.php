@@ -6,7 +6,8 @@ namespace Porta\Event;
 
 /**
  * The settings page's rows no longer reflect reality — a plugin was installed,
- * enabled, disabled or removed, or a binary it offers to install appeared.
+ * enabled, disabled or removed, a binary it offers to install appeared, or the
+ * window's light or dark look moved a value or its default (the theme's).
  *
  * A fact, so any number of listeners may care. It exists because the settings
  * VIEW is the thing that has to repopulate, and the plugin lifecycle should not

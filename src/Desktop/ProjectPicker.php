@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Desktop;
 
-use Porta\Config\ConfigFiles;
 use Porta\Config\IdeConfig;
 use Porta\Config\PortaHome;
 use Porta\Filesystem\ProjectLocation;
@@ -13,7 +12,6 @@ use Porta\Highlight\ColorMode;
 use Porta\History\RecentProjectsStore;
 use Porta\I18n\SystemLocale;
 use Porta\I18n\Translator;
-use Porta\Settings\SettingsProvenance;
 use Porta\Support\ControlChars;
 use Porta\Ui\NonBlockingTerminal;
 use Porta\Ui\Theme\Styles;
@@ -48,6 +46,11 @@ final class ProjectPicker
 
     private const string CHOOSE_FOLDER = "\0choose-folder";
 
+    /** Clicks and the wheel, as SGR reports: no motion, which nothing here follows. */
+    private const string MOUSE_ON = "\x1b[?1000h\x1b[?1006h";
+
+    private const string MOUSE_OFF = "\x1b[?1000l\x1b[?1006l";
+
     private ?string $picked = null;
 
     private ?Tui $tui = null;
@@ -77,12 +80,7 @@ final class ProjectPicker
         $cwd = (string) \getcwd();
         $settings = IdeConfig::load($cwd)->settings;
         $session = DesktopSession::current();
-        // The system's mode, as the window already shows it, unless a theme was
-        // chosen: the rule the IDE follows once the window can tell it.
-        $theme =
-            null !== $session->appearance && null === new SettingsProvenance(ConfigFiles::for($cwd))->originOf(['settings', 'theme'])
-                ? $session->appearance
-                : (string) ($settings['theme'] ?? 'dark');
+        $theme = LaunchTheme::for($cwd, $settings, $session);
         $language = (string) ($settings['language'] ?? 'auto');
         $system = SystemLocale::fromEnvironment(\getenv(), \extension_loaded('intl') ? \Locale::getDefault() : '');
 
@@ -101,6 +99,21 @@ final class ProjectPicker
     public function pick(): ?string
     {
         $this->tui = new Tui(terminal: $this->terminal);
+        try {
+            $this->run($this->tui);
+        } finally {
+            // However it ended: no click reports for whatever comes next, and
+            // what follows (the trust question, a shell after Esc) starts on a
+            // clear screen and scrollback, not under the picker's last frame.
+            $this->terminal->write(self::MOUSE_OFF."\x1b[H\x1b[2J\x1b[3J");
+        }
+
+        return $this->picked;
+    }
+
+    /** The card on $tui, listening as a window's picker does, until it is done. */
+    private function run(Tui $tui): void
+    {
         $widget = new ProjectPickerWidget(
             $this->translator,
             $this->version,
@@ -114,17 +127,16 @@ final class ProjectPicker
             ],
             styles: $this->styles,
         );
-        $this->tui->add($widget);
-        $this->tui->setFocus($widget);
+        $tui->add($widget);
+        $tui->setFocus($widget);
+        // Once the loop runs, which is once the terminal is the picker's.
+        EventLoop::defer(fn () => $this->terminal->write(self::MOUSE_ON));
         if ($this->session->active) {
             // Ahead of the field: a frame is never text.
-            $this->tui->addListener($this->onInput(...), priority: 2200);
-            // Once the loop runs, which is once the terminal is the picker's.
+            $tui->addListener($this->onInput(...), priority: 2200);
             EventLoop::defer(fn () => $this->send('picking'));
         }
-        $this->tui->run();
-
-        return $this->picked;
+        $tui->run();
     }
 
     /** @return list<PickerRow> */
@@ -210,6 +222,10 @@ final class ProjectPicker
             $rows[] = new PickerRow(PickerRowKind::Project, ControlChars::line(PortaHome::tilde($real)), $this->translator->trans('Open this folder'), $real);
         }
         foreach (FolderCompletion::candidates($typed) as $candidate) {
+            // The folder typed in full is the row above already.
+            if (false !== $real && $candidate['path'] === \rtrim($typed, characters: '/').'/') {
+                continue;
+            }
             $rows[] = new PickerRow(PickerRowKind::Folder, $candidate['name'].'/', $candidate['isProject'] ? $this->translator->trans('PHP project') : '', $candidate['path']);
         }
 
@@ -221,9 +237,15 @@ final class ProjectPicker
     {
         $typed = \trim($typed);
 
+        // A project's row, "Open this folder" included, goes into it: the way
+        // on from a folder typed in full whose name begins another's. A typed
+        // path keeps the user's own spelling (`~`, `./`, a symlink's name).
+        $intoProject = PickerRowKind::Project === $row?->kind && !\str_ends_with($typed, '/');
+
         return match (true) {
+            $intoProject && FolderCompletion::isPath($typed) => $typed.'/',
             FolderCompletion::isPath($typed) => FolderCompletion::complete($typed, PickerRowKind::Folder === $row?->kind ? $row->value : null),
-            PickerRowKind::Project === $row?->kind => PortaHome::tilde($row->value).'/',
+            $intoProject => PortaHome::tilde($row->value).'/',
             default => $typed,
         };
     }

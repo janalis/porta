@@ -88,7 +88,7 @@ final class SettingsProvenance
         $this->files = null;
     }
 
-    /** A plugin came or went, so the row set — and its files — moved. */
+    /** A plugin came or went, or the window's look moved a value: the rows — and their files — are read again. */
     #[AsEventListener]
     public function onSettingsRowsStale(SettingsRowsStale $event): void
     {

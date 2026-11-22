@@ -63,6 +63,7 @@ final class ContainerDebugCommand extends Command
         'PORTA_HOST_KEYMAP' => 'linux',
         'PORTA_ANSI' => '1',
         'PORTA_THEME' => 'dark',
+        'PORTA_THEME_DEFAULT' => '',
         'PORTA_LSP_COMMAND' => '',
         'PORTA_LSP_DISABLED' => '1',
         'PORTA_DOCS_DIR' => '',

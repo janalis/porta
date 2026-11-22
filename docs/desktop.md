@@ -32,13 +32,14 @@ A window with no project starts on one field:
   to name; **Tab** completes it, as a shell does. Tab on a project's name puts
   its path in the field, to go on from.
 - **Choose a folder…** opens the system's folder dialog.
+- **A click** on a row opens it; the wheel moves the selection.
 - **Open remote…** takes `user@host:/path` or an `ssh://`, `sftp://`, `ftp://`
   or `ftps://` URL, as **Open Remote Project…** does inside the IDE.
 
 While it waits, the window takes a folder dropped on it, chosen with **Open
 Folder…** or **Open Recent** (macOS), or opened with Porta from the file
-manager, instead of opening a second window beside it. It is drawn in the
-system's light or dark look, unless you chose a theme.
+manager, instead of opening a second window beside it. It, and the IDE after
+it, are drawn in the system's light or dark look, unless you chose a theme.
 
 Each project gets one window. Opening a project that is already open brings its
 window forward, and opening another project opens another window. A file opened

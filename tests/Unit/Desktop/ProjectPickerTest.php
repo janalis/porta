@@ -16,6 +16,7 @@ use Porta\Ui\Role;
 use Porta\Ui\Theme\Themes;
 use Porta\Workbench\RecentProjectChoices;
 use Revolt\EventLoop;
+use Revolt\EventLoop\UncaughtThrowable;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 
@@ -243,6 +244,15 @@ final class ProjectPickerTest extends TestCase
         $this->assertSame($real, $this->pick(["\t", "\r"]));
     }
 
+    public function testTabOnAProjectEndsItsPathInASlashToGoOnFrom(): void
+    {
+        $this->recordRecent();
+
+        $this->assertNull($this->pick(["\t", 'x', "\x1b"]));
+        $this->assertStringContainsString('one/x', $this->screen());
+        $this->assertStringNotContainsString('onex', $this->screen());
+    }
+
     public function testAServersProjectOpensFromTheFolderThatMirrorsIt(): void
     {
         $picked = (string) $this->pick([$this->typed('ssh://deploy@example.com/srv/app'), "\r"]);
@@ -343,6 +353,88 @@ final class ProjectPickerTest extends TestCase
         $this->assertSame('/école', $this->pickWith($found, [$this->typed('éc'), "\r"]));
     }
 
+    public function testAFolderTypedInFullIsOfferedOnce(): void
+    {
+        $this->assertNull($this->pick([$this->typed($this->disk->path('typed')), "\x1b"]));
+        $this->assertStringContainsString('Open this folder', $this->screen());
+        $this->assertStringNotContainsString('typed/', $this->screen(), 'not again as a folder it could go on to name');
+    }
+
+    public function testWhatFollowsStartsOnAClearScreen(): void
+    {
+        $this->assertNull($this->pick(["\x1b"]));
+        $this->assertStringEndsWith("\x1b[?1000l\x1b[?1006l\x1b[H\x1b[2J\x1b[3J", $this->terminal->getOutput(), 'no click reports, a clear screen and scrollback');
+    }
+
+    public function testTabGoesIntoAFolderTypedInFullThatBeginsAnothersName(): void
+    {
+        \mkdir($this->disk->path('one-two'));
+
+        // `one` names a folder and begins `one-two`: Tab on "Open this folder" goes into one.
+        $this->assertNull($this->pick([$this->typed($this->disk->path('one')), "\t", 'x', "\x1b"]));
+        $this->assertStringContainsString('one/x', $this->screen());
+    }
+
+    public function testTabIntoATypedFolderKeepsTheWayItWasTyped(): void
+    {
+        $this->assertNull($this->pick([$this->typed('~'), self::silent("\t"), "\x1b[200~xyz\x1b[201~", "\x1b"]));
+        $this->assertStringContainsString('┃ ~/xyz', $this->screen(), 'not the home folder spelled out');
+    }
+
+    public function testAFolderWhoseNameDiffersOnlyInCaseIsStillOffered(): void
+    {
+        if (\is_dir($this->disk->path('TYPED'))) {
+            $this->markTestSkipped('a case-insensitive disk has one folder for both names');
+        }
+        \mkdir($this->disk->path('Typed'));
+
+        $this->assertNull($this->pick([$this->typed($this->disk->path('typed')), "\x1b"]));
+        $this->assertStringContainsString('Typed/', $this->screen());
+    }
+
+    public function testAFolderThatIsTheSameOnDiskUnderAnotherNameIsStillOffered(): void
+    {
+        \symlink($this->disk->path('typed'), $this->disk->path('typed-alias'));
+
+        $this->assertNull($this->pick([$this->typed($this->disk->path('typed')), "\x1b"]));
+        $this->assertStringContainsString('typed-alias/', $this->screen());
+    }
+
+    public function testAFailureWhileThePickerIsUpStillStopsTheClickReports(): void
+    {
+        // Once the card is drawn and clicks are reported: mid-loop, not before it.
+        EventLoop::delay(0.3, function (): never {
+            $this->assertStringContainsString("\x1b[?1000h\x1b[?1006h", $this->terminal->getOutput(), 'the premise: reports are on');
+
+            throw new \RuntimeException('the disk went away');
+        });
+
+        $failed = null;
+        try {
+            new ProjectPicker(new RecentProjectChoices(new RecentProjectsStore()), $this->terminal)->pick();
+        } catch (\RuntimeException|UncaughtThrowable $e) {
+            $failed = $e;
+        }
+
+        $this->assertNotNull($failed, 'the failure is not swallowed');
+        $this->assertStringContainsString('the disk went away', $failed->getMessage().($failed->getPrevious()?->getMessage() ?? ''));
+        $this->assertStringEndsWith("\x1b[?1000l\x1b[?1006l\x1b[H\x1b[2J\x1b[3J", $this->terminal->getOutput());
+    }
+
+    public function testAPickerThatFailsStillStopsTheClickReports(): void
+    {
+        $found = static function (array $except): array {
+            throw new \RuntimeException('the disk went away');
+        };
+
+        try {
+            new ProjectPicker(new RecentProjectChoices(new RecentProjectsStore()), $this->terminal, found: $found)->pick();
+            $this->fail('the failure is not swallowed');
+        } catch (\RuntimeException) {
+            $this->assertStringEndsWith("\x1b[?1000l\x1b[?1006l\x1b[H\x1b[2J\x1b[3J", $this->terminal->getOutput());
+        }
+    }
+
     public function testTheCardNamesPortaAndItsVersion(): void
     {
         $this->type(["\x1b"]);
@@ -376,6 +468,12 @@ final class ProjectPickerTest extends TestCase
     {
         $this->assertNull($this->pick(["\x1b"]));
         $this->assertStringNotContainsString('porta-desktop', $this->terminal->getOutput());
+        $this->assertStringContainsString("\x1b[?1000h\x1b[?1006h", $this->terminal->getOutput(), 'clicks are reported while it is up');
+        $this->assertGreaterThan(
+            (int) \strrpos($this->terminal->getOutput(), "\x1b[?1000h"),
+            (int) \strrpos($this->terminal->getOutput(), "\x1b[?1000l\x1b[?1006l"),
+            'and no longer once it is done',
+        );
         $this->assertStringNotContainsString('Choose a folder', $this->screen());
     }
 

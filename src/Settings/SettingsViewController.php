@@ -40,6 +40,9 @@ final class SettingsViewController implements ContributedView
     private readonly ViewRegion $region;
 
     private bool $open = false;
+
+    /** @var array{AbstractWidget, string, array{int, int, int, int}, \Closure(string): void, string}|null the option list last opened: host, row key, where, what a pick runs, the value it was opened on */
+    private ?array $openList = null;
     /** 'general' | 'keybindings' | 'lang:<id>' — the active section. */
     private string $section = 'general';
 
@@ -200,10 +203,6 @@ final class SettingsViewController implements ContributedView
     }
 
     /**
-     * Show a section's content pane. Does not steal focus — the sidebar keeps it
-     * while navigating (Tab moves to the content).
-     */
-    /**
      * The form's `2` and the keybindings list's `1` — two widgets advertising a
      * shortcut to the other page, which is one intent with two spellings.
      */
@@ -228,6 +227,10 @@ final class SettingsViewController implements ContributedView
         $this->form->selectKey($event->row);
     }
 
+    /**
+     * Show a section's content pane. Does not steal focus — the sidebar keeps it
+     * while navigating (Tab moves to the content).
+     */
     private function selectSection(string $id): void
     {
         // Which content widget is losing the slot, and whether the KEYBOARD is
@@ -332,12 +335,6 @@ final class SettingsViewController implements ContributedView
     }
 
     /**
-     * Apply a row's edit and repaint the page. FALSE propagates the section's
-     * refusal to the form, which then keeps the inline editor open with the
-     * text as typed — the rows are NOT re-pushed in that case, because doing
-     * so is exactly what used to destroy it.
-     */
-    /**
      * Drop a choice row's option list under its control; picking an option is
      * an ordinary {@see changeSetting()}, so a pick and a step are one write.
      */
@@ -356,6 +353,7 @@ final class SettingsViewController implements ContributedView
      */
     private function openList(AbstractWidget $host, SettingsRow $row, array $at, \Closure $choose): void
     {
+        $this->openList = [$host, $row->key, $at, $choose, (string) $row->value];
         $options = [];
         foreach ($row->options ?? [] as $option) {
             $options[] = [$option, $row->optionLabels[$option] ?? $option];
@@ -363,6 +361,12 @@ final class SettingsViewController implements ContributedView
         $this->listbox->openUnder($host, $at[0], $at[1], $at[2], $at[3], $options, (string) $row->value, $choose);
     }
 
+    /**
+     * Apply a row's edit and repaint the page. FALSE propagates the section's
+     * refusal to the form, which then keeps the inline editor open with the
+     * text as typed — the rows are NOT re-pushed in that case, because doing
+     * so is exactly what used to destroy it.
+     */
     private function changeSetting(string $key, bool|int|string $value): bool
     {
         if (!$this->activeSection()->change($this->section, $key, $value)) {
@@ -377,13 +381,8 @@ final class SettingsViewController implements ContributedView
     }
 
     /**
-     * Re-push the plugin rows when plugin state changed outside the form's own
-     * change flow (an async install landed, a plugin was removed). When the
-     * shown plugin page's plugin just vanished, fall back to the Plugins
-     * section. No-op elsewhere.
-     */
-    /**
-     * The plugin set moved under us. Core used to reach this through a
+     * The plugin set, or a value or its default (the window went light or
+     * dark), moved under us. Core used to reach this through a
      * concrete SettingsViewController field on the view registry, which is
      * exactly the coupling that put Workbench -> Settings in the graph.
      */
@@ -393,6 +392,12 @@ final class SettingsViewController implements ContributedView
         $this->refresh();
     }
 
+    /**
+     * Re-read the open page's rows when they moved outside the form's own
+     * change flow: an async install landed, a plugin was removed, or the
+     * window's look moved the theme or its default. When the shown plugin
+     * page's plugin just vanished, fall back to the Plugins section.
+     */
     public function refresh(): void
     {
         if (!$this->open) {
@@ -403,13 +408,38 @@ final class SettingsViewController implements ContributedView
 
             return;
         }
-        if ($this->form === $this->contentWidget() && ('plugins' === $this->section || \str_starts_with($this->section, 'plugin:'))) {
-            $this->form->setRows($this->rowsForSection(), $this->nav->trailFor($this->section));
+        // Any form page: a plugin's set moved, or a value or its default did (the
+        // window went light or dark). setRows() keeps an edit and the selection.
+        if ($this->form === $this->contentWidget()) {
+            $rows = $this->rowsForSection();
+            $this->form->setRows($rows, $this->nav->trailFor($this->section));
+            $this->reopenList($rows);
             $this->host->invalidate();
         }
         // The store's buttons follow every install, update and toggle, and
         // its count in the nav follows the updates.
         $this->pushStore();
+    }
+
+    /**
+     * An option list still open over the form whose row's value moved (the
+     * window went light or dark under the Theme list): opened again in place,
+     * its check on the value now held. One that closed is forgotten.
+     *
+     * @param list<SettingsRow> $rows
+     */
+    private function reopenList(array $rows): void
+    {
+        if (null === $this->openList || !$this->listbox->isOpen()) {
+            $this->openList = null;
+
+            return;
+        }
+        [$host, $key, $at, $choose, $value] = $this->openList;
+        $row = \array_find($rows, static fn (SettingsRow $row): bool => $key === $row->key);
+        if ($host === $this->form && null !== $row && (string) $row->value !== $value) {
+            $this->openList($host, $row, $at, $choose);
+        }
     }
 
     /** The store's rows and the nav's count of its updates, read again. */

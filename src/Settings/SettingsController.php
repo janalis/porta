@@ -46,6 +46,12 @@ final class SettingsController
     /** @var array<string, Descriptor> */
     private readonly array $descriptors;
 
+    /** @var array<string, int|bool|string> the built-in defaults, a window's look standing in for the theme's */
+    private array $defaults;
+
+    /** @var array<string, true> the settings picked here this session but not saved, which no stand-in overrides */
+    private array $picked = [];
+
     /**
      * @param array<string, int|bool|string> $settings         resolved settings (defaults merged)
      */
@@ -68,7 +74,13 @@ final class SettingsController
         // stand; the container always wires it.
         ?PluginUpdates $plugins = null,
         ?IdeUpdates $ideUpdates = null,
+        // A window's light or dark look, standing in for the theme no file
+        // chose: what the IDE drew, so what this shows, and what reset returns to.
+        #[Autowire('%env(default::PORTA_THEME_DEFAULT)%')]
+        ?string $themeDefault = null,
     ) {
+        $this->defaults = null === $themeDefault ? IdeConfig::DEFAULT_SETTINGS : ['theme' => $themeDefault] + IdeConfig::DEFAULT_SETTINGS;
+        $this->standIn($themeDefault);
         $this->descriptors = [
             // --- Interface (the "Interface" settings page) ---
             'language' => [
@@ -411,7 +423,7 @@ final class SettingsController
                 // a live fix — but a loosely-typed default added later would
                 // otherwise make every row on its page read as modified, and
                 // nothing else would catch that.
-                default: self::coerce(IdeConfig::DEFAULT_SETTINGS[$key] ?? '', $descriptor['kind']),
+                default: self::coerce($this->defaults[$key] ?? '', $descriptor['kind']),
                 origin: $this->provenance->originOf(['settings', $key]),
                 shadowed: $this->provenance->shadowsGlobal(['settings', $key]),
                 fieldset: $this->translator->trans($descriptor['fieldset']),
@@ -476,6 +488,38 @@ final class SettingsController
     }
 
     /**
+     * Whether the window's light or dark look decides the theme: nobody chose
+     * one, in a file or here this session unsaved. The one question for what
+     * Settings shows and for what is drawn ({@see \Porta\Desktop\DesktopRequests}).
+     */
+    public function followsWindow(): bool
+    {
+        return !\array_key_exists('theme', $this->picked) && null === $this->provenance->originOf(['settings', 'theme']);
+    }
+
+    /**
+     * The window's look changed: it is what a theme no file chose now stands
+     * for, shown as such and reset to. The live switch is the caller's.
+     */
+    public function followTheme(string $theme): void
+    {
+        $this->defaults['theme'] = $theme;
+        $this->standIn($theme);
+    }
+
+    /**
+     * What the IDE drew for a theme no file chose, as the value this shows. A
+     * theme picked here and not saved (a write can fail) is held in memory and
+     * stays; a saved one lasts as long as its file says so.
+     */
+    private function standIn(?string $themeDefault): void
+    {
+        if (null !== $themeDefault && $this->followsWindow()) {
+            $this->settings['theme'] = $themeDefault;
+        }
+    }
+
+    /**
      * Put a setting back to the product's default.
      *
      * The asymmetry is the point: IN MEMORY the default is restored and applied
@@ -492,8 +536,9 @@ final class SettingsController
             return;
         }
 
-        $default = IdeConfig::DEFAULT_SETTINGS[$key] ?? '';
+        $default = $this->defaults[$key] ?? '';
         $this->settings[$key] = $default;
+        unset($this->picked[$key]);
         if (null !== $descriptor['apply']) {
             $descriptor['apply']($default);
         }
@@ -523,6 +568,11 @@ final class SettingsController
         }
 
         $persisted = $this->writer->persistSetting($this->scope->current(), $key, $value);
+        // Saved, the file says it; unsaved, only this session knows it was picked.
+        unset($this->picked[$key]);
+        if (!$persisted) {
+            $this->picked[$key] = true;
+        }
         $state = \is_bool($value) ? $this->translator->trans($value ? 'on' : 'off') : (string) $value;
         $note = $descriptor['restart'] ? ' · '.$this->translator->trans('applies on restart') : '';
         $saved = SettingsFlash::savedSuffix($this->translator, $persisted);

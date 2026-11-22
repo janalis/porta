@@ -20,6 +20,9 @@ use Porta\Debug\DebugController;
 use Porta\Debug\DebugStatePersistence;
 use Porta\Desktop\DesktopProtocol;
 use Porta\Desktop\DesktopRecovery;
+use Porta\Desktop\DesktopRequests;
+use Porta\Desktop\DesktopSession;
+use Porta\Desktop\LaunchTheme;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
@@ -160,6 +163,9 @@ final class Ide
         private readonly ?ToolLaunch $tool = null,
         array $plugins = [],
         private readonly ?string $restartDirectory = null,
+        // The window around this launch, when a desktop host started it: what
+        // its first frame looks like. Null for a terminal launch.
+        ?DesktopSession $desktop = null,
     ) {
         // Boot-phase evidence: the entrypoint hands in a trace whose prelude
         // covers the interpreter and autoload; test rigs get a fresh one so the
@@ -178,6 +184,11 @@ final class Ide
             // a language server over it would report every class missing.
             $this->lspDisabled || ProjectLocation::forRoot($this->rootDir)->isRemote() ? LspMode::Disabled : LspMode::Enabled,
             $docsDir,
+            // In a window, the window's light or dark look unless a theme was chosen:
+            // never dark first and light a moment later, once the window can say.
+            LaunchTheme::for($this->rootDir, $config->settings, $desktop ?? new DesktopSession(active: false, token: '')),
+            // ...and what Settings shows for, and resets, a theme no file chose.
+            $desktop?->appearance,
         );
         $locator = $this->container->get('porta.ide');
         \assert($locator instanceof ServiceLocator, description: 'The porta.ide service is the ServiceLocator boundary');
@@ -442,6 +453,12 @@ final class Ide
     public function reopenAt(): ?string
     {
         return $this->service(ReopenRequest::class)->root();
+    }
+
+    /** The look the window last reported to this IDE, for the next project it opens to start in; null when it reported none. */
+    public function followedAppearance(): ?string
+    {
+        return $this->service(DesktopRequests::class)->followed();
     }
 
     public function restartDirectory(): ?string

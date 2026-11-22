@@ -12,14 +12,19 @@ use Porta\Desktop\SystemMenu;
 use Porta\Editor\BufferManager;
 use Porta\Event\RunFinished;
 use Porta\Event\ThemeChanged;
+use Porta\Settings\SettingsController;
+use Porta\Settings\SettingsRow;
+use Porta\Settings\SettingsViewController;
 use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\Services;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\MenuBarWidget;
+use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Workbench\Menu\Menu;
 use Porta\Workbench\Menu\MenuItem;
+use Porta\Workbench\View\ViewRegistry;
 use Porta\Workbench\WorkbenchActions;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Event\InputEvent;
@@ -41,7 +46,11 @@ final class DesktopProtocolTest extends TestCase
         /** @var array{examples: array{token: string, root: string, close: string, ready: string, accepted: string, closing: string, open: string, openPath: string, appearance: string, state: string, notify: string, notifyText: string}} $contract */
         $contract = \json_decode((string) \file_get_contents(\dirname(__DIR__, 3).'/desktop/contract/protocol.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->contract = $contract;
+        $this->appearanceBefore = \getenv(DesktopSession::APPEARANCE);
     }
+
+    /** What the environment held before: a report of the window's look rewrites it. */
+    private string|false $appearanceBefore = false;
 
     #[After]
     protected function leaveDesktopMode(): void
@@ -52,6 +61,8 @@ final class DesktopProtocolTest extends TestCase
         \putenv(DesktopSession::FLAG);
         \putenv(DesktopSession::TOKEN);
         \putenv(DesktopSession::MENU);
+        // A report of the window's look writes it for a Porta started from this one.
+        \putenv(false === $this->appearanceBefore ? DesktopSession::APPEARANCE : DesktopSession::APPEARANCE.'='.$this->appearanceBefore);
     }
 
     private function bootSystemMenu(): DesktopProtocol
@@ -90,6 +101,14 @@ final class DesktopProtocolTest extends TestCase
         $buffers = Services::resolve($this->ide, BufferManager::class);
         $buffers->open($this->project->path('a.php'), content: "<?php\n")->document->insert('x');
         $this->assertSame(1, $buffers->dirtyCount());
+    }
+
+    public function testTheIdeBootsInTheWindowsLookWhenNoThemeWasChosen(): void
+    {
+        $this->bootIde(desktop: new DesktopSession(active: true, token: $this->contract['examples']['token'], appearance: 'light'));
+
+        $this->assertSame('light', $_ENV['PORTA_THEME'], 'not dark first and light a moment later');
+        $this->assertSame('light', Services::resolve($this->ide, SettingsController::class)->choice('theme'), 'and Settings says what was drawn');
     }
 
     public function testACleanIdeSaysItIsClosingAndStops(): void
@@ -366,6 +385,41 @@ final class DesktopProtocolTest extends TestCase
         $protocol->onInput($this->request('appearance;light'));
 
         $this->assertSame(['light'], $themes, 'a theme chosen for the project stays');
+    }
+
+    public function testSettingsAndTheNextIdeFollowTheWindowsLookWhenItChanges(): void
+    {
+        $protocol = $this->bootDesktop();
+        $settings = Services::resolve($this->ide, SettingsController::class);
+        $this->assertNull($this->ide->followedAppearance(), 'nothing reported yet');
+
+        $protocol->onInput($this->request('appearance;light'));
+
+        $this->assertSame('light', $settings->choice('theme'), 'Settings shows what is drawn');
+        $this->assertSame('light', $this->ide->followedAppearance(), 'and the next IDE in this window starts so');
+        $this->assertSame('light', \getenv(DesktopSession::APPEARANCE), 'so does a Porta started from this one');
+
+        // Chosen in a file: drawn and shown as chosen, but reset now returns to the window's dark.
+        $this->project->write('.porta.json', content: '{"settings":{"theme":"high-contrast"}}');
+        $protocol->onInput($this->request('appearance;dark'));
+        $settings->resetSetting('theme');
+        $this->assertSame('dark', $settings->choice('theme'));
+    }
+
+    public function testAnOpenSettingsPageShowsTheLookTheWindowTurnsTo(): void
+    {
+        $protocol = $this->bootDesktop();
+        $settingsView = Services::resolve($this->ide, ViewRegistry::class)->find('settings');
+        $this->assertInstanceOf(SettingsViewController::class, $settingsView);
+        $settingsView->openOn('interface');
+        $form = Probe::get($settingsView, 'form');
+        $this->assertInstanceOf(SettingsFormWidget::class, $form);
+        $theme = static fn (): string => (string) \array_find(Probe::get($form, 'rows'), static fn (SettingsRow $row): bool => 'theme' === $row->key)?->value;
+        $this->assertSame('dark', $theme());
+
+        $protocol->onInput($this->request('appearance;light'));
+
+        $this->assertSame('light', $theme(), 'the page open while the window went light says so');
     }
 
     public function testARunEndingIsToldToTheWindowOnceItIsReady(): void
