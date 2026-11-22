@@ -73,7 +73,7 @@ final class EditorMouse
         }
         $at = $this->pointAt($relRow, $relCol, $vp);
         // A lens is a button above its line: the press arms it, and a release
-        // on the same row runs it ({@see releaseAt()}). Not on the press — a
+        // on the same row runs it ({@see releasePress()}). Not on the press — a
         // press may start a drag, or be the first half of a double-click.
         $this->armedLens = null === $at->lens ? null : [$relRow, $at->line, $at->lens];
         $this->document->setCursor($at->line, $at->col);
