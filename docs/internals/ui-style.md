@@ -170,8 +170,9 @@ wears `ModalFrame`'s frame and moves and resizes through `WindowFrame`:
 - **Every edge but the title bar's is a handle.** At rest it is the frame;
   under the pointer, or dragged, it draws heavy and bright (`MODAL_GRAB_*`).
 - **Sizes.** A view window opens centred at 80% of the workspace, or at its
-  whole height when 80% is under 27 rows (the boxed Git commit form left its
-  changes list no row); every other window at its content's size, a third of
+  whole height when 80% is under 27 rows — every view's, on purpose: the boxed
+  Git commit form left its changes list no row, and one rule beats a minimum
+  per view; every other window at its content's size, a third of
   the way down. A move or resize
   lasts until the window closes.
 

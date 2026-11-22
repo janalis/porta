@@ -610,9 +610,9 @@ final class IdeContextMenusTest extends TestCase
     /**
      * The rename prompt is the editor's, so it takes the keys while it is up;
      * Esc gives them back to the tree it was opened from — not to the editor,
-     * where they used to stay.
+     * where they used to stay — and so does a submit that renames nothing.
      */
-    public function testEscOnTheTreeRenamePromptGivesTheKeysBackToTheTree(): void
+    public function testLeavingTheTreeRenamePromptGivesTheKeysBackToTheTree(): void
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n"]);
@@ -635,6 +635,18 @@ final class IdeContextMenusTest extends TestCase
                     $this->assertSame(Widgets::editor($tui), $tui->getFocus(), 'the prompt has the keys');
                     $tui->handleInput("\x1b");
                     $this->assertSame($tui->getById('tree'), $tui->getFocus(), 'Esc gives them back to the tree');
+                    $this->assertFileExists($project->path('A.php'));
+                },
+                // The second time from the keyboard, Shift+F6 on the tree: no menu
+                // closes around it, so nothing but the prompt decides the focus.
+                380 => function (Tui $tui): void {
+                    $this->assertSame($tui->getById('tree'), $tui->getFocus());
+                    $tui->handleInput("\x1b[17;2~");
+                },
+                540 => function (Tui $tui) use ($project): void {
+                    $this->assertSame(Widgets::editor($tui), $tui->getFocus(), 'the prompt has the keys again');
+                    $tui->handleInput("\r"); // the name unchanged: nothing to rename
+                    $this->assertSame($tui->getById('tree'), $tui->getFocus(), 'a submit that renames nothing gives them back too');
                     $this->assertFileExists($project->path('A.php'));
                 },
             ],
@@ -675,7 +687,9 @@ final class IdeContextMenusTest extends TestCase
                     Widgets::editor($tui)->getDocument()->setCursor(0, col: 0);
                     Services::resolve($ide, BookmarkActions::class)->toggle();
                     // …and make an EDIT, so the two path-keyed stores added in
-                    // the parity round have something to lose too.
+                    // the parity round have something to lose too. In the editor:
+                    // the unchanged rename above handed the keys back to the tree.
+                    $tui->setFocus(Widgets::editor($tui));
                     $tui->handleInput('X');
                     $this->assertSame(
                         [(string) \realpath($project->path('A.php')) => [0]],

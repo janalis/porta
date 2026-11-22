@@ -323,8 +323,7 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
      * on top of the floor, not inside it: counted inside, a 25-column cell (an
      * agent at work, `✦ Claude editing A.php ▾`) never fitted at 120 columns
      * while the static key legend kept ninety.
-     */
-    /**
+     *
      * @param list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}> $cells
      */
     private function leftFloor(array $cells, string $left, string $note, int $columns): int

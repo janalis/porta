@@ -18,6 +18,9 @@ use Porta\Ui\Tooltip;
  */
 final class EditorMouse
 {
+    /** @var array{int, int, int}|null the lens a press landed on, as [row, line, index], until its release */
+    private ?array $armedLens = null;
+
     private int $columnAnchorLine = 0;
     private int $columnAnchorDisplayCol = 0;
 
@@ -69,15 +72,10 @@ final class EditorMouse
             return;
         }
         $at = $this->pointAt($relRow, $relCol, $vp);
-        if (null !== $at->lens) {
-            // A lens is a button above its line, not text: a press on it runs
-            // it, as clickAt() does, and starts no selection. Every plain
-            // left press comes here, so a lens that only clickAt() ran was
-            // reachable by Ctrl+click alone.
-            $this->clickAt($relRow, $relCol, $vp);
-
-            return;
-        }
+        // A lens is a button above its line: the press arms it, and a release
+        // on the same row runs it ({@see releaseAt()}). Not on the press — a
+        // press may start a drag, or be the first half of a double-click.
+        $this->armedLens = null === $at->lens ? null : [$relRow, $at->line, $at->lens];
         $this->document->setCursor($at->line, $at->col);
         $this->document->beginSelect();
         ($this->closeCompletion)();
@@ -87,11 +85,28 @@ final class EditorMouse
     /** Extend the selection to the pointer (drag / release / Shift+click), anchoring at the caret if needed. */
     public function extendSelectionTo(int $relRow, int $relCol, EditorViewport $vp): void
     {
+        if ($relRow !== ($this->armedLens[0] ?? null)) {
+            $this->armedLens = null; // dragged off the lens: a selection, not a click
+        }
         $at = $this->pointAt($relRow, $relCol, $vp);
         $this->document->beginSelect();
         $this->document->setCursor($at->line, $at->col, selection: SelectionMode::Keep);
         ($this->closeCompletion)();
         ($this->invalidate)();
+    }
+
+    /**
+     * The press's release: the lens it armed runs — a click on it, start to
+     * end. The release's own position came through extendSelectionTo() first,
+     * which disarms a lens the pointer left.
+     */
+    public function releasePress(): void
+    {
+        $armed = $this->armedLens;
+        $this->armedLens = null;
+        if (null !== $armed) {
+            ($this->runCodeLens)($armed[1], $armed[2]);
+        }
     }
 
     /** Select the word under the pointer (double-click); places a bare caret when off a word. */

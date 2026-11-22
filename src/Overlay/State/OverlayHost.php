@@ -146,8 +146,7 @@ final class OverlayHost
      * prompt (delete confirmation) boxes its field with the double danger
      * border ({@see \Porta\Widget\Render\FieldState::Danger}), so a
      * destructive question never reads like a rename, colour or not.
-     */
-    /**
+     *
      * @param (\Closure(): void)|null $onCancel run when the prompt goes without a submit — Esc, its ✖, a click
      *                                       outside — for a caller that moved the focus to open it
      */

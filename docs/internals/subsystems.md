@@ -1076,14 +1076,16 @@ view is the one plugin-built object core can name.
 The runner answers a run that cannot happen as exit 1 with no output. Every
 caller already handles that shape — the `Outcome` verbs read the code, and every
 parser returns its empty value for an empty string — so that one guard is the
-whole availability rule.
+whole availability rule, with one door around it: `runAnywhere()`, which only
+the two-file comparison takes (`git diff --no-index` needs no repository).
 
 Availability has **two predicates and they mean different things**:
 `isAvailable()` is binary-and-repository, `isRepository()` is repository alone.
-Outside a repository `activate()` returns before registering the view, the menu,
-the branch cell or any verb — `ide_git` included, which is why that id is
-`adoptable` — so `MenuModel` skips the unregistered items and the group is
-never built. Inside one with no `git` binary the chrome all stays and says so
+Outside a repository `activate()` registers no menu, no branch cell and no
+verb — `ide_git` included, which is why that id is `adoptable` — so `MenuModel`
+skips the unregistered items and the group is never built. The view and its
+comparisons ARE registered there: `porta --diff a b` and an agent's proposed
+change open in it, and comparing two files asks no repository. Inside one with no `git` binary the chrome all stays and says so
 when run: hiding it there would leave a user plainly inside a repository with no
 way to learn why git vanished.
 

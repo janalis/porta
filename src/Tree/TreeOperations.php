@@ -735,10 +735,26 @@ final class TreeOperations
     private function promptName(string $label, string $initial, callable $onSubmit, PromptTone $tone = PromptTone::Plain): void
     {
         $this->tui->setFocus($this->editor);
-        // The prompt lives on the editor, so the keys go there while it is up;
-        // a cancel hands them back to the tree the verb was run from, as a
-        // submit's own handler does.
-        $this->editor->openPrompt($label, $initial, $onSubmit, $tone, onCancel: fn (): Tui => $this->tui->setFocus($this->tree));
+        // The prompt lives on the editor, so the keys go there while it is up.
+        // However it ends, they go back to the tree the verb was run from: a
+        // cancel, and a submit whose handler left them where the prompt put
+        // them — one that turns the name down, or finds it unchanged, says
+        // nothing about focus. AFTER the handler, not before: the rename's
+        // listeners read the editor as it was, and a handler that asks on
+        // (Move as…) or opens what it made keeps the keys where it put them.
+        $toTree = fn (): Tui => $this->tui->setFocus($this->tree);
+        $this->editor->openPrompt(
+            $label,
+            $initial,
+            function (string $value) use ($toTree, $onSubmit): void {
+                $onSubmit($value);
+                if ($this->tui->getFocus() === $this->editor && !$this->editor->isAnyPickerOpen()) {
+                    $toTree();
+                }
+            },
+            $tone,
+            onCancel: $toTree,
+        );
         $this->tui->requestRender();
     }
 

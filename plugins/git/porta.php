@@ -319,20 +319,6 @@ return new class('git') extends AbstractPlugin implements DisposablePlugin {
     }
 
     /**
-     * The view's own half: five widgets, the pointer that hit-tests them, the
-     * context menus they offer, and the controller that owns the lot.
-     *
-     * Deferred to a factory because none of it can be built during activate():
-     * a widget needs `Styles` and a `CursorStyle`, a pointer needs the
-     * `HitTester`, and the controller needs the region core minted for the id
-     * this plugin registered under. That is what `ViewServices` carries, and
-     * the reason the DTO exists at all.
-     */
-    /**
-     * The status bar's branch cell, a contributed segment carrying its own
-     * menu — the menu the view's toolbar drops too, so it is handed back.
-     */
-    /**
      * The verbs that act on a repository: commands, menus, the operations on
      * the palette, and the Git view's own toggle.
      */
@@ -362,6 +348,10 @@ return new class('git') extends AbstractPlugin implements DisposablePlugin {
         }
     }
 
+    /**
+     * The status bar's branch cell, a contributed segment carrying its own
+     * menu — the menu the view's toolbar drops too.
+     */
     private static function registerBranchCell(PluginApi $api, GitRefresher $refresher, GitSettings $settings, BranchMenu $menu, Translate $trans): void
     {
         $api->registerStatusSegment(new GitBranchSegment($refresher, $settings, $menu, $trans, Worktree::linkedName($api->projectRoot()))->statusCell(...));
@@ -489,6 +479,16 @@ return new class('git') extends AbstractPlugin implements DisposablePlugin {
         });
     }
 
+    /**
+     * The view's own half: five widgets, the pointer that hit-tests them, the
+     * context menus they offer, and the controller that owns the lot.
+     *
+     * Deferred to a factory because none of it can be built during activate():
+     * a widget needs `Styles` and a `CursorStyle`, a pointer needs the
+     * `HitTester`, and the controller needs the region core minted for the id
+     * this plugin registered under. That is what `ViewServices` carries, and
+     * the reason the DTO exists at all.
+     */
     private function buildView(
         PluginApi $api,
         ViewServices $s,

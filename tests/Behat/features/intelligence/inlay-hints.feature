@@ -106,9 +106,8 @@ Feature: Inlay hints
     And the language server is ready
     Then I should see "f(42, $y);"
     When I hover over the text "42"
-    # The card waits for the pointer to rest: the tooltip delay is a real clock
-    And I wait 1 second
-    Then I should see "│ n: │"
+    # The card comes once the pointer has rested for the tooltip delay
+    Then I should eventually see "│ n: │"
     And I should see "f(42, $y);"
 
   Scenario: Cycle Inlay Hints goes inline, tooltip, none, and back inline
