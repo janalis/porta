@@ -105,6 +105,11 @@ Feature: Inlay hints
     When I start the app with the arguments "src/Params.php"
     And the language server is ready
     Then I should see "f(42, $y);"
+    When I hover over the text "42"
+    # The card waits for the pointer to rest: the tooltip delay is a real clock
+    And I wait 1 second
+    Then I should see "│ n: │"
+    And I should see "f(42, $y);"
 
   Scenario: Cycle Inlay Hints goes inline, tooltip, none, and back inline
     Given I start the app with the arguments "src/TypesInlay.php"

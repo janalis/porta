@@ -108,6 +108,27 @@ Feature: What the editor draws besides the code
     Then I should see "THE-END"
     And the project setting "softWrap" should be true
 
+  @action:toggle_code_lenses
+  Scenario: Code Vision shows the server's lenses above their lines, and runs one clicked
+    Given the "lens" fixture language server is configured
+    And a file "Lensed.php" containing:
+      """
+      <?php
+      function used() {}
+
+      function old() {}
+      """
+    And I start the app with the arguments "Lensed.php"
+    And I should eventually see "LSP:lens-lsp-server"
+    When I use the action "toggle_code_lenses"
+    Then I should eventually see "2 usages"
+    And I should see "2 usages" above "function used() {}"
+    And I should see "deprecated" above "function old() {}"
+    When I click on the text "2 usages"
+    Then the file "lens-ran" should contain "lens.run"
+    When I use the action "toggle_code_lenses"
+    Then I should not see "2 usages"
+
   Scenario: Code Vision is a View menu toggle
     Given I start the app with the arguments "Service.php"
     When I use the action "toggle_code_lenses"

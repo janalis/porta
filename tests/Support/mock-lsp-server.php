@@ -495,6 +495,22 @@ foreach (readFrames($in) as $message) {
                 ],
             ],
         ];
+        // Inline is offered only to a request for it by name, as Refactor ›
+        // Inline asks: every other request's count stays what the tests read.
+        if (is_array($only) && in_array('refactor.inline', $only, true)) {
+            $actions[] = [
+                'title' => 'Inline variable',
+                'kind' => 'refactor.inline',
+                'edit' => [
+                    'changes' => [
+                        $uri => [[
+                            'range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 0]],
+                            'newText' => "// inlined\n",
+                        ]],
+                    ],
+                ],
+            ];
+        }
         sendMessage($out, [
             'jsonrpc' => '2.0',
             'id' => $message['id'],

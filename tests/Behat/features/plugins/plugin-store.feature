@@ -147,3 +147,43 @@ Feature: The plugin store
     And the file ".stand-ins/composer.log" should contain "update acme/porta-hello:1.2.0 --with-dependencies"
     When I find the action "Hello 1.2.0"
     Then I should see "Hello 1.2.0: Say Hi"
+
+  Scenario: Update all (Shift+U) on the Updates tab installs every update, live
+    Given the plugin "acme/porta-hello" 1.0.0 is installed from Packagist in this project:
+      """
+      <?php
+      return new class implements Porta\Plugin\Api\PortaPlugin {
+          public function name(): string { return 'hello'; }
+          public function activate(Porta\Plugin\Api\PluginApi $api): void {}
+      };
+      """
+    And the store was last refreshed long ago
+    And Packagist publishes "acme/porta-hello" at "1.2.0, 1.0.0"
+    # composer require, as Update all asks it to land 1.2.0: the new code, and its record of it
+    And a stand-in "composer" on the PATH doing:
+      """
+      file_put_contents(__DIR__.'/composer.log', implode(' ', array_slice($argv, 1))."\n", FILE_APPEND);
+      if ('require' === $argv[1]) {
+          file_put_contents('vendor/acme/porta-hello/porta.php', <<<'NEW'
+              <?php
+              return new class implements Porta\Plugin\Api\PortaPlugin {
+                  public function name(): string { return 'hello'; }
+                  public function activate(Porta\Plugin\Api\PluginApi $api): void
+                  {
+                      $api->registerCommand('hi', 'Hello 1.2.0: Say Hi', static fn () => $api->flash('hi from 1.2.0'));
+                  }
+              };
+              NEW);
+          file_put_contents('vendor/composer/installed.json', json_encode(['packages' => [['name' => 'acme/porta-hello', 'version' => '1.2.0']]]));
+      }
+      """
+    When I start the app with the arguments "a.php"
+    And I use the action "plugins_store"
+    And I focus "#settings-store"
+    And I press "u"
+    Then I should see "Update all"
+    When I press "Shift+U"
+    Then a notification should say "Updated hello"
+    And the file ".stand-ins/composer.log" should contain "require acme/porta-hello:1.2.0 --update-with-dependencies"
+    When I find the action "Hello 1.2.0"
+    Then I should see "Hello 1.2.0: Say Hi"

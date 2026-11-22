@@ -88,6 +88,16 @@ final class PortaContext implements TuinkAwareContextInterface
         new OnboardingState($this->getSession()->getWorkspace()->path)->markWelcomeSeen();
     }
 
+    /**
+     * One of the PHPUnit rig's fixture servers, `tests/Support/<name>-lsp-server.php`:
+     * `lens` lenses, `labelled` names its completions after itself.
+     */
+    #[Given('the :name fixture language server is configured')]
+    public function theFixtureLanguageServer(string $name): void
+    {
+        $this->mergeProjectConfig(['lsp' => \PHP_BINARY.' '.\dirname(__DIR__, 2).'/Support/'.$name.'-lsp-server.php']);
+    }
+
     #[Given('the mock language server is configured')]
     public function theMockLanguageServer(): void
     {
@@ -100,6 +110,15 @@ final class PortaContext implements TuinkAwareContextInterface
         $this->git('init', '-q', '-b', 'main');
         $this->git('add', '-A');
         $this->git('commit', '-q', '-m', 'initial');
+    }
+
+    /** A repository of its own under the workspace: a plugin to install from a git URL, a remote. */
+    #[Given('the folder :folder is a git repository with everything committed')]
+    public function theFolderIsAGitRepository(string $folder): void
+    {
+        $this->git('-C', $folder, 'init', '-q', '-b', 'main');
+        $this->git('-C', $folder, 'add', '-A');
+        $this->git('-C', $folder, 'commit', '-q', '-m', 'initial');
     }
 
     #[Given('I commit everything as :message')]

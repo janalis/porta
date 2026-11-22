@@ -71,11 +71,11 @@ Feature: Refactoring and quick fixes
     And I press "Enter"
     Then line 2 of the editor should be "$extracted = 1;"
 
-  Scenario: Inline with nothing to inline says the server offered nothing
+  Scenario: Inline applies the server's one inline at once
     When I put the caret at line 6, column 17
     And I use the action "inline_refactoring"
-    Then a toast should say "No quick fixes here"
-    And line 2 of the editor should be ""
+    Then line 2 of the editor should be "// inlined"
+    And I should not see "Inline variable"
 
   Scenario: Optimize imports applies the server's single answer at once
     When I put the caret at line 3, column 1

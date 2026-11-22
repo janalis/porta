@@ -72,6 +72,36 @@ Feature: Enabling, installing and removing plugins
     When I press "Ctrl+Alt+K"
     Then the file "greeted" should exist
 
+  Scenario: A plugin installed from a git URL is cloned, and on at once
+    Given the stand-in composer is on the PATH
+    And a file "plugin-src/greeter/composer.json" containing:
+      """
+      {"name": "test/greeter", "type": "porta-plugin"}
+      """
+    And a file "plugin-src/greeter/porta.php" containing:
+      """
+      <?php
+      use Porta\Plugin\Api\PluginApi;
+      use Porta\Plugin\Api\PortaPlugin;
+
+      return new class implements PortaPlugin {
+          public function name(): string { return 'greeter'; }
+          public function activate(PluginApi $api): void
+          {
+              $api->registerCommand('hi', 'Hi from greeter', static fn () => $api->flash('greeter says hi'));
+          }
+      };
+      """
+    And the folder "plugin-src/greeter" is a git repository with everything committed
+    And I start the app with the arguments "a.php"
+    When I open the Settings page "Plugins"
+    And I install the plugin from "file://%workspace%/plugin-src/greeter"
+    Then I should eventually see "Plugin installed"
+    And the file ".porta/plugins/greeter/porta.php" should exist
+    And the file ".porta/composer.json" should contain "vcs"
+    When I find the action "Hi from greeter"
+    Then I should see "Hi from greeter"
+
   Scenario: Removing a plugin takes two presses, and it is gone at once
     Given a file ".porta/plugins/demo/porta.php" containing:
       """
