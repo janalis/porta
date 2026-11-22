@@ -69,6 +69,15 @@ final class EditorMouse
             return;
         }
         $at = $this->pointAt($relRow, $relCol, $vp);
+        if (null !== $at->lens) {
+            // A lens is a button above its line, not text: a press on it runs
+            // it, as clickAt() does, and starts no selection. Every plain
+            // left press comes here, so a lens that only clickAt() ran was
+            // reachable by Ctrl+click alone.
+            $this->clickAt($relRow, $relCol, $vp);
+
+            return;
+        }
         $this->document->setCursor($at->line, $at->col);
         $this->document->beginSelect();
         ($this->closeCompletion)();

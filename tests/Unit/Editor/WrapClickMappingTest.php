@@ -180,6 +180,25 @@ final class WrapClickMappingTest extends TestCase
         $this->assertSame(1, $this->document->cursorLine, 'the caret went to the line the lens describes');
     }
 
+    /**
+     * A plain left press goes through beginSelectionAt(), not clickAt(): the
+     * mouse router arms a drag on every press. A lens only clickAt() ran was
+     * reachable by Ctrl+click alone, so a press on one runs it too — and on
+     * code, still runs none.
+     */
+    public function testAPressOnALensRunsItAndAPressOnCodeDoesNot(): void
+    {
+        $mouse = $this->mouse();
+        $this->store->setCodeLenses([1 => [self::lens('3 usages'), self::lens('2 implementations')]]);
+
+        $mouse->beginSelectionAt(2, relCol: 4, vp: $this->viewport(null)); // line 1's second lens
+        $this->assertSame(['1:1'], $this->ran);
+        $this->assertSame(1, $this->document->cursorLine, 'the caret went to the line the lens describes');
+
+        $mouse->beginSelectionAt(3, relCol: 4, vp: $this->viewport(null)); // line 1 itself
+        $this->assertSame(['1:1'], $this->ran, 'code runs no lens');
+    }
+
     /** A click on ordinary code runs nothing. */
     public function testClickingCodeRunsNoLens(): void
     {
