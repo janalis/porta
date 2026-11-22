@@ -310,6 +310,18 @@ final class CommandLineSectionTest extends TestCase
         $this->assertSame('git is not installed', $row->hint);
     }
 
+    public function testASetUpPressedAfterGitWentAwayIsReported(): void
+    {
+        $section = $this->section();
+        $this->assertSame('Set up', $this->settledRows($section)['cli:git']->value);
+        $this->env('PATH', value: '/nonexistent');
+
+        $section->change(CommandLineSection::ID, key: 'cli:git', value: 'Set up');
+
+        $this->assertSame('Could not do it: difftool.porta.cmd', $this->lastToast());
+        $this->assertSame('Unavailable', self::rows($section)['cli:git']->value);
+    }
+
     public function testACheckoutOrAProjectsDependencyIsOnlyToldHowToUpdate(): void
     {
         $section = $this->section();

@@ -400,7 +400,8 @@ final class CommandLineSection implements SettingsSection
     }
 
     /**
-     * `git <args>`, in line: a config read or write takes milliseconds.
+     * `git <args>`, in line: what a press does — a write, or the read a
+     * removal starts from — follows the press, so the loop waits on it once.
      *
      * @param list<string> $args
      *
