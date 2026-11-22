@@ -79,7 +79,7 @@ final class SymbolScopesTest extends TestCase
         ]);
 
         $this->assertSame(['App', 'Svc', 'run'], \array_column($scopes, 'label'));
-        $this->assertSame([CodeScopeKind::Namespace, CodeScopeKind::Type, CodeScopeKind::Function], \array_column($scopes, 'kind'));
+        $this->assertSame([CodeScopeKind::NamespaceBlock, CodeScopeKind::Type, CodeScopeKind::Function], \array_column($scopes, 'kind'));
     }
 
     public function testMembersThatAreNotContainersAreNotCrumbs(): void

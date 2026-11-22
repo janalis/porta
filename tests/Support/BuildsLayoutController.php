@@ -52,11 +52,11 @@ trait BuildsLayoutController
     private ViewRegions $regions;
     private PreviewSplit $previewSplit;
 
-    private function controller(string $locale = 'en', int $columns = 100): LayoutController
+    private function controller(string $locale = 'en', int $columns = 100, int $rows = 30): LayoutController
     {
         $this->project = new TempProject(['a.php' => "<?php\n"]);
         $this->renderer = new Renderer(new StyleSheet());
-        $this->terminal = new VirtualTerminal(columns: $columns, rows: 30);
+        $this->terminal = new VirtualTerminal(columns: $columns, rows: $rows);
         $this->tui = new Tui(terminal: $this->terminal, keybindings: new Keybindings([]), renderer: $this->renderer);
         $this->tree = new FileTreeWidget($this->project->dir);
         $this->gitSidebar = new GitSidebar(

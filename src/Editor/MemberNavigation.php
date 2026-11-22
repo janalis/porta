@@ -105,7 +105,7 @@ final readonly class MemberNavigation
     {
         $members = [];
         foreach ($scopes as $scope) {
-            if (CodeScopeKind::Namespace === $scope['kind']) {
+            if (CodeScopeKind::NamespaceBlock === $scope['kind']) {
                 continue;
             }
 

@@ -4050,6 +4050,14 @@
         <source>in the system’s dialog</source>
         <target>en el diálogo del sistema</target>
       </trans-unit>
+      <trans-unit id="1353">
+        <source>Reading your global git config…</source>
+        <target>Leyendo su configuración global de git…</target>
+      </trans-unit>
+      <trans-unit id="1354">
+        <source>Checking…</source>
+        <target>Comprobando…</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

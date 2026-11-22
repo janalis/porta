@@ -318,6 +318,7 @@ final class MouseRouter
         if ($mouse->isLeftRelease()) {
             $this->mouseSelecting = false;
             $this->unitSelected = false;
+            $this->panes->editor->releasePress();
         }
         $this->tui->requestRender();
 

@@ -607,6 +607,85 @@ final class IdeContextMenusTest extends TestCase
         $this->assertSame(['keep.php'], \array_values(\array_diff(\scandir($project->path('src')), ['.', '..'])), 'no blank-named entry was created');
     }
 
+    /**
+     * The rename prompt is the editor's, so it takes the keys while it is up;
+     * Esc gives them back to the tree it was opened from — not to the editor,
+     * where they used to stay — and so does a submit that renames nothing.
+     */
+    public function testLeavingTheTreeRenamePromptGivesTheKeysBackToTheTree(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                150 => static function ($tui): void {
+                    $tui->tick();
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php
+                },
+                230 => static function ($tui): void {
+                    foreach (\range(1, 6) as $_) {
+                        $tui->handleInput("\x1b[B"); // down to Rename…
+                    }
+                    $tui->handleInput("\r");
+                },
+                300 => function (Tui $tui) use ($project): void {
+                    $this->assertSame(Widgets::editor($tui), $tui->getFocus(), 'the prompt has the keys');
+                    $tui->handleInput("\x1b");
+                    $this->assertSame($tui->getById('tree'), $tui->getFocus(), 'Esc gives them back to the tree');
+                    $this->assertFileExists($project->path('A.php'));
+                },
+                // The second time from the keyboard, Shift+F6 on the tree: no menu
+                // closes around it, so nothing but the prompt decides the focus.
+                380 => function (Tui $tui): void {
+                    $this->assertSame($tui->getById('tree'), $tui->getFocus());
+                    $tui->handleInput("\x1b[17;2~");
+                },
+                540 => function (Tui $tui) use ($project): void {
+                    $this->assertSame(Widgets::editor($tui), $tui->getFocus(), 'the prompt has the keys again');
+                    $tui->handleInput("\r"); // the name unchanged: nothing to rename
+                    $this->assertSame($tui->getById('tree'), $tui->getFocus(), 'a submit that renames nothing gives them back too');
+                    $this->assertFileExists($project->path('A.php'));
+                },
+            ],
+        );
+    }
+
+    public function testAPromptThatReplacesTheTreeRenamePromptKeepsTheKeys(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['A.php' => "<?php\n"]);
+        $submitted = null;
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                150 => static function (Tui $tui): void {
+                    $tui->tick();
+                    $tui->setFocus($tui->getById('tree'));
+                    $tui->handleInput("\x1b[17;2~"); // Shift+F6: rename A.php
+                },
+                300 => function (Tui $tui) use (&$submitted, $project): void {
+                    $editor = Widgets::editor($tui);
+                    $this->assertSame($editor, $tui->getFocus(), 'the rename prompt has the keys');
+                    // Something opens its own prompt in the rename's place: the
+                    // rename is cancelled, and its cancel must not take the keys.
+                    $editor->openPrompt('Other', '', static function (string $value) use (&$submitted): void {
+                        $submitted = $value;
+                    });
+                    $this->assertSame($editor, $tui->getFocus(), 'the replacing prompt keeps the keys');
+                    $tui->handleInput('7');
+                    $tui->handleInput("\r");
+                    $this->assertSame('7', $submitted);
+                    $this->assertFileExists($project->path('A.php'));
+                },
+            ],
+        );
+    }
+
     public function testTreeContextMenuRenameUpdatesDiskAndBuffer(): void
     {
         \putenv('PATH=/nonexistent');
@@ -641,7 +720,9 @@ final class IdeContextMenusTest extends TestCase
                     Widgets::editor($tui)->getDocument()->setCursor(0, col: 0);
                     Services::resolve($ide, BookmarkActions::class)->toggle();
                     // …and make an EDIT, so the two path-keyed stores added in
-                    // the parity round have something to lose too.
+                    // the parity round have something to lose too. In the editor:
+                    // the unchanged rename above handed the keys back to the tree.
+                    $tui->setFocus(Widgets::editor($tui));
                     $tui->handleInput('X');
                     $this->assertSame(
                         [(string) \realpath($project->path('A.php')) => [0]],

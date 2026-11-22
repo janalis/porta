@@ -18,6 +18,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
+use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -72,7 +73,7 @@ final class IdePluginInstallTest extends TestCase
                 {
                     \$api->registerCommand('hi', 'Hi from {$name}', static function () use (\$api): void {
                         \$api->flash('{$name} says hi');
-                    }, ['ctrl+alt+w']);
+                    }, ['ctrl+alt+k']);
                     \$api->addMenuItem('hi');
                 }
             };
@@ -161,8 +162,16 @@ final class IdePluginInstallTest extends TestCase
                     // lifecycle rebuilt the live keymap on activation. (The
                     // dispatcher's command loop runs before any widget, so no
                     // focus dance is needed.)
+                    // A key core leaves free: a core action keeps its own key over a
+                    // plugin's default, so ctrl+alt+w would close tabs instead. And
+                    // the palette run's toast goes first, or it would answer the
+                    // await below before the key had done anything.
+                    Services::resolve($ide, Notifier::class)->dismissAll();
+                    $this->awaitPainted($tui, $terminal, needle: 'on · project');
+                    $this->assertNotContains('installee says hi', Toasts::all($ide));
                     $terminal->consumeOutput();
-                    $tui->handleInput("\x1b\x17"); // ctrl+alt+w, the plugin's default key
+                    $tui->handleInput("\x1b[107;7u"); // ctrl+alt+k, the plugin's default key
+                    $this->await(static fn (): bool => \in_array('installee says hi', Toasts::all($ide), strict: true), what: 'the default key to run the command');
                     $this->awaitPainted($tui, $terminal, needle: 'installee says hi');
                     $this->assertStringContainsString('installee says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the default key dispatched without a restart');
 

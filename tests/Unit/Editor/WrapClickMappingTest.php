@@ -180,6 +180,34 @@ final class WrapClickMappingTest extends TestCase
         $this->assertSame(1, $this->document->cursorLine, 'the caret went to the line the lens describes');
     }
 
+    /**
+     * A plain left press goes through beginSelectionAt(), not clickAt(): the
+     * mouse router arms a drag on every press. The press arms the lens; its
+     * release runs it — and a drag off the row is a selection, so it does not.
+     */
+    public function testAPressAndReleaseOnALensRunsIt(): void
+    {
+        $mouse = $this->mouse();
+        $this->store->setCodeLenses([1 => [self::lens('3 usages'), self::lens('2 implementations')]]);
+        $vp = $this->viewport(null);
+
+        $mouse->beginSelectionAt(2, relCol: 4, vp: $vp); // line 1's second lens
+        $this->assertSame([], $this->ran, 'the press runs nothing yet: it may start a drag');
+        $mouse->extendSelectionTo(2, relCol: 5, vp: $vp); // the release, on the same row
+        $mouse->releasePress();
+        $this->assertSame(['1:1'], $this->ran);
+        $this->assertSame(1, $this->document->cursorLine, 'the caret went to the line the lens describes');
+
+        $mouse->beginSelectionAt(1, relCol: 4, vp: $vp); // the first lens
+        $mouse->extendSelectionTo(4, relCol: 2, vp: $vp); // dragged down into the code
+        $mouse->releasePress();
+        $this->assertSame(['1:1'], $this->ran, 'a drag off the lens is a selection');
+
+        $mouse->beginSelectionAt(3, relCol: 4, vp: $vp); // line 1 itself
+        $mouse->releasePress();
+        $this->assertSame(['1:1'], $this->ran, 'a press on code arms no lens');
+    }
+
     /** A click on ordinary code runs nothing. */
     public function testClickingCodeRunsNoLens(): void
     {

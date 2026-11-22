@@ -56,6 +56,45 @@ load 8–85, and 4 serial passes of each of the 16 changed files under 16 burner
 When a constructor gains a dependency, fix the direct construction sites here
 too.
 
+## The behaviour spec (Behat)
+
+`tests/Behat/features` is the user-facing spec: one feature per docs section or
+plugin guide, in Gherkin, driven by [janalis/tuink](https://github.com/janalis/tuink).
+It sits beside the PHPUnit suites, not over them: coverage stays PHPUnit's, and
+an internals-heavy case (a race, a leak, a parser edge) stays a PHPUnit test. A
+scenario is the right tool when the claim is one a user would make: "Ctrl+D
+duplicates the line", "the Problems panel lists the server's diagnostics".
+
+- `composer behat` runs every scenario **in process**: `tests/Behat/factory.php`
+  builds the `Ide` the way `bin/porta` would, and tuink hosts it through
+  `Ide::boot()` / `Ide::shutdown()` — the two halves of `run()` around the loop
+  tuink turns itself — so a scenario sees the real layout, session restore and
+  teardown.
+- `composer behat:process` runs the `@process` scenarios on the **real**
+  `bin/porta` in a pseudo-terminal: the TTY check, the console trust question,
+  the arguments. Screen text only there; nothing reads the `Ide`.
+- `composer behat:catalog` fails unless every action (`ActionCatalog` and the
+  plugins'), palette command and setting (core's, and each plugin's as
+  `<plugin>.<key>`) is driven by a feature: the step `I use the action "<id>"`,
+  or a tag `@action:<id>`, `@command:<id>`, `@setting:<key>` on the scenario that
+  really drives it. What no terminal can drive is listed, with the reason, in
+  `tests/Behat/uncoverable.php`; an exemption that is covered after all, or
+  names an id that left the catalog, fails the gate too.
+
+The steps are tuink's (its README has the table) plus Porta's contexts under
+`tests/Behat/Context`, which reuse `tests/Support` — the same seams, fakes and
+mock servers. The doctrine below applies unchanged: await the effect, never a
+fixed gap; `I wait N seconds` is for the real clocks named above, with a comment.
+A generic step any symfony/tui app would want belongs in tuink, not here.
+
+A plugin's features live with its code and tests, in `plugins/<name>/tests/features/`;
+core's in `tests/Behat/features/<area>/`. At its first full count the spec was
+487 scenarios plus the 10 `@process` ones: 19–33 minutes in process at load
+400–570 on the shared box, one run at a time. Its load failures were all awaits
+on a process of the test's own making (a run, a language server, a synchronous
+`git config` on opening Settings' search) outlasting the 5s check
+(`PORTA_BEHAT_TIMEOUT` raises it).
+
 ## Never hand-roll a rig `tests/Support` already provides
 
 Roughly 700 duplicated lines once collapsed onto these.

@@ -64,6 +64,38 @@ final class GitToolLaunchE2eTest extends TestCase
         );
     }
 
+    /**
+     * `porta --diff a b` by hand, in a folder git does not track: the docs'
+     * own example. The comparison needs no repository, so it is answered; the
+     * verbs that act on one are not there to be run.
+     */
+    public function testOutsideARepositoryTheComparisonIsStillAnsweredAndNoRepositoryVerbIs(): void
+    {
+        $this->skipWithoutGit();
+        \putenv('PATH='.\PORTA_TEST_PRISTINE_PATH); // git diff --no-index needs git
+        $project = new TempProject(['.porta.json' => '{"enabledPlugins":["diff","git"]}', 'old.php' => "<?php\necho 'before';\n", 'new.php' => "<?php\necho 'after';\n"]);
+
+        $this->runIde(
+            $project,
+            file: null,
+            steps: [
+                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $this->awaitPainted($tui, $terminal, needle: "echo 'after';");
+                    $this->awaitPainted($tui, $terminal, needle: "echo 'before';");
+                    $this->assertTrue(Services::resolve($ide, ViewRegistry::class)->find('git')?->isOpen(), 'the git view shows the comparison');
+                    $this->assertNotContains('Enable the git plugin to see the comparison', Toasts::all($ide), 'the launch was answered');
+                    $commands = Services::resolve($ide, CommandRegistry::class);
+                    $this->assertFalse($commands->has('git:commit'), 'no repository, no commit');
+                    $this->assertFalse($commands->has('ide_git'), 'nor a Git view to toggle');
+
+                    $tui->handleInput("\x1b");
+                    $this->await(static fn (): bool => !$tui->isRunning(), what: 'Esc to end the difftool run');
+                },
+            ],
+            tool: ToolLaunch::diff($project->path('old.php'), $project->path('new.php')),
+        );
+    }
+
     public function testAnAgentsProposedChangeIsComparedAndClosingItEndsNothingButTheView(): void
     {
         $this->skipWithoutGit();

@@ -53,7 +53,7 @@ final class OverlayHost
     private ?array $picked = null;
     /** last-rendered overlay box, for mouse hit-testing */
     private ?ModalBox $overlayBox = null;
-    /** @var array{label: string, value: TextField, onSubmit: callable(string): void, tone: PromptTone}|null single-line mini prompt */
+    /** @var array{label: string, value: TextField, onSubmit: callable(string): void, tone: PromptTone, onCancel: ?\Closure(): void}|null single-line mini prompt */
     private ?array $prompt = null;
     /** last-rendered (centered) prompt box, for mouse hit-testing */
     private ?ModalBox $promptBox = null;
@@ -146,12 +146,24 @@ final class OverlayHost
      * prompt (delete confirmation) boxes its field with the double danger
      * border ({@see \Porta\Widget\Render\FieldState::Danger}), so a
      * destructive question never reads like a rename, colour or not.
+     *
+     * A prompt opened over another one replaces it, and the replaced one went
+     * without a submit too: its `onCancel` runs, AFTER the new prompt is up, so
+     * a cancel that hands the keys back can see a prompt still wants them.
+     *
+     * @param (\Closure(): void)|null $onCancel run when the prompt goes without a submit — Esc, its ✖, a click
+     *                                       outside, another prompt in its place — for a caller that moved the
+     *                                       focus to open it
      */
-    public function openPrompt(string $label, string $initial, callable $onSubmit, PromptTone $tone = PromptTone::Plain, TextEcho $echo = TextEcho::Visible): void
+    public function openPrompt(string $label, string $initial, callable $onSubmit, PromptTone $tone = PromptTone::Plain, TextEcho $echo = TextEcho::Visible, ?\Closure $onCancel = null): void
     {
-        $this->prompt = ['label' => $label, 'value' => new TextField($initial, $this->cursorStyle, echo: $echo), 'onSubmit' => $onSubmit, 'tone' => $tone];
+        $replaced = $this->prompt['onCancel'] ?? null;
+        $this->prompt = ['label' => $label, 'value' => new TextField($initial, $this->cursorStyle, echo: $echo), 'onSubmit' => $onSubmit, 'tone' => $tone, 'onCancel' => $onCancel];
         $this->promptFrame->reset();
         ($this->invalidate)();
+        if (null !== $replaced) {
+            $replaced();
+        }
     }
 
     /**
@@ -169,8 +181,7 @@ final class OverlayHost
         }
         $box = $this->promptBox;
         if (null === $box || $box->closeHit($relRow, $relCol) || !$box->contains($relRow, $relCol)) {
-            $this->prompt = null;
-            ($this->invalidate)();
+            $this->cancelPrompt();
         }
 
         return true;
@@ -351,11 +362,11 @@ final class OverlayHost
         return null !== $prompt || null !== $overlay;
     }
 
-    /** @param array{label: string, value: TextField, onSubmit: callable(string): void, tone: PromptTone} $prompt the open prompt (non-null, narrowed by the caller) */
+    /** @param array{label: string, value: TextField, onSubmit: callable(string): void, tone: PromptTone, onCancel: ?\Closure(): void} $prompt the open prompt (non-null, narrowed by the caller) */
     private function handlePromptInput(string $keys, Keybindings $kb, array $prompt): void
     {
         match (true) {
-            $kb->matches($keys, action: 'select_cancel') => $this->closePrompt(),
+            $kb->matches($keys, action: 'select_cancel') => $this->cancelPrompt(),
             $kb->matches($keys, action: 'accept_completion') => $this->submitPrompt($prompt), // Enter
             $kb->matches($keys, action: 'delete_char_backward') => $prompt['value']->backspace() ? ($this->invalidate)() : null,
             // The caret moves, so a rename's typo mid-word is fixed where it is.
@@ -370,7 +381,17 @@ final class OverlayHost
         ($this->invalidate)();
     }
 
-    /** @param array{label: string, value: TextField, onSubmit: callable(string): void, tone: PromptTone} $prompt */
+    /** Close the prompt without a submit, and tell whoever opened it. */
+    private function cancelPrompt(): void
+    {
+        $onCancel = $this->prompt['onCancel'] ?? null;
+        $this->closePrompt();
+        if (null !== $onCancel) {
+            $onCancel();
+        }
+    }
+
+    /** @param array{label: string, value: TextField, onSubmit: callable(string): void, tone: PromptTone, onCancel: ?\Closure(): void} $prompt */
     private function submitPrompt(array $prompt): void
     {
         $this->closePrompt();

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Settings\Section;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Event\SettingsRowsStale;
 use Porta\I18n\Translator;
 use Porta\Install\Installation;
 use Porta\Install\InstallMethod;
@@ -15,12 +16,14 @@ use Porta\Settings\SettingsRow;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\StoreFixture;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
  * The Command line page against a scratch home: HOME, PATH and the global git
@@ -36,6 +39,12 @@ final class CommandLineSectionTest extends TestCase
     private TempProject $home;
 
     private ToastCenter $toasts;
+
+    /** How many times the section told the page to re-read its rows. */
+    private int $stale = 0;
+
+    /** @var list<CommandLineSection> every section made, whose last read tearDown waits out */
+    private array $sections = [];
 
     /** @var array<string, string|false> what the test overrode, to put back */
     private array $saved = [];
@@ -54,6 +63,9 @@ final class CommandLineSectionTest extends TestCase
     #[\Override]
     protected function tearDown(): void
     {
+        foreach ($this->sections as $section) {
+            $this->await(static fn (): bool => null === Probe::get($section, property: 'gitRead'), what: 'the last git config read');
+        }
         foreach ($this->saved as $name => $value) {
             unset($_ENV[$name]);
             \putenv($name);
@@ -77,13 +89,32 @@ final class CommandLineSectionTest extends TestCase
     {
         $tui = TestTui::create(80, rows: 24);
         $this->toasts = new ToastCenter(new FakeScheduler(), $tui);
+        $this->stale = 0;
+        $events = new EventDispatcher();
+        $events->addListener(SettingsRowsStale::class, function (): void {
+            ++$this->stale;
+        });
 
-        return new CommandLineSection(
+        return $this->sections[] = new CommandLineSection(
             new Translator('en'),
             new Notifier(new StatusBarWidget(), $tui, toasts: $this->toasts),
             $binary ?? $this->home->path('checkout/bin/porta'),
             $installation ?? new Installation(InstallMethod::Checkout, $this->home->path('checkout')),
+            events: $events,
         );
+    }
+
+    /**
+     * The rows once the `git config` read their building started has answered.
+     *
+     * @return array<string, SettingsRow>
+     */
+    private function settledRows(CommandLineSection $section): array
+    {
+        self::rows($section);
+        $this->await(static fn (): bool => null === Probe::get($section, property: 'gitRead'), what: 'the git config read');
+
+        return self::rows($section);
     }
 
     /** @return array<string, SettingsRow> */
@@ -209,14 +240,20 @@ final class CommandLineSectionTest extends TestCase
     public function testGitIsSetUpUpdatedAndRemoved(): void
     {
         $section = $this->section();
-        $this->assertSame('Set up', self::rows($section)['cli:git']->value);
+        $this->assertSame('Set up', $this->settledRows($section)['cli:git']->value);
 
         $section->change(CommandLineSection::ID, key: 'cli:git', value: 'Set up');
         $this->assertSame("porta is now git's difftool and mergetool", $this->lastToast());
-        $this->assertSame('Up to date', self::rows($section)['cli:git']->value);
+        $rows = $this->settledRows($section);
+        $this->assertSame('Up to date', $rows['cli:git']->value);
+        $this->assertArrayHasKey('cli:ungit', $rows);
         $this->assertStringContainsString($this->home->path('checkout/bin/porta'), (string) \file_get_contents($this->home->path('.gitconfig')));
 
         \file_put_contents($this->home->path('.gitconfig'), \str_replace('checkout', replace: 'moved', subject: (string) \file_get_contents($this->home->path('.gitconfig'))));
+        // The first build after a change from a shell still shows the last
+        // answer; the read it starts brings the new one.
+        $this->assertSame('Up to date', self::rows($section)['cli:git']->value);
+        $this->await(static fn (): bool => null === Probe::get($section, property: 'gitRead'), what: 'the git config read');
         $this->assertSame('Update', self::rows($section)['cli:git']->value);
         $this->assertStringContainsString('another Porta', (string) self::rows($section)['cli:git']->hint);
 
@@ -224,6 +261,42 @@ final class CommandLineSectionTest extends TestCase
         $section->change(CommandLineSection::ID, key: 'cli:ungit', value: 'Remove');
         $this->assertSame("porta is no longer git's difftool and mergetool", $this->lastToast());
         $this->assertStringNotContainsString('porta', (string) \file_get_contents($this->home->path('.gitconfig')));
+    }
+
+    public function testTheGitRowSaysItIsCheckingUntilTheReadAnswersThenThePageIsToldOnce(): void
+    {
+        $section = $this->section();
+
+        $row = self::rows($section)['cli:git'];
+        $this->assertSame('Checking…', $row->value);
+        $this->assertTrue($row->disabled);
+        $this->assertSame('Reading your global git config…', $row->hint);
+        $this->assertSame(0, $this->stale, 'nothing answered yet');
+        $read = Probe::get($section, property: 'gitRead');
+        self::rows($section);
+        $this->assertSame($read, Probe::get($section, property: 'gitRead'), 'one read at a time: a build while it runs waits for it');
+
+        $this->assertSame('Set up', $this->settledRows($section)['cli:git']->value);
+        $this->assertSame(1, $this->stale, 'the answer re-reads the page');
+
+        $this->await(static fn (): bool => null === Probe::get($section, property: 'gitRead'), what: 'the next read');
+        $this->assertSame(1, $this->stale, 'the same answer again is not news: a re-read must not start an endless loop');
+    }
+
+    public function testAWriteDropsTheReadInFlightAndWhatWasRead(): void
+    {
+        $section = $this->section();
+        $this->assertSame('Set up', $this->settledRows($section)['cli:git']->value);
+        $inFlight = Probe::get($section, property: 'gitRead');
+        $this->assertNotNull($inFlight, 'building the rows started a read');
+
+        $section->change(CommandLineSection::ID, key: 'cli:git', value: 'Set up');
+
+        $this->assertNull(Probe::get($section, property: 'gitRead'));
+        $this->assertSame([], Probe::get($inFlight, property: 'watchers'), 'the read from before the write is cancelled: its answer would be stale');
+        $this->assertSame('Checking…', self::rows($section)['cli:git']->value, 'what was read before the write is not shown after it');
+        $this->await(static fn (): bool => null === Probe::get($section, property: 'gitRead'), what: 'the read after the write');
+        $this->assertSame('Up to date', self::rows($section)['cli:git']->value);
     }
 
     public function testWithoutGitTheRowSaysSo(): void
@@ -235,6 +308,18 @@ final class CommandLineSectionTest extends TestCase
         $this->assertTrue($row->disabled);
         $this->assertSame('Unavailable', $row->value);
         $this->assertSame('git is not installed', $row->hint);
+    }
+
+    public function testASetUpPressedAfterGitWentAwayIsReported(): void
+    {
+        $section = $this->section();
+        $this->assertSame('Set up', $this->settledRows($section)['cli:git']->value);
+        $this->env('PATH', value: '/nonexistent');
+
+        $section->change(CommandLineSection::ID, key: 'cli:git', value: 'Set up');
+
+        $this->assertSame('Could not do it: difftool.porta.cmd', $this->lastToast());
+        $this->assertSame('Unavailable', self::rows($section)['cli:git']->value);
     }
 
     public function testACheckoutOrAProjectsDependencyIsOnlyToldHowToUpdate(): void

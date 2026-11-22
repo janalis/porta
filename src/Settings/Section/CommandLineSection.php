@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Settings\Section;
 
+use Porta\Event\SettingsRowsStale;
 use Porta\I18n\Translator;
 use Porta\Install\CommandLink;
 use Porta\Install\CommandLinkStatus;
@@ -20,6 +21,7 @@ use Porta\Support\AsyncProcess;
 use Porta\Support\PathExecutables;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\UpdateRestart;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 use Symfony\Component\Process\Process;
 
@@ -31,9 +33,11 @@ use Symfony\Component\Process\Process;
  * shell meanwhile is what the page says.
  *
  * None of it is project configuration — the link lives in `~/.local/bin`, the
- * tools in the GLOBAL git config — so the page has no scope row. The first two
- * are a stat and one `git config` read, done in line; the update talks to
- * GitHub, so it runs `porta --self-update` as a child process off the loop.
+ * tools in the GLOBAL git config — so the page has no scope row. The link is
+ * a stat, done in line. The git tools are a `git config` read, a child
+ * process, so it runs off the loop: the row shows the last answer while a
+ * fresh read runs, and the page is re-read when the answer moves. The update
+ * talks to GitHub, so it runs `porta --self-update` as a child process too.
  * A removal takes two presses, like a plugin's.
  */
 #[AsTaggedItem(priority: 450)]
@@ -49,6 +53,9 @@ final class CommandLineSection implements SettingsSection
 
     private const string UPDATE_SLOT = 'self-update';
 
+    /** Seconds the `git config` read may take before the row says git is not there. */
+    private const float GIT_TIMEOUT = 10.0;
+
     /** Seconds an update may take: `brew upgrade` refreshes its taps first, and may upgrade PHP along. */
     private const float UPDATE_TIMEOUT = 900.0;
 
@@ -56,6 +63,12 @@ final class CommandLineSection implements SettingsSection
     private ?string $armed = null;
 
     private ?AsyncProcess $update = null;
+
+    /** The git tools as last read; null before the first answer, and after a write. */
+    private ?GitToolStatus $gitStatus = null;
+
+    /** The `git config` read in flight. */
+    private ?AsyncProcess $gitRead = null;
 
     /**
      * @param string|null $binary the binary installs point at; null asks {@see PortaBinary}
@@ -68,6 +81,7 @@ final class CommandLineSection implements SettingsSection
         private readonly ?string $binary = null,
         private readonly ?Installation $installation = null,
         private readonly ?UpdateRestart $restart = null,
+        private readonly ?EventDispatcherInterface $events = null,
     ) {}
 
     /** @return list<SettingsPage> */
@@ -97,7 +111,7 @@ final class CommandLineSection implements SettingsSection
         $this->armed = null;
         match ($key) {
             self::LINK => $this->report($this->link()->link(), $this->translator->trans('porta is now a command: %path%', ['%path%' => self::shown($this->link()->target())])),
-            self::GIT => $this->report($this->git()->apply(), $this->translator->trans('porta is now git\'s difftool and mergetool')),
+            self::GIT => $this->report($this->wroteGit($this->git()->apply()), $this->translator->trans('porta is now git\'s difftool and mergetool')),
             self::UNLINK, self::UNGIT => $armed === $key ? $this->remove($key) : $this->arm($key),
             self::UPDATE => $this->selfUpdate(),
             default => null,
@@ -145,7 +159,19 @@ final class CommandLineSection implements SettingsSection
     /** @return list<SettingsRow> */
     private function gitRows(): array
     {
-        $status = $this->git()->status();
+        $status = $this->gitStatus();
+        if (null === $status) {
+            return $this->statusRows(
+                fieldset: $this->translator->trans('git difftool and mergetool'),
+                label: $this->translator->trans('porta as git\'s diff and merge tool'),
+                hint: $this->translator->trans('Reading your global git config…'),
+                action: null,
+                inert: $this->translator->trans('Checking…'),
+                key: self::GIT,
+                removal: null,
+                removeKey: self::UNGIT,
+            );
+        }
 
         return $this->statusRows(
             fieldset: $this->translator->trans('git difftool and mergetool'),
@@ -241,7 +267,7 @@ final class CommandLineSection implements SettingsSection
     {
         self::UNLINK === $key
             ? $this->report($this->link()->unlink(), $this->translator->trans('The porta command is removed'))
-            : $this->report($this->git()->remove(), $this->translator->trans('porta is no longer git\'s difftool and mergetool'));
+            : $this->report($this->wroteGit($this->git()->remove()), $this->translator->trans('porta is no longer git\'s difftool and mergetool'));
     }
 
     private function report(?string $error, string $done): void
@@ -318,13 +344,64 @@ final class CommandLineSection implements SettingsSection
         return new CommandLink($this->binary ?? PortaBinary::launcher(PortaBinary::path()), (string) \getenv('PATH'), (string) \getenv('HOME'));
     }
 
+    /**
+     * The git tools as last read, and a fresh read started unless one runs:
+     * the row follows a change made from a shell, one read late, and the page
+     * is told to re-read its rows only when the answer moved — which also
+     * ends the loop of a re-read starting a read.
+     */
+    private function gitStatus(): ?GitToolStatus
+    {
+        $git = PathExecutables::here()->find('git');
+        if (null === $git) {
+            return $this->gitStatus = GitToolStatus::Unavailable;
+        }
+        if (null === $this->gitRead) {
+            $setup = $this->git();
+            $read = new AsyncProcess([$git, ...$setup->readArgs()], \sys_get_temp_dir(), timeout: self::GIT_TIMEOUT);
+            $this->gitRead = $read;
+            // A write cancels it, and a cancelled read never answers.
+            $started = $read->start(function (int $code, string $out) use ($setup): void {
+                $this->gitRead = null;
+                $status = $setup->statusOf($code, $out);
+                if ($status !== $this->gitStatus) {
+                    $this->gitStatus = $status;
+                    $this->events?->dispatch(new SettingsRowsStale());
+                }
+            });
+            if (!$started) {
+                // proc_open failure is environmental (fd exhaustion): git is there
+                // @codeCoverageIgnoreStart
+                $this->gitRead = null;
+
+                // @codeCoverageIgnoreEnd
+            }
+        }
+
+        return $this->gitStatus;
+    }
+
+    /**
+     * After a write to the git tools: what was read before it is stale, and
+     * so is a read still running — the next rows start a fresh one.
+     */
+    private function wroteGit(?string $error): ?string
+    {
+        $this->gitRead?->cancel();
+        $this->gitRead = null;
+        $this->gitStatus = null;
+
+        return $error;
+    }
+
     private function git(): GitToolSetup
     {
         return new GitToolSetup($this->binary ?? PortaBinary::launcher(PortaBinary::path()), self::runGit(...));
     }
 
     /**
-     * `git <args>`, in line: a config read or write takes milliseconds.
+     * `git <args>`, in line: what a press does — a write, or the read a
+     * removal starts from — follows the press, so the loop waits on it once.
      *
      * @param list<string> $args
      *

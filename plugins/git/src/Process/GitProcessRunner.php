@@ -193,12 +193,32 @@ final class GitProcessRunner
      */
     public function runStatus(array $args, callable $onDone, ?string $stdin = null): void
     {
-        // No git, or no repository: answer as a failed run with no output. Every
-        // caller already handles that shape — the Outcome verbs read the code,
-        // and every parser returns its empty value for an empty string — so this
+        // No repository: answer as a failed run with no output. Every caller
+        // already handles that shape — the Outcome verbs read the code, and
+        // every parser returns its empty value for an empty string — so this
         // is the whole availability rule, in the one place that knows it.
+        if (!$this->repository) {
+            $empty = '';
+            $onDone(1, $empty);
+
+            return;
+        }
+        $this->runAnywhere($args, $onDone, $stdin);
+    }
+
+    /**
+     * Like runStatus, in a repository or not: for git's own repository-free
+     * mode, `diff --no-index`, which `porta --diff a b` runs in a folder git
+     * does not track. Without git at all, the same failed run.
+     *
+     * @param list<string>                 $args
+     * @param callable(int, string): void  $onDone receives (exit code, stdout)
+     * @param string|null                  $stdin  payload piped to the command
+     */
+    public function runAnywhere(array $args, callable $onDone, ?string $stdin = null): void
+    {
         $git = $this->binary();
-        if (null === $git || !$this->repository) {
+        if (null === $git) {
             $empty = '';
             $onDone(1, $empty);
 

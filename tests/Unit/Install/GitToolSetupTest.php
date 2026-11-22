@@ -47,6 +47,12 @@ final class GitToolSetupTest extends TestCase
         return [(int) $process->getExitCode(), $process->getOutput()];
     }
 
+    /** The status the tool's own read answers, run here the way the settings page runs it. */
+    private function readStatus(GitToolSetup $tool): GitToolStatus
+    {
+        return $tool->statusOf(...$this->git($tool->readArgs()));
+    }
+
     private function config(): string
     {
         return \is_file($this->home->path('.gitconfig')) ? (string) \file_get_contents($this->home->path('.gitconfig')) : '';
@@ -54,37 +60,37 @@ final class GitToolSetupTest extends TestCase
 
     public function testNothingSetIsAbsentEvenWithoutAConfigFile(): void
     {
-        $this->assertSame(GitToolStatus::Absent, $this->tool()->status());
+        $this->assertSame(GitToolStatus::Absent, $this->readStatus($this->tool()));
     }
 
     public function testAnotherToolAloneIsStillAbsent(): void
     {
         $this->git(['config', '--global', 'diff.tool', 'vimdiff']);
 
-        $this->assertSame(GitToolStatus::Absent, $this->tool()->status());
+        $this->assertSame(GitToolStatus::Absent, $this->readStatus($this->tool()));
     }
 
     public function testApplyMakesItCurrent(): void
     {
         $this->assertNull($this->tool()->apply());
 
-        $this->assertSame(GitToolStatus::Current, $this->tool()->status());
+        $this->assertSame(GitToolStatus::Current, $this->readStatus($this->tool()));
     }
 
     public function testASetupNamingAnotherBinaryIsStaleUntilWrittenAgain(): void
     {
         $this->tool('/old/checkout/bin/porta')->apply();
 
-        $this->assertSame(GitToolStatus::Stale, $this->tool()->status());
+        $this->assertSame(GitToolStatus::Stale, $this->readStatus($this->tool()));
         $this->tool()->apply();
-        $this->assertSame(GitToolStatus::Current, $this->tool()->status());
+        $this->assertSame(GitToolStatus::Current, $this->readStatus($this->tool()));
     }
 
     public function testHalfASetupIsStale(): void
     {
         $this->git(['config', '--global', 'merge.tool', 'porta']);
 
-        $this->assertSame(GitToolStatus::Stale, $this->tool()->status());
+        $this->assertSame(GitToolStatus::Stale, $this->readStatus($this->tool()));
     }
 
     public function testRemoveTakesEveryPortaKeyAway(): void
@@ -93,7 +99,7 @@ final class GitToolSetupTest extends TestCase
 
         $this->assertNull($this->tool()->remove());
 
-        $this->assertSame(GitToolStatus::Absent, $this->tool()->status());
+        $this->assertSame(GitToolStatus::Absent, $this->readStatus($this->tool()));
         $this->assertStringNotContainsString('porta', $this->config());
     }
 
@@ -123,7 +129,7 @@ final class GitToolSetupTest extends TestCase
 
     public function testWithoutGitItIsUnavailable(): void
     {
-        $this->assertSame(GitToolStatus::Unavailable, new GitToolSetup('/opt/porta', static fn (array $args): array => [127, ''])->status());
+        $this->assertSame(GitToolStatus::Unavailable, $this->tool()->statusOf(127, ''));
     }
 
     public function testARemovalGitRefusesIsNamed(): void

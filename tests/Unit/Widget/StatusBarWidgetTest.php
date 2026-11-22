@@ -101,6 +101,49 @@ final class StatusBarWidgetTest extends TestCase
         $this->assertStringNotContainsString('Ctrl+Q quit', $line, 'and the part that did not fit is gone, not half-drawn');
     }
 
+    /**
+     * A contributed cell is held back for on top of the file's floor, not
+     * inside it: inside, a 25-column cell — an agent at work — never fitted at
+     * 120 columns while the key legend kept ninety.
+     */
+    public function testALongCellKeepsItsPlaceAgainstTheKeyLegend(): void
+    {
+        $legend = '1:1  LSP:none (enable a PHP server in Settings)  Ctrl+S save  Ctrl+T panel  Ctrl+Space complete  Ctrl+Q quit';
+        $status = new StatusBarWidget();
+        $status->setProvider(static fn (): array => [
+            'cells' => [['text' => '✦ test editing A.php ▾', 'menu' => static fn (): array => []]],
+            'left' => 'src/A.php ●',
+            'right' => $legend,
+        ]);
+        $status->beforeRender();
+
+        $line = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(120, 1))[0]);
+
+        $this->assertSame(120, AnsiUtils::visibleWidth($line));
+        $this->assertStringStartsWith(' ✦ test editing A.php ▾ │ src/A.php ●', $line, 'the cell and the whole file name');
+        $this->assertStringContainsString(Glyphs::ELLIPSIS, $line, 'the legend is what gives way');
+    }
+
+    /**
+     * Never more than half the row, cells or not: on a narrow split the caret
+     * position and the legend keep the other half.
+     */
+    public function testTheCellsHoldNoMoreThanHalfTheRow(): void
+    {
+        $status = new StatusBarWidget();
+        $status->setProvider(static fn (): array => [
+            'cells' => [['text' => \str_repeat('c', times: 30), 'menu' => null]],
+            'left' => 'a.php',
+            'right' => \str_repeat('r', times: 60),
+        ]);
+        $status->beforeRender();
+
+        $line = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(60, 1))[0]);
+
+        $this->assertStringContainsString(\str_repeat('r', times: 20), $line, 'the right keeps its half');
+        $this->assertStringNotContainsString(\str_repeat('c', times: 30), $line, 'a cell that does not fit in the left half is dropped, whole');
+    }
+
     public function testWithoutProviderRendersEmptyBar(): void
     {
         $status = new StatusBarWidget();

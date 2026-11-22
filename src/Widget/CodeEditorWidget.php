@@ -521,12 +521,14 @@ final class CodeEditorWidget extends AbstractWidget implements
 
     /**
      * Open a single-line input prompt (go to line, rename symbol).
+     *
+     * @param (\Closure(): void)|null $onCancel run when the prompt goes without a submit
      */
     #[\Override]
-    public function openPrompt(string $label, string $initial, callable $onSubmit, PromptTone $tone = PromptTone::Plain, TextEcho $echo = TextEcho::Visible): void
+    public function openPrompt(string $label, string $initial, callable $onSubmit, PromptTone $tone = PromptTone::Plain, TextEcho $echo = TextEcho::Visible, ?\Closure $onCancel = null): void
     {
         $this->closeSiblingFloaters();
-        $this->overlayHost->openPrompt($label, $initial, $onSubmit, $tone, $echo);
+        $this->overlayHost->openPrompt($label, $initial, $onSubmit, $tone, $echo, $onCancel);
     }
 
     /**
@@ -744,6 +746,12 @@ final class CodeEditorWidget extends AbstractWidget implements
     public function extendSelectionTo(int $relRow, int $relCol): void
     {
         $this->mouse->extendSelectionTo($relRow, $relCol, $this->viewport());
+    }
+
+    /** The press's release: runs the lens the press armed, unless the pointer left its row. */
+    public function releasePress(): void
+    {
+        $this->mouse->releasePress();
     }
 
     /** Select the word under the pointer (double-click); places a bare caret when off a word. */

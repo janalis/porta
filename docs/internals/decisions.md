@@ -419,6 +419,16 @@ lifecycles).
 
 ## Testing and gates
 
+**`Ide::boot()` / `Ide::shutdown()` public — kept.** `run()` is boot, the loop,
+shutdown; the two halves are public so a host that turns the loop itself can
+run the IDE: tuink's in-process driver hosts the Behat spec through them
+(`tests/Behat/PortaApplication.php`). That is a lifecycle, not a test hook —
+nothing in them branches on being tested, and `run()` goes through the same
+calls — so "no test-only code in `src`" does not apply. Folding them back
+behind `run()` would take the whole in-process spec with it: a driver that
+cannot call them skips the layout, session restore and teardown.
+*Re-opens on:* the in-process driver gone, or a second way to host the loop.
+
 **The two coverage passes run at once — kept.** They share no state, and
 overlapped they cost ~145s against ~190s in sequence. `coverage:src` keeps the
 container cache on (~45s), safe because `--require=src` makes a lossy merge red. The one shard that failed

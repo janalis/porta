@@ -494,8 +494,9 @@ notch.
 
 Settings, Git, Review and the docs open in **the view window**: a framed,
 movable, resizable window over the editor layout, which stays mounted and
-dimmed behind it. It opens centred at 80% of the workspace, and only one view
-is open at a time.
+dimmed behind it. It opens centred at 80% of the workspace — the whole height
+when 80% would be under 27 rows, the Git view's commit form and a list beside
+it — and only one view is open at a time.
 
 `Workbench/View/ViewRegistry` keys `ContributedView`s by a **string id the view
 supplies**. It was an enum, and the enum was the reason a view had to be known
@@ -594,8 +595,8 @@ the single move-and-resize state machine: the title bar moves a box, every
 edge and corner but the title bar's own edge resizes it, the handle under the
 pointer draws heavy, and `place()` clamps the box into the workspace. Each
 window asks it once per layout for its box — the content decides the default
-size (80%, centred, for a view window; the content's, a third down, for the
-others) — and hit-tests through `ModalBox::zoneAt()`. A press on the close
+size (80%, centred, for a view window, or its whole height when that is under
+27 rows; the content's, a third down, for the others) — and hit-tests through `ModalBox::zoneAt()`. A press on the close
 button or beside the window closes it, and Esc does; the bars do not spell Esc
 out. The close button is the platform's (`Overlay/State/WindowControls`): a red
 `(✖)` leading the title bar on macOS, with the title centred, and a `[✖]`
@@ -1075,14 +1076,16 @@ view is the one plugin-built object core can name.
 The runner answers a run that cannot happen as exit 1 with no output. Every
 caller already handles that shape — the `Outcome` verbs read the code, and every
 parser returns its empty value for an empty string — so that one guard is the
-whole availability rule.
+whole availability rule, with one door around it: `runAnywhere()`, which only
+the two-file comparison takes (`git diff --no-index` needs no repository).
 
 Availability has **two predicates and they mean different things**:
 `isAvailable()` is binary-and-repository, `isRepository()` is repository alone.
-Outside a repository `activate()` returns before registering the view, the menu,
-the branch cell or any verb — `ide_git` included, which is why that id is
-`adoptable` — so `MenuModel` skips the unregistered items and the group is
-never built. Inside one with no `git` binary the chrome all stays and says so
+Outside a repository `activate()` registers no menu, no branch cell and no
+verb — `ide_git` included, which is why that id is `adoptable` — so `MenuModel`
+skips the unregistered items and the group is never built. The view and its
+comparisons ARE registered there: `porta --diff a b` and an agent's proposed
+change open in it, and comparing two files asks no repository. Inside one with no `git` binary the chrome all stays and says so
 when run: hiding it there would leave a user plainly inside a repository with no
 way to learn why git vanished.
 

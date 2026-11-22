@@ -77,7 +77,7 @@ final class BreadcrumbScanner
                 }
 
                 if (\T_NAMESPACE === $id) {
-                    $nsPending = ['label' => '', 'startLine' => $tokLine, 'kind' => CodeScopeKind::Namespace];
+                    $nsPending = ['label' => '', 'startLine' => $tokLine, 'kind' => CodeScopeKind::NamespaceBlock];
                 }
                 if (\T_CLASS === $id && \T_DOUBLE_COLON !== $prev && \T_NEW !== $prev) {
                     $declKind = CodeScopeKind::Type;
@@ -142,7 +142,7 @@ final class BreadcrumbScanner
                 'label' => $ns['label'],
                 'startLine' => $ns['startLine'],
                 'endLine' => \array_key_exists($i + 1, $namespaces) ? $namespaces[$i + 1]['startLine'] - 1 : $maxLine,
-                'kind' => CodeScopeKind::Namespace,
+                'kind' => CodeScopeKind::NamespaceBlock,
             ];
         }
 
@@ -190,7 +190,7 @@ final class BreadcrumbScanner
         $headers = [];
         foreach ($scopes as $scope) {
             $header = $scope['startLine'] - 1; // 0-based declaration line
-            if (CodeScopeKind::Namespace !== $scope['kind'] && $scope['startLine'] <= $line && $line <= $scope['endLine'] && $header < $topLine) {
+            if (CodeScopeKind::NamespaceBlock !== $scope['kind'] && $scope['startLine'] <= $line && $line <= $scope['endLine'] && $header < $topLine) {
                 $headers[] = ['label' => $scope['label'], 'line' => $header];
             }
         }

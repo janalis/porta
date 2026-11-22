@@ -314,15 +314,23 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
     }
 
     /**
-     * Columns held back for the left side before the right may take the rest.
+     * Columns held back for the left side before the right may take the rest:
+     * the cells, whole, and the file part's floor after them.
      *
      * Never more than the left actually has to show, and never more than half
      * the row — on a 40-column split, starving the caret position to spell a
-     * path in full would trade one missing fact for another.
+     * path in full would trade one missing fact for another. The cells count
+     * on top of the floor, not inside it: counted inside, a 25-column cell (an
+     * agent at work, `✦ Claude editing A.php ▾`) never fitted at 120 columns
+     * while the static key legend kept ninety.
+     *
+     * @param list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}> $cells
      */
-    private function leftFloor(string $left, int $columns): int
+    private function leftFloor(array $cells, string $left, string $note, int $columns): int
     {
-        return \min(AnsiUtils::visibleWidth($left), self::LEFT_FLOOR, \intdiv($columns, num2: 2));
+        $cellsWidth = AnsiUtils::visibleWidth(self::prefix(\array_column($cells, 'text')));
+
+        return \min($cellsWidth + AnsiUtils::visibleWidth(self::joined($left, $note)), $cellsWidth + self::LEFT_FLOOR, \intdiv($columns, num2: 2));
     }
 
     /**
@@ -362,7 +370,6 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
         $left = null !== $this->flash ? Glyphs::FLASH_MARKER.' '.$this->flash['text'] : $this->lastLeft;
         $note = null !== $this->flash ? '' : $this->lastNote;
         $right = $this->lastRight;
-        $whole = self::prefix(\array_column($cells, 'text')).self::joined($left, $note);
 
         // A flash is transient information the user must read, so it wins the
         // width fight: the right side (whose tail is the static key legend)
@@ -386,7 +393,7 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
         // the last: at 100 columns the name was gone in English, at 140 in
         // German. The right's tail IS that legend, so cutting it here spends
         // the difference on hints nobody needs twice.
-        $right = AnsiText::truncate($right, \max(0, $columns - 3 - $this->leftFloor($whole, $columns)));
+        $right = AnsiText::truncate($right, \max(0, $columns - 3 - $this->leftFloor($cells, $left, $note, $columns)));
         $rightWidth = AnsiUtils::visibleWidth($right);
         $leftMax = \max(0, $columns - $rightWidth - 3);
 

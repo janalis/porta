@@ -321,7 +321,7 @@ final class PickerLayout
 
     /**
      * @param array{int, int, int, int}                                                              $bounds
-     * @param array{label: string, value: TextField, onSubmit: callable(string): void, tone: PromptTone} $prompt
+     * @param array{label: string, value: TextField, onSubmit: callable(string): void, tone: PromptTone, onCancel: ?\Closure(): void} $prompt
      *
      * @return array{rows: list<string>, top: int, col: int, width: int, box: ModalBox}
      */

@@ -292,4 +292,35 @@ final class IdePluginPaneTest extends TestCase
             ],
         );
     }
+
+    /**
+     * "Open as Text" on a viewer whose bytes are no text refuses, and leaves
+     * the viewer where it was: it used to close the tab first, then refuse,
+     * and the picture was gone with nothing in its place.
+     */
+    public function testOpenAsTextOnBytesThatAreNoTextKeepsTheViewer(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['picture.demo' => "\xff\xfe\x00 not text"]);
+        $this->panePlugin($project);
+
+        $this->runIde(
+            $project,
+            file: null,
+            steps: [
+                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
+                    $buffers = Services::resolve($ide, BufferManager::class);
+                    $path = (string) \realpath($project->path('picture.demo'));
+                    Services::resolve($ide, BufferService::class)->openFile($path, OpenFocus::Editor);
+                    $this->awaitPainted($tui, $terminal, needle: 'showing picture.demo');
+
+                    Services::resolve($ide, CommandRegistry::class)->run('open_as_text');
+
+                    $this->awaitPainted($tui, $terminal, needle: 'Not a UTF-8 text file');
+                    $this->assertTrue($buffers->get($path)?->isViewer(), 'the viewer tab stays');
+                    $this->assertSame($path, $buffers->active()?->path, 'and stays in front');
+                },
+            ],
+        );
+    }
 }

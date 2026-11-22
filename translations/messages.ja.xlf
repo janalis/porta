@@ -4050,6 +4050,14 @@
         <source>in the system’s dialog</source>
         <target>システムのダイアログで</target>
       </trans-unit>
+      <trans-unit id="1353">
+        <source>Reading your global git config…</source>
+        <target>グローバルな git 設定を読み込んでいます…</target>
+      </trans-unit>
+      <trans-unit id="1354">
+        <source>Checking…</source>
+        <target>確認中…</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -13,7 +13,7 @@ namespace Porta\Install;
  * The command git runs names the binary by its ABSOLUTE path — the phar, or the
  * script that is running — so the setup works whatever git's PATH is, and a
  * checkout moved later says so plainly instead of launching something else.
- * That is also what {@see status()} tells a stale setup by: the keys are there,
+ * That is also what {@see statusOf()} tells a stale setup by: the keys are there,
  * but they name another binary.
  *
  * `mergetool.porta.trustExitCode` is what lets the IDE's exit code, not the
@@ -21,7 +21,7 @@ namespace Porta\Install;
  */
 final readonly class GitToolSetup
 {
-    /** What {@see status()} reads: Porta's two tool sections, and the two keys that pick a tool. */
+    /** What {@see statusOf()} reads: Porta's two tool sections, and the two keys that pick a tool. */
     private const string KEYS = '^(difftool|mergetool)\.porta\.|^(diff|merge)\.tool$';
 
     /**
@@ -68,9 +68,20 @@ final readonly class GitToolSetup
         return null;
     }
 
-    public function status(): GitToolStatus
+    /** @return list<string> the `git` arguments of the read whose answer {@see statusOf()} reads */
+    public function readArgs(): array
     {
-        $current = $this->current();
+        return ['config', '--global', '--get-regexp', self::KEYS];
+    }
+
+    /**
+     * Where the setup stands, from what `git` {@see readArgs()} answered —
+     * its exit code and stdout. The read is the caller's to run: the settings
+     * page runs it off the loop.
+     */
+    public function statusOf(int $code, string $out): GitToolStatus
+    {
+        $current = self::parsed($code, $out);
         if (null === $current) {
             return GitToolStatus::Unavailable;
         }
@@ -124,7 +135,12 @@ final readonly class GitToolSetup
     /** @return array<string, string>|null the keys {@see KEYS} matches, lower-cased key => value; null without git */
     private function current(): ?array
     {
-        [$code, $out] = ($this->git)(['config', '--global', '--get-regexp', self::KEYS]);
+        return self::parsed(...($this->git)($this->readArgs()));
+    }
+
+    /** @return array<string, string>|null what the read answered, as {@see current()} returns it */
+    private static function parsed(int $code, string $out): ?array
+    {
         // 1 is git's "nothing matched" — a config with no such key, or no file at all.
         if (0 !== $code && 1 !== $code) {
             return null;

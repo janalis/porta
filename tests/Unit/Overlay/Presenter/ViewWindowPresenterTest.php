@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Overlay\Presenter;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Layout\ViewRegion;
 use Porta\Overlay\Presenter\OverlayDelivery;
@@ -80,13 +81,41 @@ final class ViewWindowPresenterTest extends TestCase
     }
 
     /**
+     * A fresh window covers its share of the screen — unless that share is
+     * too short for the tallest view, the Git view's changes column with its
+     * boxed commit form, which then listed none of the changes it counted.
+     * Then it takes the whole height. Here the bounds are the whole terminal.
+     *
+     * @return iterable<string, array{int, int, int}>
+     */
+    public static function heights(): iterable
+    {
+        yield 'a short screen: the whole height' => [30, 0, 30];
+        yield 'one row short of the share: still the whole height' => [33, 0, 33];
+        yield 'a share of exactly the floor is kept' => [34, 3, 27];
+        yield 'a tall screen: its share, centred' => [60, 6, 48];
+    }
+
+    #[DataProvider('heights')]
+    public function testAFreshWindowTakesItsShareOrTheWholeHeight(int $terminalRows, int $top, int $rows): void
+    {
+        $presenter = $this->hosted(new TestOverlayPane(), rows: $terminalRows);
+
+        $presenter->compose();
+        $box = $presenter->box();
+
+        $this->assertInstanceOf(ModalBox::class, $box);
+        $this->assertSame([$top, $rows], [$box->startRow, $box->rows]);
+    }
+
+    /**
      * The IDE's hosting, by hand: the frame inside a hidden host, a first
      * frame landed, and a region with $leaf as its content and $side as its
      * sidebar, arranged and open in the window.
      */
-    private function hosted(TestOverlayPane $leaf, ?TestOverlayPane $side = null): ViewWindowPresenter
+    private function hosted(TestOverlayPane $leaf, ?TestOverlayPane $side = null, int $rows = 30): ViewWindowPresenter
     {
-        $layout = $this->controller();
+        $layout = $this->controller(rows: $rows);
         $this->pane = new TestOverlayPane();
         $this->tui->add($this->pane);
         $host = new ContainerWidget();
@@ -165,7 +194,9 @@ final class ViewWindowPresenterTest extends TestCase
         $this->assertSame($box->startRow + ModalFrame::CHROME_ROWS_TOP, $this->renderer->getWidgetRect($side)?->row, 'the sidebar keeps the padding as its inset');
         $rows = \array_values(\array_unique(\array_column($this->pane->windowSpans, 'row')));
         // The box's rows, then the shadow band under them.
-        $this->assertSame(\range($box->startRow, $box->startRow + $box->rows), $rows, 'the window is exactly its box: no row added for the content');
+        // The box's rows, and the shadow band under them where the screen has a row for it
+        $this->assertSame(\range($box->startRow, $box->startRow + $box->rows - 1), \array_slice($rows, offset: 0, length: $box->rows), 'the window is exactly its box: no row added for the content');
+        $this->assertLessThanOrEqual($box->startRow + $box->rows, \max($rows));
         $padding = AnsiUtils::stripAnsiCodes(\implode('', \array_column(\array_filter($this->pane->windowSpans, static fn (array $span): bool => $span['row'] === ($box->startRow + 1)), 'segment')));
         $sideRect = $this->renderer->getWidgetRect($side);
         $this->assertInstanceOf(WidgetRect::class, $sideRect);

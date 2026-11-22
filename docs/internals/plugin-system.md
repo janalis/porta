@@ -486,9 +486,10 @@ of adopting rather than re-registering.
 `ide_git` is the case that shows why the skip rule earns its narrowness. It was
 deliberately NOT adoptable while core owned the git view — flagging it would
 have hidden the menu item whenever nothing registered under `git`, which was
-wrong for a core-owned toggle. A plugin implements it now, and registers neither
-the view nor the verb outside a repository, so the skip is exactly right: the
-whole Git group is hidden in the same case.
+wrong for a core-owned toggle. A plugin implements it now, and does not register the
+verb outside a repository — the view, only for the comparisons a difftool or
+an agent opens in it — so the skip is exactly right: the whole Git group is
+hidden in the same case.
 
 ## A plugin file wires; `src/` implements
 
