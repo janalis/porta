@@ -575,7 +575,8 @@ final class ProjectPickerTest extends TestCase
         $gone = self::frame('open;'.\base64_encode($this->disk->path('gone')));
         $forged = self::frame('open;'.\base64_encode($this->disk->path('typed')), \str_repeat('f', 32));
 
-        $this->assertNull($this->pickInAWindow([self::silent($gone), self::silent($forged), 'q', "\x1b"]));
+        // And one the picker has no use for: the window's close goes the host's own way before ready.
+        $this->assertNull($this->pickInAWindow([self::silent($gone), self::silent($forged), self::silent(self::frame('close')), 'q', "\x1b"]));
         $this->assertStringContainsString('┃ q ', $this->screen(), 'only the letter reached the field');
         $this->assertSame(2, \substr_count($this->terminal->getOutput(), self::frame('picking')), 'a folder not there leaves it waiting, and it says so again: the window took it for done');
     }
