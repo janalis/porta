@@ -26,20 +26,29 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * Each option runs the host's own change path, so picking an option and
  * stepping to it are one write; the current option carries the check.
  */
-final readonly class ListboxOpener
+final class ListboxOpener
 {
+    /** Which list was opened last: a host asks after ITS list, not whatever the shared menu shows. */
+    private int $opened = 0;
+
     public function __construct(
-        private BidiTui $tui,
-        private Renderer $renderer,
-        private MenuBarWidget $menuBar,
-        private MenuOverlayController $overlay,
-        private ContextMenu $contextMenu,
+        private readonly BidiTui $tui,
+        private readonly Renderer $renderer,
+        private readonly MenuBarWidget $menuBar,
+        private readonly MenuOverlayController $overlay,
+        private readonly ContextMenu $contextMenu,
     ) {}
 
-    /** Whether an option list is open: a host whose value moved under it opens it again. */
-    public function isOpen(): bool
+    /** Which list the next open will be: the number a host keeps to ask {@see isShowing()} about it. */
+    public function next(): int
     {
-        return $this->contextMenu->isOpen();
+        return $this->opened + 1;
+    }
+
+    /** Whether list $opened is the one on screen: closed, or replaced by another list or a menu, it is not. */
+    public function isShowing(int $opened): bool
+    {
+        return $opened === $this->opened && $this->contextMenu->isListboxOpen();
     }
 
     /**
@@ -89,6 +98,7 @@ final readonly class ListboxOpener
                 $choose($value);
             });
         }
+        ++$this->opened;
         $this->menuBar->close();
         $this->overlay->setContextAnchor($row, $col, $above);
         $this->contextMenu->openListbox($items, $selected, $width - PopupFrame::CHROME_COLS);

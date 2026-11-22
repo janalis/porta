@@ -20,8 +20,12 @@ final readonly class LaunchTheme
     /** @param array<array-key, mixed> $settings the effective settings, defaults included */
     public static function for(string $rootDir, array $settings, DesktopSession $session): string
     {
-        $chosen = new SettingsProvenance(ConfigFiles::for($rootDir))->originOf(['settings', 'theme']);
+        return !self::chosen($rootDir) && null !== $session->appearance ? $session->appearance : (string) ($settings['theme'] ?? 'dark');
+    }
 
-        return null === $chosen && null !== $session->appearance ? $session->appearance : (string) ($settings['theme'] ?? 'dark');
+    /** Whether a config file, the project's or the global one, chose a theme: the window's look then stands for nothing. */
+    public static function chosen(string $rootDir): bool
+    {
+        return null !== new SettingsProvenance(ConfigFiles::for($rootDir))->originOf(['settings', 'theme']);
     }
 }

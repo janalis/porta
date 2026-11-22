@@ -20,8 +20,8 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 #[AsIdeService]
 final class DesktopRequests
 {
-    /** The look the window last reported; null before it reported one. */
-    private ?string $followed = null;
+    /** The look the window last reported, starting as the one it launched with; null when it said none. */
+    private ?string $followed;
 
     public function __construct(
         private readonly ExternalDrop $drops,
@@ -29,7 +29,11 @@ final class DesktopRequests
         private readonly SettingsProvenance $provenance,
         private readonly SettingsController $controller,
         private readonly EventDispatcherInterface $events,
-    ) {}
+        DesktopSession $session,
+    ) {
+        // The report every window sends on ready repeats the launch's look: no change.
+        $this->followed = $session->appearance;
+    }
 
     /**
      * A file or folder opened with Porta, or dropped on its window or icon. The

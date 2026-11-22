@@ -16,6 +16,15 @@ final class DesktopFramesTest extends TestCase
         $this->assertSame('/work/shop', DesktopFrames::openPath('open;'.\base64_encode('/work/shop')."\x1b\\"));
     }
 
+    public function testAnAppearanceSaysDarkOrLight(): void
+    {
+        $this->assertSame('light', DesktopFrames::appearance("appearance;light\x1b\\"));
+        $this->assertSame('dark', DesktopFrames::appearance("appearance;dark\x1b\\"));
+        $this->assertNull(DesktopFrames::appearance("appearance;sepia\x1b\\"));
+        $this->assertNull(DesktopFrames::appearance("appearance;light\x1b\\x"));
+        $this->assertNull(DesktopFrames::appearance("xappearance;light\x1b\\"));
+    }
+
     /** @return iterable<string, array{string}> */
     public static function notOpens(): iterable
     {

@@ -86,6 +86,9 @@ final class PortaCommand extends Command
     /** @var \Closure(): ?string */
     private readonly \Closure $pickProject;
 
+    /** The window's look as the picker left it; null when no picker ran or it said none. */
+    private ?string $lookAfterPick = null;
+
     /**
      * @param (callable(Workspace, ?string, LspMode, Ansi, \Closure, DesktopSession): int)|null $launch        defaults to booting a real {@see Ide}, returning its exit code; the
      *                                                                                         trailing closure is called between boot and run, so a crash can say
@@ -194,6 +197,10 @@ final class PortaCommand extends Command
             return $open($path);
         }
         $picked = ($this->pickProject)();
+        // The window may have gone light or dark while the picker was up: it
+        // left the look in the environment, for the IDE's first frame.
+        $look = \getenv(DesktopSession::APPEARANCE);
+        $this->lookAfterPick = \is_string($look) ? $look : null;
 
         return null === $picked ? Command::SUCCESS : $open([$picked]);
     }
@@ -258,7 +265,7 @@ final class PortaCommand extends Command
                     $booted = true;
                 },
                 // The window around this launch, read from the environment it was given.
-                DesktopSession::fromEnvironment($this->env),
+                DesktopSession::fromEnvironment($this->env)->withAppearance($this->lookAfterPick),
             );
         } catch (\Throwable $e) {
             if ($output->isVerbose()) {

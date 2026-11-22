@@ -362,7 +362,8 @@ static gboolean appearance_known = FALSE;
 
 static void send_appearance(PortaWindow *self)
 {
-    if (self->ready && appearance_known) {
+    /* The picker draws in it too: told while it waits, as the IDE is once ready. */
+    if ((self->ready || self->picking) && appearance_known) {
         g_autofree char *message = porta_appearance(self->token, dark_preferred);
         write_to_porta(self, message, -1);
     }
@@ -450,6 +451,9 @@ static void give_to_picker(PortaWindow *self, const char *path)
     g_autofree char *request = porta_open_request(self->token, path);
     write_to_porta(self, request, -1);
     self->picking = FALSE;
+    /* The same folder opened again while Porta boots comes here, not to a new window. */
+    g_free(self->project_key);
+    self->project_key = project_key(path);
 }
 
 static void on_open(GApplication *application, GFile **files, int count, const char *hint, gpointer data);
@@ -525,7 +529,10 @@ static void received(PortaWindow *self, PortaOsc *osc)
         g_ptr_array_set_size(self->pending, 0);
     }
     if (PORTA_MESSAGE_PICKING == kind && !self->ready) {
+        /* Waiting again (a folder it was handed was not there): it owns no project yet. */
         self->picking = TRUE;
+        g_clear_pointer(&self->project_key, g_free);
+        send_appearance(self);
     }
     if (PORTA_MESSAGE_CHOOSE_FOLDER == kind && self->picking) {
         choose_folder(self);

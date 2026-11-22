@@ -67,6 +67,12 @@ final class ContextMenu extends OverlayWidget
     /** A listbox is at least as wide as the select it hangs from (panel columns, frame excluded). */
     private int $minWidth = 0;
 
+    /** Whether it is open as an option list, not as a menu of actions. */
+    public function isListboxOpen(): bool
+    {
+        return $this->isOpen() && $this->listbox;
+    }
+
     /**
      * Open the menu with $items and select its first non-separator entry.
      *
