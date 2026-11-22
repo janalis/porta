@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-22
+
 ### Added
 
 - **Desktop application, first screen**: a window opened with no project
