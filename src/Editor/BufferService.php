@@ -202,12 +202,17 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
         // the path key is free for a text buffer. A viewer tab holds an empty
         // document, so there is nothing to lose and nothing to confirm.
         // Refused before the viewer goes, not after: a picture's bytes are no
-        // text, and the tab would vanish with nothing in its place.
-        if (OpenAs::Text === $as && true === $this->buffers->get($path)?->isViewer() && !$this->refusesText($path)) {
+        // text, and the tab would vanish with nothing in its place. The bytes
+        // read to decide that are the ones the text buffer opens with.
+        // No bytes (the file went, or grew past the text limit) refuse nothing:
+        // the viewer goes, and opening from disk says what is wrong.
+        $viewerAsText = OpenAs::Text === $as && true === $this->buffers->get($path)?->isViewer();
+        $bytes = $viewerAsText ? Files::textOf($path) : null;
+        if ($viewerAsText && !$this->refusesText($bytes ?? '')) {
             $this->buffers->close($path);
         }
         if (!$this->buffers->has($path)) {
-            $this->openFromDisk($path, $focus, $as);
+            $this->openFromDisk($path, $focus, $as, $bytes);
 
             return;
         }
@@ -220,8 +225,12 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
         }
     }
 
-    /** {@see openFile()} for a $path no tab holds yet: a pane, or a new text buffer. */
-    private function openFromDisk(string $path, OpenFocus $focus, OpenAs $as): void
+    /**
+     * {@see openFile()} for a $path no tab holds yet: a pane, or a new text buffer.
+     *
+     * @param string|null $bytes the file's content when the caller already read it
+     */
+    private function openFromDisk(string $path, OpenFocus $focus, OpenAs $as, ?string $bytes = null): void
     {
         if (!\is_file($path) || !\is_readable($path)) {
             $this->notifier->error($this->translator->trans('Cannot read %file%', ['%file%' => $this->paths->relative($path)]));
@@ -252,17 +261,20 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
 
             return;
         }
-        $this->openAsText($path, $preview, $focus);
+        $this->openAsText($path, $preview, $focus, $bytes ?? (string) \file_get_contents($path));
     }
 
-    /** {@see openFromDisk()} for a readable file small enough to edit, unless it is not UTF-8. */
-    private function openAsText(string $path, ?string $preview, OpenFocus $focus): void
+    /**
+     * {@see openFromDisk()} for a readable file small enough to edit, unless it
+     * is not UTF-8: $bytes, read once, are both what is checked and what opens.
+     */
+    private function openAsText(string $path, ?string $preview, OpenFocus $focus, string $bytes): void
     {
-        if ($this->refusesText($path)) {
+        if ($this->refusesText($bytes)) {
             return;
         }
 
-        $buffer = $this->buffers->open($path, (string) \file_get_contents($path));
+        $buffer = $this->buffers->open($path, $bytes);
         // didOpen before showBuffer so the inlay-hint request it fires is
         // ordered after the server knows about the file.
         $this->adopt($buffer, $preview);
@@ -275,10 +287,10 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
         $this->tui->requestRender();
     }
 
-    /** Whether the text path refuses $path, its bytes not UTF-8 — said, if so. */
-    private function refusesText(string $path): bool
+    /** Whether the text path refuses $bytes, not UTF-8 — said, if so. */
+    private function refusesText(string $bytes): bool
     {
-        return Files::notText($path) && $this->said($this->translator->trans('Not a UTF-8 text file'));
+        return !\mb_check_encoding($bytes, encoding: 'UTF-8') && $this->said($this->translator->trans('Not a UTF-8 text file'));
     }
 
     /** Warns $message; true, for a condition that refuses once it has said why. */

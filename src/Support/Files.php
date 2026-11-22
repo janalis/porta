@@ -46,14 +46,6 @@ final class Files
         return \is_file($path) && (int) \filesize($path) <= self::MAX_TEXT_BYTES ? (string) \file_get_contents($path) : null;
     }
 
-    /** A file small enough to edit whose bytes are not UTF-8: the text path refuses it. */
-    public static function notText(string $path): bool
-    {
-        $text = self::textOf($path);
-
-        return null !== $text && '' !== $text && !\mb_check_encoding($text, encoding: 'UTF-8');
-    }
-
     /**
      * The file's bytes when it exists and is writable, or null otherwise —
      * the guard every in-place-edit caller needs before reading a file it
