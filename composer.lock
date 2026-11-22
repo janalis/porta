@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "91678aefd11962a536d3dea80de6a3f8",
+    "content-hash": "290c1adec6d445110b7c3a79d4842109",
     "packages": [
         {
             "name": "composer/semver",
@@ -3450,34 +3450,7 @@
                     "Janalis\\Tuink\\": "src/"
                 }
             },
-            "autoload-dev": {
-                "psr-4": {
-                    "Janalis\\Tuink\\Tests\\": "tests/",
-                    "Janalis\\Tuink\\Example\\": "example/src/"
-                }
-            },
-            "scripts": {
-                "format": [
-                    "mago format"
-                ],
-                "format:check": [
-                    "mago format --check"
-                ],
-                "lint": [
-                    "mago lint --minimum-fail-level=note"
-                ],
-                "analyze": [
-                    "mago analyze --minimum-fail-level=note"
-                ],
-                "test": [
-                    "@php vendor/bin/phpunit",
-                    "@php vendor/bin/behat --strict",
-                    "@php vendor/bin/behat --strict --profile=process"
-                ],
-                "mutate": [
-                    "@php -d pcov.enabled=1 -d pcov.directory=src vendor/bin/infection --threads=max --initial-tests-php-options=\"-d pcov.enabled=1 -d pcov.directory=src\""
-                ]
-            },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
@@ -3489,8 +3462,8 @@
             ],
             "description": "Behat extension for end-to-end testing of Symfony Tui applications, in process or in a real pseudo-terminal",
             "keywords": [
-                "bdd",
-                "behat",
+                "BDD",
+                "Behat",
                 "e2e",
                 "symfony",
                 "terminal",
@@ -3498,10 +3471,11 @@
                 "tui"
             ],
             "support": {
-                "source": "https://github.com/janalis/tuink/tree/v0.1.0",
-                "issues": "https://github.com/janalis/tuink/issues"
+                "issues": "https://github.com/janalis/tuink/issues",
+                "source": "https://github.com/janalis/tuink/tree/v0.1.0"
             },
-            "time": "2026-11-22T20:34:26+00:00"
+            "time": "2026-11-22T20:34:26+00:00",
+            "published-time": "2026-11-22T22:10:19+00:00"
         },
         {
             "name": "jean85/pretty-package-versions",

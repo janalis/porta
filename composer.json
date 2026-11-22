@@ -152,12 +152,5 @@
         "platform": {
             "php": "8.5.0"
         }
-    },
-    "repositories": [
-        {
-            "name": "tuink",
-            "type": "vcs",
-            "url": "https://github.com/janalis/tuink"
-        }
-    ]
+    }
 }
