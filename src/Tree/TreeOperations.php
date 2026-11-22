@@ -742,13 +742,19 @@ final class TreeOperations
         // nothing about focus. AFTER the handler, not before: the rename's
         // listeners read the editor as it was, and a handler that asks on
         // (Move as…) or opens what it made keeps the keys where it put them.
-        $toTree = fn (): Tui => $this->tui->setFocus($this->tree);
+        // Nor while a picker is up on the editor: a prompt that replaced this
+        // one cancels it, and needs the keys this one had.
+        $toTree = function (): void {
+            if (!$this->editor->isAnyPickerOpen()) {
+                $this->tui->setFocus($this->tree);
+            }
+        };
         $this->editor->openPrompt(
             $label,
             $initial,
             function (string $value) use ($toTree, $onSubmit): void {
                 $onSubmit($value);
-                if ($this->tui->getFocus() === $this->editor && !$this->editor->isAnyPickerOpen()) {
+                if ($this->tui->getFocus() === $this->editor) {
                     $toTree();
                 }
             },

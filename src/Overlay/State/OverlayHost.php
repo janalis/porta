@@ -147,14 +147,23 @@ final class OverlayHost
      * border ({@see \Porta\Widget\Render\FieldState::Danger}), so a
      * destructive question never reads like a rename, colour or not.
      *
+     * A prompt opened over another one replaces it, and the replaced one went
+     * without a submit too: its `onCancel` runs, AFTER the new prompt is up, so
+     * a cancel that hands the keys back can see a prompt still wants them.
+     *
      * @param (\Closure(): void)|null $onCancel run when the prompt goes without a submit — Esc, its ✖, a click
-     *                                       outside — for a caller that moved the focus to open it
+     *                                       outside, another prompt in its place — for a caller that moved the
+     *                                       focus to open it
      */
     public function openPrompt(string $label, string $initial, callable $onSubmit, PromptTone $tone = PromptTone::Plain, TextEcho $echo = TextEcho::Visible, ?\Closure $onCancel = null): void
     {
+        $replaced = $this->prompt['onCancel'] ?? null;
         $this->prompt = ['label' => $label, 'value' => new TextField($initial, $this->cursorStyle, echo: $echo), 'onSubmit' => $onSubmit, 'tone' => $tone, 'onCancel' => $onCancel];
         $this->promptFrame->reset();
         ($this->invalidate)();
+        if (null !== $replaced) {
+            $replaced();
+        }
     }
 
     /**

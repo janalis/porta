@@ -460,6 +460,21 @@ final class OverlayHostTest extends TestCase
         $this->assertNull(Probe::get($host, property: 'prompt'));
     }
 
+    public function testAPromptOpenedOverAnotherCancelsItOnceTheNewOneIsUp(): void
+    {
+        $host = $this->host();
+        $seen = [];
+        $host->openPrompt('First', initial: '', onSubmit: static fn (): null => null, onCancel: static function () use ($host, &$seen): void {
+            $seen[] = Probe::get($host, property: 'prompt')['label'] ?? null;
+        });
+
+        $host->openPrompt('Second', initial: '', onSubmit: static fn (): null => null);
+        $this->assertSame(['Second'], $seen, 'the replaced prompt is told, with the new one already open');
+
+        $host->openPrompt('Third', initial: '', onSubmit: static fn (): null => null);
+        $this->assertSame(['Second'], $seen, 'a prompt without a cancel replaced: nothing to tell');
+    }
+
     public function testPromptClickBeyondTheBoxWidthDismisses(): void
     {
         $host = $this->host();
