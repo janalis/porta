@@ -969,6 +969,13 @@ page): the running IDE carried on — other pages, menus — on the code it had
 started with, so the page says to restart rather than pretending the new code is
 live.
 
+**Changed 2026-11-22: the `git config` read left the loop.** In line, each row
+rebuild held the loop for as long as git took to start and answer, and the
+settings search rebuilds every page. The page now shows the last answer while
+a fresh read runs (`Checking…` before the first), re-reads its rows only when
+the answer moved, and drops a read in flight when it writes. The writes stay in
+line: they follow a press.
+
 *Re-opens on:* a Windows port (no symlinks without privilege), or a request to
 manage a copied phar as well.
 

@@ -4,7 +4,9 @@ Feature: Updating Porta, and Porta outside the IDE
   ideAutoUpdate on, an install that updates itself is updated once work stops,
   while a source checkout is only told. Settings › Command line installs the
   porta command (a link in ~/.local/bin unless one is on the PATH), and takes
-  two presses to remove it.
+  two presses to remove it. It sets Porta up as git's difftool and mergetool
+  in the global git config, which it reads off the loop: the row says it is
+  checking until git answers.
 
   The network here is a stand-in: an address the scenario gives answers, any
   other fails.
@@ -91,3 +93,26 @@ Feature: Updating Porta, and Porta outside the IDE
     And the file "home/.local/bin/porta" should exist
     When I press "Enter"
     Then the file "home/.local/bin/porta" should not exist
+
+  Scenario: The Command line page sets porta up as git's difftool and mergetool, and takes it out again
+    Given the environment variable "HOME" is "%workspace%/home"
+    And the environment variable "GIT_CONFIG_GLOBAL" is "%workspace%/home/.gitconfig"
+    And the environment variable "GIT_CONFIG_NOSYSTEM" is "1"
+    And I start the app with the arguments "a.php"
+    When I open the Settings page "Command line"
+    And I select the setting "porta as git's diff and merge tool"
+    Then I should see "Set up"
+    And I should see "Sets diff.tool and"
+    When I press "Enter"
+    Then a notification should say "porta is now git's difftool and mergetool"
+    And the file "home/.gitconfig" should contain "--merge"
+    And I should see "Up to date"
+    And I should see "open this Porta"
+    When I select the setting "Remove porta from git"
+    And I press "Enter"
+    Then a notification should say "Press Enter again to remove it"
+    When I press "Enter"
+    Then a notification should say "porta is no longer git's difftool and mergetool"
+    And the file "home/.gitconfig" should not contain "porta"
+    And I should see "Set up"
+    And I should not see "Up to date"
