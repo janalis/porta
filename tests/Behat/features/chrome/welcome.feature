@@ -24,6 +24,14 @@ Feature: The Welcome screen
 
   Scenario: Working a step configures the project
     Given the bundled plugins are available
+    # Done means the server is there to run: a stand-in, so the step does not
+    # depend on whether this machine has phpantom installed
+    And a stub tool "bin/phpantom_lsp" containing:
+      """
+      #!/bin/sh
+      exit 0
+      """
+    And the "phpantom" plugin setting "binary" is the workspace path "bin/phpantom_lsp"
     And it is the first run in this project
     When I start the app with the arguments "a.php"
     And I should eventually see "1 of 4 done"
