@@ -29,7 +29,11 @@ foreach (readFrames($in) as $message) {
     $method = $message['method'] ?? '';
     if ('initialize' === $method) {
         $uri = (string) ($message['params']['rootUri'] ?? '');
-        $root = str_starts_with($uri, 'file://') ? rawurldecode(substr($uri, 7)) : (getcwd() ?: null);
+        $cwd = getcwd();
+        $root = false === $cwd ? null : $cwd;
+        if (str_starts_with($uri, 'file://')) {
+            $root = rawurldecode(substr($uri, 7));
+        }
     }
     match ($method) {
         'initialize' => sendMessage($out, [
@@ -53,7 +57,7 @@ foreach (readFrames($in) as $message) {
         ]),
         'workspace/executeCommand' => (static function () use ($out, $message, $root): void {
             if (null !== $root) {
-                file_put_contents($root.'/lens-ran', json_encode($message['params'] ?? []));
+                file_put_contents($root.'/lens-ran', json_encode($message['params'] ?? [], JSON_THROW_ON_ERROR));
             }
             sendMessage($out, ['jsonrpc' => '2.0', 'id' => $message['id'], 'result' => null]);
         })(),
