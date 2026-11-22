@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-11-22
+
 ### Changed
 
 - **Settings › Command line** reads your global git config in the
