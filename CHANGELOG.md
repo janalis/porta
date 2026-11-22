@@ -5,6 +5,29 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Desktop application, first screen**: a window opened with no project
+  shows a card with one field instead of a bare path prompt. A name narrows
+  the recent projects, then the PHP projects found on this computer (the
+  folders holding a `composer.json` one level down in `~/Sites`, `~/Projects`,
+  `~/code` and the like). A path starting with `~`, `/` or `.` lists the
+  folders it could go on to name, and Tab completes it as a shell does.
+  The **Choose a folder…** row opens the system's folder dialog, **Open remote…**
+  takes an SSH, SFTP or FTP location, and a click or the wheel works on the
+  list. A folder dropped on the window, chosen with Open Folder… or Open
+  Recent, or opened with Porta from the file manager now goes to the window
+  waiting for a project instead of opening a second one beside it.
+
+### Changed
+
+- **Desktop application**: the IDE starts in the system's light or dark look
+  when no theme was chosen, instead of drawing its first frame dark and
+  switching a moment later. Settings shows that look as the theme's default,
+  follows it when the system switches, and Reset returns to it. A project
+  opened next in the same window, or Porta restarted after an update, starts
+  in the look the window has now.
+
 ### Fixed
 
 - **Linux desktop application**: a file dropped on Porta's window under GNOME
