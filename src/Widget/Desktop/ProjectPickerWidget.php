@@ -79,6 +79,9 @@ final class ProjectPickerWidget extends AbstractWidget implements FocusableInter
 
     private string $problem;
 
+    /** The text the rows were last listed for. */
+    private string $listedFor;
+
     /** @var array<int, int> screen line => the row drawn on it, from the last render: what a click lands on */
     private array $rowOnLine = [];
 
@@ -156,7 +159,7 @@ final class ProjectPickerWidget extends AbstractWidget implements FocusableInter
             $kb->matches($data, action: 'complete') => $this->setText(($this->onTab)($this->selected(), $this->field->value())),
             ListNavigation::handleKey($data, $kb, $this->list, $selectable, page: $this->page) => $this->invalidate(),
             $kb->matches($data, action: 'clear') => $this->setText(''),
-            $kb->matches($data, action: 'backspace') ? $this->field->backspace() : $this->field->editKey($data, $kb) || $this->field->insert($data) => $this->refresh(),
+            $kb->matches($data, action: 'backspace') ? $this->field->backspace() : $this->field->editKey($data, $kb) || $this->field->insert($data) => $this->changed(),
             default => null,
         };
     }
@@ -292,10 +295,22 @@ final class ProjectPickerWidget extends AbstractWidget implements FocusableInter
         return AnsiText::truncate(AnsiText::blank(\max(0, \intdiv($width - AnsiUtils::visibleWidth($text), num2: 2))).$text, $width, pad: true);
     }
 
+    /** An edit key landed: the rows follow the text, not a caret that only moved. */
+    private function changed(): void
+    {
+        if ($this->field->value() === $this->listedFor) {
+            $this->invalidate();
+
+            return;
+        }
+        $this->refresh();
+    }
+
     /** The rows for what the field holds now, the selection back on the first that can be chosen. */
     private function refresh(): void
     {
-        $this->rows = ($this->rowsFor)($this->field->value());
+        $this->listedFor = $this->field->value();
+        $this->rows = ($this->rowsFor)($this->listedFor);
         // The lines drawn last show the old rows: a click before the next frame lands on nothing.
         $this->rowOnLine = [];
         $this->list->reset();

@@ -148,7 +148,9 @@ namespace Porta.Desktop.App
 
             if (kind == MessageKind.Picking && !ready)
             {
+                // Waiting again (a folder it was handed was not there): it owns no project yet.
                 Picking = true;
+                Root = null;
             }
 
             if (kind == MessageKind.ChooseFolder && Picking)
@@ -245,8 +247,13 @@ namespace Porta.Desktop.App
             if (ready || Picking)
             {
                 connection.WriteInput(DesktopMessage.OpenRequest(token, path));
-                // Handed its project: the next folder is not this window's to take.
-                Picking = false;
+                // Handed its project: the next folder is not this window's to take,
+                // and the same folder opened again while Porta boots comes here.
+                if (Picking)
+                {
+                    Picking = false;
+                    Root = path;
+                }
             }
             else
             {
@@ -268,7 +275,8 @@ namespace Porta.Desktop.App
 
         private void SendAppearance()
         {
-            if (!ready)
+            // The picker draws in it too: told while it waits, as the IDE is once ready.
+            if (!ready && !Picking)
             {
                 return;
             }

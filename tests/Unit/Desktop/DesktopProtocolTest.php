@@ -11,6 +11,7 @@ use Porta\Desktop\DesktopSession;
 use Porta\Desktop\SystemMenu;
 use Porta\Editor\BufferManager;
 use Porta\Event\RunFinished;
+use Porta\Event\SettingsRowsStale;
 use Porta\Event\ThemeChanged;
 use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsRow;
@@ -420,6 +421,22 @@ final class DesktopProtocolTest extends TestCase
         $protocol->onInput($this->request('appearance;light'));
 
         $this->assertSame('light', $theme(), 'the page open while the window went light says so');
+    }
+
+    public function testTheLaunchsOwnLookReportedOnReadyChangesNothing(): void
+    {
+        // Launched light: the window says so in the environment the container reads.
+        \putenv(DesktopSession::APPEARANCE.'=light');
+        $protocol = $this->bootDesktop();
+        $stale = 0;
+        Services::resolve($this->ide, EventDispatcherInterface::class)->addListener(SettingsRowsStale::class, static function () use (&$stale): void {
+            ++$stale;
+        });
+
+        $protocol->onInput($this->request('appearance;light'));
+        $this->assertSame(0, $stale, 'the look it launched with: nothing to read again');
+        $protocol->onInput($this->request('appearance;dark'));
+        $this->assertSame(1, $stale);
     }
 
     public function testARunEndingIsToldToTheWindowOnceItIsReady(): void

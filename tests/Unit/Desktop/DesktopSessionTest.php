@@ -48,6 +48,7 @@ final class DesktopSessionTest extends TestCase
 
         $this->assertEquals(new DesktopSession(active: true, token: self::SESSION, systemMenu: true, appearance: 'dark'), $session->withAppearance('dark'));
         $this->assertSame($session, $session->withAppearance(null), 'nothing reported keeps the launch\'s');
+        $this->assertSame($session, $session->withAppearance('sepia'), 'nor does a look that is no look');
     }
 
     /** @return iterable<string, array{array<string, string|false>}> */

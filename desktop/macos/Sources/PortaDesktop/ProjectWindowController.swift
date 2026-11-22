@@ -16,7 +16,8 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
     var onCloseRefused: (() -> Void)?
     private(set) var projectKey: String?
 
-    private var plan: LaunchPlan
+    /// What a start of Porta in this window opens: the window's project, then the one it switched to.
+    private var planProject: String?
     private let runtime: String
     /// Paths for this project that arrived while Porta was starting, sent once it is ready.
     private var pending: [String] = []
@@ -46,7 +47,7 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
         token = LaunchPlan.newToken()
         self.runtime = runtime
         self.project = project
-        plan = LaunchPlan(runtime: runtime, project: project, inherited: ProcessInfo.processInfo.environment, token: token, home: NSHomeDirectory(), dark: Self.systemIsDark)
+        planProject = project
         projectKey = project.map(ProjectKey.of)
         terminal = AccessibleTerminalView(frame: NSRect(x: 0, y: 0, width: 1100, height: 720))
 
@@ -107,6 +108,15 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
     }
 
     private func launch() {
+        start(plan())
+    }
+
+    /// Built at each start: the look the system has NOW, not the one when the window opened.
+    private func plan() -> LaunchPlan {
+        LaunchPlan(runtime: runtime, project: planProject, inherited: ProcessInfo.processInfo.environment, token: token, home: NSHomeDirectory(), dark: Self.systemIsDark)
+    }
+
+    private func start(_ plan: LaunchPlan) {
         process.startProcess(executable: plan.executable, args: plan.arguments, environment: plan.environment, currentDirectory: plan.workingDirectory)
     }
 
@@ -119,8 +129,12 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
     func open(path: String) {
         if ready || picking {
             send(DesktopMessage.openRequest(token: token, path: path))
-            // Handed its project: the next folder is not this window's to take.
-            picking = false
+            // Handed its project: the next folder is not this window's to take,
+            // and the same folder opened again while Porta boots comes here.
+            if picking {
+                picking = false
+                projectKey = ProjectKey.of(path)
+            }
         } else {
             pending.append(path)
         }
@@ -180,7 +194,8 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
         terminal.nativeBackgroundColor = dark ? .black : .white
         terminal.nativeForegroundColor = dark ? NSColor(white: 0.85, alpha: 1) : NSColor(white: 0.1, alpha: 1)
         window?.backgroundColor = terminal.nativeBackgroundColor
-        if ready {
+        // The picker draws in it too: it is told while it waits, as the IDE is once ready.
+        if ready || picking {
             send(DesktopMessage.appearance(token: token, dark: dark))
         }
     }
@@ -309,7 +324,7 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
             ready = true
             picking = false
             // Reopen starts what is open now, which a switch may have changed.
-            plan = LaunchPlan(runtime: runtime, project: root, inherited: ProcessInfo.processInfo.environment, token: token, home: NSHomeDirectory())
+            planProject = root
             sendAppearance()
             pending.forEach { send(DesktopMessage.openRequest(token: token, path: $0)) }
             pending.removeAll()
@@ -318,7 +333,9 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
             notify(text)
         }
         if case .picking = message, !ready {
+            // Waiting again (a folder it was handed was not there): it owns no project yet.
             picking = true
+            projectKey = nil
         }
         if case .picked = message {
             picking = false
@@ -429,7 +446,7 @@ final class ProjectWindowController: NSWindowController, NSWindowDelegate, Termi
         // RIS: what the stopped Porta left on screen goes.
         terminal.feed(text: "\u{1b}c")
         process = LocalProcess(delegate: self, dispatchQueue: .main)
-        process.startProcess(executable: plan.executable, args: plan.arguments, environment: plan.environment, currentDirectory: plan.workingDirectory)
+        start(plan())
     }
 
     func dataReceived(slice: ArraySlice<UInt8>) {

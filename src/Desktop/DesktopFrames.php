@@ -40,6 +40,14 @@ final readonly class DesktopFrames
         return self::PREFIX.$this->session->token.';'.$message."\x1b\\";
     }
 
+    /** The look an `appearance` request reports, `dark` or `light`; null when $request is not one. */
+    public static function appearance(string $request): ?string
+    {
+        $match = [];
+
+        return 1 === \preg_match('/^appearance;(dark|light)\x1b\\\\$/D', $request, $match) ? $match[1] : null;
+    }
+
     /** The path an `open` request names; null when $request is not one. */
     public static function openPath(string $request): ?string
     {

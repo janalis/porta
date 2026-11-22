@@ -532,6 +532,23 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame('Français', $current(), 'its check on the value now held');
     }
 
+    public function testAListClosedOrReplacedIsNotOpenedAgain(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->selectSettingsSection($this->nav, id: 'interface');
+        $this->renderer->renderFrame($this->content, columns: 100, rows: 24);
+        $this->form->handleInput("\x1b[B"); // Language
+        $this->form->handleInput("\r");
+
+        // Another menu takes the shared one's place: this page's list is gone.
+        $this->contextMenu->open([new MenuItem('Other', '', null)]);
+        $this->settings->changeSetting('language', value: 'fr');
+        $controller->refresh();
+
+        $this->assertSame(['Other'], \array_map(static fn (MenuItem $item): string => $item->label, Probe::get($this->contextMenu, property: 'items')), 'the menu stays the user\'s');
+    }
+
     public function testNavSelectingKeybindingsSwapsTheContent(): void
     {
         $controller = $this->controller();

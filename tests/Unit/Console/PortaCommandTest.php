@@ -107,6 +107,37 @@ final class PortaCommandTest extends TestCase
         }
     }
 
+    public function testTheLookTheWindowTookWhileThePickerWasUpReachesTheIde(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $desktop = null;
+        $before = \getenv(DesktopSession::APPEARANCE);
+        $command = new PortaCommand(
+            launch: static function (Workspace $workspace, ?string $lsp, LspMode $noLsp, Ansi $ansi, \Closure $onBooted, DesktopSession $session) use (&$desktop): int {
+                $onBooted();
+                $desktop = $session;
+
+                return 0;
+            },
+            isInteractive: static fn (): bool => true,
+            env: [DesktopSession::FLAG => '1', DesktopSession::TOKEN => \str_repeat('a', 32), DesktopSession::APPEARANCE => 'light'],
+            pickProject: static function () use ($project): string {
+                // As the picker leaves it when the window goes dark under it.
+                \putenv(DesktopSession::APPEARANCE.'=dark');
+
+                return $project->dir;
+            },
+        );
+        try {
+            new CommandTester($command)->execute([]);
+        } finally {
+            \putenv(false === $before ? DesktopSession::APPEARANCE : DesktopSession::APPEARANCE.'='.$before);
+        }
+
+        $this->assertInstanceOf(DesktopSession::class, $desktop);
+        $this->assertSame('dark', $desktop->appearance, 'not the launch\'s light');
+    }
+
     public function testFileLineShorthandOpensAtLine(): void
     {
         $project = new TempProject(['composer.json' => '{}', 'src/Foo.php' => "<?php\n"]);

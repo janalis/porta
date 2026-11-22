@@ -309,6 +309,36 @@ final class ProjectPickerWidgetTest extends TestCase
         $this->assertSame([[$this->rows[1], '']], $this->submitted);
     }
 
+    public function testMovingTheCaretKeepsTheListAndItsSelection(): void
+    {
+        $this->rows = [self::project('one'), self::project('two')];
+        $listed = 0;
+        $picker = new ProjectPickerWidget(
+            new Translator('en'),
+            '',
+            rowsFor: function (string $typed) use (&$listed): array {
+                ++$listed;
+
+                return $this->rows;
+            },
+            onSubmit: function (ProjectPickerWidget $picker, ?PickerRow $row, string $typed): void {
+                $this->submitted[] = [$row, $typed];
+            },
+            onTab: static fn (?PickerRow $row, string $typed): string => $typed,
+            onCancel: static function (): void {},
+            footer: [],
+        );
+        $picker->handleInput('a');
+        $picker->handleInput(self::DOWN);
+        $listed = 0;
+
+        $picker->handleInput("\x1b[D"); // ←
+        $picker->handleInput("\r");
+
+        $this->assertSame(0, $listed, 'the text did not change: nothing is listed again');
+        $this->assertSame([[$this->rows[1], 'a']], $this->submitted, 'the selection stays where it was');
+    }
+
     public function testEscapeCancels(): void
     {
         $cancelled = false;

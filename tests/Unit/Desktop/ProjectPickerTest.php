@@ -77,9 +77,10 @@ final class ProjectPickerTest extends TestCase
     /**
      * Each key once the screen has drawn what the previous one did: a key
      * pressed before the picker is up would be a key nobody could press.
-     * A key {@see silent()} draws nothing, so the next goes a turn after it.
+     * A key {@see silent()} draws nothing, so the next goes a turn after it;
+     * a closure runs in its turn instead of a key.
      *
-     * @param list<string> $keys
+     * @param list<string|\Closure(): void> $keys
      */
     private function type(array $keys): void
     {
@@ -93,7 +94,18 @@ final class ProjectPickerTest extends TestCase
                 return;
             }
             $drawn = \strlen($output);
-            $key = (string) \array_shift($keys);
+            $key = \array_shift($keys);
+            // Something done between two keys, as the world would do it.
+            if ($key instanceof \Closure) {
+                $key();
+                $wait = false;
+                if ([] === $keys) {
+                    EventLoop::cancel($id);
+                }
+
+                return;
+            }
+            $key = (string) $key;
             $wait = !\str_starts_with($key, self::SILENT);
             $this->terminal->simulateInput($wait ? $key : \substr($key, \strlen(self::SILENT)));
             if ([] === $keys) {
@@ -435,6 +447,71 @@ final class ProjectPickerTest extends TestCase
         }
     }
 
+    public function testAFolderGoneBeforeEnterIsRefusedNotTheHomeOpened(): void
+    {
+        $two = $this->disk->path('two');
+
+        $this->assertNull($this->pick([
+            $this->typed($this->disk->path('tw')),
+            static function () use ($two): void {
+                \unlink($two.'/b.php');
+                \rmdir($two);
+            },
+            "\r",
+            "\x1b",
+        ]));
+        $this->assertStringContainsString('Not a folder', $this->screen());
+    }
+
+    public function testAFolderTypedInAnotherCaseIsOfferedOnce(): void
+    {
+        if (!\is_dir($this->disk->path('TYPED'))) {
+            $this->markTestSkipped('a case-sensitive disk has no TYPED folder');
+        }
+
+        $this->assertNull($this->pick([$this->typed($this->disk->path('TYPED')), "\x1b"]));
+        $this->assertStringContainsString('Open this folder', $this->screen());
+        $this->assertStringNotContainsString('typed/', $this->screen(), 'the same folder, not a second row');
+    }
+
+    public function testTheWindowGoingLightWhileThePickerIsUpIsFollowed(): void
+    {
+        $before = \getenv(DesktopSession::APPEARANCE);
+        $this->type([self::frame('appearance;light'), "\x1b"]);
+        try {
+            new ProjectPicker(
+                new RecentProjectChoices(new RecentProjectsStore()),
+                $this->terminal,
+                styles: Themes::createSwitchable(ColorMode::Ansi, 'dark'),
+                session: new DesktopSession(active: true, token: self::SESSION),
+                followsWindow: true,
+            )->pick();
+
+            $this->assertStringContainsString(self::nameIn('light'), $this->terminal->getOutput(), 'drawn light');
+            $this->assertSame('light', \getenv(DesktopSession::APPEARANCE), 'and left for the IDE that boots next');
+        } finally {
+            \putenv(false === $before ? DesktopSession::APPEARANCE : DesktopSession::APPEARANCE.'='.$before);
+        }
+    }
+
+    public function testAChosenThemeIsKeptWhenTheWindowGoesLight(): void
+    {
+        $before = \getenv(DesktopSession::APPEARANCE);
+        $this->type([self::silent(self::frame('appearance;light')), "\x1b"]);
+        try {
+            new ProjectPicker(
+                new RecentProjectChoices(new RecentProjectsStore()),
+                $this->terminal,
+                styles: Themes::createSwitchable(ColorMode::Ansi, 'dark'),
+                session: new DesktopSession(active: true, token: self::SESSION),
+            )->pick();
+
+            $this->assertStringNotContainsString(self::nameIn('light'), $this->terminal->getOutput());
+        } finally {
+            \putenv(false === $before ? DesktopSession::APPEARANCE : DesktopSession::APPEARANCE.'='.$before);
+        }
+    }
+
     public function testTheCardNamesPortaAndItsVersion(): void
     {
         $this->type(["\x1b"]);
@@ -498,8 +575,10 @@ final class ProjectPickerTest extends TestCase
         $gone = self::frame('open;'.\base64_encode($this->disk->path('gone')));
         $forged = self::frame('open;'.\base64_encode($this->disk->path('typed')), \str_repeat('f', 32));
 
-        $this->assertNull($this->pickInAWindow([self::silent($gone), self::silent($forged), 'q', "\x1b"]));
+        // And one the picker has no use for: the window's close goes the host's own way before ready.
+        $this->assertNull($this->pickInAWindow([self::silent($gone), self::silent($forged), self::silent(self::frame('close')), 'q', "\x1b"]));
         $this->assertStringContainsString('┃ q ', $this->screen(), 'only the letter reached the field');
+        $this->assertSame(2, \substr_count($this->terminal->getOutput(), self::frame('picking')), 'a folder not there leaves it waiting, and it says so again: the window took it for done');
     }
 
     /** Porta's name in the header as $theme draws it: what tells one theme's card from another's. */

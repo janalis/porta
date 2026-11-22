@@ -92,8 +92,9 @@ final class DesktopProtocol
             $this->requests->open($open);
             $this->tui->requestRender();
         }
-        if (1 === \preg_match('/^appearance;(dark|light)\x1b\\\\$/D', $request, $choice)) {
-            $this->requests->followAppearance($choice[1]);
+        $appearance = DesktopFrames::appearance($request);
+        if (null !== $appearance) {
+            $this->requests->followAppearance($appearance);
             $this->tui->requestRender();
         }
         if ($this->session->systemMenu && 1 === \preg_match('/^menu;([0-9a-f]+);(\d{1,4});(\d{1,4})\x1b\\\\$/D', $request, $choice)) {

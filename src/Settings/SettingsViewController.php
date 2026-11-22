@@ -41,7 +41,7 @@ final class SettingsViewController implements ContributedView
 
     private bool $open = false;
 
-    /** @var array{AbstractWidget, string, array{int, int, int, int}, \Closure(string): void, string}|null the option list last opened: host, row key, where, what a pick runs, the value it was opened on */
+    /** @var array{AbstractWidget, string, array{int, int, int, int}, \Closure(string): void, string, int}|null the option list last opened: host, row key, where, what a pick runs, the value it was opened on, which list it is */
     private ?array $openList = null;
     /** 'general' | 'keybindings' | 'lang:<id>' — the active section. */
     private string $section = 'general';
@@ -353,12 +353,16 @@ final class SettingsViewController implements ContributedView
      */
     private function openList(AbstractWidget $host, SettingsRow $row, array $at, \Closure $choose): void
     {
-        $this->openList = [$host, $row->key, $at, $choose, (string) $row->value];
+        $this->openList = [$host, $row->key, $at, $choose, (string) $row->value, $this->listbox->next()];
         $options = [];
         foreach ($row->options ?? [] as $option) {
             $options[] = [$option, $row->optionLabels[$option] ?? $option];
         }
-        $this->listbox->openUnder($host, $at[0], $at[1], $at[2], $at[3], $options, (string) $row->value, $choose);
+        // A pick closes the list: nothing is left to follow.
+        $this->listbox->openUnder($host, $at[0], $at[1], $at[2], $at[3], $options, (string) $row->value, function (string $value) use ($choose): void {
+            $this->openList = null;
+            $choose($value);
+        });
     }
 
     /**
@@ -430,7 +434,9 @@ final class SettingsViewController implements ContributedView
      */
     private function reopenList(array $rows): void
     {
-        if (null === $this->openList || !$this->listbox->isOpen()) {
+        // Ours and still on screen: one closed by Esc, or replaced by another
+        // list or a menu, is not this page's to open again.
+        if (null === $this->openList || !$this->listbox->isShowing($this->openList[5])) {
             $this->openList = null;
 
             return;

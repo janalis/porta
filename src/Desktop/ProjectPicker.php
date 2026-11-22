@@ -55,6 +55,8 @@ final class ProjectPicker
 
     private ?Tui $tui = null;
 
+    private ?ProjectPickerWidget $widget = null;
+
     /** @var list<array{label: string, hint: string, value: string}>|null read once: a keystroke must not walk the disk again */
     private ?array $recent = null;
 
@@ -72,6 +74,8 @@ final class ProjectPicker
         private readonly ?Styles $styles = null,
         private readonly string $version = '',
         private readonly DesktopSession $session = new DesktopSession(active: false, token: ''),
+        // Whether the window's light or dark look decides the theme: no file chose one.
+        private readonly bool $followsWindow = false,
     ) {}
 
     /** @param TerminalInterface|null $terminal null for the process's own */
@@ -92,6 +96,7 @@ final class ProjectPicker
             styles: Themes::createSwitchable(ColorMode::Ansi, $theme),
             version: $version,
             session: $session,
+            followsWindow: !LaunchTheme::chosen($cwd),
         );
     }
 
@@ -127,6 +132,7 @@ final class ProjectPicker
             ],
             styles: $this->styles,
         );
+        $this->widget = $widget;
         $tui->add($widget);
         $tui->setFocus($widget);
         // Once the loop runs, which is once the terminal is the picker's.
@@ -223,7 +229,7 @@ final class ProjectPicker
         }
         foreach (FolderCompletion::candidates($typed) as $candidate) {
             // The folder typed in full is the row above already.
-            if (false !== $real && $candidate['path'] === \rtrim($typed, characters: '/').'/') {
+            if (false !== $real && self::sameFolder($candidate['path'], \rtrim($typed, characters: '/').'/', $real)) {
                 continue;
             }
             $rows[] = new PickerRow(PickerRowKind::Folder, $candidate['name'].'/', $candidate['isProject'] ? $this->translator->trans('PHP project') : '', $candidate['path']);
@@ -272,7 +278,7 @@ final class ProjectPicker
         $typed = \trim($typed);
         match ($row?->kind) {
             PickerRowKind::Project => $this->finish($row->value),
-            PickerRowKind::Folder => $this->finish((string) \realpath(PortaHome::expand($row->value))),
+            PickerRowKind::Folder => $this->openFolder($widget, $row->value),
             PickerRowKind::Remote => $this->openRemote($widget, $row->value),
             PickerRowKind::Action => self::CHOOSE_FOLDER === $row->value ? $this->send('chooseFolder') : $widget->setText('ssh://'),
             // A name that matched nothing already says so in the list.
@@ -314,10 +320,68 @@ final class ProjectPicker
         }
         $event->stopPropagation();
         $request = new DesktopFrames($this->session)->request($event->getData());
-        $path = null === $request ? null : DesktopFrames::openPath($request);
-        if (null !== $path && \file_exists($path)) {
-            $this->finish($path);
+        if (null !== $request) {
+            $this->answer($request);
         }
+    }
+
+    /** The window's request, past its token: a look to draw in, or a folder to open. */
+    private function answer(string $request): void
+    {
+        $appearance = DesktopFrames::appearance($request);
+        $path = DesktopFrames::openPath($request);
+        match (true) {
+            null !== $appearance => $this->follow($appearance),
+            null !== $path && \file_exists($path) => $this->finish($path),
+            // Not there (gone, or a path this side cannot see): still waiting,
+            // which the window took for done when it handed the folder over.
+            null !== $path => $this->send('picking'),
+            default => null,
+        };
+    }
+
+    /**
+     * Whether the candidate spelled $candidate is the folder typed in full: the
+     * same spelling, or one differing only in case that a case-insensitive
+     * disk (macOS) resolves to the same folder. A symlink keeps its own row.
+     */
+    private static function sameFolder(string $candidate, string $typed, string $real): bool
+    {
+        if ($candidate === $typed) {
+            return true;
+        }
+        // @mago-expect lint:no-error-control-operator -- a candidate gone since the listing warns; the false return is what is answered below
+        $a = 0 === \strcasecmp($candidate, $typed) ? @\stat(PortaHome::expand($candidate)) : false;
+        $b = \stat($real);
+
+        return false !== $a && false !== $b && $a['dev'] === $b['dev'] && $a['ino'] === $b['ino'];
+    }
+
+    /**
+     * The window went light or dark while the picker is up: drawn so when no
+     * theme was chosen, and left in the environment, where the launch that
+     * follows reads the window's look from (the IDE's first frame).
+     */
+    private function follow(string $appearance): void
+    {
+        \putenv(DesktopSession::APPEARANCE.'='.$appearance);
+        if ($this->followsWindow && null !== $this->styles) {
+            $this->styles->switchTo(Themes::definition(ColorMode::Ansi, $appearance));
+            $this->widget?->invalidate();
+            $this->tui?->requestRender();
+        }
+    }
+
+    /** A folder row: the folder it names, when it is still there to open. */
+    private function openFolder(ProjectPickerWidget $widget, string $spelled): void
+    {
+        $folder = \realpath(PortaHome::expand($spelled));
+        if (false === $folder) {
+            $widget->refuse($this->translator->trans('Not a folder: %path%', ['%path%' => ControlChars::line($spelled)]));
+
+            return;
+        }
+        $this->finish($folder);
     }
 
     private function send(string $message): void
