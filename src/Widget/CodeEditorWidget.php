@@ -523,10 +523,13 @@ final class CodeEditorWidget extends AbstractWidget implements
      * Open a single-line input prompt (go to line, rename symbol).
      */
     #[\Override]
-    public function openPrompt(string $label, string $initial, callable $onSubmit, PromptTone $tone = PromptTone::Plain, TextEcho $echo = TextEcho::Visible): void
+    /**
+     * @param (\Closure(): void)|null $onCancel run when the prompt goes without a submit
+     */
+    public function openPrompt(string $label, string $initial, callable $onSubmit, PromptTone $tone = PromptTone::Plain, TextEcho $echo = TextEcho::Visible, ?\Closure $onCancel = null): void
     {
         $this->closeSiblingFloaters();
-        $this->overlayHost->openPrompt($label, $initial, $onSubmit, $tone, $echo);
+        $this->overlayHost->openPrompt($label, $initial, $onSubmit, $tone, $echo, $onCancel);
     }
 
     /**

@@ -37,6 +37,16 @@ Feature: Changing files from the tree
     And the file "src/a.php" should not exist
     And the editor should show "src/b.php"
 
+  Scenario: Esc on Rename… leaves the file as it was, and the keys with the tree
+    When I start the app with the arguments "src/a.php"
+    And I use the action "tree_select_opened_file"
+    And I use the action "ide_project_tree"
+    And I use the action "tree_rename"
+    Then I should eventually see "Rename"
+    When I press "Escape"
+    Then the file "src/a.php" should exist
+    And the element "#tree" should be focused
+
   @action:tree_delete
   Scenario: Delete asks first, and y deletes the file
     When I start the app with the arguments "src/a.php"

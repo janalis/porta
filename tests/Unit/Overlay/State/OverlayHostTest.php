@@ -429,6 +429,37 @@ final class OverlayHostTest extends TestCase
         $this->assertNull(Probe::get($host, property: 'prompt'), 'and dismisses it, like every sibling overlay');
     }
 
+    /**
+     * Whoever moved the focus to open the prompt hears every way it goes
+     * without a submit — Esc, and a click outside it — and none when it is
+     * submitted, or merely clicked inside.
+     */
+    public function testACancelIsReportedAndASubmitIsNot(): void
+    {
+        $host = $this->host();
+        $kb = $this->keybindings();
+        $cancels = 0;
+        $onCancel = static function () use (&$cancels): void {
+            ++$cancels;
+        };
+
+        $host->openPrompt('P', initial: '', onSubmit: static fn (): null => null, onCancel: $onCancel);
+        $host->handleInput("\x1b", $kb);
+        $this->assertSame(1, $cancels, 'Esc');
+
+        $host->openPrompt('P', initial: '', onSubmit: static fn (): null => null, onCancel: $onCancel);
+        $host->layout([0, 0, 2, 40]);
+        $host->promptClickAt(3, relCol: 5);
+        $this->assertSame(1, $cancels, 'a click inside is not a cancel');
+        $host->promptClickAt(7, relCol: 5);
+        $this->assertSame(2, $cancels, 'a click outside is');
+
+        $host->openPrompt('P', initial: 'x', onSubmit: static fn (): null => null, onCancel: $onCancel);
+        $host->handleInput("\r", $kb);
+        $this->assertSame(2, $cancels, 'a submit is not a cancel');
+        $this->assertNull(Probe::get($host, property: 'prompt'));
+    }
+
     public function testPromptClickBeyondTheBoxWidthDismisses(): void
     {
         $host = $this->host();
