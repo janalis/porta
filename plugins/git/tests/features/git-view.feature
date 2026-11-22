@@ -22,6 +22,20 @@ Feature: The Git view
     And a git repository with everything committed
     And git commits here as "Ada"
 
+  Scenario: On a 32-row terminal the window is tall enough to list the changes
+    Given a file "a.php" containing:
+      """
+      <?php
+      echo 'two';
+      """
+    And a file "b.php" containing "<?php"
+    When I start the app in a 120x32 terminal
+    And I use the action "ide_git"
+    Then I should see "2 changed files"
+    And I should see "a.php" in the dialog "Git"
+    And I should see "b.php" in the dialog "Git"
+    And I should see "Commit to main"
+
   Scenario: The view lists what changed and shows its diff; Esc closes it
     Given a file "a.php" containing:
       """

@@ -494,8 +494,9 @@ notch.
 
 Settings, Git, Review and the docs open in **the view window**: a framed,
 movable, resizable window over the editor layout, which stays mounted and
-dimmed behind it. It opens centred at 80% of the workspace, and only one view
-is open at a time.
+dimmed behind it. It opens centred at 80% of the workspace — the whole height
+when 80% would be under 27 rows, the Git view's commit form and a list beside
+it — and only one view is open at a time.
 
 `Workbench/View/ViewRegistry` keys `ContributedView`s by a **string id the view
 supplies**. It was an enum, and the enum was the reason a view had to be known
@@ -594,8 +595,8 @@ the single move-and-resize state machine: the title bar moves a box, every
 edge and corner but the title bar's own edge resizes it, the handle under the
 pointer draws heavy, and `place()` clamps the box into the workspace. Each
 window asks it once per layout for its box — the content decides the default
-size (80%, centred, for a view window; the content's, a third down, for the
-others) — and hit-tests through `ModalBox::zoneAt()`. A press on the close
+size (80%, centred, for a view window, or its whole height when that is under
+27 rows; the content's, a third down, for the others) — and hit-tests through `ModalBox::zoneAt()`. A press on the close
 button or beside the window closes it, and Esc does; the bars do not spell Esc
 out. The close button is the platform's (`Overlay/State/WindowControls`): a red
 `(✖)` leading the title bar on macOS, with the title centred, and a `[✖]`

@@ -65,6 +65,16 @@ final class ViewWindowPresenter
 
     private const int MIN_ROWS = 12;
 
+    /**
+     * A fresh window the share would make shorter than this takes the whole
+     * height instead. The tallest content a view holds is the Git view's
+     * changes column on a roomy screen — toolbar, tabs, the list's header,
+     * the boxed commit form — and at 24 rows it left the list not one row:
+     * "4 changed files", and none of them listed. Height, not a form that
+     * shrinks: a control's shape follows the screen's density alone.
+     */
+    private const int FULL_HEIGHT_BELOW = 27;
+
     private readonly WindowFrame $frame;
 
     private readonly CloseButton $closeButton;
@@ -245,10 +255,11 @@ final class ViewWindowPresenter
             $this->frame->reset();
         }
         [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
+        $share = \intdiv(($boundBottom - $boundTop) * self::SHARE_PERCENT, num2: 100);
         $place = $this->frame->place(
             $bounds,
             \intdiv(($boundRight - $boundLeft) * self::SHARE_PERCENT, num2: 100),
-            \intdiv(($boundBottom - $boundTop) * self::SHARE_PERCENT, num2: 100),
+            $share < self::FULL_HEIGHT_BELOW ? $boundBottom - $boundTop : $share,
             WindowPlacement::Centered,
             self::MIN_WIDTH,
             self::MIN_ROWS,
