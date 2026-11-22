@@ -150,7 +150,7 @@ Feature: Agents over MCP
     And I should not see "✦"
 
   @setting:mcp.agentFade
-  Scenario: The agent's marks go once it stops touching the file
+  Scenario: The agent's marks go once it stops touching the file, and the status bar keeps its last act
     Given the project configuration:
       """
       {"plugins": {"mcp": {"agentFade": 2}}}
@@ -166,6 +166,8 @@ Feature: Agents over MCP
     # Gone within the check's few seconds: the default fade is ten
     Then I should not see text matching "/\/\/ edited\s+✦ test/"
     And I should not see "A.php ✦"
+    # The status bar keeps what the agent last did until it disconnects
+    But I should see "✦ test editing A.php"
 
   @setting:mcp.allowFileOps
   Scenario: Creating a file is the agent's once allowed
