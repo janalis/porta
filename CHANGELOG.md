@@ -5,6 +5,36 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Settings › Command line** reads your global git config in the
+  background instead of making the IDE wait for git each time the page is
+  drawn. The git row says **Checking…** until git first answers, then shows
+  the last answer while a fresh one comes in, so a change made from a shell
+  still shows.
+
+### Fixed
+
+- **Sort lines, join lines and toggle case** (Ctrl+Shift+S, J and U) did
+  nothing from their keys.
+- **Code lenses**: a plain click on one never ran it. It now runs when the
+  button is released on the lens; dragging off it selects text instead.
+- **Open as Text** on a picture closed the picture and opened nothing. The
+  picture now stays, and Porta says the file is not UTF-8 text.
+- **A run's tab** showed its exit code only at the next repaint.
+- **A menu item that moves the focus**, like Focus Project Tree, lost it again
+  as the menu closed.
+- **A command bound to a key** showed its effect a key late when it had no
+  message of its own, like a bookmark's mark in the gutter.
+- **Esc on a project tree prompt** (New File, Rename…) left the keys in the
+  editor instead of giving them back to the tree.
+- **`porta --diff a b`** in a folder git does not track showed no comparison.
+- **The Git view** at 120×32 listed none of the changed files: a view window
+  that would be too short now takes the whole height.
+- **The status bar** dropped a long contributed cell, like an agent at work,
+  at 120 columns while the key legend kept its place.
+- **PHP 8.6** no longer reports a deprecation from Porta's code-scope enum.
+
 ## [0.2.1] - 2026-11-22
 
 ### Added
