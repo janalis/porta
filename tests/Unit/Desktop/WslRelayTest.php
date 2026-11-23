@@ -43,8 +43,23 @@ final class WslRelayTest extends TestCase
         }
         $deadline = \microtime(true) + 8.0;
         while (\proc_get_status($this->process)['running'] && \microtime(true) < $deadline) {
+            // What the command still prints must flow, or the relay blocks writing it.
+            $this->output .= (string) \fread($this->pipes[1], length: 65_536);
             \usleep(20_000);
         }
+        $status = \proc_get_status($this->process);
+        if (!$status['running']) {
+            return;
+        }
+        // It did not hang up: end the command's own session, then the relay.
+        foreach (\explode("\n", \trim((string) \shell_exec('pgrep -P '.$status['pid']))) as $child) {
+            if ('' === $child) {
+                continue;
+            }
+            \posix_kill(-(int) $child, \SIGKILL);
+        }
+        \proc_terminate($this->process, \SIGKILL);
+        \proc_close($this->process);
     }
 
     /** @param list<string> $command */
