@@ -18,6 +18,35 @@ final class WslRelayTest extends TestCase
 
     private string $output = '';
 
+    /**
+     * A relay a test left running is ended as the window would end it. Killing
+     * the relay alone left its command behind: the command has a session of its
+     * own, and on macOS opening the PTY gives it no controlling terminal, so no
+     * hang-up ever reaches it. Every run leaked a shell, and one holding
+     * PHPUnit's output kept a pipe on it open for good.
+     */
+    protected function tearDown(): void
+    {
+        if (!\is_resource($this->process)) {
+            return;
+        }
+        if (\proc_get_status($this->process)['running']) {
+            $this->closeTheWindow();
+        }
+    }
+
+    /** The window going away: the relay hangs its command up and ends with it. */
+    private function closeTheWindow(): void
+    {
+        if (\is_resource($this->pipes[0] ?? null)) {
+            \fclose($this->pipes[0]);
+        }
+        $deadline = \microtime(true) + 8.0;
+        while (\proc_get_status($this->process)['running'] && \microtime(true) < $deadline) {
+            \usleep(20_000);
+        }
+    }
+
     /** @param list<string> $command */
     private function relay(array $command, int $columns = 100, int $rows = 30): void
     {
@@ -53,9 +82,39 @@ final class WslRelayTest extends TestCase
             $status = \proc_get_status($this->process);
             \usleep(20_000);
         } while ($status['running'] && \microtime(true) < $deadline);
-        $this->assertFalse($status['running']);
+        $this->assertFalse($status['running'], $status['running'] ? $this->stillRunning($status['pid']) : '');
 
         return $status['exitcode'];
+    }
+
+    /**
+     * What a relay that outlived its deadline was doing. It happens about once in
+     * thirty full CI suites, never in a loop of this test alone (480 runs, on the
+     * hosted runner and a VM): the failure has to say why itself.
+     */
+    private function stillRunning(int $pid): string
+    {
+        $read = static fn (string $file): string => \is_readable($file) ? (string) \file_get_contents($file) : '';
+        $report = "The relay (pid {$pid}) is still running.\n";
+        $pids = [$pid];
+        for ($i = 0; $i < \count($pids) && $i < 8; ++$i) {
+            $files = \glob("/proc/{$pids[$i]}/task/*/children");
+            foreach (false === $files ? [] : $files as $file) {
+                foreach (\explode(' ', \trim($read($file))) as $child) {
+                    if ('' === $child) {
+                        continue;
+                    }
+                    $pids[] = (int) $child;
+                }
+            }
+        }
+        foreach ($pids as $each) {
+            \preg_match_all('/^(State|SigPnd|ShdPnd|SigBlk|SigIgn|SigCgt):.*$/m', $read("/proc/{$each}/status"), $lines);
+            $report .= \sprintf("%d %s wchan=%s\n  %s\n", $each, \str_replace("\0", ' ', $read("/proc/{$each}/cmdline")), $read("/proc/{$each}/wchan"), \implode("\n  ", $lines[0]));
+        }
+        \stream_set_blocking($this->pipes[2], enable: false);
+
+        return $report.'Its stderr: '.\fread($this->pipes[2], length: 65_536);
     }
 
     private function type(string $bytes): void
@@ -94,7 +153,7 @@ final class WslRelayTest extends TestCase
         \fwrite($this->pipes[0], "\x01".\pack('nn', 132, 43));
 
         $this->await('43 132');
-        \proc_terminate($this->process);
+        $this->closeTheWindow();
     }
 
     public function testPrivateSequencesCrossByteForByte(): void
@@ -131,6 +190,6 @@ final class WslRelayTest extends TestCase
         $this->type("typed\n");
 
         $this->await('typed');
-        \proc_terminate($this->process);
+        $this->closeTheWindow();
     }
 }
