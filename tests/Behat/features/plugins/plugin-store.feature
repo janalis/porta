@@ -178,7 +178,9 @@ Feature: The plugin store
       }
       """
     When I start the app with the arguments "a.php"
-    And I use the action "plugins_store"
+    # The background check has to land 1.2.0 first: the cached store still says 1.1.0
+    Then a notification should say "Plugin updates available: hello 1.2.0"
+    When I use the action "plugins_store"
     And I focus "#settings-store"
     And I press "u"
     Then I should see "Update all"
