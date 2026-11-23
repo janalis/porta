@@ -77,7 +77,6 @@ final class InlineFragments
     /** @return list<Fragment> */
     private function one(Node $inline): array
     {
-        // @mago-expect analysis:match-not-exhaustive -- an arm per Inline class; only inlines are ever passed in (children() is typed for every Node), so another is a bug, and UnhandledMatchError says so
         return match (true) {
             $inline instanceof Text => [$this->text($inline->literal, $inline)],
             $inline instanceof SoftBreak => [$this->fragment(' ', $inline)],
@@ -91,6 +90,8 @@ final class InlineFragments
             $inline instanceof FootnoteReference => [$this->footnote($inline)],
             $inline instanceof Emoji => [$this->fragment($inline->glyph, $inline)],
             $inline instanceof HtmlInline => $this->htmlTag($inline),
+            // An inline this layout does not know yet is left out, not a broken page.
+            default => [],
         };
     }
 

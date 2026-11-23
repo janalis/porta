@@ -524,6 +524,13 @@ final class IdePhpUnitPluginTest extends TestCase
                     $ini = $given();
                     $this->assertSame(\PATH_SEPARATOR.$ini['settings'], $ini['scan'], 'with none set, the leading empty entry is PHP\'s own directory');
                     $this->assertSame('', $ini['exclude'], 'no vendor, nothing to leave out: turbocov refuses a path that is not there');
+
+                    \putenv('PHP_INI_SCAN_DIR=');
+                },
+                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($given): void {
+                    $this->command($ide, $terminal, id: 'run_with_coverage');
+                    $this->await(static fn (): bool => !Probe::get($tui->getById('results'), property: 'searching'), what: 'the third run to finish');
+                    $this->assertSame($given()['settings'], $given()['scan'], 'scanning turned off stays off: only the run\'s own directory');
                 },
             ],
         );

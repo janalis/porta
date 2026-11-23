@@ -92,7 +92,7 @@ final class TestRunner
 
     /**
      * The suite, measuring which lines it runs — what PHPUnit's `<source>`
-     * names, with pcov or Xdebug in the PHP that runs it. Each file it
+     * names, with pcov, Xdebug or turbocov in the PHP that runs it. Each file it
      * measured shows that in its change strip until the coverage is hidden.
      */
     public function runWithCoverage(): void
@@ -202,8 +202,9 @@ final class TestRunner
         return [
             '/usr/bin/env',
             'XDEBUG_MODE='.(\is_string($mode) && '' !== $mode ? $mode.',' : '').'coverage',
-            // An empty entry is PHP's own scan directory, so unset, it stays scanned.
-            'PHP_INI_SCAN_DIR='.(\is_string($scan) ? $scan : '').\PATH_SEPARATOR.$settings,
+            // Unset, a leading empty entry keeps PHP's own scan directory scanned;
+            // set empty, the user scans nothing, and only the run's is added.
+            'PHP_INI_SCAN_DIR='.('' === $scan ? '' : (false === $scan ? '' : $scan).\PATH_SEPARATOR).$settings,
         ];
     }
 
