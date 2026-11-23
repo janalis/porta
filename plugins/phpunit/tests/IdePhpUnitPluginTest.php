@@ -77,14 +77,19 @@ final class IdePhpUnitPluginTest extends TestCase
 
         PHP_WRAP;
 
+    /** The PHP_INI_SCAN_DIR this process had, false for none, put back after each test. */
+    private string|false $scan = false;
+
     protected function setUp(): void
     {
         \putenv('PATH=/nonexistent');
+        $this->scan = \getenv('PHP_INI_SCAN_DIR');
     }
 
     protected function tearDown(): void
     {
         \putenv('XDEBUG_MODE');
+        \putenv(false === $this->scan ? 'PHP_INI_SCAN_DIR' : 'PHP_INI_SCAN_DIR='.$this->scan);
     }
 
     /** @param array<string, string> $files */
@@ -454,6 +459,71 @@ final class IdePhpUnitPluginTest extends TestCase
                     );
                     $diagnostics = Services::resolve($ide, BufferManager::class)->get((string) \realpath($project->path('tests/ExampleTest.php')))?->diagnostics;
                     $this->assertSame([7], \array_keys($diagnostics ?? []), 'the failure on the line Pest names');
+                },
+            ],
+        );
+    }
+
+    /**
+     * turbocov reads the paths it collects in only as PHP starts: a coverage
+     * run hands them to the PHP that runs PHPUnit through one more scanned
+     * directory. The stand-in reads back what that PHP was really given —
+     * `get_cfg_var()` holds a setting even with no extension behind it.
+     */
+    public function testACoverageRunNamesTheProjectToTurbocovAndKeepsThePhpScanDirectories(): void
+    {
+        $project = new TempProject([
+            'src/Calc.php' => "<?php\n\$x = 1;\n",
+            'vendor/autoload.php' => "<?php\n",
+            'conf.d/user.ini' => "porta.probe=kept\n",
+        ]);
+        $project->write('bin/phpunit', \sprintf(
+            "#!%s\n<?php\n".<<<'PHP_WRAP'
+                $collect = substr((string) get_cfg_var('turbocov.collect_paths'), 1);
+                $exclude = substr((string) get_cfg_var('turbocov.exclude_paths'), 1);
+                file_put_contents('ini.json', json_encode([
+                    'scan' => getenv('PHP_INI_SCAN_DIR'),
+                    'probe' => get_cfg_var('porta.probe'),
+                    'settings' => dirname($collect),
+                    'collect' => file_get_contents($collect),
+                    'exclude' => file_get_contents($exclude),
+                ]));
+                $at = array_search('--log-junit', $argv, true);
+                file_put_contents($argv[$at + 1], '<testsuites><testsuite name="x"><testcase name="testA" file="/x/ATest.php" line="3" class="ATest"/></testsuite></testsuites>');
+
+                PHP_WRAP,
+            \PHP_BINARY,
+        ));
+        \chmod($project->path('bin/phpunit'), permissions: 0o755);
+        $project->write('.porta.json', (string) \json_encode(['enabledPlugins' => ['phpunit'], 'plugins' => ['phpunit' => ['binary' => $project->path('bin/phpunit')]]], \JSON_THROW_ON_ERROR));
+        \putenv('PHP_INI_SCAN_DIR='.$project->path('conf.d'));
+        /** @var \Closure(): array{scan: string, probe: string|false, settings: string, collect: string, exclude: string} $given */
+        $given = static fn (): array => \json_decode((string) \file_get_contents($project->path('ini.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Calc.php'),
+            [
+                100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project, $given): void {
+                    $this->command($ide, $terminal, id: 'run_with_coverage');
+                    $this->await(static fn (): bool => !Probe::get($tui->getById('results'), property: 'searching'), what: 'the coverage run to finish');
+                    $ini = $given();
+                    $this->assertSame('kept', $ini['probe'], 'the directories PHP already scanned are still scanned');
+                    $this->assertSame($project->path('conf.d').\PATH_SEPARATOR.$ini['settings'], $ini['scan']);
+                    $this->assertSame(\realpath($project->path('')), \realpath(\trim($ini['collect'])), 'turbocov collects in the project');
+                    $this->assertSame(\realpath($project->path('vendor')), \realpath(\trim($ini['exclude'])), 'but not in its vendor');
+                    $this->assertDirectoryDoesNotExist($ini['settings'], 'the run cleans up after itself');
+
+                    \unlink($project->path('vendor/autoload.php'));
+                    \rmdir($project->path('vendor'));
+                    \putenv('PHP_INI_SCAN_DIR');
+                },
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($given): void {
+                    $this->command($ide, $terminal, id: 'run_with_coverage');
+                    $this->await(static fn (): bool => !Probe::get($tui->getById('results'), property: 'searching'), what: 'the second run to finish');
+                    $ini = $given();
+                    $this->assertSame(\PATH_SEPARATOR.$ini['settings'], $ini['scan'], 'with none set, the leading empty entry is PHP\'s own directory');
+                    $this->assertSame('', $ini['exclude'], 'no vendor, nothing to leave out: turbocov refuses a path that is not there');
                 },
             ],
         );

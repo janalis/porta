@@ -83,8 +83,8 @@
         <target>PHPUnit: Ocultar cobertura</target>
       </trans-unit>
       <trans-unit id="21">
-        <source>No coverage: PHPUnit measures it with pcov or Xdebug, for what &lt;source&gt; in phpunit.xml names</source>
-        <target>Sin cobertura: PHPUnit la mide con pcov o Xdebug, para lo que nombra &lt;source&gt; en phpunit.xml</target>
+        <source>No coverage: PHPUnit measures it with pcov, Xdebug or turbocov, for what &lt;source&gt; in phpunit.xml names</source>
+        <target>Sin cobertura: PHPUnit la mide con pcov, Xdebug o turbocov, para lo que nombra &lt;source&gt; en phpunit.xml</target>
       </trans-unit>
     </body>
   </file>

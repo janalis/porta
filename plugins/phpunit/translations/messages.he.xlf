@@ -83,8 +83,8 @@
         <target>PHPUnit: הסתרת כיסוי</target>
       </trans-unit>
       <trans-unit id="21">
-        <source>No coverage: PHPUnit measures it with pcov or Xdebug, for what &lt;source&gt; in phpunit.xml names</source>
-        <target>אין כיסוי: PHPUnit מודד אותו עם pcov או Xdebug, עבור מה ש-&lt;source&gt; ב-phpunit.xml מציין</target>
+        <source>No coverage: PHPUnit measures it with pcov, Xdebug or turbocov, for what &lt;source&gt; in phpunit.xml names</source>
+        <target>אין כיסוי: PHPUnit מודד אותו עם pcov, Xdebug או turbocov, עבור מה ש-&lt;source&gt; ב-phpunit.xml מציין</target>
       </trans-unit>
     </body>
   </file>

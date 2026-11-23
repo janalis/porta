@@ -67,13 +67,21 @@ Editing a file moves its bars with their lines, and a line you change loses
 its bar. Saving the file takes its coverage away, since the run measured the
 code that was there before. `F5` on the **Tests** tab measures again.
 
-PHPUnit measures coverage with [pcov](https://github.com/krakjoe/pcov) or
-[Xdebug](https://xdebug.org) in the PHP that runs it, over what `<source>` in
-your `phpunit.xml` names — either will do. Xdebug collects coverage only in
-its `coverage` mode, so a coverage run adds that mode for you: it starts
-PHPUnit with `XDEBUG_MODE` set to `coverage`, after any mode you already set
-(`debug,coverage`). pcov needs nothing. With neither, the tests still run and
-you are told there is no coverage. The strip is shown while git's **Change marks in the
+PHPUnit measures coverage with [pcov](https://github.com/krakjoe/pcov),
+[Xdebug](https://xdebug.org) or [turbocov](https://github.com/shipmonk-rnd/turbocov)
+in the PHP that runs it, over what `<source>` in your `phpunit.xml` names —
+any of them will do. Xdebug collects coverage only in its `coverage` mode, so
+a coverage run adds that mode for you: it starts PHPUnit with `XDEBUG_MODE`
+set to `coverage`, after any mode you already set (`debug,coverage`). pcov
+needs nothing. turbocov needs PHPUnit 13.3 or later, its driver
+(`composer require --dev shipmonk/turbocov-phpunit`, then
+`<coverage driver="ShipMonk\Turbocov\TurbocovDriver"/>` in `phpunit.xml`),
+and `turbocov.collect_paths`, which PHP reads only as it starts: a coverage
+run sets it for you to the project, `vendor/` left out, through an ini file
+of its own added to `PHP_INI_SCAN_DIR` after the directories PHP already
+scans. That file overrides a `turbocov.collect_paths` or
+`turbocov.exclude_paths` of your own `php.ini`. With no driver, the tests
+still run and you are told there is no coverage. The strip is shown while git's **Change marks in the
 gutter** setting is on, as it is by default; with it off, there is nowhere to
 show coverage.
 

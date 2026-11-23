@@ -8,6 +8,7 @@ use Porta\Overlay\State\ToastSeverity;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Support\Files;
 use Porta\Workbench\Dock\ToolRun;
+use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * Runs PHPUnit in a terminal tab of its own and shows what came of it: a row
@@ -156,13 +157,16 @@ final class TestRunner
         $log = \sys_get_temp_dir().'/porta-phpunit-'.\bin2hex(\random_bytes(6)).'.xml';
         $command = [$binary, '--log-junit', $log, ...$arguments];
         if (null !== $clover) {
-            $command = [...self::measuring(), $binary, '--log-junit', $log, '--coverage-clover', $clover, ...$arguments];
+            $command = [...$this->measuring($clover.'.d'), $binary, '--log-junit', $log, '--coverage-clover', $clover, ...$arguments];
         }
         $this->api->showList(self::TOOL, [], ToolRun::Running);
         $this->api->runs()->start(self::TITLE, $command, function (int $code) use ($log, $clover): void {
             ($this->release)();
             $reported = $this->finished($code, self::take($log));
             $measured = null === $clover ? '' : self::take($clover);
+            if (null !== $clover) {
+                self::forget($clover.'.d');
+            }
             if (null !== $clover && $reported) {
                 $this->measured($measured);
             }
@@ -173,15 +177,40 @@ final class TestRunner
      * What a run that measures coverage starts under: Xdebug collects it only
      * in its `coverage` mode, which a machine set up for debugging is not in,
      * so the run adds it to whatever mode the IDE was started with. pcov
-     * needs nothing: loaded, it collects.
+     * needs nothing: loaded, it collects. turbocov collects only in the files
+     * `turbocov.collect_paths` names, and reads that only as PHP starts — so
+     * the run scans one more directory after the PHP's own, $settings, whose
+     * ini names the project, its vendor left out. A PHP without turbocov
+     * ignores settings it has no extension for.
+     *
+     * The paths go in list files, never in the ini value itself: a list
+     * needs no quoting, and a path may hold the `:` an inline list splits on.
      *
      * @return list<string>
      */
-    private static function measuring(): array
+    private function measuring(string $settings): array
     {
+        $root = $this->api->projectRoot();
+        Files::ensureDir($settings, permissions: 0o700);
+        \file_put_contents($settings.'/collect', $root."\n");
+        // turbocov refuses a path that is not there; an empty list is none.
+        \file_put_contents($settings.'/exclude', \is_dir($root.'/vendor') ? $root."/vendor\n" : '');
+        \file_put_contents($settings.'/porta.ini', \sprintf("turbocov.collect_paths=\"@%1\$s/collect\"\nturbocov.exclude_paths=\"@%1\$s/exclude\"\n", $settings));
         $mode = \getenv('XDEBUG_MODE');
+        $scan = \getenv('PHP_INI_SCAN_DIR');
 
-        return ['/usr/bin/env', 'XDEBUG_MODE='.(\is_string($mode) && '' !== $mode ? $mode.',' : '').'coverage'];
+        return [
+            '/usr/bin/env',
+            'XDEBUG_MODE='.(\is_string($mode) && '' !== $mode ? $mode.',' : '').'coverage',
+            // An empty entry is PHP's own scan directory, so unset, it stays scanned.
+            'PHP_INI_SCAN_DIR='.(\is_string($scan) ? $scan : '').\PATH_SEPARATOR.$settings,
+        ];
+    }
+
+    /** Remove the settings directory a measuring run scanned. */
+    private static function forget(string $settings): void
+    {
+        new Filesystem()->remove($settings);
     }
 
     /** What a report file holds, the file removed: '' when the run wrote none. */
@@ -210,7 +239,7 @@ final class TestRunner
         }
         $this->coverage->show($files);
         if ([] === $files) {
-            $this->api->notify($this->api->trans('No coverage: PHPUnit measures it with pcov or Xdebug, for what <source> in phpunit.xml names'), ToastSeverity::Warn, seconds: 6.0);
+            $this->api->notify($this->api->trans('No coverage: PHPUnit measures it with pcov, Xdebug or turbocov, for what <source> in phpunit.xml names'), ToastSeverity::Warn, seconds: 6.0);
         }
     }
 

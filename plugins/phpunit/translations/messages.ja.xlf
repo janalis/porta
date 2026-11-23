@@ -83,8 +83,8 @@
         <target>PHPUnit: カバレッジを非表示</target>
       </trans-unit>
       <trans-unit id="21">
-        <source>No coverage: PHPUnit measures it with pcov or Xdebug, for what &lt;source&gt; in phpunit.xml names</source>
-        <target>カバレッジなし: PHPUnit は pcov または Xdebug で、phpunit.xml の &lt;source&gt; が指定する対象を計測します</target>
+        <source>No coverage: PHPUnit measures it with pcov, Xdebug or turbocov, for what &lt;source&gt; in phpunit.xml names</source>
+        <target>カバレッジなし: PHPUnit は pcov、Xdebug または turbocov で、phpunit.xml の &lt;source&gt; が指定する対象を計測します</target>
       </trans-unit>
     </body>
   </file>
