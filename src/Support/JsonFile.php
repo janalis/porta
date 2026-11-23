@@ -18,8 +18,9 @@ final class JsonFile
 {
     /**
      * @param string|null $error why decoding produced null, when it did — the decoder's own
-     *                           reason ("Syntax error", …; PHP reports no position) or the
-     *                           not-an-object case. Untouched when the file is simply absent.
+     *                           reason ("Syntax error", …; from PHP 8.6 with the line:column it
+     *                           stopped at) or the not-an-object case. Untouched when the file
+     *                           is simply absent.
      *
      * @return array<mixed>|null decoded JSON object/array, or null when the file
      *                           is absent, invalid JSON, or not a JSON array/object

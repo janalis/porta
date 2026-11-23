@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Config;
 
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\RequiresPhp;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ConfigFiles;
 use Porta\Config\ConfigScope;
@@ -764,14 +765,26 @@ final class IdeConfigTest extends TestCase
 
     public function testInvalidJsonWarningCarriesTheDecodersReason(): void
     {
-        // PHP's decoder reports no position, but its reason ("Syntax error",
-        // "Control character error", …) still beats a bare "not valid JSON".
+        // The decoder's reason ("Syntax error", "Control character error", …)
+        // still beats a bare "not valid JSON".
         $project = new TempProject(['.porta.json' => '{not json']);
 
         [$warning] = IdeConfig::load($project->dir)->warnings;
 
         $this->assertSame('%file% is not valid JSON (%error%)', $warning->key);
         $this->assertStringContainsString('Syntax error', $warning->params['%error%']);
+    }
+
+    #[RequiresPhp('>=8.6.0')]
+    public function testInvalidJsonWarningCarriesTheDecodersPositionFromPhp86(): void
+    {
+        // PHP 8.6's decoder names the line:column it gave up at, and the warning
+        // passes the reason through whole, so the user is told where to look.
+        $project = new TempProject(['.porta.json' => "{\n  \"theme\": ,\n}"]);
+
+        [$warning] = IdeConfig::load($project->dir)->warnings;
+
+        $this->assertStringContainsString('near location 2:12', $warning->params['%error%']);
     }
 
     public function testAChoiceSettingRejectsAValueOutsideItsDomain(): void
