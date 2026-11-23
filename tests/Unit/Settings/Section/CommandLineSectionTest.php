@@ -249,6 +249,9 @@ final class CommandLineSectionTest extends TestCase
         $this->assertArrayHasKey('cli:ungit', $rows);
         $this->assertStringContainsString($this->home->path('checkout/bin/porta'), (string) \file_get_contents($this->home->path('.gitconfig')));
 
+        // settledRows() ends on a build, and a build starts a read: let it finish
+        // first, or it reads the file mid-rewrite and answers for the old one.
+        $this->await(static fn (): bool => null === Probe::get($section, property: 'gitRead'), what: 'the read the last build started');
         \file_put_contents($this->home->path('.gitconfig'), \str_replace('checkout', replace: 'moved', subject: (string) \file_get_contents($this->home->path('.gitconfig'))));
         // The first build after a change from a shell still shows the last
         // answer; the read it starts brings the new one.
