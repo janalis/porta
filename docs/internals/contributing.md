@@ -436,6 +436,16 @@ finished, and the last line names every red pass. pcov also watches only what
 each pass grades now (`src`, or `plugins`), worth ~10s and ~8s, and
 `coverage:src` keeps the container cache on (below), worth ~45s.
 
+[turbocov](https://github.com/shipmonk-rnd/turbocov) is a drop-in for pcov
+locally: built with `--enable-turbocov-impersonate-pcov` it registers as `pcov`
+and reads `pcov.enabled`, `pcov.directory` and `pcov.exclude`, so every script
+here runs on it unchanged (PHP 8.6 needs its master until a release has it). It
+is the stricter of the two: a line of a multi-line ternary or `match` arm counts
+only once that arm's own code runs, where pcov counts it as soon as the
+expression starts. Switching to it on 2026-11-23 dropped the gate by 15 lines,
+each an arm no test reached. CI still runs pcov, so a line only turbocov calls
+unreached is a missing test, not a driver quirk.
+
 Three things follow, and they are why `composer verify` is shaped the way it is.
 
 **The static gates are free.** All seven cost 5s — 1% of `coverage:check`.
