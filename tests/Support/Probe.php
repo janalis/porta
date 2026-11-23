@@ -74,9 +74,13 @@ final class Probe
     public static function invoke(object $object, string $method, mixed ...$args): mixed
     {
         for ($ref = new \ReflectionObject($object); false !== $ref; $ref = $ref->getParentClass()) {
-            if ($ref->hasMethod($method)) {
-                return $ref->getMethod($method)->invokeArgs($object, $args);
+            if (!$ref->hasMethod($method)) {
+                continue;
             }
+            $reflection = $ref->getMethod($method);
+
+            // A static method takes no object: PHP 8.6 deprecates passing one.
+            return $reflection->invokeArgs($reflection->isStatic() ? null : $object, $args);
         }
 
         throw new \LogicException(\sprintf('No method %s() on %s', $method, $object::class));

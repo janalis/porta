@@ -11,6 +11,7 @@ use Porta\Tests\Support\LoopErrors;
 use Porta\Tests\Support\LoopIsolationExtension;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
+use Revolt\EventLoop\DriverFactory;
 
 final class LoopIsolationExtensionTest extends TestCase
 {
@@ -39,6 +40,20 @@ final class LoopIsolationExtensionTest extends TestCase
 
         $this->assertNotSame($before, EventLoop::getDriver(), 'the swap route ran — a loop that is not running gets a fresh driver');
         $this->assertSame($handler, EventLoop::getErrorHandler(), 'and the handler came with it');
+    }
+
+    /**
+     * The fresh driver is the kind production runs. On PHP 8.6 Revolt's factory
+     * picks IoPollDriver; a hard-coded StreamSelectDriver had every test after a
+     * worker's first exercise a loop the IDE never runs. Below 8.6 both are
+     * StreamSelectDriver, so it is the 8.6 legs that hold this.
+     */
+    #[RunInSeparateProcess]
+    public function testTheFreshDriverIsTheOneProductionGets(): void
+    {
+        LoopIsolationExtension::reset(self::class.'::probe');
+
+        $this->assertInstanceOf(new DriverFactory()->create()::class, EventLoop::getDriver());
     }
 
     /**

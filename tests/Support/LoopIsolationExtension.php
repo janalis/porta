@@ -15,7 +15,7 @@ use PHPUnit\Runner\Extension\Facade;
 use PHPUnit\Runner\Extension\ParameterCollection;
 use PHPUnit\TextUI\Configuration\Configuration;
 use Revolt\EventLoop;
-use Revolt\EventLoop\Driver\StreamSelectDriver;
+use Revolt\EventLoop\DriverFactory;
 use Revolt\EventLoop\Internal\AbstractDriver;
 use Revolt\EventLoop\Internal\DriverCallback;
 use Revolt\EventLoop\Internal\TimerCallback;
@@ -100,7 +100,12 @@ final class LoopIsolationExtension implements Extension
             // (test:serial, the coverage:plugins shards) hit it after the first
             // test that never ran the loop; paratest's one-test workers rarely
             // did. Carried across.
-            EventLoop::setDriver(new StreamSelectDriver());
+            //
+            // The fresh driver is the one production gets: the factory's pick,
+            // honouring REVOLT_DRIVER. On PHP 8.6 that is IoPollDriver (kqueue,
+            // epoll), not StreamSelectDriver — hard-coding the latter meant every
+            // test after a worker's first ran a loop the IDE never runs.
+            EventLoop::setDriver(new DriverFactory()->create());
             EventLoop::setErrorHandler(LoopErrors::rethrow());
 
             return;
