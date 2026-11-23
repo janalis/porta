@@ -685,6 +685,28 @@ final class FindBarWidgetTest extends TestCase
         $this->assertSame("é foo(1); foo; [foo](2);\n", $doc->getText(), 'the current match, where it is — counted in characters past the é');
     }
 
+    /**
+     * A match the pinned pattern cannot find again where it was — `\G` holds
+     * only where a match attempt starts, and pinned, the second one no longer
+     * starts there — takes the replacement as typed, its references unexpanded.
+     */
+    public function testARegexReplaceThatCannotBeExpandedWhereItMatchedGoesInAsTyped(): void
+    {
+        $doc = new Document("foofoo\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace);
+        $bar->handleInput("\x1bx"); // regex mode
+        $this->type($bar, text: '\Gfoo');
+        $bar->handleInput("\x1bOR"); // F3: the second match, which only follows the first
+        $bar->handleInput("\t");
+        $this->type($bar, text: '[$0]');
+
+        $bar->handleInput("\x1br");
+
+        $this->assertSame("foo[$0]\n", $doc->getText());
+    }
+
     /** Past what one `{n}` can count — a minified line — the match is still expanded where it is. */
     public function testARegexReplaceFarIntoALongLineExpandsItsReferences(): void
     {

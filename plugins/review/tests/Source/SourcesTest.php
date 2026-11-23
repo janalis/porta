@@ -11,6 +11,7 @@ use Porta\ReviewPlugin\Forge\GitHubSource;
 use Porta\ReviewPlugin\Forge\GitLabSource;
 use Porta\ReviewPlugin\Local\LocalReviews;
 use Porta\ReviewPlugin\Local\LocalSource;
+use Porta\ReviewPlugin\Model\Anchor;
 use Porta\ReviewPlugin\Model\Review;
 use Porta\ReviewPlugin\Source\ReviewSource;
 use Porta\ReviewPlugin\Source\Sources;
@@ -147,7 +148,8 @@ final class SourcesTest extends TestCase
         \putenv('GH_TOKEN=gh-token');
         \putenv('GH_ENTERPRISE_TOKEN=ghe-token');
         \putenv('GITLAB_TOKEN=gl-token');
-        $forge->answerJson([])->answerJson([])->answerJson([])->answerJson([]);
+        // github.com's load; the enterprise load, which finds a pull request, then a comment on it; GitLab's load.
+        $forge->answerJson([])->answerFixture('github-pull-request.json')->answerJson([])->answerJson([]);
         $this->settings['hosts'] = 'ghe.corp.com=github';
 
         try {
@@ -167,12 +169,24 @@ final class SourcesTest extends TestCase
                 $source = $this->resolve($sources);
                 \assert(null !== $source, description: 'loaded');
                 $done = false;
-                $source->load(static function () use (&$done): void {
+                $review = null;
+                $source->load(static function (?Review $r) use (&$done, &$review): void {
                     $done = true;
+                    $review = $r;
                 });
                 $this->await(static function () use (&$done): bool {
                     return $done;
                 });
+                if ($review instanceof Review) {
+                    // A comment is the REST API's, not GraphQL's: on an enterprise host, under /api/v3/.
+                    $done = false;
+                    $source->comment($review, new Anchor('src/A.php', 9), body: 'Why?', onDone: static function () use (&$done): void {
+                        $done = true;
+                    });
+                    $this->await(static function () use (&$done): bool {
+                        return $done;
+                    });
+                }
             }
         } finally {
             \putenv('GH_TOKEN');
@@ -185,7 +199,9 @@ final class SourcesTest extends TestCase
         $this->assertStringContainsString('Authorization: Bearer gh-token', $configs[0]);
         $this->assertStringContainsString('url = "https://ghe.corp.com/api/graphql"', $configs[1]);
         $this->assertStringContainsString('Authorization: Bearer ghe-token', $configs[1]);
-        $this->assertStringContainsString('url = "https://gitlab.com/api/v4/projects/a%2Fb/merge_requests', $configs[2]);
-        $this->assertStringContainsString('PRIVATE-TOKEN: gl-token', $configs[2]);
+        $this->assertStringContainsString('url = "https://ghe.corp.com/api/v3/repos/a/b/pulls/12/comments"', $configs[2]);
+        $this->assertStringContainsString('Authorization: Bearer ghe-token', $configs[2]);
+        $this->assertStringContainsString('url = "https://gitlab.com/api/v4/projects/a%2Fb/merge_requests', $configs[3]);
+        $this->assertStringContainsString('PRIVATE-TOKEN: gl-token', $configs[3]);
     }
 }

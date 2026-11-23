@@ -48,7 +48,10 @@ final class TreeBuilder
         self::collectFootnotes($parsed->document, $footnotes);
         $this->context = new InlineContext($parsed->references, $footnotes);
 
-        return new Document($this->blocks($parsed->document), new SourceRange(0, $parsed->document->end));
+        $document = $this->block($parsed->document);
+        \assert($document instanceof Document, description: 'the parser\'s root is its document');
+
+        return $document;
     }
 
     /** @param array<string, true> $labels */

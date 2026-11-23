@@ -233,11 +233,13 @@ final class FileTreeWidgetTest extends TestCase
      */
     public function testAChangedFileIsMarkedEvenWithNoBufferOpen(): void
     {
-        $project = new TempProject(['added.php' => "<?php\n", 'edited.php' => "<?php\n", 'clean.php' => "<?php\n"]);
+        $project = new TempProject(['added.php' => "<?php\n", 'edited.php' => "<?php\n", 'clean.php' => "<?php\n", 'untracked.php' => "<?php\n"]);
         $statuses = new FileStatuses();
         $statuses->applyFileStatuses([
             (string) \realpath($project->dir.'/added.php') => ChangeMarkKind::Added,
             (string) \realpath($project->dir.'/edited.php') => ChangeMarkKind::Modified,
+            // `git rm --cached`: gone from the index, still on disk.
+            (string) \realpath($project->dir.'/untracked.php') => ChangeMarkKind::Deleted,
         ]);
         $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations(new BufferManager(), $statuses, TestAgentPresence::create()));
 
@@ -247,6 +249,12 @@ final class FileTreeWidgetTest extends TestCase
         $this->assertMatchesRegularExpression('/added\.php\s+'.Glyphs::VCS_ADDED.'$/m', $rows);
         $this->assertMatchesRegularExpression('/edited\.php\s+'.Glyphs::VCS_MODIFIED.'$/m', $rows);
         $this->assertMatchesRegularExpression('/clean\.php\s+$/m', $rows);
+
+        $lines = \explode("\n", $rows);
+        foreach (['added.php' => 'Added', 'edited.php' => 'Modified', 'untracked.php' => 'Deleted'] as $file => $change) {
+            $row = \array_key_first(\array_filter($lines, static fn (string $r): bool => \str_contains($r, $file)));
+            $this->assertSame($file."\nVersion control: ".$change, $tree->tooltipAt((int) $row, col: 3)?->text, 'the tooltip spells the mark out');
+        }
     }
 
     /**

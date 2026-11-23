@@ -71,6 +71,20 @@ final class GitCommandsTest extends TestCase
         $this->assertStringContainsString('a fresh commit', $this->project->git('log', '-1', '--pretty=%s'));
     }
 
+    public function testACommitGitRefusesSaysWhy(): void
+    {
+        $commands = $this->commands(['a.txt' => "one\n"]);
+        $before = \trim($this->project->git('rev-parse', 'HEAD'));
+
+        $commands->commit(); // nothing staged
+        $this->type('nothing to say');
+        $this->key("\r");
+        $this->pumpUntil();
+
+        $this->assertStringContainsString('Commit failed', $this->statusRow($this->statusBar));
+        $this->assertSame($before, \trim($this->project->git('rev-parse', 'HEAD')));
+    }
+
     public function testCommitWithAnEmptyMessageDoesNothing(): void
     {
         $commands = $this->commands(['a.txt' => "one\n"]);

@@ -98,6 +98,31 @@ final class BlameTest extends TestCase
         $this->assertNotSame('', $this->project->git('diff', '--cached', '--name-only'), 'and it really staged');
     }
 
+    /** A stage git refuses — another git holds the index — says so, and still announces. */
+    public function testAStageGitRefusesSaysSo(): void
+    {
+        $api = $this->api();
+        $this->skipWithoutGit();
+        $this->project->initGit(name: 'tester', email: 't@t');
+        $this->project->commitAll('init');
+        $this->project->write('a.txt', content: "one\nCHANGED\n");
+        $this->project->write('.git/index.lock', content: '');
+        $this->buffers->open($this->project->path('a.txt'), content: "one\nCHANGED\n");
+
+        $announced = 0;
+        $this->events->addListener(WorkingTreeChanged::class, static function () use (&$announced): void {
+            ++$announced;
+        });
+
+        new IndexCommands(new GitInfo($this->project->dir), $api)->stageCurrent();
+        $this->await(static function () use (&$announced): bool {
+            return $announced > 0;
+        }, what: 'the failed stage to announce itself');
+
+        $this->assertStringContainsString('Stage failed', $this->flashText($this->status));
+        $this->assertSame('', $this->project->git('diff', '--cached', '--name-only'), 'nothing staged');
+    }
+
     public function testAConflictedFileWithAMarkerLeftIsNotStaged(): void
     {
         // Staging it would mark it resolved, markers and all.

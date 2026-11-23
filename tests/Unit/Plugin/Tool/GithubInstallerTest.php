@@ -36,6 +36,9 @@ final class GithubInstallerTest extends TestCase
     /** A plain 200 with no `location:` — the redirect answered, but named no tag. */
     private const string NO_REDIRECT = "HTTP/2 200\r\n\r\n";
     private const string RATE_LIMITED = "HTTP/2 403\r\nx-ratelimit-limit: 60\r\nx-ratelimit-remaining: 0\r\nx-ratelimit-reset: 4102444800\r\n\r\n{\"message\":\"API rate limit exceeded\"}";
+
+    /** A rate limit whose answer names no reset time. */
+    private const string RATE_LIMITED_NO_RESET = "HTTP/2 403\r\nx-ratelimit-limit: 60\r\nx-ratelimit-remaining: 0\r\n\r\n{\"message\":\"API rate limit exceeded\"}";
     private const string TARBALL_BYTES = 'not really gzip, and it does not matter';
 
     /** The step log every scripted runner appends to. @var list<string> */
@@ -72,6 +75,7 @@ final class GithubInstallerTest extends TestCase
                     'api-exit', 'both-exit' => $onExit($curlError, $noOutput),
                     'api-json' => $onExit($ok, $notJson),
                     'rate-limited', 'rate-limited-with-token' => $onExit($ok, self::RATE_LIMITED),
+                    'rate-limited-no-reset' => $onExit($ok, self::RATE_LIMITED_NO_RESET),
                     'gone' => $onExit($ok, self::NOT_FOUND),
                     default => $onExit($ok, self::TAG_JSON),
                 };
@@ -83,7 +87,7 @@ final class GithubInstallerTest extends TestCase
                     'both-exit' => $onExit($curlError, $noOutput),
                     // Everything that names an api-* break reaches the API by
                     // way of a redirect that answered nothing useful.
-                    'api-exit', 'api-json', 'rate-limited', 'rate-limited-with-token', 'gone', 'no-redirect' => $onExit($ok, self::NO_REDIRECT),
+                    'api-exit', 'api-json', 'rate-limited', 'rate-limited-with-token', 'rate-limited-no-reset', 'gone', 'no-redirect' => $onExit($ok, self::NO_REDIRECT),
                     default => $onExit($ok, self::TAG_REDIRECT),
                 };
 
@@ -329,6 +333,9 @@ final class GithubInstallerTest extends TestCase
         $this->install($scratch, breakAt: 'rate-limited');
         $this->assertStringContainsString('rate limit', (string) $this->failure);
         $this->assertStringContainsString('GITHUB_TOKEN', (string) $this->failure, 'the remedy, not just the symptom');
+
+        $this->install($scratch, breakAt: 'rate-limited-no-reset');
+        $this->assertStringEndsWith('retry in 1 min', (string) $this->failure, 'no reset time named: a minute, never "0 min"');
 
         $this->install($scratch, breakAt: 'gone');
         $this->assertSame('no releases found for symfony/language-tools — the repo or release may have moved', $this->failure);
