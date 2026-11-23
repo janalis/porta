@@ -658,14 +658,15 @@ both drivers, alternating A/B/A/B, at load 330–400. Each run booted, took type
 input, followed a SIGWINCH resize (120×40 → 110×35, read off the frame dump) and
 quit with exit 0. A PTY read through `IoPollDriver` arrived in 0.229 s against
 StreamSelect's 0.225 s, for a 0.2 s sleep. paint and gap percentiles were alike.
-At that load they show nothing about speed either way. A heavier drive, a
-200-key burst and 120 cursor moves in 6 alternating pairs at load 178–342, had
-IoPoll behind on paint p95 in 5 pairs out of 6. Paint time cannot depend on the
-driver, so that is the load. The load-blind measure is CPU per readable
-round-trip, from rusage, with 9 idle watchers like an IDE's, in 4 alternating
-pairs: IoPollDriver 2.9–3.2 µs, StreamSelectDriver 3.2–4.0 µs. It is cheaper in
-every pair, and microseconds either way against paints of milliseconds. The
-factory's pick stays.
+A heavier drive, a 200-key burst and 120 cursor moves, ran in 16 alternating
+pairs at load 178–477. IoPoll's paint p95 was the worse in 10 pairs and the better
+in 6, which is chance (p ≈ 0.45). The render share moved with it in nearly every
+pair, and render is pure CPU that no driver touches, so the spread is the load's.
+paintMs is render + bidi + write, wall time inside a paint. The load-blind measure
+is CPU per readable round-trip, from rusage, with 9 idle watchers like an IDE's, in
+4 alternating pairs: IoPollDriver 2.9–3.2 µs, StreamSelectDriver 3.2–4.0 µs. It is
+cheaper in every pair, and microseconds either way against paints of milliseconds.
+No difference shows in the IDE, so the factory's pick stays.
 
 **`clamp()`, where the bounds are ordered.** 8.6's `\clamp()` throws a
 ValueError when `min > max`. The house idiom, `IntMath::clamp` and the hand-rolled
@@ -708,7 +709,16 @@ with `@custos-ignore` (type rules ignore `@noinspection`). 0.2.5's
 `cli_checks_80.patch`. 8.6 support (static-php-cli#1226, `cli_checks_86.patch`) is
 merged only on the unreleased `v3` rewrite branch. Those patches serve the micro
 SAPI, which Porta never builds (`--build-cli`), and `SourcePatcher::patchMicro()`
-takes its list from `SPC_MICRO_PATCHES`. `build-php.sh` sets that empty. The macOS
+takes its list from `SPC_MICRO_PATCHES`. `build-php.sh` sets that empty. The
+list held more than `cli_checks`, and two of the others touch the CLI. On Linux,
+`disable_huge_page` stops php-src aligning its segments on 2 MB pages; that
+alignment is php-src's own default, which micro turns off for its appended
+payload. On macOS, `macos_iconv` forces `-liconv`; 8.6 links libiconv 1.19
+without it, and `iconv()` transliterates and converts as it should. Re-applying
+either is no gain: 2.8.5's version table stops at 85, so on 8.6 it falls back to
+the `_80` variants. Linux also needed `--enable-pic` in place of the
+`--with-pic` that 8.6's configure refuses. `build-php.sh` passes 2.8.5's own
+configure prefix with that one swap, as v3 does. The macOS
 arm64 build then passed `check-php.php`: NTS, every extension, a real PTY. Only the
 php tarball's lock line moved, and its digest is php.net's published sha256.
 *Re-opens on:* a static-php-cli release with an 8.6 patch set, if the micro SAPI is
