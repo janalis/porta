@@ -12,6 +12,8 @@ versions follow [Semantic Versioning](https://semver.org/).
   broken `.porta.json` or plugin manifest names the line and column where the
   JSON goes wrong.
 - **The desktop app** bundles PHP 8.6.0.
+- **The graph viewer** uses viz 0.2.7: native Graphviz layouts follow `dot`
+  more closely (ranks, crossings, edge labels), and `clusterrank` is supported.
 
 ## [0.2.2] - 2026-11-22
 

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5f6d10ebc4e346e03055b0caee62d503",
+    "content-hash": "9a49a58044828cf76e391d4b73ee8dd0",
     "packages": [
         {
             "name": "composer/semver",
@@ -85,16 +85,16 @@
         },
         {
             "name": "janalis/viz",
-            "version": "v0.2.3",
+            "version": "v0.2.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/janalis/viz.git",
-                "reference": "d92fa1e25829ec0f4fa20e1d1ab69823a712c049"
+                "reference": "cdfc9cf04ba44011e98a3fc6c4f8dd2fd81643a2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/janalis/viz/zipball/d92fa1e25829ec0f4fa20e1d1ab69823a712c049",
-                "reference": "d92fa1e25829ec0f4fa20e1d1ab69823a712c049",
+                "url": "https://api.github.com/repos/janalis/viz/zipball/cdfc9cf04ba44011e98a3fc6c4f8dd2fd81643a2",
+                "reference": "cdfc9cf04ba44011e98a3fc6c4f8dd2fd81643a2",
                 "shasum": ""
             },
             "require": {
@@ -104,7 +104,7 @@
                 "symfony/polyfill-intl-grapheme": "^1.33",
                 "symfony/process": "^8.0",
                 "symfony/string": "^8.0",
-                "symfony/yaml": "^8.1"
+                "symfony/yaml": "^8.1.11"
             },
             "require-dev": {
                 "carthage-software/mago": "1.59.*",
@@ -141,7 +141,8 @@
                 "issues": "https://github.com/janalis/viz/issues",
                 "source": "https://github.com/janalis/viz"
             },
-            "time": "2026-11-07T17:29:41+00:00"
+            "time": "2026-11-23T16:08:59+00:00",
+            "published-time": "2026-11-23T16:09:05+00:00"
         },
         {
             "name": "psr/clock",
@@ -774,7 +775,8 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-16T14:15:10+00:00"
+            "time": "2026-09-16T14:15:10+00:00",
+            "published-time": "2026-11-04T11:25:34+00:00"
         },
         {
             "name": "symfony/event-dispatcher",
@@ -1164,7 +1166,8 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-04-10T16:19:22+00:00"
+            "time": "2026-04-10T16:19:22+00:00",
+            "published-time": "2026-04-26T14:44:50+00:00"
         },
         {
             "name": "symfony/polyfill-deepclone",
@@ -1418,7 +1421,8 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-23T22:02:09+00:00"
+            "time": "2026-09-23T22:02:09+00:00",
+            "published-time": "2026-09-30T10:23:47+00:00"
         },
         {
             "name": "symfony/polyfill-mbstring",
@@ -1503,7 +1507,8 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-28T09:35:49+00:00"
+            "time": "2026-10-28T09:35:49+00:00",
+            "published-time": "2026-10-28T10:07:45+00:00"
         },
         {
             "name": "symfony/polyfill-php85",
@@ -1913,7 +1918,8 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-23T17:06:53+00:00"
+            "time": "2026-10-23T17:06:53+00:00",
+            "published-time": "2026-10-28T18:24:27+00:00"
         },
         {
             "name": "symfony/translation",
