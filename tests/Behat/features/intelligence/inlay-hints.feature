@@ -106,7 +106,8 @@ Feature: Inlay hints
     And the language server is ready
     Then I should see "f(42, $y);"
     And line 2 has inlay hints
-    When I hover over the text "42"
+    # Not "42" alone: the project tree's random tuink-workspace-<hex> name can hold it, higher up
+    When I hover over the text "42, $y"
     # The card comes once the pointer has rested for the tooltip delay
     Then I should eventually see "│ n: │"
     And I should see "f(42, $y);"
