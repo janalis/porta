@@ -4,7 +4,7 @@
 set -eu
 
 output=$1
-version=8.5.12
+version=8.6.0
 extensions=ctype,dom,filter,gd,iconv,mbstring,openssl,pcntl,phar,posix,simplexml,sodium,tokenizer,xml,zlib
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 work=${PORTA_SPC_DIR:-$(mktemp -d)}
@@ -36,6 +36,8 @@ while read -r name url; do
 done < "$here/php-sources.pins"
 ./spc download --with-php="$version" --for-extensions="$extensions" "$@"
 "$here/verify-sources.sh" downloads "$here/php-sources.lock"
-./spc build "$extensions" --build-cli
+# No phpmicro patches: they serve the micro SAPI, never built here, and static-php-cli 2.8.5's
+# fail to apply to PHP 8.6 (its 8.6 set is only on the unreleased v3 branch).
+SPC_MICRO_PATCHES= ./spc build "$extensions" --build-cli
 cp buildroot/bin/php "$output"
 "$output" -n "$here/runtime/check-php.php"

@@ -696,11 +696,16 @@ re-typed from `ReflectionClass(<array key>)`. Each is suppressed where it stands
 with `@custos-ignore` (type rules ignore `@noinspection`). 0.2.5's
 `UnavailableFunction` is silent on `\clamp()`, because polyfill-php86 declares it.
 
-**Not done: the desktop's bundled PHP stays 8.5.12.** static-php-cli 2.8.5 (the
-latest release, 2026-04-18) cannot build 8.6.0. phpmicro's `cli_checks_80.patch`
-fails to apply, and 8.6 support (static-php-cli#1226, `cli_checks_86.patch`) is
-merged only on the unreleased `v3` rewrite branch. *Re-opens on:* a
-static-php-cli release that builds 8.6.
+**The desktop's bundled PHP is 8.6.0, without phpmicro's patches.** static-php-cli
+2.8.5 (the latest release, 2026-04-18) stopped on 8.6.0 at phpmicro's
+`cli_checks_80.patch`. 8.6 support (static-php-cli#1226, `cli_checks_86.patch`) is
+merged only on the unreleased `v3` rewrite branch. Those patches serve the micro
+SAPI, which Porta never builds (`--build-cli`), and `SourcePatcher::patchMicro()`
+takes its list from `SPC_MICRO_PATCHES`. `build-php.sh` sets that empty. The macOS
+arm64 build then passed `check-php.php`: NTS, every extension, a real PTY. Only the
+php tarball's lock line moved, and its digest is php.net's published sha256.
+*Re-opens on:* a static-php-cli release with an 8.6 patch set, if the micro SAPI is
+ever wanted.
 
 **Deferred until the floor is 8.6** (syntax or API with no polyfill): partial
 function application (`f(1, ?)`), readonly property defaults, `#[\Override]` on

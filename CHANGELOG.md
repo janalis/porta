@@ -11,6 +11,7 @@ versions follow [Semantic Versioning](https://semver.org/).
   Porta's event loop waits with kqueue or epoll instead of `select()`, and a
   broken `.porta.json` or plugin manifest names the line and column where the
   JSON goes wrong.
+- **The desktop app** bundles PHP 8.6.0.
 
 ## [0.2.2] - 2026-11-22
 
