@@ -27,6 +27,11 @@ concurrency:
 # ride symfony/polyfill-intl-grapheme — so the test matrix grades both the
 # native path and the polyfill every no-intl user actually runs.
 env:
+  # The PHP every job runs on. composer.json keeps the floor at 8.5 (its
+  # platform pin resolves the lock for it, polyfill-php86 backs what 8.6 added),
+  # and the PHP_FLOOR legs of `tests` and `behat` prove that floor still runs.
+  PHP_VERSION: '8.6'
+  PHP_FLOOR: '8.5'
   # posix: the desktop relay and its login shell start a session of their own (posix_setsid).
   PHP_EXTENSIONS: mbstring, gd, pcntl, posix, simplexml, ctype
   # A hosted runner (4 vCPUs on a public repository) is the job's alone:
@@ -43,7 +48,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
+          php-version: ${{ env.PHP_VERSION }}
           coverage: none
       - name: Manifest check
         run: |
@@ -62,7 +67,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
+          php-version: ${{ env.PHP_VERSION }}
           coverage: none
           extensions: ${{ env.PHP_EXTENSIONS }}, intl
       - uses: actions/cache@v6
@@ -95,15 +100,20 @@ jobs:
       matrix:
         include:
           - name: intl
+            php: current
             extensions: intl
           - name: polyfill (no intl)
+            php: current
             extensions: ':intl'
+          - name: PHP floor
+            php: floor
+            extensions: intl
     name: tests (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
+          php-version: ${{ matrix.php == 'floor' && env.PHP_FLOOR || env.PHP_VERSION }}
           coverage: none
           # setup-php installs php.ini-production, whose zend.assertions=-1 compiles
           # every assert() out: the invariants never ran here, and their lines
@@ -151,12 +161,16 @@ jobs:
     if: github.event_name != 'schedule' && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    name: behat
+    strategy:
+      fail-fast: false
+      matrix:
+        php: [current, floor]
+    name: behat (PHP ${{ matrix.php }})
     steps:
       - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
+          php-version: ${{ matrix.php == 'floor' && env.PHP_FLOOR || env.PHP_VERSION }}
           coverage: none
           ini-values: zend.assertions=1
           extensions: ${{ env.PHP_EXTENSIONS }}, intl
@@ -186,7 +200,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
+          php-version: ${{ env.PHP_VERSION }}
           coverage: pcov
           # setup-php installs php.ini-production, whose zend.assertions=-1 compiles
           # every assert() out: the invariants never ran here, and their lines
@@ -230,7 +244,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
+          php-version: ${{ env.PHP_VERSION }}
           coverage: pcov
           # setup-php installs php.ini-production, whose zend.assertions=-1 compiles
           # every assert() out: the invariants never ran here, and their lines
@@ -277,7 +291,7 @@ jobs:
           fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
+          php-version: ${{ env.PHP_VERSION }}
           coverage: none
           extensions: ${{ env.PHP_EXTENSIONS }}
       - run: composer install --no-interaction --no-progress --prefer-dist

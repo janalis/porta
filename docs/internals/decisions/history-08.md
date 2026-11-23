@@ -630,3 +630,83 @@ zend signals on, `zend_signal_handler_defer()` catches the foreign thread
 first. The gate stays `!PHP_ZTS` rather than narrowing to that build, because
 what zend signals do instead was only read, not measured: the code hands the signal to the
 pre-PHP disposition, which for SIGALRM is to end the process.
+
+## PHP 8.6: the runtime moves, the floor stays at 8.5 (2026-11-23)
+
+PHP 8.6.0 is out. Every CI job but two legs moved to it. composer.json still says `>=8.5`, and its platform pin stays
+8.5.0, so the lock resolves for the floor. 8.6 additions reach 8.5 through
+`symfony/polyfill-php86`. The `tests` and `behat` jobs each keep a PHP 8.5 leg
+(`PHP_FLOOR`) to prove the floor still runs. mago's `php-version`, custos and the
+rector set stay at 8.5, so 8.6-only syntax cannot land.
+
+**What it already ran.** `composer why-not php 8.6.0` was empty. `php -l` was
+clean over every tracked file, and the full UPGRADING list of deprecations and
+breaks, grepped across src, plugins, bin, desktop and tests, found nothing live.
+The phpunit config's `failOnDeprecation`/`failOnNotice` made the suites the
+real check.
+
+**What changed without a line of ours: the loop driver.** revolt/event-loop 1.1.0,
+already in the lock, makes `DriverFactory` pick `IoPollDriver` (8.6's `Io\Poll`:
+kqueue on macOS, epoll on Linux) on PHP ≥ 8.6. Below 8.6 it keeps
+`StreamSelectDriver`, because the io-poll polyfill only wraps `stream_select()`.
+The suite pinned `StreamSelectDriver` after each test (`LoopIsolationExtension`),
+so on 8.6 every test after a worker's first ran a loop the IDE never runs. The
+reset now installs the factory's pick, and
+`LoopIsolationExtensionTest::testTheFreshDriverIsTheOneProductionGets` holds it.
+It fails on 8.6 when StreamSelect is hard-coded back. The real IDE was driven on
+both drivers, alternating A/B/A/B, at load 330–400. Each run booted, took typed
+input, followed a SIGWINCH resize (120×40 → 110×35, read off the frame dump) and
+quit with exit 0. A PTY read through `IoPollDriver` arrived in 0.229 s against
+StreamSelect's 0.225 s, for a 0.2 s sleep. paint and gap percentiles were alike.
+At that load they show nothing about speed either way, so no speed claim is made.
+
+**`clamp()`, where the bounds are ordered.** 8.6's `\clamp()` throws a
+ValueError when `min > max`. The house idiom, `IntMath::clamp` and the hand-rolled
+`max($lo, min($hi, $v))`, lets `$lo` win instead, and 45 call sites lean on that:
+`count - 1` on an empty list, a pane with no room. So `\clamp()` replaced it only
+where the bounds are constants or provably ordered: Backoff, PaneSplit,
+`Document::clampCol`, WordRange, StructuralSelection, TextMetrics,
+SourceReveal's column, ResultsPanelWidget (behind `count > 0`), MermaidSceneRows,
+ZoomPanModel's pan and SharedText. MermaidFenceElements kept min/max: for a NAN
+input min/max gives 1.0, `\clamp()` gives NAN. The polyfill and native `\clamp()`
+were checked to agree, ValueError included, on 8.5 and 8.6.
+
+**For free on 8.6:** `JsonException` names the line and column, so a broken
+`.porta.json` or plugin manifest says where (`IdeConfigTest`, `RequiresPhp`).
+
+**What 8.6 caught.** One deprecation in all of `coverage:src` (11,681 tests): the
+`tests/Support/Probe::invoke()` seam passed an object to `invokeArgs()` for a
+static method, which 8.6 deprecates. It now passes null. `GithubInstallerTest`,
+under `failOnDeprecation`, fails on 8.6 without that. On 8.5 the suites
+(14,752 tests) and Behat (494 + 10 scenarios) are green apart from one
+`IdePhpUnitPluginTest` 10 s timeout at load ~374. That test passed twice alone,
+in 23 s and 16 s for 6 tests.
+
+**Mutation.** `composer mutate` over the converted `src` lines left 6 survivors.
+All were boundary mutants that `IntMath::clamp` and `min/max` with the same
+constants had carried untested. PaneSplit's 10‰/990‰ share bounds and a negative
+column in WordRange and SourceReveal now have tests that kill each one, checked
+by hand. The three plugin sites were mutated by hand, 8 mutants, all killed.
+
+**custos 0.1.14 → 0.2.5**, in the same round. 0.2.3 turns its type checking on at
+the `proven` level. That raised two `MemberAccessOnNonObject` false positives,
+both reproduced outside Porta. One is a loop over `?WeakMap ?? []`, whose keys
+custos types as the array's `int|string`. The other is a `@var`-typed local
+re-typed from `ReflectionClass(<array key>)`. Each is suppressed where it stands
+with `@custos-ignore` (type rules ignore `@noinspection`). 0.2.5's
+`UnavailableFunction` is silent on `\clamp()`, because polyfill-php86 declares it.
+
+**Not done: the desktop's bundled PHP stays 8.5.12.** static-php-cli 2.8.5 (the
+latest release, 2026-04-18) cannot build 8.6.0. phpmicro's `cli_checks_80.patch`
+fails to apply, and 8.6 support (static-php-cli#1226, `cli_checks_86.patch`) is
+merged only on the unreleased `v3` rewrite branch. *Re-opens on:* a
+static-php-cli release that builds 8.6.
+
+**Deferred until the floor is 8.6** (syntax or API with no polyfill): partial
+function application (`f(1, ?)`), readonly property defaults, `#[\Override]` on
+constants, `Time\Duration`, pack/unpack endianness modifiers, and the stream error
+API. `StreamErrorMode` could replace the `set_error_handler(static fn () => true)`
+swallowers in PngRaster, RasterImage, FindBarWidget and PortaJsonWriter.
+`grapheme_strrev()`, `SortDirection` and `ARRAY_FILTER_USE_VALUE` are polyfilled
+but have no call site. The ZTS alarm gate (`!PHP_ZTS`, the 2026-11-17 entry) stays:
+php/php-src#25580 and #25581, its successors, are still open and not in 8.6.0.

@@ -46,6 +46,15 @@ no env, so it can never match); `AddEventAliasesPass` (matters only with opcache
 preloading); emulating `test.service_container` (the two-method `Ide` seam is
 the answer).
 
+**The PHP floor stays at 8.5 while CI runs 8.6 — kept.** 8.6 additions reach
+8.5 through `symfony/polyfill-php86`, and the `PHP_FLOOR` legs of `tests` and
+`behat` prove they still run there. mago, custos and rector target 8.5, so no
+8.6-only syntax lands. `\clamp()` throws where `IntMath::clamp` lets `$lo` win:
+it is used only where the bounds are provably ordered. The desktop bundle stays
+8.5.12 until static-php-cli releases 8.6 support.
+*Re-opens on:* dropping 8.5 (the history entry lists what then lands), or a
+static-php-cli release that builds 8.6.
+
 **`classmap-authoritative` in `composer.json` — deliberately not done.** It
 would drop the PSR-4 fallback and break new-file autoload in development until a
 manual re-dump. Authoritative mode stays a CI-install concern.

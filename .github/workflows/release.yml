@@ -60,7 +60,7 @@ jobs:
           fi
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
+          php-version: '8.6'
           coverage: none
           extensions: ${{ env.PHP_EXTENSIONS }}
       - run: composer install --no-interaction --no-progress --prefer-dist
@@ -109,7 +109,7 @@ jobs:
           fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
+          php-version: '8.6'
           coverage: none
           extensions: ${{ env.PHP_EXTENSIONS }}
       - run: composer install --no-interaction --no-progress --prefer-dist

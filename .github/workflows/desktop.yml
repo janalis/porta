@@ -37,7 +37,7 @@ jobs:
           fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
+          php-version: '8.6'
           coverage: none
           extensions: mbstring, gd, pcntl, simplexml, ctype
       - run: composer install --no-interaction --no-progress --prefer-dist
@@ -156,7 +156,7 @@ jobs:
           fi
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
+          php-version: '8.6'
           coverage: none
           extensions: mbstring, pcntl, ctype
       - run: composer install --no-interaction --no-progress --prefer-dist
@@ -241,7 +241,7 @@ jobs:
           make desktop-e2e-relay DESKTOP_PHP="$PWD/php-${{ matrix.name }}" DESKTOP_PHAR="$PWD/porta.phar" DESKTOP_RUNS=3
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
+          php-version: '8.6'
           coverage: none
           extensions: mbstring, pcntl, ctype
       - run: composer install --no-interaction --no-progress --prefer-dist

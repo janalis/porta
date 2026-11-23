@@ -5,6 +5,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **PHP 8.6** is supported, and CI runs on it. PHP 8.5 still works. On 8.6,
+  Porta's event loop waits with kqueue or epoll instead of `select()`, and a
+  broken `.porta.json` or plugin manifest names the line and column where the
+  JSON goes wrong.
+
 ## [0.2.2] - 2026-11-22
 
 ### Changed

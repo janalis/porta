@@ -84,8 +84,13 @@ free for a public repository. A runner is the job's alone, so the tests take
 every core (`PORTA_TEST_PROCESSES: auto`) and the plugin shards four
 (`PORTA_SHARD_PROCESSES: 4`, `coverage:plugins` takes a number).
 
-Each job gets its own runner; setup-php installs PHP 8.5 and the declared
-extensions, including the explicit no-intl test variant.
+Each job gets its own runner; setup-php installs PHP 8.6 (`PHP_VERSION` in
+ci.yml) and the declared extensions, including the explicit no-intl test
+variant. The `tests` and `behat` jobs add a leg on PHP 8.5 (`PHP_FLOOR`), the
+floor `composer.json` promises: 8.6 additions reach 8.5 through
+`symfony/polyfill-php86`, and that leg is what proves it. Gate locally on an NTS
+8.6 (`PATH=/opt/homebrew/opt/php@8.6/bin:$PATH`): Homebrew's bare `php` may be
+the ZTS build, where the freeze watchdog's alarm is off.
 
 ```bash
 PORTA_TEST_PROCESSES=4 nice -n 10 composer test   # busier than usual
@@ -388,7 +393,9 @@ wrapper that downloads its prebuilt binary on first run). `custos.json` sets the
 paths — `src`, `plugins`, `tests`, `bin`, `config` — and PHP 8.5. A false
 positive is suppressed where it stands, with `// @noinspection <Rule>Inspection
 -- why` on the line above the statement it reports (since 0.1.1, also above a
-single call argument or array item), or in a class docblock for a whole trait. A rule that contradicts
+single call argument or array item), or in a class docblock for a whole trait. The type rules
+(`custos explain <Rule>` says `on with typeCheck`, the default since 0.2.3) ignore that form:
+they take `// @custos-ignore <Rule> -- why`. A rule that contradicts
 mago or rector is switched off in `custos.json` instead, with the reason in
 `decisions.md`, since JSON takes no comments. Its precedence check asks for
 `a || (b && c)`, which is why mago's formatter keeps redundant logical
