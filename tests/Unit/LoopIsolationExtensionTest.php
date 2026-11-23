@@ -51,8 +51,11 @@ final class LoopIsolationExtensionTest extends TestCase
     #[RunInSeparateProcess]
     public function testTheFreshDriverIsTheOneProductionGets(): void
     {
+        $before = EventLoop::getDriver();
+
         LoopIsolationExtension::reset(self::class.'::probe');
 
+        $this->assertNotSame($before, EventLoop::getDriver(), 'a fresh driver, not the one the process began with');
         $this->assertInstanceOf(new DriverFactory()->create()::class, EventLoop::getDriver());
     }
 

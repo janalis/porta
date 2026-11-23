@@ -27,7 +27,8 @@ concurrency:
 # ride symfony/polyfill-intl-grapheme — so the test matrix grades both the
 # native path and the polyfill every no-intl user actually runs.
 env:
-  # The PHP every job runs on. composer.json keeps the floor at 8.5 (its
+  # The PHP every job runs on (desktop.yml, docs.yml and release.yml carry the
+  # same PHP_VERSION: bump them together). composer.json keeps the floor at 8.5 (its
   # platform pin resolves the lock for it, polyfill-php86 backs what 8.6 added),
   # and the PHP_FLOOR legs of `tests` and `behat` prove that floor still runs.
   PHP_VERSION: '8.6'

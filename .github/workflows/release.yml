@@ -27,6 +27,8 @@ permissions:
 
 env:
   PHP_EXTENSIONS: mbstring, gd, pcntl, simplexml, ctype
+  # The PHP the jobs run; ci.yml's PHP_VERSION says the same — bump them together.
+  PHP_VERSION: '8.6'
 
 jobs:
   prepare:
@@ -60,7 +62,7 @@ jobs:
           fi
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.6'
+          php-version: ${{ env.PHP_VERSION }}
           coverage: none
           extensions: ${{ env.PHP_EXTENSIONS }}
       - run: composer install --no-interaction --no-progress --prefer-dist
@@ -109,7 +111,7 @@ jobs:
           fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.6'
+          php-version: ${{ env.PHP_VERSION }}
           coverage: none
           extensions: ${{ env.PHP_EXTENSIONS }}
       - run: composer install --no-interaction --no-progress --prefer-dist

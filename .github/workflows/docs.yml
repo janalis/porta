@@ -46,6 +46,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # The PHP the jobs run; ci.yml's PHP_VERSION says the same — bump them together.
+  PHP_VERSION: '8.6'
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -62,7 +66,7 @@ jobs:
           cache: npm
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.6'
+          php-version: ${{ env.PHP_VERSION }}
           coverage: none
           extensions: mbstring, gd, pcntl, simplexml, ctype, intl
       - uses: actions/cache@v6

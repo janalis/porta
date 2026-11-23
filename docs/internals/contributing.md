@@ -84,8 +84,8 @@ free for a public repository. A runner is the job's alone, so the tests take
 every core (`PORTA_TEST_PROCESSES: auto`) and the plugin shards four
 (`PORTA_SHARD_PROCESSES: 4`, `coverage:plugins` takes a number).
 
-Each job gets its own runner; setup-php installs PHP 8.6 (`PHP_VERSION` in
-ci.yml) and the declared extensions, including the explicit no-intl test
+Each job gets its own runner; setup-php installs PHP 8.6 (`PHP_VERSION`,
+set in ci.yml, desktop.yml, docs.yml and release.yml alike) and the declared extensions, including the explicit no-intl test
 variant. The `tests` and `behat` jobs add a leg on PHP 8.5 (`PHP_FLOOR`), the
 floor `composer.json` promises: 8.6 additions reach 8.5 through
 `symfony/polyfill-php86`, and that leg is what proves it. Gate locally on an NTS

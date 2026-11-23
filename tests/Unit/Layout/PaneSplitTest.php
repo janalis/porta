@@ -40,12 +40,12 @@ final class PaneSplitTest extends TestCase
 
     private TestPane $rest;
 
-    private function split(int $columns, int $share = 400): PaneSplit
+    private function split(int $columns, int $share = 400, int $minSide = 28): PaneSplit
     {
         $this->terminal = new VirtualTerminal(columns: $columns, rows: 10);
         $this->renderer = new Renderer(new StyleSheet());
         $this->tui = new Tui(terminal: $this->terminal, keybindings: new Keybindings([]), renderer: $this->renderer);
-        $split = new PaneSplit('s', Styles::dark(), NarrowSplit::Stacked, $this->renderer, $this->tui, $share, minSide: 28);
+        $split = new PaneSplit('s', Styles::dark(), NarrowSplit::Stacked, $this->renderer, $this->tui, $share, minSide: $minSide);
         $split->mount($this->lead = new TestPane('files'), $this->rest = new TestPane('diff'));
         $this->tui->add($split->area);
         $this->frame($this->tui);
@@ -87,13 +87,7 @@ final class PaneSplitTest extends TestCase
     public function testAShareFromOutsideIsHeldBetweenOnePercentAndNinetyNine(): void
     {
         foreach ([0 => 10, 5000 => 990] as $share => $lead) {
-            $this->terminal = new VirtualTerminal(columns: 1001, rows: 4);
-            $this->renderer = new Renderer(new StyleSheet());
-            $this->tui = new Tui(terminal: $this->terminal, keybindings: new Keybindings([]), renderer: $this->renderer);
-            $split = new PaneSplit('s', Styles::dark(), NarrowSplit::Stacked, $this->renderer, $this->tui, $share, minSide: 1);
-            $split->mount($this->lead = new TestPane('files'), $this->rest = new TestPane('diff'));
-            $this->tui->add($split->area);
-            $this->frame($this->tui);
+            $this->split(columns: 1001, share: $share, minSide: 1);
 
             $this->assertSame($lead, $this->rectOf($this->lead)->columns, \sprintf('a share of %d‰ lays out %d columns', $share, $lead));
         }
