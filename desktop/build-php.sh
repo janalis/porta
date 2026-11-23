@@ -38,6 +38,11 @@ done < "$here/php-sources.pins"
 "$here/verify-sources.sh" downloads "$here/php-sources.lock"
 # No phpmicro patches: they serve the micro SAPI, never built here, and static-php-cli 2.8.5's
 # fail to apply to PHP 8.6 (its 8.6 set is only on the unreleased v3 branch).
+# PHP 8.6's configure refuses libtool's obsolete --with-pic, which 2.8.5 passes on Linux: its own
+# configure prefix with --enable-pic instead, as static-php-cli's v3 rewrites it.
+if [ "$(uname -s)" = Linux ]; then
+    export SPC_CMD_PREFIX_PHP_CONFIGURE='./configure --prefix= --with-valgrind=no --disable-shared --enable-static --disable-all --disable-phpdbg --enable-pic'
+fi
 SPC_MICRO_PATCHES= ./spc build "$extensions" --build-cli
 cp buildroot/bin/php "$output"
 "$output" -n "$here/runtime/check-php.php"
