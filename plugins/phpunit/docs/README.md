@@ -77,9 +77,9 @@ needs nothing. turbocov needs PHPUnit 13.3 or later, its driver
 (`composer require --dev shipmonk/turbocov-phpunit`, then
 `<coverage driver="ShipMonk\Turbocov\TurbocovDriver"/>` in `phpunit.xml`),
 and `turbocov.collect_paths`, which PHP reads only as it starts: a coverage
-run sets it for you to the project, `vendor/` left out, through an ini file
-of its own added to `PHP_INI_SCAN_DIR` after the directories PHP already
-scans (alone, if you set `PHP_INI_SCAN_DIR` empty to scan none). That file overrides a `turbocov.collect_paths` or
+run sets it for you to the project, `vendor/` (or its `config.vendor-dir`)
+left out, through an ini file of its own added to `PHP_INI_SCAN_DIR` after
+the directories PHP already scans (alone, if you set `PHP_INI_SCAN_DIR` empty to scan none). That file overrides a `turbocov.collect_paths` or
 `turbocov.exclude_paths` of your own `php.ini`. With no driver, the tests
 still run and you are told there is no coverage. The strip is shown while git's **Change marks in the
 gutter** setting is on, as it is by default; with it off, there is nowhere to

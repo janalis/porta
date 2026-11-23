@@ -6,6 +6,7 @@ use Porta\PhpUnit\CoverageView;
 use Porta\PhpUnit\TestRunner;
 use Porta\Plugin\Api\AbstractToolPlugin;
 use Porta\Plugin\Api\PluginApi;
+use Porta\Support\ComposerLayout;
 use Porta\Workbench\Menu\MenuSurface;
 
 /**
@@ -33,7 +34,7 @@ return new class('phpunit', 'phpunit') extends AbstractToolPlugin {
                 $binary = $this->acquire($api);
                 // A Pest project runs its tests with Pest — its own vendor/bin/phpunit
                 // cannot read them — unless a binary was named.
-                $pest = $api->projectRoot().'/vendor/bin/pest';
+                $pest = ComposerLayout::of($api->projectRoot())->binDir.'/pest';
 
                 return null !== $binary && '' === $api->setting('binary') && \is_file($pest) ? $pest : $binary;
             },

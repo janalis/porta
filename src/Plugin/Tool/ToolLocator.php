@@ -8,6 +8,7 @@ use Porta\Config\PortaHome;
 use Porta\Config\WorkspaceTrust;
 use Porta\Plugin\Api\BinarySearch;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Support\ComposerLayout;
 use Porta\Support\Files;
 use Porta\Support\PathExecutables;
 
@@ -27,8 +28,9 @@ use Porta\Support\PathExecutables;
  *      name through the PATH, a path only when the file is there, so a
  *      teammate's absolute path riding in on a committed `.porta.json` falls
  *      through to what works here instead of shadowing it;
- *   2. `<project>/vendor/bin`, for a tool composer installs, and only in a
- *      trusted project — a project's vendor dir is the project's code;
+ *   2. the project's composer bin dir (`vendor/bin`, or its `config.bin-dir`),
+ *      for a tool composer installs, and only in a trusted project — a
+ *      project's vendor dir is the project's code;
  *   3. the PATH;
  *   4. `~/.porta/bin`, where {@see GithubInstaller} lands what it downloads.
  *      Nothing puts that directory on the PATH.
@@ -101,8 +103,9 @@ final class ToolLocator
     public function sourceOf(ToolRequirement $tool, string $path): ?ToolSource
     {
         $real = Files::canonical($path);
+        $composer = ComposerLayout::of($this->rootDir);
         $manager = match (true) {
-            \str_starts_with($path, $this->rootDir.'/vendor/') => ToolManager::Composer,
+            \str_starts_with($path, $composer->vendorDir.'/'), \str_starts_with($path, $composer->binDir.'/') => ToolManager::Composer,
             null !== $this->binDir && \str_starts_with($path, $this->binDir.'/') => ToolManager::Github,
             \str_contains($real, '/Caskroom/') => ToolManager::BrewCask,
             \str_contains($real, '/Cellar/') => ToolManager::Brew,
@@ -134,9 +137,12 @@ final class ToolLocator
 
     private function vendored(ToolRequirement $tool): ?string
     {
-        $local = $this->rootDir.'/vendor/bin/'.$tool->binary;
+        if (BinarySearch::VendorBinThenPath !== $tool->search() || !$this->trusted()) {
+            return null;
+        }
+        $local = ComposerLayout::of($this->rootDir)->binDir.'/'.$tool->binary;
 
-        return BinarySearch::VendorBinThenPath === $tool->search() && $this->trusted() && \is_file($local) && \is_executable($local) ? $local : null;
+        return \is_file($local) && \is_executable($local) ? $local : null;
     }
 
     /** Whether the project may run code of its own — asked once, for the session. */

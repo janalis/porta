@@ -6,6 +6,7 @@ namespace Porta\PhpUnit;
 
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Plugin\Api\PluginApi;
+use Porta\Support\ComposerLayout;
 use Porta\Support\Files;
 use Porta\Workbench\Dock\ToolRun;
 use Symfony\Component\Filesystem\Filesystem;
@@ -194,7 +195,8 @@ final class TestRunner
         Files::ensureDir($settings, permissions: 0o700);
         \file_put_contents($settings.'/collect', $root."\n");
         // turbocov refuses a path that is not there; an empty list is none.
-        \file_put_contents($settings.'/exclude', \is_dir($root.'/vendor') ? $root."/vendor\n" : '');
+        $vendor = ComposerLayout::of($root)->vendorDir;
+        \file_put_contents($settings.'/exclude', \is_dir($vendor) ? $vendor."\n" : '');
         \file_put_contents($settings.'/porta.ini', \sprintf("turbocov.collect_paths=\"@%1\$s/collect\"\nturbocov.exclude_paths=\"@%1\$s/exclude\"\n", $settings));
         $mode = \getenv('XDEBUG_MODE');
         $scan = \getenv('PHP_INI_SCAN_DIR');

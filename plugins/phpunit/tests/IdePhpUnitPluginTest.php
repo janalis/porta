@@ -420,26 +420,28 @@ final class IdePhpUnitPluginTest extends TestCase
     }
 
     /**
-     * A Pest project: its tests run with vendor/bin/pest — a stand-in here
-     * that notes its arguments and reports what Pest 5.3 reported for this
-     * file — and each lands on its `it()` call, which no `line` names.
+     * A Pest project: its tests run with its pest — a stand-in here that
+     * notes its arguments and reports what Pest 5.3 reported for this file —
+     * and each lands on its `it()` call, which no `line` names. Its
+     * composer.json moves the binaries to bin/, where both are looked for.
      */
     public function testAPestProjectRunsPestAndItsTestsLandOnTheirCalls(): void
     {
-        $project = self::project(['tests/ExampleTest.php' => PestTestsTest::FILE]);
+        $project = self::project(['tests/ExampleTest.php' => PestTestsTest::FILE, 'composer.json' => '{"config":{"bin-dir":"bin"}}']);
+        \rename($project->path('vendor/bin/phpunit'), $project->write('bin/phpunit', content: ''));
         $report =
             '<testsuites><testsuite name="Tests\ExampleTest" file="tests/ExampleTest.php">'
             .'<testcase name="adds numbers" file="tests/ExampleTest.php::adds numbers" class="Tests\ExampleTest"/>'
             .'<testcase name="it fails (on purpose)" file="tests/ExampleTest.php::it fails (on purpose)" class="Tests\ExampleTest">'
             ."<failure>it fails (on purpose)Failed asserting that 1 is identical to 2.\nat tests/ExampleTest.php:8</failure></testcase>"
             .'</testsuite></testsuites>';
-        $project->write('vendor/bin/pest', \sprintf(
+        $project->write('bin/pest', \sprintf(
             "#!%s\n<?php\n"
             .'$at = array_search(\'--log-junit\', $argv, true); file_put_contents($argv[$at + 1], %s); file_put_contents(\'calls\', implode(\' \', array_slice($argv, 1)).PHP_EOL, FILE_APPEND); exit(1);',
             \PHP_BINARY,
             \var_export($report, return: true),
         ));
-        \chmod($project->path('vendor/bin/pest'), permissions: 0o755);
+        \chmod($project->path('bin/pest'), permissions: 0o755);
 
         $this->runIde(
             $project,
@@ -518,7 +520,7 @@ final class IdePhpUnitPluginTest extends TestCase
                     \rmdir($project->path('vendor'));
                     \putenv('PHP_INI_SCAN_DIR');
                 },
-                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($given): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project, $given): void {
                     $this->command($ide, $terminal, id: 'run_with_coverage');
                     $this->await(static fn (): bool => !Probe::get($tui->getById('results'), property: 'searching'), what: 'the second run to finish');
                     $ini = $given();
@@ -526,11 +528,14 @@ final class IdePhpUnitPluginTest extends TestCase
                     $this->assertSame('', $ini['exclude'], 'no vendor, nothing to leave out: turbocov refuses a path that is not there');
 
                     \putenv('PHP_INI_SCAN_DIR=');
+                    $project->write('composer.json', content: '{"config":{"vendor-dir":"lib"}}');
+                    $project->write('lib/autoload.php', content: "<?php\n");
                 },
-                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($given): void {
+                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project, $given): void {
                     $this->command($ide, $terminal, id: 'run_with_coverage');
                     $this->await(static fn (): bool => !Probe::get($tui->getById('results'), property: 'searching'), what: 'the third run to finish');
                     $this->assertSame($given()['settings'], $given()['scan'], 'scanning turned off stays off: only the run\'s own directory');
+                    $this->assertSame(\realpath($project->path('lib')), \realpath(\trim($given()['exclude'])), 'the vendor dir composer.json names');
                 },
             ],
         );

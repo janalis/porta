@@ -29,6 +29,17 @@ final class MagoDetectorTest extends TestCase
         $this->assertTrue(new MagoDetector($this->project->path())->installed());
     }
 
+    public function testAComposerBinDirElsewhereIsWhereMagoIs(): void
+    {
+        $this->project->write('composer.json', content: '{"config":{"bin-dir":"bin"}}');
+        $binary = $this->project->write('vendor/bin/mago', content: "#!/bin/sh\nexit 0\n");
+        \chmod($binary, permissions: 0o755);
+        $this->assertFalse(new MagoDetector($this->project->path())->installed(), 'vendor/bin is not composer\'s here');
+
+        \rename($binary, $this->project->write('bin/mago', content: ''));
+        $this->assertTrue(new MagoDetector($this->project->path())->installed());
+    }
+
     public function testAProjectWithoutVendorBinMagoIsNotInstalled(): void
     {
         $this->assertFalse(new MagoDetector($this->project->path())->installed());

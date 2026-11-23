@@ -121,6 +121,21 @@ final class ToolLocatorTest extends TestCase
         $this->assertSame(1, $this->trustAsked, 'trust is asked once per locator');
     }
 
+    /** A project whose composer.json moves its binaries has its tools there, and composer still manages them. */
+    public function testAComposerBinDirElsewhereIsWhereTheShimIs(): void
+    {
+        $this->project->write('composer.json', content: '{"config":{"vendor-dir":"lib","bin-dir":"bin"}}');
+        $this->executable('vendor/bin/phpstan');
+        $this->assertNull($this->locator()->locate(self::composerTool()), 'vendor/bin is no longer composer\'s');
+
+        $moved = $this->executable('bin/phpstan');
+        $locator = $this->locator();
+        $this->assertSame($moved, $locator->locate(self::composerTool()));
+        $this->assertSame(ToolManager::Composer, $locator->sourceOf(self::composerTool(), $moved)?->manager, 'in the bin dir');
+        $this->assertSame(ToolManager::Composer, $locator->sourceOf(self::composerTool(), $this->project->path('lib/phpstan/phpstan/phpstan'))?->manager, 'in the vendor dir');
+        $this->assertNull($locator->sourceOf(self::composerTool(), $this->project->path('vendor/bin/phpstan')), 'not where composer no longer puts anything');
+    }
+
     public function testNoHomeMeansNoDownloads(): void
     {
         $locator = new ToolLocator($this->project->dir, static fn (): string => '', static fn (): bool => true, null, static fn (): ?string => null);
