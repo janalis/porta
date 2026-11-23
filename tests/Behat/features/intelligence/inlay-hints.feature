@@ -105,6 +105,7 @@ Feature: Inlay hints
     When I start the app with the arguments "src/Params.php"
     And the language server is ready
     Then I should see "f(42, $y);"
+    And line 2 has inlay hints
     When I hover over the text "42"
     # The card comes once the pointer has rested for the tooltip delay
     Then I should eventually see "│ n: │"

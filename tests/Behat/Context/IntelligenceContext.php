@@ -61,6 +61,20 @@ final class IntelligenceContext implements TuinkAwareContextInterface
         );
     }
 
+    /**
+     * Hints are asked for once the server is up and come back on their own time;
+     * in tooltip mode nothing on screen shows them, so a hover would race them.
+     */
+    #[Given('line :line has inlay hints')]
+    public function lineHasInlayHints(int $line): void
+    {
+        $this->getSession()->waitUntil(
+            fn (): bool => [] !== Widgets::editor($this->porta->tui())->decorations->inlayHintsAt($line - 1),
+            \sprintf('Line %d never received an inlay hint from the language server.', $line),
+            timeout: 4 * $this->getSession()->getTimeout(),
+        );
+    }
+
     // --- The caret ---------------------------------------------------------------
 
     #[Then('line :line of the editor should be :text')]
