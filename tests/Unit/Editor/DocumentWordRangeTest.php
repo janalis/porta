@@ -62,6 +62,7 @@ final class DocumentWordRangeTest extends TestCase
         $doc = new Document('foo');
 
         $this->assertSame(['startCol' => 0, 'endCol' => 3], $doc->wordRangeAt(0, col: 999));
+        $this->assertSame(['startCol' => 0, 'endCol' => 3], new Document('foo bar')->wordRangeAt(0, col: -5), 'a column before the line is its start');
     }
 
     public function testEmptyLineIsNull(): void

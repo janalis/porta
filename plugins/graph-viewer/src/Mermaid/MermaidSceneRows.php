@@ -17,8 +17,8 @@ final class MermaidSceneRows
     /** @return \Generator<int, null, mixed, FenceResult> */
     public static function rows(MermaidScene $scene, int $width, Styles $styles): \Generator
     {
-        $width = \max(1, \min(200, $width));
-        $height = \max(1, \min(24, (int) \ceil($scene->graph->height / 2)));
+        $width = \clamp($width, min: 1, max: 200);
+        $height = \clamp((int) \ceil($scene->graph->height / 2), min: 1, max: 24);
         $view = new ZoomPanModel((int) \ceil($scene->graph->width), (int) \ceil($scene->graph->height), [1.0]);
         $rows = GraphRenderer::render($scene->graph, $view, selected: null, cols: $width, rows: $height, styles: $styles);
         $origins = [];

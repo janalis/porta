@@ -68,6 +68,9 @@ final class SourceRevealTest extends TestCase
 
         $this->reveal->reveal(2, byteCol: 99);
         $this->assertSame([2, 9], [$this->editor->getDocument()->cursorLine, $this->editor->getDocument()->cursorCol], 'a column past the line stops at its end');
+
+        $this->reveal->reveal(2, byteCol: -4);
+        $this->assertSame([2, 0], [$this->editor->getDocument()->cursorLine, $this->editor->getDocument()->cursorCol], 'a column before the line stops at its start');
     }
 
     public function testATabWithNoTextToGoToIsLeftAlone(): void

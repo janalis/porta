@@ -318,7 +318,7 @@ final class Document
     /** Clamp a byte column into the given line's bounds (the line is clamped too). */
     public function clampCol(int $line, int $col): int
     {
-        return IntMath::clamp($col, lo: 0, hi: \strlen($this->lines[$this->clampLine($line)]));
+        return \clamp($col, min: 0, max: \strlen($this->lines[$this->clampLine($line)]));
     }
 
     /** Byte column → UTF-16 code-unit column on the given line (for LSP positions). */

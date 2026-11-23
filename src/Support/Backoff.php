@@ -18,6 +18,6 @@ final class Backoff
     /** Seconds to wait before attempt $tries + 1, after $tries that failed. */
     public static function after(int $tries): float
     {
-        return self::DELAYS[\max(0, \min($tries, \count(self::DELAYS) - 1))];
+        return self::DELAYS[\clamp($tries, min: 0, max: \count(self::DELAYS) - 1)];
     }
 }

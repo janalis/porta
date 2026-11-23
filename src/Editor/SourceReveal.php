@@ -35,7 +35,7 @@ final readonly class SourceReveal
         }
         $document = $active->document;
         $line = \max(0, \min($line, $document->getLineCount() - 1));
-        $byteCol = \max(0, \min($byteCol, \strlen($document->getLine($line))));
+        $byteCol = \clamp($byteCol, min: 0, max: \strlen($document->getLine($line)));
         $this->editor->jumpTo($line, $document->byteColToUtf16($line, $byteCol));
         if (null !== $this->editor->getContext()) {
             $this->tui->setFocus($this->editor); // on screen: the preview is beside it

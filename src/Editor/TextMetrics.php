@@ -88,7 +88,7 @@ final class TextMetrics
      */
     public static function charBoundaryAtOrBefore(string $line, int $col): int
     {
-        $col = \max(0, \min($col, \strlen($line)));
+        $col = \clamp($col, min: 0, max: \strlen($line));
         if (\mb_check_encoding($line, encoding: 'UTF-8')) {
             // Valid UTF-8 opens on a lead byte, so the walk back stops by itself.
             while ($col < \strlen($line) && 0x80 === (\ord($line[$col]) & 0xC0)) {

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
-use Porta\Support\IntMath;
-
 /**
  * The run of `[\w$]` characters containing or touching a column of a line —
  * what a double-click selects, a Ctrl+click follows and the inlay-hint card
@@ -21,7 +19,7 @@ final class WordRange
      */
     public static function at(string $line, int $col): ?array
     {
-        $col = IntMath::clamp($col, lo: 0, hi: \strlen($line));
+        $col = \clamp($col, min: 0, max: \strlen($line));
         // Matched as UTF-8, so `\w` is a letter of any script: byte by byte,
         // double-clicking `$café` selected `$caf`, and `名前` nothing. A line
         // that is not UTF-8 (a Latin-1 file) is read by bytes, as it was: with

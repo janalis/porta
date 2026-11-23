@@ -319,7 +319,7 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         }
         $count = \count($this->displayRows);
         if ($count > 0) {
-            $this->list->select(\min(\max($fallbackIndex, 0), $count - 1));
+            $this->list->select(\clamp($fallbackIndex, min: 0, max: $count - 1));
         }
     }
 

@@ -79,6 +79,26 @@ final class PaneSplitTest extends TestCase
         $this->assertSame($split->leadColumns($columns), $this->rectOf($split->separator)->col);
     }
 
+    /**
+     * A share from outside — a layout file, a caller — is held to 10‰ … 990‰, so
+     * neither side is ever laid out empty. 1000 columns of room make a thousandth
+     * a column, and a 1-column minimum leaves the share as given.
+     */
+    public function testAShareFromOutsideIsHeldBetweenOnePercentAndNinetyNine(): void
+    {
+        foreach ([0 => 10, 5000 => 990] as $share => $lead) {
+            $this->terminal = new VirtualTerminal(columns: 1001, rows: 4);
+            $this->renderer = new Renderer(new StyleSheet());
+            $this->tui = new Tui(terminal: $this->terminal, keybindings: new Keybindings([]), renderer: $this->renderer);
+            $split = new PaneSplit('s', Styles::dark(), NarrowSplit::Stacked, $this->renderer, $this->tui, $share, minSide: 1);
+            $split->mount($this->lead = new TestPane('files'), $this->rest = new TestPane('diff'));
+            $this->tui->add($split->area);
+            $this->frame($this->tui);
+
+            $this->assertSame($lead, $this->rectOf($this->lead)->columns, \sprintf('a share of %d‰ lays out %d columns', $share, $lead));
+        }
+    }
+
     public function testTooNarrowTheColumnsStackAndComeBackSayingSoEachTime(): void
     {
         $split = $this->split(columns: 120);
