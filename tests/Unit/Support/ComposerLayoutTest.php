@@ -46,13 +46,4 @@ final class ComposerLayoutTest extends TestCase
         $this->assertSame('/opt/deps', $layout->vendorDir);
         $this->assertSame('/opt/bin', $layout->binDir);
     }
-
-    public function testTheVendorDirBelowTheProjectIsOnlyOneInsideIt(): void
-    {
-        $this->assertSame('vendor', new ComposerLayout('/p/vendor', '/p/vendor/bin')->vendorBelow('/p'));
-        $this->assertSame('lib/deps', new ComposerLayout('/p/lib/deps', '/p/bin')->vendorBelow('/p'));
-        $this->assertNull(new ComposerLayout('/opt/deps', '/opt/bin')->vendorBelow('/p'), 'outside');
-        $this->assertNull(new ComposerLayout('/pkg/deps', '/pkg/bin')->vendorBelow('/p'), 'a sibling sharing the prefix');
-        $this->assertNull(new ComposerLayout('/p', '/p/bin')->vendorBelow('/p'), 'the project itself is no vendor dir to walk');
-    }
 }

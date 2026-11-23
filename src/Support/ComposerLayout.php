@@ -39,14 +39,6 @@ final readonly class ComposerLayout
         return new self($vendor, self::absolute($root, $bin));
     }
 
-    /** The vendor dir relative to $root, for a walk of the project — null when it is not inside it. */
-    public function vendorBelow(string $root): ?string
-    {
-        $relative = Path::makeRelative($this->vendorDir, $root);
-
-        return '' === $relative || \str_starts_with($relative, '../') ? null : $relative;
-    }
-
     private static function text(mixed $config, string $key): ?string
     {
         // An offset into a string or a number is null under ??, as a missing key is.
