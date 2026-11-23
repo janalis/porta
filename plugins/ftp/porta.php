@@ -99,6 +99,7 @@ return new class('ftp') extends AbstractPlugin implements RemoteProjectPlugin {
                     if ($kept !== Credentials::file($home, $spec)) {
                         continue;
                     }
+                    // @custos-ignore MemberAccessOnNonObject -- a WeakMap's keys are objects; custos 0.2.5 types the keys of `WeakMap ?? []` as the array's int|string
                     $transport->passwordGiven();
                 }
             },

@@ -9,6 +9,7 @@
         "symfony/clock": "^8.2",
         "symfony/filesystem": "^8.2",
         "symfony/finder": "^8.2",
+        "symfony/polyfill-php86": "^1.43",
         "symfony/process": "^8.2",
         "symfony/tui": "^8.2"
     },

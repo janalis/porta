@@ -59,6 +59,7 @@ final class SettingsSectionOrderTest extends ContainerTestCase
             // constructor state — so ask the class, not the container.
             /** @var \Porta\Settings\SettingsSection $section */
             $section = new \ReflectionClass($id)->newInstanceWithoutConstructor();
+            // @custos-ignore MemberAccessOnNonObject -- the @var above is the type; custos 0.2.5 reads it as the int an array key may be
             if ($section->handles('no-such-section')) {
                 $claimers[] = $id;
             }
