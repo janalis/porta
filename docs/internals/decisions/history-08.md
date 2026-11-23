@@ -658,7 +658,14 @@ both drivers, alternating A/B/A/B, at load 330–400. Each run booted, took type
 input, followed a SIGWINCH resize (120×40 → 110×35, read off the frame dump) and
 quit with exit 0. A PTY read through `IoPollDriver` arrived in 0.229 s against
 StreamSelect's 0.225 s, for a 0.2 s sleep. paint and gap percentiles were alike.
-At that load they show nothing about speed either way, so no speed claim is made.
+At that load they show nothing about speed either way. A heavier drive, a
+200-key burst and 120 cursor moves in 6 alternating pairs at load 178–342, had
+IoPoll behind on paint p95 in 5 pairs out of 6. Paint time cannot depend on the
+driver, so that is the load. The load-blind measure is CPU per readable
+round-trip, from rusage, with 9 idle watchers like an IDE's, in 4 alternating
+pairs: IoPollDriver 2.9–3.2 µs, StreamSelectDriver 3.2–4.0 µs. It is cheaper in
+every pair, and microseconds either way against paints of milliseconds. The
+factory's pick stays.
 
 **`clamp()`, where the bounds are ordered.** 8.6's `\clamp()` throws a
 ValueError when `min > max`. The house idiom, `IntMath::clamp` and the hand-rolled
