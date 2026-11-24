@@ -352,6 +352,46 @@ final class ProjectSearchTest extends TestCase
         unset($kept);
     }
 
+    /** The server's grep is asked whether it takes --null once, over every search after. */
+    public function testTheServersGrepIsAskedOnce(): void
+    {
+        $log = \sys_get_temp_dir().'/porta-askedgrep-'.\bin2hex(\random_bytes(4));
+        // Where it runs is logged: the server's question runs in the server's project dir.
+        [$search, $kept] = $this->serverSearchWith("if [ \"\$1\" = --null ] && [ \"\$2\" = -q ]; then pwd -P >> '{$log}'; fi");
+
+        $this->awaitSearch($search, query: 'needle');
+        $this->awaitSearch($search, query: 'needle');
+
+        $this->assertSame(\realpath($kept[1]->dir)."\n", \file_get_contents($log), 'once, and of the server');
+        \unlink($log);
+        unset($kept);
+    }
+
+    /**
+     * A server whose -P question gets no answer (a slow link) still searches
+     * the server, as ERE: the built-in engine would read only the copy here,
+     * and a short list read as the whole answer is worse.
+     */
+    public function testAServerWithNoAnswerAboutPcreIsStillSearchedThere(): void
+    {
+        [$search, $kept] = $this->serverSearchWith('[ "$1" = -qP ] && exit 255', ['src/A.php' => "<?php\n// 42\n"]);
+
+        $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: '[0-9]+', options: new SearchOptions(regex: true)), 'path'), 'found on the server: this copy holds nothing');
+        $this->assertFalse($search->searchedLocalCopyOnly());
+        unset($kept);
+    }
+
+    /** A machine with no grep of its own still has a remote project searched by the server's. */
+    public function testWithNoGrepHereAServerIsStillSearched(): void
+    {
+        [$search, $kept] = $this->serverSearchWith('');
+        Probe::set($search, property: 'grepResolved', value: true); // this machine's grep: looked for, and not found
+
+        $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: 'needle'), 'path'));
+        $this->assertFalse($search->searchedLocalCopyOnly(), 'the server answered');
+        unset($kept);
+    }
+
     /** A server whose grep refuses --null (BusyBox's may) is never handed it: its searches go on as they were. */
     public function testAServersGrepWithoutNullIsNotHandedIt(): void
     {

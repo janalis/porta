@@ -152,7 +152,9 @@ abstract class RemoteTransport
      * $argv as a command line that runs it on the server, in the project's
      * directory there, or null when this transport cannot run anything. What
      * lets Find in Files grep the server's files rather than the cache, which
-     * holds only the ones opened.
+     * holds only the ones opened. Building one must not run it, nor do
+     * anything else: core builds one to learn whether it can, and may not
+     * run it.
      *
      * @param list<string> $argv
      *
