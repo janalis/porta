@@ -338,7 +338,8 @@ final class ProjectSearchTest extends TestCase
     /** A probe that gets no answer (ssh failing: 255) settles nothing: the next search asks again. */
     public function testAProbeWithNoAnswerIsAskedAgain(): void
     {
-        $marker = \sys_get_temp_dir().'/porta-flakygrep-'.\bin2hex(\random_bytes(4));
+        $markers = new TempProject();
+        $marker = $markers->path('asked');
         [$search, $kept] = $this->serverSearchWith("if [ \"\$1\" = --null ] && [ \"\$2\" = -q ] && [ ! -e '{$marker}' ]; then : > '{$marker}'; exit 255; fi");
 
         $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: 'needle'), 'path'), 'searched all the same');
@@ -348,14 +349,14 @@ final class ProjectSearchTest extends TestCase
         // Asked again; once unanswered, it is not waited on, but it answers.
         $this->awaitSearch($search, query: 'needle');
         $this->await(static fn (): bool => true === self::takes($search, '--null@server'), what: 'the second question to answer');
-        \unlink($marker);
         unset($kept);
     }
 
     /** The server's grep is asked whether it takes --null once, over every search after. */
     public function testTheServersGrepIsAskedOnce(): void
     {
-        $log = \sys_get_temp_dir().'/porta-askedgrep-'.\bin2hex(\random_bytes(4));
+        $logs = new TempProject();
+        $log = $logs->path('asked.log');
         // Where it runs is logged: the server's question runs in the server's project dir.
         [$search, $kept] = $this->serverSearchWith("if [ \"\$1\" = --null ] && [ \"\$2\" = -q ]; then pwd -P >> '{$log}'; fi");
 
@@ -363,7 +364,6 @@ final class ProjectSearchTest extends TestCase
         $this->awaitSearch($search, query: 'needle');
 
         $this->assertSame(\realpath($kept[1]->dir)."\n", \file_get_contents($log), 'once, and of the server');
-        \unlink($log);
         unset($kept);
     }
 
@@ -379,6 +379,42 @@ final class ProjectSearchTest extends TestCase
         $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: '[0-9]+', options: new SearchOptions(regex: true)), 'path'), 'found on the server: this copy holds nothing');
         $this->assertFalse($search->searchedLocalCopyOnly());
         unset($kept);
+    }
+
+    /**
+     * A server whose -P question got no answer is not handed a regex only
+     * PCRE reads (its ERE reads `\d` as `d`): the built-in engine reads it,
+     * over the copy here, and the search says so — not a wrong answer that
+     * looks whole.
+     */
+    public function testAServerWithNoAnswerAboutPcreIsNotHandedWhatOnlyPcreReads(): void
+    {
+        [$search, $kept] = $this->serverSearchWith('[ "$1" = -qP ] && exit 255', ['src/A.php' => "<?php\n// 42\n"]);
+
+        $this->awaitSearch($search, query: '\d+', options: new SearchOptions(regex: true));
+
+        $this->assertTrue($search->searchedLocalCopyOnly());
+        unset($kept);
+    }
+
+    /** A grep here that refused -P is not handed a regex only PCRE reads either; one ERE reads the same, it is. */
+    public function testAGrepRefusingPcreIsHandedOnlyWhatEreReadsTheSame(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n// 42\n"]);
+        $tools = new TempProject([], 'porta-noperlgrep-');
+        $log = $tools->path('argv.log');
+        $real = (string) new ExecutableFinder()->find('grep');
+        $tools->write('grep', "#!/bin/sh\n[ \"\$1\" = -qP ] && exit 2\nprintf '%s\\n' \"\$*\" >> '{$log}'\nexec '{$real}' \"\$@\"\n");
+        \chmod($tools->path('grep'), permissions: 0o755);
+        \putenv('PATH='.$tools->dir.':'.\PORTA_TEST_PRISTINE_PATH);
+        $regex = new SearchOptions(regex: true);
+        $search = new ProjectSearch($project->dir);
+
+        $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: '\d+', options: $regex), 'path'), 'read by the built-in engine');
+        $this->assertFalse(\is_file($log) && \str_contains((string) \file_get_contents($log), '\d+'), 'grep was never handed it');
+
+        $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: '[0-9]+', options: $regex), 'path'));
+        $this->assertStringContainsString('-E -- [0-9]+', (string) \file_get_contents($log), 'one ERE reads the same goes to grep');
     }
 
     /** A machine with no grep of its own still has a remote project searched by the server's. */
@@ -1240,7 +1276,10 @@ final class ProjectSearchTest extends TestCase
 
         $grep(2);
         $this->awaitSearch(new ProjectSearch($project->dir), query: '\d+', options: $regex);
-        $this->assertSame(['probe', '-E -- \d+ .'], [$asked()[0] ?? null, ...\array_map($tail, \array_slice($asked(), offset: 1))], 'no -P: ERE');
+        $this->assertSame(['probe'], $asked(), 'no -P, and a regex only PCRE reads: the built-in engine, not ERE');
+        $grep(2);
+        $this->awaitSearch(new ProjectSearch($project->dir), query: '[0-9]+', options: $regex);
+        $this->assertSame(['probe', '-E -- [0-9]+ .'], [$asked()[0] ?? null, ...\array_map($tail, \array_slice($asked(), offset: 1))], 'no -P, and one ERE reads the same: ERE');
 
         $grep(1);
         $cache = new TempProject([]);

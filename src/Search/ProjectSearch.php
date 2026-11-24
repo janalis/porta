@@ -148,41 +148,70 @@ final class ProjectSearch
             return;
         }
         $pattern = $this->pattern($query, $options);
-        // Where its grep runs, decided once, as the suffix its answers are
-        // kept under: '' for this machine (a local project, or a remote one
-        // whose transport builds no command — its server not reached yet, or
-        // one that runs none), '@server' for the server: whether the server's
-        // --null question can be put to it at all. That question, built here,
-        // is the one asked. A server's grep needs none here.
-        $serverAsk = $this->remote?->remoteCommand(['grep', ...self::ASK_NULL]);
-        $where = null === $serverAsk ? '' : '@server';
-        $grep = '' === $where ? $this->findGrep() : 'grep';
         match (true) {
             // A malformed regex yields no results rather than a crash.
             $options->regex && !SearchPattern::compiles($pattern) => $onDone([]),
             // A query spanning lines can't go through line-based grep: scan whole files.
             \str_contains($query, "\n") => $this->builtIn($this->searchMultiline($pattern, $paths, $mask), $onDone),
-            null === $grep => $this->builtIn($this->searchWithPhp($pattern, $paths, $mask), $onDone),
-            default => $this->whenAnswered($grep, $options->regex, $where, $serverAsk, function () use ($grep, $query, $pattern, $onDone, $options, $paths, $mask, $where): void {
-                // A regex here whose -P question got no answer is not handed to
-                // grep as ERE, which GNU's reads otherwise (`\d+` found "ddd"):
-                // the built-in engine reads it, over the whole project here. On
-                // a server it still goes there as ERE: the engine would read
-                // only the copy here, and a short answer is worse than ERE's.
-                $options->regex && '' === $where && !$this->answers->answered('-P')
-                    ? $this->builtIn($this->searchWithPhp($pattern, $paths, $mask), $onDone)
-                    : $this->grep($grep, $query, $pattern, $onDone, $options, $paths, $mask, $where);
-            }),
+            default => $this->viaGrep($query, $pattern, $onDone, $options, $paths, $mask),
         };
+    }
+
+    /**
+     * A one-line search, by grep where there is one to run it.
+     *
+     * Where it runs is decided once, as the suffix its answers are kept
+     * under: '' for this machine (a local project, or a remote one whose
+     * transport builds no command: its server not reached yet, or one that
+     * runs none), '@server' for the server: whether the server's --null
+     * question can be built at all. That question, built here, is the one
+     * asked. A server's grep needs none here.
+     *
+     * @param callable(list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>): void $onDone
+     * @param list<string>                                                                                                      $paths
+     */
+    private function viaGrep(string $query, string $pattern, callable $onDone, SearchOptions $options, array $paths, string $mask): void
+    {
+        $serverAsk = $this->remote?->remoteCommand(['grep', ...self::ASK_NULL]);
+        $where = null === $serverAsk ? '' : '@server';
+        $grep = '' === $where ? $this->findGrep() : 'grep';
+        if (null === $grep) {
+            $this->builtIn($this->searchWithPhp($pattern, $paths, $mask), $onDone);
+
+            return;
+        }
+        $this->whenAnswered($grep, $options->regex, $where, $serverAsk, function () use ($grep, $query, $pattern, $onDone, $options, $paths, $mask, $where): void {
+            // A regex goes to the built-in engine rather than to a grep that
+            // would misread it: here when -P went unanswered (it reads the
+            // whole project here), and wherever it would run as ERE while
+            // using what only PCRE reads (`\d+` found "ddd" in GNU's ERE) —
+            // on a server, said to have read only the copy here, which beats a
+            // wrong answer that looks whole.
+            $options->regex && (('' === $where && !$this->answers->answered('-P')) || (!$this->answers->takes('-P'.$where) && self::onlyPcreReads($query)))
+                ? $this->builtIn($this->searchWithPhp($pattern, $paths, $mask), $onDone)
+                : $this->grep($grep, $query, $pattern, $onDone, $options, $paths, $mask, $where);
+        });
+    }
+
+    /**
+     * Whether $regex uses what only PCRE reads, and grep -E would read as
+     * something else: `\d` (GNU's ERE: a `d`), `\h`, `\x`, `\p{…}`, a group
+     * opened with `(?` (lookarounds, flags), a lazy or possessive quantifier.
+     * GNU's ERE reads `\w`, `\s` and `\b` as PCRE does.
+     */
+    private static function onlyPcreReads(string $regex): bool
+    {
+        return 1 === \preg_match('/\\\\[dDhHvVRKxX]|\\\\[pP]\{|\(\?|[*+?}][?+]/', $regex);
     }
 
     /**
      * Run $search once the grep at $where has said what it takes — --null,
      * and -P for a regex — asked in the background: the search waits, never
      * the loop. The two greps' answers are kept apart.
+     *
+     * @param list<string>|null $serverAsk the server's --null question, built: null when the search runs here
      */
     // @mago-expect lint:no-boolean-flag-parameter -- whether the query is a regex is the one fact deciding which questions it waits on
-    /** @param list<string>|null $serverAsk the server's --null question, built: null when the search runs here */
     private function whenAnswered(string $grep, bool $regex, string $where, ?array $serverAsk, \Closure $search): void
     {
         $this->answers->ask('--null'.$where, static fn (): ?array => $serverAsk ?? [$grep, ...self::ASK_NULL]);
@@ -211,7 +240,7 @@ final class ProjectSearch
      *
      * @param callable(list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>): void $onDone
      * @param list<string>                                                                                                      $paths
-     * @param string                                                                                                            $where '' to run here, '@server' on the server: see {@see where()}
+     * @param string                                                                                                            $where '' to run here, '@server' on the server: see {@see viaGrep()}
      */
     private function grep(string $grep, string $query, string $pattern, callable $onDone, SearchOptions $options, array $paths, string $mask, string $where): void
     {
@@ -264,7 +293,7 @@ final class ProjectSearch
         // A remote project's cache holds only what was opened: its grep runs
         // on the server, where every file is — named `grep` there, since the
         // path found here is this machine's. Each grep is handed what it said
-        // it takes (see where()): its own answers, kept apart.
+        // it takes (see viaGrep()): its own answers, kept apart.
         $this->files = [];
         // --null ends each file name grep prints with a NUL, and a name holding
         // `:12:` is then read exactly (GNU's, BSD's and ugrep take it; BusyBox's
@@ -282,7 +311,7 @@ final class ProjectSearch
         // mid-search lands here too, with this machine's own answers; a
         // transport, once found, is kept, so none does today.)
         $this->localOnly = $this->onServer() && null === $command;
-        $command ??= [$grep, ...$argv('')];
+        $command ??= [$this->findGrep() ?? $grep, ...$argv('')];
 
         // A grep that cannot answer hands the search to the built-in engine.
         // Linux's posix_spawn refuses an unrunnable binary outright; macOS
