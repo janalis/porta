@@ -443,6 +443,36 @@ final class ProjectSearchTest extends TestCase
         $this->assertTrue($search->searchedLocalCopyOnly());
     }
 
+    /** A server's grep runs in its own locale, whose word nobody measured: it is never handed -w. */
+    public function testAServersGrepIsNeverHandedW(): void
+    {
+        $server = new TempProject(['src/A.php' => "<?php\n// needle\n"]);
+        $cache = new TempProject([]);
+        $seen = new \ArrayObject();
+        $recording = new class($server->dir, $seen) extends RemoteTransport {
+            use NoOpTransportVerbs;
+
+            /** @param \ArrayObject<int, list<string>> $seen */
+            public function __construct(
+                private readonly string $root,
+                private readonly \ArrayObject $seen,
+            ) {}
+
+            public function remoteCommand(array $argv): array
+            {
+                $this->seen->append($argv);
+
+                return ['sh', '-c', 'cd "$1" && shift && exec "$@"', 'sh', $this->root, ...$argv];
+            }
+        };
+        $search = new ProjectSearch($cache->dir, FakeRemoteTransport::over($recording, new RemoteSpec('ssh', 'example.org', '/srv'), $cache->dir));
+
+        $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: 'needle', options: new SearchOptions(caseSensitive: true, wholeWord: true)), 'path'));
+        $searches = \array_values(\array_filter($seen->getArrayCopy(), static fn (array $argv): bool => \in_array('needle', $argv, strict: true)));
+        $this->assertNotSame([], $searches);
+        $this->assertNotContains('-w', $searches[0]);
+    }
+
     /** A machine with no grep of its own still has a remote project searched by the server's. */
     public function testWithNoGrepHereAServerIsStillSearched(): void
     {
@@ -1382,13 +1412,52 @@ final class ProjectSearchTest extends TestCase
     }
 
     /**
+     * grep is handed -w, and run in C, only where its word holds the
+     * pattern's: a printable-ASCII literal with a word character at each
+     * end, and under -i no `s` or `k` (/iu folds `ſ` and `K` to them).
+     * Elsewhere it runs in UTF-8 with no -w: GNU grep -w in C.UTF-8 missed
+     * whole words beside a combining mark.
+     */
+    public function testGrepChecksWordsOnlyInCAndOnlyWhereItsWordHoldsThePatterns(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $tools = new TempProject([], 'porta-argvgrep-');
+        $log = $tools->path('argv.log');
+        $tools->write('grep', "#!/bin/sh\nprintf '%s %s\\n' \"\$LC_ALL\" \"\$*\" >> '{$log}'\nexit 1\n");
+        \chmod($tools->path('grep'), permissions: 0o755);
+        \putenv('PATH='.$tools->dir.':/bin');
+        $run = function (string $query, SearchOptions $options) use ($project, $log): string {
+            \file_put_contents($log, data: '');
+            $this->awaitSearch(new ProjectSearch($project->dir), query: $query, options: $options);
+            $searched = \array_values(\array_filter(\explode("\n", (string) \file_get_contents($log)), static fn (string $line): bool => \str_contains($line, ' -- ')));
+            $this->assertNotSame([], $searched, $query.': grep ran');
+            [$locale, $argv] = \explode(' ', $searched[0], limit: 2);
+
+            return $locale.(\str_contains($argv, ' -w ') ? ' -w' : '');
+        };
+        $word = new SearchOptions(caseSensitive: true, wholeWord: true);
+
+        $this->assertSame('C -w', $run('foo_1', $word));
+        $this->assertSame('C -w', $run('foo bar', $word), 'a space inside');
+        $this->assertSame('C -w', $run('foo', new SearchOptions(wholeWord: true)), 'under -i, no s or k');
+        $this->assertSame('C.UTF-8', $run('desk', new SearchOptions(wholeWord: true)), 'under -i, an s or a k');
+        $this->assertSame('C -w', $run('desk', $word), 'case-sensitive: any letter');
+        $this->assertSame('C.UTF-8', $run('$foo', $word), 'a non-word edge');
+        $this->assertSame('C.UTF-8', $run('foo$', $word), 'at either end');
+        $this->assertSame('C.UTF-8', $run('fooé', $word), 'not ASCII');
+        $this->assertSame('C.UTF-8', $run('fooébar', new SearchOptions(wholeWord: true)), 'not ASCII inside: C would not fold é under -i');
+        $this->assertSame('C.UTF-8', $run('foo', new SearchOptions(regex: true, caseSensitive: true, wholeWord: true)), 'a regex');
+        $this->assertSame('C.UTF-8', $run('foo', new SearchOptions(caseSensitive: true)), 'no Whole Word');
+    }
+
+    /**
      * A Whole Word line whose match could not finish is grep's word only
-     * where grep checked it: without -w, grep printed every occurrence.
+     * where grep checked the rule: without -w, grep printed every occurrence.
      */
     public function testAFailedMatchIsNoWordGrepDidNotCheck(): void
     {
         $search = new ProjectSearch('/tmp');
-        Probe::set($search, 'grepWords', false);
+        Probe::set($search, 'grepCheckedTheRule', false);
 
         $this->assertSame([], $this->underATinyBacktrackLimit(static fn (): mixed => Probe::invoke($search, 'parse', 'src/A.php:1:'.\str_repeat('a', 16)."!\n", '/^(a+)+$/')));
         $this->assertTrue($search->gaveUp(), 'and the search says it gave up');
@@ -1435,6 +1504,8 @@ final class ProjectSearchTest extends TestCase
 
         $this->assertSame([], Probe::invoke($search, 'parse', "src/A.php:1:Andr\xe9\n", '/\x{100}/u'));
         $this->assertFalse($search->gaveUp(), 'no limit was hit: nothing to give up on');
+        $this->assertSame([], Probe::invoke($search, 'hits', "Andr\xe9\nx", '/\x{100}\n/u'), 'nor across lines');
+        $this->assertFalse($search->gaveUp());
     }
 
     /**

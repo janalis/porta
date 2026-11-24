@@ -83,13 +83,17 @@ final class ProjectSearch
     private bool $gaveUp = false;
 
     /**
-     * Whether no word rule was asked, which grep does not check (no -w): a
-     * line whose match could not finish is then grep's word against none.
+     * Whether grep checked the pattern's own rule — no Whole Word, which grep
+     * does not check without -w. A line whose match could not finish is then
+     * grep's word against none.
      */
-    private bool $grepWords = true;
+    private bool $grepCheckedTheRule = true;
 
-    /** @var array<string, bool> by pattern as fit() made it, whether it compiles */
-    private array $compiles = [];
+    /** Whether grep is handed -w, and so runs in C (see grep()). */
+    private bool $grepWordsInC = false;
+
+    /** The search's pattern, run on one line or one text at a time. */
+    private LineMatch $match;
 
     /**
      * @param GrepAnswers|null $answers shared by every engine searching this project, so grep is asked once
@@ -102,6 +106,7 @@ final class ProjectSearch
     ) {
         $this->answers = $answers ?? new GrepAnswers($rootDir);
         $this->hits = new GrepHits($rootDir);
+        $this->match = new LineMatch();
     }
 
     /**
@@ -141,6 +146,7 @@ final class ProjectSearch
     {
         $this->cancel();
         $this->gaveUp = false;
+        $this->match = new LineMatch();
         $this->localOnly = false;
         $this->answers->newSearch();
         $paths = \is_array($scope) ? \array_values($scope) : [$scope];
@@ -242,12 +248,15 @@ final class ProjectSearch
         if (!$options->caseSensitive) {
             $flags[] = '-i';
         }
-        // No -w: grep's word is not the pattern's. `$foo` is a whole word to
-        // grep -w, never to `\b(?:\$foo)\b`; and GNU grep 3.11 -w missed 4446
-        // of the lines `\bfoo\b` /u matches with a code point beside `foo`
-        // (combining marks glibc counts as letters; measured 2026-11-24). grep
-        // finds every occurrence; listed() keeps the whole words.
-        $this->grepWords = !$options->wholeWord;
+        // grep finds every occurrence and listed() keeps the whole words; -w
+        // first, in C, only where grep's word holds the pattern's (GrepWords),
+        // and only here: a server's grep runs in a locale nobody measured.
+        $this->grepWordsInC = '' === $where && GrepWords::holdThePatterns($query, $options);
+        if ($this->grepWordsInC) {
+            $flags[] = '-w';
+        }
+        // With -w the query is a literal, which never backtracks into a limit.
+        $this->grepCheckedTheRule = !$options->wholeWord;
         // A file mask restricts matching to basenames (grep's fnmatch globbing
         // does not expand braces, so `*.{php,js}` is pre-expanded to two globs).
         foreach ($this->maskGlobs($mask) as $glob) {
@@ -317,7 +326,7 @@ final class ProjectSearch
         // grep folds É to é as that pattern does, whatever locale Porta runs in.
         // Not every fold: BSD grep -i finds no `ſ` for `s`, no `ς` for `σ`,
         // where /ui does — a miss no filter of grep's lines can bring back.
-        $process = new AsyncProcess($command, $this->rootDir, env: [...\getenv(), 'LC_ALL' => 'C.UTF-8']);
+        $process = new AsyncProcess($command, $this->rootDir, env: [...\getenv(), 'LC_ALL' => $this->grepWordsInC ? 'C' : 'C.UTF-8']);
         $started = $process->start(
             // grep's own failure (2, or 126/127 for a binary that cannot run)
             // with nothing printed is no answer; 1 is grep saying "no match",
@@ -448,7 +457,7 @@ final class ProjectSearch
     {
         $path = $hit['path'];
         $key = ($path ?? '').':'.$hit['line'];
-        $listed = null !== $path && !$this->dropped($path) && !\array_key_exists($key, $seen) && ($this->matchOf($pattern, $hit['line_text']) ?? $this->grepWords);
+        $listed = null !== $path && !$this->dropped($path) && !\array_key_exists($key, $seen) && ($this->matchOf($pattern, $hit['line_text']) ?? $this->grepCheckedTheRule);
         if ($listed) {
             $seen[$key] = true;
         }
@@ -464,18 +473,10 @@ final class ProjectSearch
      */
     private function matchOf(string $pattern, string $line): ?bool
     {
-        $fitted = SearchPattern::fit($pattern, $line);
-        // Asked once a pattern, not once a line: a line not UTF-8 has /u
-        // dropped, and a pattern may not compile without it.
-        if (!($this->compiles[$fitted] ??= SearchPattern::compiles($fitted))) {
-            return false;
-        }
-        $matched = \preg_match($fitted, $line);
-        if (false === $matched) {
-            $this->gaveUp = true; // a limit: a pattern that compiles fails on nothing else
-        }
+        $matched = $this->match->in($pattern, $line);
+        $this->gaveUp = $this->gaveUp || null === $matched;
 
-        return false === $matched ? null : 1 === $matched;
+        return $matched;
     }
 
     /** Whether a server grep's hit at $path is dropped: in the vendor dir it moved, and in no scope path that names it. */
@@ -563,25 +564,12 @@ final class ProjectSearch
      */
     private function hits(string $text, string $pattern): array
     {
-        $matches = [];
-        if ('' === $text) {
-            return [];
-        }
-        \set_error_handler(static fn (): bool => true);
-        $count = \preg_match_all(SearchPattern::fit($pattern, $text), $text, $matches, \PREG_OFFSET_CAPTURE);
-        \restore_error_handler();
-        if (false === $count) {
+        $all = '' === $text ? [] : $this->match->all($pattern, $text);
+        if (null === $all) {
             $this->gaveUp = true;
         }
-        $hits = [];
-        foreach (false === $count ? [] : $matches[0] as $hit) {
-            if ('' === $hit[0]) {
-                continue;
-            }
-            $hits[] = [$hit[0], (int) $hit[1]];
-        }
 
-        return $hits;
+        return \array_values(\array_filter($all ?? [], static fn (array $hit): bool => '' !== $hit[0]));
     }
 
     /**
