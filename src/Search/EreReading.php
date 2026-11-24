@@ -20,7 +20,8 @@ namespace Porta\Search;
  * (BSD grep: no `[[:alnum:]]` in `²`), so neither a `[:class:]` nor a
  * `[.x.]` or `[=x=]` counts the same. Nor does a backslash inside brackets
  * (ERE: a backslash), a `(?` group or a `(*` verb, a lazy or possessive
- * quantifier, or a `{,n}` bound.
+ * quantifier, or a `{` that opens no strict `{n}`, `{n,}` or `{n,m}`
+ * (PCRE2 10.43+ reads `{,n}` and `{ 1 }` as bounds; ERE as text).
  */
 final class EreReading
 {
@@ -55,7 +56,12 @@ final class EreReading
 
                 continue;
             }
-            $other = ('(' === $char && ('?' === $next || '*' === $next)) || ('{' === $char && ',' === $next) || (\str_contains('*+?}', $char) && ('?' === $next || '+' === $next));
+            // A `{` that opens no strict `{n}`, `{n,}` or `{n,m}`: PCRE2 10.43+
+            // reads `{,n}` and `{ 1 }` as bounds, ERE as text (measured).
+            $other =
+                ('(' === $char && ('?' === $next || '*' === $next))
+                || ('{' === $char && 1 !== \preg_match('/\G\{\d+(?:,\d*)?\}/', $regex, offset: $i))
+                || (\str_contains('*+?}', $char) && ('?' === $next || '+' === $next));
         }
 
         return $other;

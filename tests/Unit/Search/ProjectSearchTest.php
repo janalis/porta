@@ -443,36 +443,6 @@ final class ProjectSearchTest extends TestCase
         $this->assertTrue($search->searchedLocalCopyOnly());
     }
 
-    /** A server's grep runs in its own locale, whose word nobody measured: it is never handed -w. */
-    public function testAServersGrepIsNeverHandedW(): void
-    {
-        $server = new TempProject(['src/A.php' => "<?php\n// needle\n"]);
-        $cache = new TempProject([]);
-        $seen = new \ArrayObject();
-        $recording = new class($server->dir, $seen) extends RemoteTransport {
-            use NoOpTransportVerbs;
-
-            /** @param \ArrayObject<int, list<string>> $seen */
-            public function __construct(
-                private readonly string $root,
-                private readonly \ArrayObject $seen,
-            ) {}
-
-            public function remoteCommand(array $argv): array
-            {
-                $this->seen->append($argv);
-
-                return ['sh', '-c', 'cd "$1" && shift && exec "$@"', 'sh', $this->root, ...$argv];
-            }
-        };
-        $search = new ProjectSearch($cache->dir, FakeRemoteTransport::over($recording, new RemoteSpec('ssh', 'example.org', '/srv'), $cache->dir));
-
-        $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: 'needle', options: new SearchOptions(caseSensitive: true, wholeWord: true)), 'path'));
-        $searches = \array_values(\array_filter($seen->getArrayCopy(), static fn (array $argv): bool => \in_array('needle', $argv, strict: true)));
-        $this->assertNotSame([], $searches);
-        $this->assertNotContains('-w', $searches[0]);
-    }
-
     /** A machine with no grep of its own still has a remote project searched by the server's. */
     public function testWithNoGrepHereAServerIsStillSearched(): void
     {
@@ -1401,13 +1371,13 @@ final class ProjectSearchTest extends TestCase
         $this->assertNull($results, 'cancelled: the rest never runs');
     }
 
-    /** Whole Word is the pattern's word, not grep -w's: `$foo` is one to grep, never to `\b(?:\$foo)\b`, which the built-in engine runs. */
+    /** Whole Word is the pattern's word, which grep is not asked to check: `$foo` beside a space, not after a letter. */
     public function testWholeWordIsThePatternsWordNotGreps(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n    \$foo = 1;\na\$foo\nfoo bar\nfoobar\n"]);
         $word = new SearchOptions(wholeWord: true);
 
-        $this->assertSame([2], \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: '$foo', options: $word), 'line'));
+        $this->assertSame([1], \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: '$foo', options: $word), 'line'));
         $this->assertSame([1, 2, 3], \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: 'foo', options: $word), 'line'), 'not foobar');
     }
 

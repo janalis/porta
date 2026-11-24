@@ -39,6 +39,13 @@ final class EreReadingTest extends TestCase
             '(?=x)' => true,
             'a{,2}' => true,
             'a{1,2}' => false,
+            'a{2}' => false,
+            'a{2,}' => false,
+            'a{ 1 }' => true,
+            'a{1, 2}' => true,
+            'a{x}' => true,
+            'a{x}b{2}' => true, // the first brace is read, not a later one
+            'a{' => true,
             '[]a]' => false,
             '[^]a]+' => false,
             '[[:alpha:]]+' => true,

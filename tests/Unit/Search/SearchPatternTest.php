@@ -16,8 +16,19 @@ final class SearchPatternTest extends TestCase
     {
         $this->assertSame('/a\+b/iu', SearchPattern::build('a+b', MatchMode::Literal, WordMode::Anywhere, CaseMode::Insensitive), 'literal queries are quoted');
         $this->assertSame('/a+b/u', SearchPattern::build('a+b', MatchMode::Regex, WordMode::Anywhere, CaseMode::Sensitive), 'regex queries pass through');
-        $this->assertSame('/\b(?:foo)\b/iu', SearchPattern::build('foo', MatchMode::Literal, WordMode::WholeWord, CaseMode::Insensitive));
-        $this->assertSame('/\b(?:fo+)\b/u', SearchPattern::build('fo+', MatchMode::Regex, WordMode::WholeWord, CaseMode::Sensitive));
+        $this->assertSame('/(?<!\w)(?:foo)(?!\w)/iu', SearchPattern::build('foo', MatchMode::Literal, WordMode::WholeWord, CaseMode::Insensitive));
+        $this->assertSame('/(?<!\w)(?:fo+)(?!\w)/u', SearchPattern::build('fo+', MatchMode::Regex, WordMode::WholeWord, CaseMode::Sensitive));
+    }
+
+    /** A whole word touches no word character on either side: `$foo` is one beside a space, not after a letter. */
+    public function testAWholeWordThatStartsWithANonWordCharacterIsFoundBesideOne(): void
+    {
+        $pattern = SearchPattern::build('$foo', MatchMode::Literal, WordMode::WholeWord, CaseMode::Sensitive);
+
+        $this->assertMatchesRegularExpression($pattern, '    $foo = 1;');
+        $this->assertMatchesRegularExpression(SearchPattern::build('foo(', MatchMode::Literal, WordMode::WholeWord, CaseMode::Sensitive), 'x = foo();');
+        $this->assertDoesNotMatchRegularExpression($pattern, 'a$foo');
+        $this->assertDoesNotMatchRegularExpression($pattern, '$foobar');
     }
 
     /** `/` delimits the built pattern, so a regex of a path is a path — not a bad regex. */

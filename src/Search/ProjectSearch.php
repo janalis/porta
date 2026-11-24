@@ -247,9 +247,8 @@ final class ProjectSearch
             $flags[] = '-i';
         }
         // No -w: grep finds every occurrence, listed() keeps the whole words.
-        // grep's word is not the pattern's (`$foo` is one to grep -w, never to
-        // `\b(?:\$foo)\b`; GNU grep 3.11 -w in C.UTF-8 missed 4446 lines
-        // `\bfoo\b` /u matches, beside combining marks). -w in C held every
+        // grep's word is not the pattern's: GNU grep 3.11 -w in C.UTF-8 missed
+        // 4446 lines `\bfoo\b` /u matches, beside combining marks. -w in C held every
         // line (swept, BSD and GNU) but C also reads `--include` globs by
         // bytes and Latin-1 files as text, and a grep first on PATH may be
         // BusyBox's or ugrep, unmeasured: tried, dropped (2026-11-24). The

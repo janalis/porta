@@ -13,8 +13,11 @@ final class SearchPattern
     public static function build(string $query, MatchMode $match, WordMode $word, CaseMode $case): string
     {
         $body = MatchMode::Regex === $match ? self::delimited($query) : \preg_quote($query, delimiter: '/');
+        // A whole word touches no word character on either side: `$foo` is
+        // one in ` $foo = 1;`, as grep -w and other editors read it — where
+        // `\b…\b` wanted a word character on the far side of the `$`.
         if (WordMode::WholeWord === $word) {
-            $body = '\b(?:'.$body.')\b';
+            $body = '(?<!\w)(?:'.$body.')(?!\w)';
         }
 
         // Unicode (`u`): ignoring case folds É to é as well as E to e, and

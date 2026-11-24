@@ -240,7 +240,7 @@ replaces in the bar, and neither surface can have both.
 
 | Key | Action |
 | --- | --- |
-| `Alt+R` / `Alt+C` / `Alt+W` | Regex (`.*`) / match case (`Aa`) / whole word (`\b`) |
+| `Alt+R` / `Alt+C` / `Alt+W` | Regex (`.*`) / match case (`Aa`) / whole word (touching no letter, digit or `_` on either side) |
 | `Alt+V` | Preserve case when replacing (`Pc`) — replacing `foo` in `Foo` writes `Bar`, not `bar` |
 | `Alt+T` | Cycle where matches count: anywhere (`·"`), only inside comments and strings (`i"`), or everywhere except them (`x"`) — the classification is per file and language-aware |
 | `Alt+S` | Cycle the search scope (whole project, or one you saved) |
