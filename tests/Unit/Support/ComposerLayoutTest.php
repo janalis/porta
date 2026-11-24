@@ -24,12 +24,18 @@ final class ComposerLayoutTest extends TestCase
         yield 'the default bin-dir follows vendor-dir' => ['{"config":{"vendor-dir":"lib/deps"}}', 'lib/deps', 'lib/deps/bin'];
         yield '{$vendor-dir} in bin-dir' => ['{"config":{"vendor-dir":"lib","bin-dir":"{$vendor-dir}/tools"}}', 'lib', 'lib/tools'];
         yield 'spelled loosely' => ['{"config":{"vendor-dir":" ./lib/ ","bin-dir":"lib/../bin/"}}', 'lib', 'bin'];
+        yield 'an absolute dir inside the project' => ['{"config":{"bin-dir":"%root%/tools"}}', 'vendor', 'tools'];
+        yield 'dirs outside the project: the defaults inside it' => ['{"config":{"vendor-dir":"/opt/deps","bin-dir":"../bin"}}', 'vendor', 'vendor/bin'];
+        yield 'a bin-dir outside, under a vendor-dir inside' => ['{"config":{"vendor-dir":"lib","bin-dir":"/usr/local/bin"}}', 'lib', 'lib/bin'];
     }
 
     #[DataProvider('layouts')]
     public function testTheLayoutAComposerJsonGives(?string $json, string $vendor, string $bin): void
     {
-        $project = new TempProject(null === $json ? [] : ['composer.json' => $json]);
+        $project = new TempProject();
+        if (null !== $json) {
+            $project->write('composer.json', \str_replace('%root%', $project->dir, $json));
+        }
 
         $layout = ComposerLayout::of($project->dir);
 
@@ -37,20 +43,13 @@ final class ComposerLayoutTest extends TestCase
         $this->assertSame($project->path($bin), $layout->binDir);
     }
 
-    public function testTheBinDirIsNamedRelativeToTheProjectWhenInsideIt(): void
+    public function testTheBinDirIsNamedRelativeToTheProject(): void
     {
-        $this->assertSame('vendor/bin', new ComposerLayout('/p/vendor', '/p/vendor/bin')->binDirFrom('/p'));
-        $this->assertSame('/opt/bin', new ComposerLayout('/p/vendor', '/opt/bin')->binDirFrom('/p'), 'outside');
-        $this->assertSame('/pbin', new ComposerLayout('/p/vendor', '/pbin')->binDirFrom('/p'), 'a sibling sharing the prefix');
-    }
-
-    public function testAnAbsoluteDirIsKeptAsItIs(): void
-    {
-        $project = new TempProject(['composer.json' => '{"config":{"vendor-dir":"/opt/deps","bin-dir":"/opt/bin"}}']);
-
+        $project = new TempProject(['composer.json' => '{"config":{"bin-dir":"."}}']);
         $layout = ComposerLayout::of($project->dir);
 
-        $this->assertSame('/opt/deps', $layout->vendorDir);
-        $this->assertSame('/opt/bin', $layout->binDir);
+        $this->assertSame(\rtrim($project->dir, characters: '/'), $layout->binDir, 'the root itself is inside it');
+        $this->assertSame('.', $layout->binDirFrom($project->dir), 'named, not left blank');
+        $this->assertSame('vendor/bin', new ComposerLayout('/p/vendor', '/p/vendor/bin')->binDirFrom('/p'));
     }
 }

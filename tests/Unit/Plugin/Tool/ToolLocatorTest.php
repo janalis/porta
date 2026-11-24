@@ -136,6 +136,19 @@ final class ToolLocatorTest extends TestCase
         $this->assertNull($locator->sourceOf(self::composerTool(), $this->project->path('vendor/bin/phpstan')), 'not where composer no longer puts anything');
     }
 
+    /** A composer.json naming a shared dir outside the project neither runs what is there nor calls it composer's. */
+    public function testAComposerBinDirOutsideTheProjectIsNotTheProjects(): void
+    {
+        $elsewhere = new TempProject();
+        $shared = $elsewhere->write('bin/phpstan', content: "#!/bin/sh\n");
+        \chmod($shared, permissions: 0o755);
+        $this->project->write('composer.json', (string) \json_encode(['config' => ['bin-dir' => $elsewhere->path('bin')]], \JSON_THROW_ON_ERROR));
+        $locator = $this->locator();
+
+        $this->assertNull($locator->locate(self::composerTool()), 'not run as the project\'s tool');
+        $this->assertNull($locator->sourceOf(self::composerTool(), $shared), 'nor updated through composer');
+    }
+
     public function testNoHomeMeansNoDownloads(): void
     {
         $locator = new ToolLocator($this->project->dir, static fn (): string => '', static fn (): bool => true, null, static fn (): ?string => null);

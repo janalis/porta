@@ -37,7 +37,8 @@ use Porta\Support\PathExecutables;
  *
  * Deliberately not memoised: the setting changes at runtime, and a cached
  * answer would ignore it until restart (chroma's used to). It costs a few stat
- * calls on a path that runs per resolution, never per key: under WSL, Windows'
+ * calls and, for a composer tool, a read of composer.json (~30 µs for a 7 KB
+ * one, 2026-11-24) on a path that runs per resolution, never per key: under WSL, Windows'
  * own PATH folders are left out ({@see \Porta\Support\PathExecutables}), as each
  * stat there took long enough to freeze the IDE.
  */
