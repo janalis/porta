@@ -379,6 +379,29 @@ final class ProjectSearchTest extends TestCase
         $this->assertCount(ProjectSearch::MAX_RESULTS, $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle', scope: ['src/In', 'src']));
     }
 
+    /**
+     * A file name may hold `:12:` itself: grep prints `notes/a:12:b.txt:3:…`,
+     * whose first `path:line:` reading names no file. The hit is the file.
+     */
+    public function testAFileNameHoldingAColonNumberColonIsReadWhole(): void
+    {
+        $project = new TempProject([
+            'notes/a:12:b.txt' => "x\nx\nneedle\n",
+            'notes/x:1:y:2:z.txt' => "needle :7: tail\n", // two pairs: the first later reading, x:1:y, is no file either
+            'src/A.php' => "<?php\n// needle :5: here\n",
+        ]);
+
+        $this->assertSame(
+            [
+                ['notes/a:12:b.txt',    2, 'needle'],
+                ['notes/x:1:y:2:z.txt', 0, 'needle :7: tail'],
+                ['src/A.php',           1, '// needle :5: here'],
+            ],
+            \array_map(static fn (array $r): array => [$r['path'], $r['line'], $r['text']], $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle')),
+            'and a :5: in a line\'s text stays text',
+        );
+    }
+
     /** A scope holding nothing but a skipped folder leaves grep nothing to read — not its stdin, where it would wait. */
     public function testAScopeOfNothingButHistoryFindsNothing(): void
     {

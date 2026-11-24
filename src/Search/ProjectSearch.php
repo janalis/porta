@@ -315,8 +315,48 @@ final class ProjectSearch
         if ('' === $line || !\preg_match('/^(?:\.\/)?(.+?):(\d+):(.*)$/', $line, $m)) {
             return ['path' => null, 'line' => 0, 'text' => ''];
         }
+        [$path, $number, $text] = [$m[1], $m[2], $m[3]];
+        // grep prints `path:line:text`, and a name may hold `:12:` itself:
+        // `a:12:b.txt:3:x` read at its first such pair names `a`, which is no
+        // file. Then the first later reading that names one is the hit.
+        if (!$this->isFile($path)) {
+            [$path, $number, $text] = $this->laterReading($path, $number, $text);
+        }
 
-        return ['path' => \str_replace('/./', replace: '/', subject: $m[1]), 'line' => (int) $m[2] - 1, 'text' => \trim($m[3])];
+        return ['path' => \str_replace('/./', replace: '/', subject: $path), 'line' => (int) $number - 1, 'text' => \trim($text)];
+    }
+
+    /**
+     * The first reading of `$path:$number:$text` past its first `:N:` whose
+     * path is a file here — as it was when none is.
+     *
+     * @return array{string, string, string}
+     */
+    private function laterReading(string $path, string $number, string $text): array
+    {
+        // [text, N, text, N, text…]: each N a place the name may go on past.
+        $parts = \preg_split('/:(\d+):/', $text, flags: \PREG_SPLIT_DELIM_CAPTURE);
+        $parts = false === $parts ? [$text] : $parts;
+        $head = $path.':'.$number.':';
+        $name = $head;
+        $pairs = \count($parts) - 2;
+        for ($k = 0; $k < $pairs; $k += 2) {
+            $name .= $parts[$k];
+            $pair = ':'.$parts[$k + 1].':';
+            if ($this->isFile($name)) {
+                // The text is what follows that pair, as grep printed it.
+                return [$name, $parts[$k + 1], \substr($text, \strlen($name) - \strlen($head) + \strlen($pair))];
+            }
+            $name .= $pair;
+        }
+
+        return [$path, $number, $text];
+    }
+
+    /** Whether $path, as grep printed it, is a file of the project here — a remote one's placeholder too. */
+    private function isFile(string $path): bool
+    {
+        return \is_file($this->rootDir.'/'.\str_replace('/./', replace: '/', subject: $path));
     }
 
     /**
