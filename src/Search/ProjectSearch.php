@@ -87,11 +87,16 @@ final class ProjectSearch
      */
     private bool $gaveUp = false;
 
+    /**
+     * @param GrepAnswers|null $answers shared by every engine searching this project, so grep is asked once
+     *                                  — an engine made per call (an agent's search) asks nothing again
+     */
     public function __construct(
         private readonly string $rootDir,
         private readonly ?RemoteFilesystem $remote = null,
+        ?GrepAnswers $answers = null,
     ) {
-        $this->answers = new GrepAnswers($rootDir);
+        $this->answers = $answers ?? new GrepAnswers($rootDir);
     }
 
     /**
@@ -159,11 +164,14 @@ final class ProjectSearch
     {
         $null = ['--null', '-q', 'x', '/dev/null'];
         $this->answers->ask('--null', fn (): ?array => $this->onServer() ? $this->remote?->remoteCommand(['grep', ...$null]) : [$grep, ...$null]);
-        if ($regex && !$this->onServer()) {
+        // -P is this machine's grep's to say: a server's is asked for ERE. It is
+        // asked whatever the project, since a remote one whose transport runs
+        // no command, or whose server is not reached yet, is searched here.
+        if ($regex) {
             $this->answers->ask('-P', static fn (): array => [$grep, '-qP', 'x', '/dev/null']);
         }
-        // Parked till the last answer lands; a cancel drops it.
-        $this->answers->whenAnswered($search);
+        // Parked till the answers it needs land; a cancel drops it.
+        $this->answers->whenAnswered($this, $regex ? ['--null', '-P'] : ['--null'], $search);
     }
 
     /**
@@ -278,7 +286,7 @@ final class ProjectSearch
 
     public function cancel(): void
     {
-        $this->answers->drop();
+        $this->answers->drop($this);
         $this->process?->cancel();
         $this->process = null;
         if (null !== $this->slice) {

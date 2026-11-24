@@ -280,7 +280,7 @@ final class ProjectSearchTest extends TestCase
         $search->search('needle', static function (array $results) use (&$first): void {
             $first = $results;
         });
-        $this->assertNotNull(Probe::get(Probe::object($search, 'answers'), property: 'parked'), 'the premise: it waits on the answer');
+        $this->assertNotSame([], Probe::get(Probe::object($search, 'answers'), property: 'waiting'), 'the premise: it waits on the answer');
 
         $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: 'other'), 'path'));
         $this->assertNull($first, 'the replaced search never ran');
@@ -1172,7 +1172,30 @@ final class ProjectSearchTest extends TestCase
         $grep(1);
         $cache = new TempProject([]);
         $this->awaitSearch(new ProjectSearch($cache->dir, new FakeRemoteTransport($project->dir)->filesystem($cache->dir)), query: '\d+', options: $regex);
-        $this->assertSame(['-E -- \d+ .'], \array_map($tail, $asked()), "the server's grep is not this one");
+        $searched = \array_values(\array_filter($asked(), static fn (string $line): bool => 'probe' !== $line));
+        $this->assertSame(['-E -- \d+ .'], \array_map($tail, $searched), "the server's grep is asked for ERE: -P is this machine's grep's to say");
+
+        // A remote project whose server is not reached yet is searched here,
+        // by this machine's grep: -P is asked for, and taken.
+        $grep(1);
+        $unreached = new TempProject(['src/A.php' => "<?php\n// 42\n"]);
+        $remote = new RemoteFilesystem(
+            new ProjectLocation(new RemoteSpec('ssh', 'example.org', '/srv')),
+            $unreached->dir,
+            new readonly class implements RemoteTransportSource {
+                public function remoteTransport(RemoteSpec $spec): ?RemoteTransport
+                {
+                    return null;
+                }
+            },
+            new Notifier(new StatusBarWidget(), TestTui::create()),
+            new Translator('en'),
+            new BufferManager(),
+            new FileIndex($unreached->dir),
+            new EventDispatcher(),
+        );
+        $this->awaitSearch(new ProjectSearch($unreached->dir, $remote), query: '\d+', options: $regex);
+        $this->assertSame(['probe', '-P -- \d+ .'], [$asked()[0] ?? null, ...\array_map($tail, \array_slice($asked(), offset: 1))], 'searched here: as PCRE');
     }
 
     /**

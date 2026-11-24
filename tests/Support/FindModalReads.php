@@ -45,12 +45,21 @@ trait FindModalReads
         $this->await(
             static fn (): bool => (
                 null === Probe::get($wiring, property: 'searchDebounce')
-                && null === Probe::get($answers, property: 'parked')
+                && !self::waitsOnGrep($answers, $search)
                 && null === Probe::get($search, property: 'process')
                 && null === Probe::get($search, property: 'slice')
             ),
             what: 'the project search to settle',
         );
+    }
+
+    /** Whether $search is parked in $answers, waiting for its grep to say what it takes. */
+    private static function waitsOnGrep(object $answers, ProjectSearch $search): bool
+    {
+        // @mago-expect analysis:mixed-assignment -- read off a private property, narrowed below
+        $waiting = Probe::get($answers, property: 'waiting');
+
+        return \is_array($waiting) && \array_key_exists(\spl_object_id($search), $waiting);
     }
 
     /**
