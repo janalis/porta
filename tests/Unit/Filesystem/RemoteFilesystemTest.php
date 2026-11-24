@@ -8,7 +8,6 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Event\StatusCellsChanged;
 use Porta\Filesystem\ProjectLocation;
-use Porta\Filesystem\RemoteEntry;
 use Porta\Filesystem\RemoteFilesystem;
 use Porta\Filesystem\RemoteSpec;
 use Porta\Filesystem\RemoteTransport;
@@ -538,6 +537,17 @@ final class RemoteFilesystemTest extends TestCase
         $this->assertSame([], $this->transport->calls);
     }
 
+    /**
+     * The listings the transport was asked for, in order — what the poll
+     * tests are about; the once-a-session read of composer.json is not one.
+     *
+     * @return list<string>
+     */
+    private function listings(): array
+    {
+        return \array_values(\array_filter($this->transport->calls, static fn (string $call): bool => \str_starts_with($call, 'list')));
+    }
+
     /** A slow server gets no second round of listings while the first is still out. */
     public function testThePollWaitsForTheLastRoundToAnswer(): void
     {
@@ -553,7 +563,7 @@ final class RemoteFilesystemTest extends TestCase
         $files->poll();
         $files->poll();
 
-        $this->assertSame(['list ', 'list a'], $this->transport->calls);
+        $this->assertSame(['list ', 'list a'], $this->listings());
         $this->transport->release();
     }
 
@@ -572,7 +582,7 @@ final class RemoteFilesystemTest extends TestCase
 
         $files->poll();
 
-        $this->assertSame(['list ', 'list a'], $this->transport->calls);
+        $this->assertSame(['list ', 'list a'], $this->listings());
     }
 
     /**
@@ -892,7 +902,7 @@ final class RemoteFilesystemTest extends TestCase
         $files->poll();
         $files->poll(); // a listing is still out: nothing more is asked
 
-        $this->assertSame(['list src', 'list '], $this->transport->calls);
+        $this->assertSame(['list src', 'list '], $this->listings());
         $this->transport->release();
     }
 
@@ -912,7 +922,7 @@ final class RemoteFilesystemTest extends TestCase
         $files->poll();
         $files->poll();
 
-        $this->assertSame(['list ', 'list a', 'list b', 'list c', 'list d', 'list '], $this->transport->calls);
+        $this->assertSame(['list ', 'list a', 'list b', 'list c', 'list d', 'list '], $this->listings());
     }
 
     public function testAPollWithNothingShownListsNothing(): void
@@ -921,7 +931,7 @@ final class RemoteFilesystemTest extends TestCase
 
         $files->poll();
 
-        $this->assertSame([], $this->transport->calls);
+        $this->assertSame([], $this->listings());
     }
 
     public function testWithNoPluginForTheSchemeItSaysSoOnceAndTheCacheIsAllThereIs(): void
@@ -1132,6 +1142,7 @@ final class RemoteFilesystemTest extends TestCase
 
     public function testAWalkThatFailsSaysSo(): void
     {
+        $this->server->write('composer.json', content: '{}'); // read, so the link is not asked about it
         $this->transport->walks = true;
         $this->transport->fail[''] = 'find: not found';
         $files = $this->files();
@@ -1149,7 +1160,7 @@ final class RemoteFilesystemTest extends TestCase
 
         $files->poll();
 
-        $this->assertSame(['list '], $this->transport->calls);
+        $this->assertSame(['list '], $this->listings());
         $bare = new class extends RemoteTransport {
             use NoOpTransportVerbs;
         };
@@ -1158,58 +1169,23 @@ final class RemoteFilesystemTest extends TestCase
         $this->assertNull($bare->remoteCommand(['grep']), 'so is running a command there');
     }
 
-    /**
-     * A transport written before paths could be skipped overrides walk() only:
-     * it still walks, and what lies under a skipped path is dropped from its
-     * answer — the server listed it, the tree never sees it.
-     */
-    public function testATransportThatWalksByNameOnlyStillSkipsAPath(): void
+    /** A transport that runs commands but does not walk still learns the vendor dir, for Find in Files — read once, never walked. */
+    public function testATransportThatDoesNotWalkStillReadsTheVendorDir(): void
     {
-        $byName = new class extends RemoteTransport {
-            use NoOpTransportVerbs;
+        $this->server->write('composer.json', content: "\u{FEFF}".'{"config":{"vendor-dir":"lib/deps"}}'); // a BOM, as some editors save
+        $files = $this->files();
+        $files->listed($this->cache->dir);
 
-            public function walk(string $path, array $skip, \Closure $done): bool
-            {
-                $done(\array_map(static fn (string $name): RemoteEntry => new RemoteEntry($name, isDir: !\str_contains($name, needle: '.')), [
-                    'lib',
-                    'lib/Own.php',
-                    'lib/deps',
-                    'lib/deps/a.php',
-                    'lib/depsx',
-                    'src/lib/deps',
-                ]));
+        $files->poll();
+        $this->await(static fn (): bool => null !== $files->vendorPath());
+        $files->poll();
 
-                return true;
-            }
-        };
-        $this->assertTrue($byName->walks());
-
-        $answer = null;
-        $this->assertTrue($byName->walkSkipping('', [], ['lib/deps'], static function (array|string $entries) use (&$answer): void {
-            $answer = $entries;
-        }));
-        $this->assertIsArray($answer);
+        $this->assertSame('lib/deps', $files->vendorPath());
         $this->assertSame(
-            ['lib', 'lib/Own.php', 'lib/depsx', 'src/lib/deps'],
-            \array_map(static fn (RemoteEntry $entry): string => $entry->name, $answer),
-            'the path and under it; not a name that starts the same, nor the same path elsewhere',
+            ['fetch composer.json'],
+            \array_values(\array_filter($this->transport->calls, static fn (string $call): bool => !\str_starts_with($call, 'list'))),
+            'once a session, and no walk',
         );
-
-        $failed = null;
-        $failing = new class extends RemoteTransport {
-            use NoOpTransportVerbs;
-
-            public function walk(string $path, array $skip, \Closure $done): bool
-            {
-                $done('find: not found');
-
-                return true;
-            }
-        };
-        $failing->walkSkipping('', [], ['lib/deps'], static function (array|string $entries) use (&$failed): void {
-            $failed = $entries;
-        });
-        $this->assertSame('find: not found', $failed, 'a failure passes through');
     }
 
     /**
@@ -1534,20 +1510,41 @@ final class RemoteFilesystemTest extends TestCase
         $this->assertSame('b', \file_get_contents($this->server->path('b.txt')), 'the queue moved on');
     }
 
-    public function testAWalkLostWithTheLinkIsAskedForAgainOnceItIsBack(): void
+    /** The link lost between composer.json's answer and the walk: the walk is asked again once it is back. */
+    public function testAWalkLostAfterComposerJsonIsAskedForAgain(): void
     {
+        $this->server->write('composer.json', content: '{}');
         $this->transport->walks = true;
         $files = $this->files();
         $files->listed($this->cache->dir);
+        $this->transport->hold = true;
+        $files->poll(); // composer.json read now, its answer held
         $this->transport->down = 'Network is unreachable';
-        $files->poll();
-        $this->assertContains('walk ', $this->transport->calls);
+        $this->transport->release(); // the answer lands; the walk is asked of a link gone
 
         $this->transport->down = null;
         $files->reconnect();
         $files->poll();
 
         $this->assertCount(2, \array_filter($this->transport->calls, static fn (string $call): bool => 'walk ' === $call), 'walked again');
+    }
+
+    public function testAWalkLostWithTheLinkIsAskedForAgainOnceItIsBack(): void
+    {
+        $this->server->write('composer.json', content: '{"config":{"vendor-dir":"deps"}}');
+        $this->transport->walks = true;
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $this->transport->down = 'Network is unreachable';
+        $files->poll();
+        $this->assertNotContains('walk ', $this->transport->calls, 'composer.json unread, the link is asked why: down, so no walk — no second failed login');
+
+        $this->transport->down = null;
+        $files->reconnect();
+        $files->poll();
+
+        $this->assertCount(1, \array_filter($this->transport->calls, static fn (string $call): bool => 'walk ' === $call), 'walked once it is back');
+        $this->assertSame('deps', $files->vendorPath(), 'composer.json read again first, not walked past unread');
         $files->close();
     }
 

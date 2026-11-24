@@ -57,13 +57,24 @@ final class FileIndexTest extends TestCase
             'lib/Own.php' => '',
             'lib/deps/pkg/Lib.php' => '',
             'src/deps/Own.php' => '',
+            'src/lib/deps/Own.php' => '',
         ]);
         $index = new FileIndex($project->dir);
-        $this->assertSame(['composer.json', 'lib/Own.php', 'src/deps/Own.php'], \array_column($index->entries(), 'path'), 'not ignored by git, still left out');
+        $this->assertSame(
+            ['composer.json', 'lib/Own.php', 'src/deps/Own.php', 'src/lib/deps/Own.php'],
+            \array_column($index->entries(), 'path'),
+            'not ignored by git, still left out — at the root only',
+        );
 
         $project->write('.gitignore', content: "/lib/deps/\n");
         $index->setIncludeVendor(true);
-        $this->assertSame(['.gitignore', 'composer.json', 'lib/Own.php', 'lib/deps/pkg/Lib.php', 'src/deps/Own.php'], \array_column($index->entries(), 'path'));
+        $this->assertSame(['.gitignore', 'composer.json', 'lib/Own.php', 'lib/deps/pkg/Lib.php', 'src/deps/Own.php', 'src/lib/deps/Own.php'], \array_column($index->entries(), 'path'));
+
+        $project->write('composer.json', content: '{"config":{"vendor-dir":"deps"}}');
+        $project->write('deps/pkg/Lib.php', content: '');
+        $index->setIncludeVendor(false);
+        $this->assertNotContains('deps/pkg/Lib.php', \array_column($index->entries(), 'path'));
+        $this->assertContains('src/deps/Own.php', \array_column($index->entries(), 'path'), 'one segment: a name Finder would match at any depth, unanchored');
     }
 
     /** A directory nobody may list — a root-owned Docker volume — is passed over, not the end of Go to File. */

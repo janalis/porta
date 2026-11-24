@@ -238,6 +238,7 @@ final class ProjectSearchTest extends TestCase
             'composer.json' => '{"config":{"vendor-dir":"lib/deps"}}',
             'src/A.php' => "<?php\n// needle\n",
             'src/deps/Own.php' => "<?php\n// needle in a folder of the same name\n",
+            'src/lib/deps/Own.php' => "<?php\n// needle at the same path, deeper\n",
             'lib/Own.php' => "<?php\n// needle beside the vendor dir\n",
             'lib/deps/pkg/B.php' => "<?php\n// needle in a package\n",
             'vendor/stale/C.php' => "<?php\n// needle in a vendor/ by name\n",
@@ -248,15 +249,17 @@ final class ProjectSearchTest extends TestCase
 
             return $paths;
         };
-        $own = ['lib/Own.php', 'src/A.php', 'src/deps/Own.php'];
+        $own = ['lib/Own.php', 'src/A.php', 'src/deps/Own.php', 'src/lib/deps/Own.php'];
 
         $this->assertSame($own, $found('.'), 'grep');
         $this->assertSame(['lib/Own.php'], $found('lib'));
+        $this->assertSame(['src/lib/deps/Own.php'], $found('src/lib'));
         $this->assertSame([], $found(['lib/deps']), 'named as the scope, it is still left out');
 
         \putenv('PATH=/nonexistent');
         $this->assertSame($own, $found('.'), 'the PHP walk');
         $this->assertSame(['lib/Own.php'], $found('lib'));
+        $this->assertSame(['src/lib/deps/Own.php'], $found('src/lib'));
 
         $tools = new TempProject([], 'porta-argvgrep-');
         $log = $tools->path('argv.log');

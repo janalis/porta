@@ -91,12 +91,12 @@ abstract class RemoteTransport
     /**
      * Whether this transport answers {@see walk()} at all — asked before a
      * walk, since core first reads what to skip. By default, whether the
-     * subclass overrides walk(), so one written before this was asked keeps
-     * walking.
+     * subclass overrides walk() or walkSkipping(), so one written before this
+     * was asked keeps walking.
      */
     public function walks(): bool
     {
-        return self::class !== new \ReflectionMethod($this, 'walk')->getDeclaringClass()->getName();
+        return self::class !== new \ReflectionMethod($this, 'walk')->getDeclaringClass()->getName() || self::class !== new \ReflectionMethod($this, 'walkSkipping')->getDeclaringClass()->getName();
     }
 
     /**

@@ -30,10 +30,23 @@ final class JsonFile
         if (!\is_file($path)) {
             return null;
         }
+
+        return self::decode((string) \file_get_contents($path), $error);
+    }
+
+    /**
+     * {@see read()}'s decoding, for bytes from elsewhere than a local file: a
+     * remote project's server.
+     *
+     * @param string|null $error why it decoded to null
+     *
+     * @return array<mixed>|null
+     */
+    public static function decode(string $bytes, ?string &$error = null): ?array
+    {
         try {
             // A byte-order mark is not JSON, and json_decode rejects it; some
             // editors write one, and Porta's own hides it from the user.
-            $bytes = (string) \file_get_contents($path);
             $bytes = \str_starts_with($bytes, "\u{FEFF}") ? \substr($bytes, offset: 3) : $bytes;
             /** @var array<array-key, mixed>|scalar|null $data */
             $data = \json_decode($bytes, associative: true, depth: 512, flags: \JSON_THROW_ON_ERROR);

@@ -92,7 +92,8 @@ final class FileIndex
         $moved = ComposerLayout::of($this->rootDir)->vendorPath($this->rootDir);
         $excludes = $this->includeVendor
             ? [...\array_values(\array_diff(ProjectSearch::EXCLUDES, ['vendor'])), ProjectSearch::HISTORY]
-            : [...ProjectSearch::EXCLUDES, ProjectSearch::HISTORY, ...(null === $moved ? [] : [$moved])];
+            // `/` anchors it at the root: Finder matches a bare path at any depth
+            : [...ProjectSearch::EXCLUDES, ProjectSearch::HISTORY, ...(null === $moved ? [] : ['/'.$moved])];
         // A tree git ignores — a coverage report, a framework's cache — is not
         // walked: its files filled the budget and pushed the project's own out.
         // A single ignored file (`.env`) is kept, and so is vendor/ when asked for.

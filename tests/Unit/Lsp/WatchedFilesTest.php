@@ -176,9 +176,10 @@ final class WatchedFilesTest extends TestCase
 
         $this->project->write('lib/deps/acme/E.php', content: '<?php // e, updated by composer');
         $this->project->write('lib/Own.php', content: '<?php // the project\'s own, beside it');
+        $this->project->write('src/lib/deps/Own.php', content: '<?php // the same path, deeper');
         $this->watched->tick();
 
-        $this->assertSame([[['uri' => $this->uri('lib/Own.php'), 'type' => 1]]], $this->sent('php-ls'));
+        $this->assertEqualsCanonicalizing([['uri' => $this->uri('lib/Own.php'), 'type' => 1], ['uri' => $this->uri('src/lib/deps/Own.php'), 'type' => 1]], $this->sent('php-ls')[0] ?? []);
     }
 
     public function testNothingIsWalkedUntilAServerWatchesAndItsFirstSweepIsItsBaseline(): void

@@ -350,7 +350,7 @@ The transport extends `Porta\Filesystem\RemoteTransport`:
   directories at the paths in `$skipPaths` (a vendor dir `composer.json`
   moved) on the server. Without it, core drops them from `walk()`'s answer.
   `walks()` says whether the transport walks at all, which by default is
-  whether it overrides `walk()`.
+  whether it overrides `walk()` or `walkSkipping()`.
 - **Processes:** a transport that drives a command-line tool extends
   `Porta\Filesystem\CommandTransport`. It gets `run()`, `failure()` and
   `close()`.

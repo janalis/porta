@@ -462,9 +462,10 @@ final class ProjectSearch
             return;
         }
         $prefix = '.' === $scope ? '' : \rtrim($scope, characters: '/').'/';
-        // A skipped path below the scope, relative to it; one that IS the scope was asked for.
+        // A skipped path below the scope, relative to it; one that IS the scope
+        // was asked for. `/` anchors it there: Finder matches a bare path at any depth.
         $below = \array_map(
-            static fn (string $path): string => \substr($path, \strlen($prefix)),
+            static fn (string $path): string => '/'.\substr($path, \strlen($prefix)),
             \array_values(\array_filter($this->skippedPaths(), static fn (string $path): bool => \str_starts_with($path.'/', $prefix) && $path.'/' !== $prefix)),
         );
         $finder = new Finder()

@@ -159,7 +159,7 @@ final class WatchedFiles
         $walk = Finder::create()
             ->files()
             ->in($this->rootDir)
-            ->exclude([...self::SKIP, ...(null === $moved ? [] : [$moved])])
+            ->exclude([...self::SKIP, ...(null === $moved ? [] : ['/'.$moved])]) // `/`: at the root, not at any depth
             ->ignoreDotFiles(false)
             ->ignoreUnreadableDirs()
             ->ignoreVCSIgnored(true)

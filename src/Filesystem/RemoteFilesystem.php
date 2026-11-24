@@ -11,8 +11,8 @@ use Porta\I18n\Translator;
 use Porta\Search\FileIndex;
 use Porta\Search\ProjectSearch;
 use Porta\Support\ComposerLayout;
-use Porta\Support\Decoded;
 use Porta\Support\Files;
+use Porta\Support\JsonFile;
 use Porta\Ui\Glyphs;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Notifier;
@@ -432,28 +432,60 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
      * Ask, once a session, for the whole tree — the poll's first round after
      * what the tree was waiting on. Whether it was asked: a transport that
      * cannot walk leaves the poll to its listings.
+     *
+     * First, whatever the transport: which dir composer.json moved, the
+     * SERVER's file to say — this copy holds only what was opened, and may
+     * hold an older one. The walk prunes it, and a grep there drops its hits.
      */
     private function walk(RemoteTransport $transport): bool
     {
-        if ($this->walked || !$transport->walks()) {
+        if ($this->walked) {
             return false;
         }
         $this->walked = true;
+        $walks = $transport->walks();
         $asked = $this->changes;
-        // Which dir composer.json moved is the SERVER's file to say: this copy
-        // holds only what was opened, and may hold an older one.
-        $transport->fetch('composer.json', function (RemoteFile|string $composer) use ($transport, $asked): void {
-            $this->vendorPath = ComposerLayout::from($this->rootDir, \is_string($composer) ? null : Decoded::json($composer->bytes))->vendorPath($this->rootDir);
-            $this->walkSkipping($transport, $asked);
+        // A transport that declines the walk after all is listed this round still.
+        $then = function () use ($transport, $asked, $walks): void {
+            if ($walks && !$this->walkSkipping($transport, $asked)) {
+                $this->poll();
+            }
+        };
+        $transport->fetch('composer.json', function (RemoteFile|string $composer) use ($transport, $then, $walks): void {
+            if (\is_string($composer) && !$walks) {
+                // No walk to hold back, so no reason to ask the link why: no
+                // composer.json, or none reached, just leaves nothing skipped.
+                return;
+            }
+            if (\is_string($composer)) {
+                // No composer.json is an answer; a link that is down is not —
+                // nothing more is asked of it, one more login to a server that
+                // may count them, until it is back.
+                $this->link->failed(
+                    $transport,
+                    $composer,
+                    function (): void {
+                        $this->walked = false;
+                    },
+                    function () use ($then): void {
+                        $this->vendorPath = null;
+                        $then();
+                    },
+                );
+
+                return;
+            }
+            $this->vendorPath = ComposerLayout::from($this->rootDir, JsonFile::decode($composer->bytes))->vendorPath($this->rootDir);
+            $then();
         });
 
-        return true;
+        return $walks;
     }
 
-    /** The walk itself, once the server's composer.json said what to prune by path. */
-    private function walkSkipping(RemoteTransport $transport, int $asked): void
+    /** The walk itself, once the server's composer.json said what to prune by path; whether the transport took it. */
+    private function walkSkipping(RemoteTransport $transport, int $asked): bool
     {
-        $transport->walkSkipping('', self::WALK_SKIP, null === $this->vendorPath ? [] : [$this->vendorPath], function (array|string $answer) use ($transport, $asked): void {
+        return $transport->walkSkipping('', self::WALK_SKIP, null === $this->vendorPath ? [] : [$this->vendorPath], function (array|string $answer) use ($transport, $asked): void {
             if (\is_string($answer)) {
                 // Asked again: by the next poll once the link is back.
                 $this->link->failed(
