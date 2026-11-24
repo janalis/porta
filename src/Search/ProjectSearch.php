@@ -256,7 +256,7 @@ final class ProjectSearch
     private function builtIn(\Generator $scan, callable $onDone): void
     {
         $this->localOnly = $this->onServer();
-        $this->sliced($scan, $onDone);
+        $this->sliced($scan, static fn (array $results) => $onDone(self::sorted($results)));
     }
 
     /**
@@ -362,8 +362,22 @@ final class ProjectSearch
                 break;
             }
         }
-        // grep -r walks in the file system's order — on ext4 a hash order, so
-        // File7.php can come before File0.php: the panel lists by path, then line.
+
+        return self::sorted($results);
+    }
+
+    /**
+     * $results by path, then line — the panel's order, whichever engine
+     * found them. Each walks in an order of its own: grep -r the file
+     * system's (on ext4 a hash order, File7.php before File0.php), the
+     * built-in engine Finder's.
+     *
+     * @param list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> $results
+     *
+     * @return list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>
+     */
+    private static function sorted(array $results): array
+    {
         \usort($results, static fn (array $a, array $b): int => 0 !== \strcmp($a['path'], $b['path']) ? \strcmp($a['path'], $b['path']) : $a['line'] <=> $b['line']);
 
         return $results;

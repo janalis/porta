@@ -352,15 +352,11 @@ final class ProjectSearchTest extends TestCase
     public function testOverlappingScopePathsListEachHitOnce(): void
     {
         $project = new TempProject(['lib/a/A.php' => "<?php\n// needle\n// needle\n", 'lib/B.php' => "<?php\n// needle\n"]);
-        $hits = function () use ($project): array {
-            $hits = \array_map(
-                static fn (array $r): string => $r['path'].':'.$r['line'],
-                $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle', scope: ['lib', 'lib/a']),
-            );
-            \sort($hits); // the engines list in their own orders; which hits, and how often, is the point
-
-            return $hits;
-        };
+        // In the panel's order, by path then line, whichever engine walked them.
+        $hits = fn (): array => \array_map(
+            static fn (array $r): string => $r['path'].':'.$r['line'],
+            $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle', scope: ['lib', 'lib/a']),
+        );
 
         $this->assertSame(['lib/B.php:1', 'lib/a/A.php:1', 'lib/a/A.php:2'], $hits(), 'grep');
         \putenv('PATH=/nonexistent');
