@@ -89,9 +89,6 @@ final class ProjectSearch
      */
     private bool $grepCheckedTheRule = true;
 
-    /** Whether grep is handed -w, and so runs in C (see grep()). */
-    private bool $grepWordsInC = false;
-
     /** The search's pattern, run on one line or one text at a time. */
     private LineMatch $match;
 
@@ -105,6 +102,7 @@ final class ProjectSearch
         ?GrepAnswers $answers = null,
     ) {
         $this->answers = $answers ?? new GrepAnswers($rootDir);
+        // Per-search values, not collaborators: each search starts a fresh pair.
         $this->hits = new GrepHits($rootDir);
         $this->match = new LineMatch();
     }
@@ -248,14 +246,14 @@ final class ProjectSearch
         if (!$options->caseSensitive) {
             $flags[] = '-i';
         }
-        // grep finds every occurrence and listed() keeps the whole words; -w
-        // first, in C, only where grep's word holds the pattern's (GrepWords),
-        // and only here: a server's grep runs in a locale nobody measured.
-        $this->grepWordsInC = '' === $where && GrepWords::holdThePatterns($query, $options);
-        if ($this->grepWordsInC) {
-            $flags[] = '-w';
-        }
-        // With -w the query is a literal, which never backtracks into a limit.
+        // No -w: grep finds every occurrence, listed() keeps the whole words.
+        // grep's word is not the pattern's (`$foo` is one to grep -w, never to
+        // `\b(?:\$foo)\b`; GNU grep 3.11 -w in C.UTF-8 missed 4446 lines
+        // `\bfoo\b` /u matches, beside combining marks). -w in C held every
+        // line (swept, BSD and GNU) but C also reads `--include` globs by
+        // bytes and Latin-1 files as text, and a grep first on PATH may be
+        // BusyBox's or ugrep, unmeasured: tried, dropped (2026-11-24). The
+        // cost — a short Whole Word query prints more for the filter — stays.
         $this->grepCheckedTheRule = !$options->wholeWord;
         // A file mask restricts matching to basenames (grep's fnmatch globbing
         // does not expand braces, so `*.{php,js}` is pre-expanded to two globs).
@@ -326,7 +324,7 @@ final class ProjectSearch
         // grep folds É to é as that pattern does, whatever locale Porta runs in.
         // Not every fold: BSD grep -i finds no `ſ` for `s`, no `ς` for `σ`,
         // where /ui does — a miss no filter of grep's lines can bring back.
-        $process = new AsyncProcess($command, $this->rootDir, env: [...\getenv(), 'LC_ALL' => $this->grepWordsInC ? 'C' : 'C.UTF-8']);
+        $process = new AsyncProcess($command, $this->rootDir, env: [...\getenv(), 'LC_ALL' => 'C.UTF-8']);
         $started = $process->start(
             // grep's own failure (2, or 126/127 for a binary that cannot run)
             // with nothing printed is no answer; 1 is grep saying "no match",

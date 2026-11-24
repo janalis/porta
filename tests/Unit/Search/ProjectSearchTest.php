@@ -1412,13 +1412,11 @@ final class ProjectSearchTest extends TestCase
     }
 
     /**
-     * grep is handed -w, and run in C, only where its word holds the
-     * pattern's: a printable-ASCII literal with a word character at each
-     * end, and under -i no `s` or `k` (/iu folds `ſ` and `K` to them).
-     * Elsewhere it runs in UTF-8 with no -w: GNU grep -w in C.UTF-8 missed
-     * whole words beside a combining mark.
+     * grep is never handed -w, and runs in UTF-8: its word is not the
+     * pattern's, and -w in C, which held every line, read mask globs by
+     * bytes and Latin-1 files as text. A Whole Word search is a filter.
      */
-    public function testGrepChecksWordsOnlyInCAndOnlyWhereItsWordHoldsThePatterns(): void
+    public function testGrepIsNeverHandedWAndRunsInUtf8(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n"]);
         $tools = new TempProject([], 'porta-argvgrep-');
@@ -1426,28 +1424,12 @@ final class ProjectSearchTest extends TestCase
         $tools->write('grep', "#!/bin/sh\nprintf '%s %s\\n' \"\$LC_ALL\" \"\$*\" >> '{$log}'\nexit 1\n");
         \chmod($tools->path('grep'), permissions: 0o755);
         \putenv('PATH='.$tools->dir.':/bin');
-        $run = function (string $query, SearchOptions $options) use ($project, $log): string {
-            \file_put_contents($log, data: '');
-            $this->awaitSearch(new ProjectSearch($project->dir), query: $query, options: $options);
-            $searched = \array_values(\array_filter(\explode("\n", (string) \file_get_contents($log)), static fn (string $line): bool => \str_contains($line, ' -- ')));
-            $this->assertNotSame([], $searched, $query.': grep ran');
-            [$locale, $argv] = \explode(' ', $searched[0], limit: 2);
+        $this->awaitSearch(new ProjectSearch($project->dir), query: 'foo_1', options: new SearchOptions(caseSensitive: true, wholeWord: true));
+        $searched = \array_values(\array_filter(\explode("\n", (string) \file_get_contents($log)), static fn (string $line): bool => \str_contains($line, ' -- ')));
 
-            return $locale.(\str_contains($argv, ' -w ') ? ' -w' : '');
-        };
-        $word = new SearchOptions(caseSensitive: true, wholeWord: true);
-
-        $this->assertSame('C -w', $run('foo_1', $word));
-        $this->assertSame('C -w', $run('foo bar', $word), 'a space inside');
-        $this->assertSame('C -w', $run('foo', new SearchOptions(wholeWord: true)), 'under -i, no s or k');
-        $this->assertSame('C.UTF-8', $run('desk', new SearchOptions(wholeWord: true)), 'under -i, an s or a k');
-        $this->assertSame('C -w', $run('desk', $word), 'case-sensitive: any letter');
-        $this->assertSame('C.UTF-8', $run('$foo', $word), 'a non-word edge');
-        $this->assertSame('C.UTF-8', $run('foo$', $word), 'at either end');
-        $this->assertSame('C.UTF-8', $run('fooé', $word), 'not ASCII');
-        $this->assertSame('C.UTF-8', $run('fooébar', new SearchOptions(wholeWord: true)), 'not ASCII inside: C would not fold é under -i');
-        $this->assertSame('C.UTF-8', $run('foo', new SearchOptions(regex: true, caseSensitive: true, wholeWord: true)), 'a regex');
-        $this->assertSame('C.UTF-8', $run('foo', new SearchOptions(caseSensitive: true)), 'no Whole Word');
+        $this->assertNotSame([], $searched, 'grep ran');
+        $this->assertStringStartsWith('C.UTF-8 ', $searched[0]);
+        $this->assertStringNotContainsString(' -w ', $searched[0]);
     }
 
     /**
