@@ -188,14 +188,13 @@ final class ProjectSearchTest extends TestCase
      */
     public function testALongLineIsTriedNoFurtherThanAPathGoes(): void
     {
-        // On a server whose files this copy has not listed, no reading names
-        // one here, so every place is tried: what bounds it is PATH_MAX.
-        $server = new TempProject(['logs/app.json' => \str_repeat('{"t":"12:30:45"},', times: 10_000)."needle\n"]);
-        $cache = new TempProject();
-        $search = new ProjectSearch($cache->dir, new FakeRemoteTransport($server->dir)->filesystem($cache->dir)); // its first search, before --null is answered, reads without
+        // A server grep without --null, whose files this copy has not listed:
+        // no reading names one here, so every place is tried. PATH_MAX bounds it.
+        [$search, $kept] = $this->serverSearchWith(self::REFUSES_NULL, ['logs/app.json' => \str_repeat('{"t":"12:30:45"},', times: 10_000)."needle\n"]);
 
         $this->assertSame(['logs/app.json'], \array_column($this->awaitSearch($search, query: 'needle'), 'path'));
         $this->assertLessThan(1_000, \count(Probe::get($search, property: 'files')), 'the paths it checked');
+        unset($kept);
     }
 
     /** A search before the server is reached has no one to ask: --null is asked once it is. */
@@ -223,31 +222,85 @@ final class ProjectSearchTest extends TestCase
         );
         $search = new ProjectSearch($cache->dir, $remote);
         $this->awaitSearch($search, query: 'needle');
-        $this->assertFalse(Probe::get($search, property: 'nullAsked'), 'no server yet: not asked');
+        $this->assertSame([], Probe::get(Probe::object($search, 'answers'), property: 'asking'), 'no server yet: not asked');
 
         $source->transport = new FakeRemoteTransport($server->dir);
         $this->awaitSearch($search, query: 'needle');
 
-        $this->await(static fn (): bool => true === Probe::get($search, property: 'null'), what: 'the server, reached, to answer');
+        $this->assertTrue(self::takes($search), 'the server, reached, was asked, and the search waited for it');
     }
 
     /**
      * A search of a server whose grep runs $prelude first (a line of sh, given
      * the arguments) and then the real grep — and what must outlive it.
      *
+     * @param array<string, string> $files the server's
+     *
      * @return array{ProjectSearch, list<TempProject>}
      */
-    private function serverSearchWith(string $prelude): array
+    // @mago-expect lint:no-boolean-flag-parameter -- whether the tree was walked is the one fact the fixture varies
+    private function serverSearchWith(string $prelude, array $files = ['src/A.php' => "<?php\n// needle\n"], bool $walked = false): array
     {
         $tools = new TempProject([], 'porta-wrapgrep-');
         $real = (string) new ExecutableFinder()->find('grep');
         $tools->write('grep', "#!/bin/sh\n{$prelude}\nexec '{$real}' \"\$@\"\n");
         \chmod($tools->path('grep'), permissions: 0o755);
         \putenv('PATH='.$tools->dir.':'.\PORTA_TEST_PRISTINE_PATH);
-        $server = new TempProject(['src/A.php' => "<?php\n// needle\n"]);
+        $server = new TempProject($files);
         $cache = new TempProject();
+        $transport = new FakeRemoteTransport($server->dir);
+        $transport->walks = $walked;
+        $remote = $transport->filesystem($cache->dir);
+        if ($walked) {
+            $remote->poll();
+            $this->await(static fn (): bool => \array_any(\array_keys($files), static fn (string $file): bool => \is_file($cache->path($file))), what: 'the walk to land the placeholders');
+        }
 
-        return [new ProjectSearch($cache->dir, new FakeRemoteTransport($server->dir)->filesystem($cache->dir)), [$tools, $server, $cache]];
+        return [new ProjectSearch($cache->dir, $remote), [$tools, $server, $cache]];
+    }
+
+    /** A sh line for {@see serverSearchWith()}: a server grep that refuses --null, as BusyBox's may. */
+    private const string REFUSES_NULL = 'for a in "$@"; do [ "$a" = --null ] && exit 2; done';
+
+    /** @return bool|null what the search's grep said of $flag, null before it has */
+    private static function takes(ProjectSearch $search, string $flag = '--null'): ?bool
+    {
+        /** @var array<string, bool> $takes */
+        $takes = Probe::get(Probe::object($search, 'answers'), property: 'takes');
+
+        return $takes[$flag] ?? null;
+    }
+
+    /** A search waiting on grep's answers and replaced before they land never runs: only the one that replaced it answers. */
+    public function testASearchReplacedWhileItWaitsNeverAnswers(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n// needle\n// other\n"]);
+        $search = new ProjectSearch($project->dir);
+        $first = null;
+        $search->search('needle', static function (array $results) use (&$first): void {
+            $first = $results;
+        });
+        $this->assertNotNull(Probe::get(Probe::object($search, 'answers'), property: 'parked'), 'the premise: it waits on the answer');
+
+        $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: 'other'), 'path'));
+        $this->assertNull($first, 'the replaced search never ran');
+    }
+
+    /** One cancelled while it waits (the panel closed) does not run when the answer lands. */
+    public function testASearchCancelledWhileItWaitsNeverAnswers(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n// needle\n"]);
+        $search = new ProjectSearch($project->dir);
+        $answered = false;
+        $search->search('needle', static function () use (&$answered): void {
+            $answered = true;
+        });
+
+        $search->cancel();
+        $this->await(static fn (): bool => null !== self::takes($search), what: 'grep to answer');
+        $this->pump(0.2);
+
+        $this->assertFalse($answered);
     }
 
     /** A probe that gets no answer (ssh failing: 255) settles nothing: the next search asks again. */
@@ -256,12 +309,12 @@ final class ProjectSearchTest extends TestCase
         $marker = \sys_get_temp_dir().'/porta-flakygrep-'.\bin2hex(\random_bytes(4));
         [$search, $kept] = $this->serverSearchWith("if [ \"\$1\" = --null ] && [ \"\$2\" = -q ] && [ ! -e '{$marker}' ]; then : > '{$marker}'; exit 255; fi");
 
-        $this->awaitSearch($search, query: 'needle');
-        $this->await(static fn (): bool => \is_file($marker) && !Probe::get($search, property: 'nullAsked'), what: 'the first probe to get no answer');
-        $this->assertNull(Probe::get($search, property: 'null'), 'settled nothing');
+        $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: 'needle'), 'path'), 'searched all the same');
+        $this->assertFileExists($marker);
+        $this->assertNull(self::takes($search), 'settled nothing');
 
         $this->awaitSearch($search, query: 'needle');
-        $this->await(static fn (): bool => true === Probe::get($search, property: 'null'), what: 'the second probe to answer');
+        $this->assertTrue(self::takes($search), 'asked again, and answered');
         \unlink($marker);
         unset($kept);
     }
@@ -269,12 +322,11 @@ final class ProjectSearchTest extends TestCase
     /** A server whose grep refuses --null (BusyBox's may) is never handed it: its searches go on as they were. */
     public function testAServersGrepWithoutNullIsNotHandedIt(): void
     {
-        [$search, $kept] = $this->serverSearchWith('for a in "$@"; do [ "$a" = --null ] && exit 2; done');
+        [$search, $kept] = $this->serverSearchWith(self::REFUSES_NULL);
 
         $this->awaitSearch($search, query: 'needle');
-        $this->await(static fn (): bool => null !== Probe::get($search, property: 'null'), what: 'the server\'s grep to answer');
 
-        $this->assertFalse(Probe::get($search, property: 'null'));
+        $this->assertFalse(self::takes($search));
         $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: 'needle'), 'path'));
         $this->assertFalse(Probe::get($search, property: 'localOnly'), 'the server answered, not this copy');
         unset($kept);
@@ -503,9 +555,7 @@ final class ProjectSearchTest extends TestCase
     public function testAFileNameHoldingAColonNumberColonIsReadWhole(): void
     {
         $project = new TempProject(self::COLON_NAMES);
-        $search = new ProjectSearch($project->dir);
-        $this->awaitSearch($search, query: 'needle'); // asks, in the background, whether this grep takes --null
-        $this->await(static fn (): bool => null !== Probe::get($search, property: 'null'), what: 'this grep to answer');
+        $search = new ProjectSearch($project->dir); // its first search waits for this grep to say it takes --null
 
         $this->assertSame(
             [
@@ -520,21 +570,14 @@ final class ProjectSearchTest extends TestCase
     }
 
     /**
-     * A server's grep is read without a NUL until it says it takes --null:
-     * every `:N:` is then a place the name may end, overlapping ones too, and
-     * the first that names a file this copy holds is the hit. Beside
-     * `notes/a`, `notes/a:12:b.txt` cannot be told from line 12 of it: the
-     * shorter wins. Once the grep has said it takes it, names are exact.
+     * A server's grep that refuses --null is read without the NUL: every
+     * `:N:` is a place the name may end, overlapping ones too, and the first
+     * that names a file this copy holds is the hit. Beside `notes/a`,
+     * `notes/a:12:b.txt` cannot be told from line 12 of it: the shorter wins.
      */
-    public function testAServersGrepIsReadAtTheFirstPlaceANameEnds(): void
+    public function testAServersGrepWithoutNullIsReadAtTheFirstPlaceANameEnds(): void
     {
-        $server = new TempProject(self::COLON_NAMES);
-        $cache = new TempProject();
-        $transport = new FakeRemoteTransport($server->dir);
-        $transport->walks = true;
-        $remote = $transport->filesystem($cache->dir);
-        $remote->poll();
-        $this->await(static fn (): bool => \is_file($cache->path('notes/meeting-10:30')), what: 'the walk to land the placeholders');
+        [$search, $kept] = $this->serverSearchWith(self::REFUSES_NULL, self::COLON_NAMES, walked: true);
 
         $this->assertSame(
             [
@@ -543,12 +586,18 @@ final class ProjectSearchTest extends TestCase
                 ['notes/x:1:y:2:z.txt', 0,  'needle :7: tail'],
                 ['src/A.php',           1,  '// needle :5: here'],
             ],
-            $this->colonHits($search = new ProjectSearch($cache->dir, $remote)),
-            'the first search, before the server said whether its grep takes --null',
+            $this->colonHits($search),
         );
+        unset($kept);
+    }
 
-        // That grep does (the fake server's is this machine's): from then on, read exactly.
-        $this->await(static fn (): bool => true === Probe::get($search, property: 'null'), what: 'the server\'s grep to answer');
+    /** A server's grep that takes --null is asked so before the first search, which then reads names exactly. */
+    public function testAServersGrepWithNullReadsNamesExactly(): void
+    {
+        $server = new TempProject(self::COLON_NAMES);
+        $cache = new TempProject();
+        $remote = new FakeRemoteTransport($server->dir)->filesystem($cache->dir);
+
         $this->assertSame(
             [
                 ['notes/a:12:b.txt',    2, 'needle'],
@@ -556,7 +605,7 @@ final class ProjectSearchTest extends TestCase
                 ['notes/x:1:y:2:z.txt', 0, 'needle :7: tail'],
                 ['src/A.php',           1, '// needle :5: here'],
             ],
-            $this->colonHits($search),
+            $this->colonHits(new ProjectSearch($cache->dir, $remote)),
         );
         $remote->close();
     }

@@ -39,8 +39,16 @@ trait FindModalReads
         $search = Probe::object($wiring, 'projectSearch', 'projectSearch');
         \assert($search instanceof ProjectSearch, description: 'the wiring\'s controller holds the search engine');
         // Re-evaluates: it reads the objects' live state, it captures no scalar.
+        // A search parked on grep's answers (whether it takes --null, -P) has
+        // no process yet, and is not settled either.
+        $answers = Probe::object($search, 'answers');
         $this->await(
-            static fn (): bool => null === Probe::get($wiring, property: 'searchDebounce') && null === Probe::get($search, property: 'process') && null === Probe::get($search, property: 'slice'),
+            static fn (): bool => (
+                null === Probe::get($wiring, property: 'searchDebounce')
+                && null === Probe::get($answers, property: 'parked')
+                && null === Probe::get($search, property: 'process')
+                && null === Probe::get($search, property: 'slice')
+            ),
             what: 'the project search to settle',
         );
     }

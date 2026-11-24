@@ -12,8 +12,6 @@ use Porta\Support\Files;
 use Porta\Support\PathExecutables;
 use Revolt\EventLoop;
 use Symfony\Component\Finder\Finder;
-use Symfony\Component\Process\Exception\RuntimeException as ProcessRuntimeException;
-use Symfony\Component\Process\Process;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -67,17 +65,8 @@ final class ProjectSearch
     private ?string $grep = null;
     private bool $grepResolved = false;
 
-    /** Whether that grep takes `-P`; see {@see readsPcre()} — asked once, on the first regex search. */
-    private ?bool $pcre = null;
-
-    /**
-     * Whether the grep the searches run takes `--null` — this machine's, or a
-     * remote project's server's; see {@see nullFlag()}. Null until it answers.
-     */
-    private ?bool $null = null;
-
-    /** Whether that question is out: asked once it could be, again after no answer. */
-    private bool $nullAsked = false;
+    /** What the grep the searches run said it takes, asked in the background; see {@see whenAnswered()}. */
+    private readonly GrepAnswers $answers;
 
     /**
      * The search's answers to "is this a file here?", for a grep line read
@@ -101,7 +90,9 @@ final class ProjectSearch
     public function __construct(
         private readonly string $rootDir,
         private readonly ?RemoteFilesystem $remote = null,
-    ) {}
+    ) {
+        $this->answers = new GrepAnswers($rootDir);
+    }
 
     /**
      * Whether the last search of a remote project read only the files opened
@@ -141,6 +132,7 @@ final class ProjectSearch
         $this->cancel();
         $this->gaveUp = false;
         $this->localOnly = false;
+        $this->answers->newSearch();
         $paths = \is_array($scope) ? \array_values($scope) : [$scope];
         if ([] === $paths || '' === \trim($query)) {
             $onDone([]);
@@ -154,8 +146,24 @@ final class ProjectSearch
             // A query spanning lines can't go through line-based grep: scan whole files.
             \str_contains($query, "\n") => $this->builtIn($this->searchMultiline($pattern, $paths, $mask), $onDone),
             null === ($grep = $this->findGrep()) => $this->builtIn($this->searchWithPhp($pattern, $paths, $mask), $onDone),
-            default => $this->grep($grep, $query, $pattern, $onDone, $options, $paths, $mask),
+            default => $this->whenAnswered($grep, $options->regex, fn () => $this->grep($grep, $query, $pattern, $onDone, $options, $paths, $mask)),
         };
+    }
+
+    /**
+     * Run $search once $grep has said what it takes — --null, and -P for a
+     * regex here — asked in the background: the search waits, never the loop.
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- whether the query is a regex is the one fact deciding which questions it waits on
+    private function whenAnswered(string $grep, bool $regex, \Closure $search): void
+    {
+        $null = ['--null', '-q', 'x', '/dev/null'];
+        $this->answers->ask('--null', fn (): ?array => $this->onServer() ? $this->remote?->remoteCommand(['grep', ...$null]) : [$grep, ...$null]);
+        if ($regex && !$this->onServer()) {
+            $this->answers->ask('-P', static fn (): array => [$grep, '-qP', 'x', '/dev/null']);
+        }
+        // Parked till the last answer lands; a cancel drops it.
+        $this->answers->whenAnswered($search);
     }
 
     /**
@@ -221,8 +229,14 @@ final class ProjectSearch
         // hold `:12:` itself, and `path:line:` is then no way to tell. A
         // server's grep may not take it (BusyBox), and is read without.
         $this->files = [];
-        $null = $this->nullFlag($grep);
-        $command = $this->remote?->remoteCommand(['grep', ...$null, ...$args('-E')]) ?? [$grep, ...$null, ...$args($options->regex && $this->readsPcre($grep) ? '-P' : '-E')];
+        // --null ends each file name grep prints with a NUL, and a name holding
+        // `:12:` is then read exactly (GNU's, BSD's and ugrep take it; BusyBox's
+        // may not). -P reads a regex as the find bar does: under -E GNU grep reads
+        // POSIX ERE, where `\d` is a `d`, so `\d+` found "ddd". BSD grep has no -P
+        // and stays on -E, which reads `\d`, `\s`, `\w` and `\b` as PCRE does and
+        // refuses a lookaround outright, handing the search to the built-in engine.
+        $nul = $this->answers->takes('--null') ? ['--null'] : [];
+        $command = $this->remote?->remoteCommand(['grep', ...$nul, ...$args('-E')]) ?? [$grep, ...$nul, ...$args($options->regex && $this->answers->takes('-P') ? '-P' : '-E')];
 
         // A grep that cannot answer hands the search to the built-in engine.
         // Linux's posix_spawn refuses an unrunnable binary outright; macOS
@@ -264,6 +278,7 @@ final class ProjectSearch
 
     public function cancel(): void
     {
+        $this->answers->drop();
         $this->process?->cancel();
         $this->process = null;
         if (null !== $this->slice) {
@@ -907,59 +922,6 @@ final class ProjectSearch
     private function readFile(string $abs): string
     {
         return Files::read($abs);
-    }
-
-    /**
-     * `--null` once the grep the searches run — here, or on a remote
-     * project's server — has said it takes it; it then ends each file name it
-     * prints with a NUL (GNU's, BSD's and ugrep do; BusyBox's may not), and a
-     * name holding `:12:` is read exactly. Asked in the background, never on
-     * the loop: a search before the answer reads names without it.
-     *
-     * @return list<string>
-     */
-    private function nullFlag(string $grep): array
-    {
-        if (!$this->nullAsked) {
-            $ask = ['--null', '-q', 'x', '/dev/null'];
-            $probe = $this->onServer() ? $this->remote?->remoteCommand(['grep', ...$ask]) : [$grep, ...$ask];
-            // Asked once it can be: a server not reached yet has no one to answer.
-            $this->nullAsked =
-                null !== $probe
-                && new AsyncProcess($probe, $this->rootDir)->start(onExit: function (int $code): void {
-                    // 1 is no `x` in nothing, the flag taken; 2 a usage error, refused.
-                    // Anything else (ssh failing, the probe killed) is no answer: asked again.
-                    $this->nullAsked = 1 === $code || 2 === $code;
-                    $this->null = $this->nullAsked ? 1 === $code : null;
-                });
-        }
-
-        return true === $this->null ? ['--null'] : [];
-    }
-
-    /**
-     * Whether $grep reads PCRE (`-P`: GNU grep's), the dialect the find bar,
-     * the "bad regex" check and the highlights all speak. Under `-E` GNU grep
-     * reads POSIX ERE, where `\d` is a `d`, so the lines it picked were the
-     * wrong ones: `\d+` found "ddd". BSD grep has no `-P` and stays on `-E`,
-     * which reads `\d`, `\s`, `\w` and `\b` as PCRE does and refuses a
-     * lookaround outright — handing the search to the built-in engine.
-     */
-    private function readsPcre(string $grep): bool
-    {
-        try {
-            // An option grep does not know is a usage error (2); one it knows
-            // finds no `x` in nothing (1).
-            return $this->pcre ??= 1 === new Process([$grep, '-qP', 'x', '/dev/null'], timeout: 5)->run();
-
-            // Linux refuses to spawn a grep that cannot run (macOS spawns it,
-            // and reads its exit code): the search's own fallback takes over.
-            // @codeCoverageIgnoreStart
-        } catch (ProcessRuntimeException) {
-            return $this->pcre = false;
-        }
-
-        // @codeCoverageIgnoreEnd
     }
 
     private function findGrep(): ?string
