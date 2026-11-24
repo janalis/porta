@@ -49,6 +49,9 @@ final class ProjectSearch
         return \str_starts_with($relPath, self::HISTORY.'/');
     }
 
+    /** The longest path a file system takes (Linux's PATH_MAX; macOS's is 1024). */
+    private const int PATH_MAX = 4096;
+
     /** The largest file the PHP walk reads: 1 MiB. */
     private const int MAX_FILE_BYTES = 1_048_576;
 
@@ -67,17 +70,14 @@ final class ProjectSearch
     /** Whether that grep takes `-P`; see {@see readsPcre()} — asked once, on the first regex search. */
     private ?bool $pcre = null;
 
-    /** Whether that grep takes `--null`; see {@see readsNull()} — asked once, on the first local search. */
+    /**
+     * Whether the grep the searches run takes `--null` — this machine's, or a
+     * remote project's server's; see {@see nullFlag()}. Null until it answers.
+     */
     private ?bool $null = null;
 
-    /**
-     * Whether the SERVER's grep takes `--null`: asked once, in the background
-     * — on ssh a round trip — so null until it answers, and a search until
-     * then reads names without it.
-     */
-    private ?bool $serverNull = null;
-
-    private bool $serverNullAsked = false;
+    /** Whether that question is out: asked once it could be, again after no answer. */
+    private bool $nullAsked = false;
 
     /**
      * The search's answers to "is this a file here?", for a grep line read
@@ -221,7 +221,8 @@ final class ProjectSearch
         // hold `:12:` itself, and `path:line:` is then no way to tell. A
         // server's grep may not take it (BusyBox), and is read without.
         $this->files = [];
-        $command = $this->remote?->remoteCommand(['grep', ...$this->serverNull(), ...$args('-E')]) ?? $this->localGrep($grep, $args($options->regex && $this->readsPcre($grep) ? '-P' : '-E'));
+        $null = $this->nullFlag($grep);
+        $command = $this->remote?->remoteCommand(['grep', ...$null, ...$args('-E')]) ?? [$grep, ...$null, ...$args($options->regex && $this->readsPcre($grep) ? '-P' : '-E')];
 
         // A grep that cannot answer hands the search to the built-in engine.
         // Linux's posix_spawn refuses an unrunnable binary outright; macOS
@@ -370,7 +371,9 @@ final class ProjectSearch
     {
         $first = null;
         $pair = [];
-        for ($at = \strpos($line, needle: ':'); false !== $at; $at = \strpos($line, needle: ':', offset: $at + 1)) {
+        // No path is longer than PATH_MAX: past it, a `:N:` is the text's own.
+        // Unbounded, a 166 KB log line of timestamps held 871 MB of readings.
+        for ($at = \strpos($line, needle: ':'); false !== $at && $at <= self::PATH_MAX; $at = \strpos($line, needle: ':', offset: $at + 1)) {
             if (0 === $at || 1 !== \preg_match('/\G:(\d+):/', $line, $pair, offset: $at)) {
                 continue;
             }
@@ -907,6 +910,34 @@ final class ProjectSearch
     }
 
     /**
+     * `--null` once the grep the searches run — here, or on a remote
+     * project's server — has said it takes it; it then ends each file name it
+     * prints with a NUL (GNU's, BSD's and ugrep do; BusyBox's may not), and a
+     * name holding `:12:` is read exactly. Asked in the background, never on
+     * the loop: a search before the answer reads names without it.
+     *
+     * @return list<string>
+     */
+    private function nullFlag(string $grep): array
+    {
+        if (!$this->nullAsked) {
+            $ask = ['--null', '-q', 'x', '/dev/null'];
+            $probe = $this->onServer() ? $this->remote?->remoteCommand(['grep', ...$ask]) : [$grep, ...$ask];
+            // Asked once it can be: a server not reached yet has no one to answer.
+            $this->nullAsked =
+                null !== $probe
+                && new AsyncProcess($probe, $this->rootDir)->start(onExit: function (int $code): void {
+                    // 1 is no `x` in nothing, the flag taken; 2 a usage error, refused.
+                    // Anything else (ssh failing, the probe killed) is no answer: asked again.
+                    $this->nullAsked = 1 === $code || 2 === $code;
+                    $this->null = $this->nullAsked ? 1 === $code : null;
+                });
+        }
+
+        return true === $this->null ? ['--null'] : [];
+    }
+
+    /**
      * Whether $grep reads PCRE (`-P`: GNU grep's), the dialect the find bar,
      * the "bad regex" check and the highlights all speak. Under `-E` GNU grep
      * reads POSIX ERE, where `\d` is a `d`, so the lines it picked were the
@@ -914,58 +945,6 @@ final class ProjectSearch
      * which reads `\d`, `\s`, `\w` and `\b` as PCRE does and refuses a
      * lookaround outright — handing the search to the built-in engine.
      */
-    /**
-     * $grep run here on $args, ending each file name with a NUL when it can.
-     *
-     * @param list<string> $args
-     *
-     * @return list<string>
-     */
-    private function localGrep(string $grep, array $args): array
-    {
-        return $this->readsNull($grep) ? [$grep, '--null', ...$args] : [$grep, ...$args];
-    }
-
-    /**
-     * `--null` for the server's grep once it has said it takes it; the first
-     * search asks, without waiting for the answer.
-     *
-     * @return list<string>
-     */
-    private function serverNull(): array
-    {
-        if (!$this->serverNullAsked) {
-            $this->serverNullAsked = true;
-            $probe = $this->remote?->remoteCommand(['grep', '--null', '-q', 'x', '/dev/null']);
-            // As readsNull(): an option grep does not know is a usage error (2).
-            if (null !== $probe) {
-                new AsyncProcess($probe, $this->rootDir)->start(onExit: function (int $code): void {
-                    $this->serverNull = 1 === $code;
-                });
-            }
-        }
-
-        return true === $this->serverNull ? ['--null'] : [];
-    }
-
-    /**
-     * Whether $grep takes `--null`, which ends each file name it prints with a
-     * NUL — GNU's, BSD's and ugrep do; BusyBox's may not.
-     */
-    private function readsNull(string $grep): bool
-    {
-        try {
-            // As readsPcre(): an option grep does not know is a usage error (2).
-            return $this->null ??= 1 === new Process([$grep, '--null', '-q', 'x', '/dev/null'], timeout: 5)->run();
-
-            // @codeCoverageIgnoreStart
-        } catch (ProcessRuntimeException) {
-            return $this->null = false;
-        }
-
-        // @codeCoverageIgnoreEnd
-    }
-
     private function readsPcre(string $grep): bool
     {
         try {
