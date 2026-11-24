@@ -10,6 +10,7 @@ use Porta\Lsp\LspClientInterface;
 use Porta\Lsp\ServerLocator;
 use Porta\Lsp\Uri;
 use Porta\Plugin\Runtime\PluginHost;
+use Porta\Support\ComposerLayout;
 use Porta\Support\GitIgnored;
 use Porta\Support\LanguageMap;
 use Porta\Support\OrphanGuard;
@@ -242,10 +243,12 @@ final class LspProbeCommand extends Command
      */
     private static function files(string $root, int $perLanguage): array
     {
+        // and the vendor dir composer.json moved, by its path from the root
+        $moved = ComposerLayout::of($root)->vendorPath($root);
         $finder = Finder::create()
             ->files()
             ->in($root)
-            ->exclude(self::NOT_WALKED)
+            ->exclude([...self::NOT_WALKED, ...(null === $moved ? [] : ['/'.$moved])])
             ->ignoreDotFiles(false)
             ->ignoreUnreadableDirs()
             ->ignoreVCSIgnored(true)

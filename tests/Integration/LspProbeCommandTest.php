@@ -133,6 +133,21 @@ final class LspProbeCommandTest extends TestCase
         $this->assertSame(['A.php', 'B.php', 'C.php'], self::opened($made[1]));
     }
 
+    /** A vendor dir composer.json moved is left out too, by its path: a folder of its name elsewhere is the project's. */
+    public function testAMovedVendorDirIsNotOpened(): void
+    {
+        $this->project->write('composer.json', content: '{"config":{"vendor-dir":"deps"}}');
+        $this->project->write('deps/acme/E.php', content: '<?php // a dependency');
+        $this->project->write('src/deps/F.php', content: '<?php // the project\'s own');
+        $made = [];
+        $clients = static function () use (&$made): LspClientInterface {
+            return $made[] = new FakeLspClient();
+        };
+
+        $this->tester(['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]], $clients)->execute(['root' => $this->project->dir, '--listen' => 0.01, '--per-language' => 0]);
+        $this->assertSame(['A.php', 'B.php', 'C.php', 'F.php'], self::opened($made[0]));
+    }
+
     /** @return list<string> the basenames of the files $client was told were opened, in order */
     private static function opened(FakeLspClient $client): array
     {
