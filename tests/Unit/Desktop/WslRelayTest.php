@@ -203,6 +203,17 @@ final class WslRelayTest extends TestCase
         $this->assertStringNotContainsString('fread()', $this->output.$this->errors);
     }
 
+    /** A command that ignores the hangup is killed after a grace period: the relay, and wsl.exe, do not outlive the window for good. */
+    public function testACommandIgnoringTheHangupIsEndedAnyway(): void
+    {
+        $this->relay(['/bin/sh', '-c', "trap '' HUP; echo GO; while :; do sleep 0.05; done"]);
+        $this->await('GO');
+
+        \fclose($this->pipes[0]);
+
+        $this->assertNotSame(0, $this->exitStatus());
+    }
+
     public function testNoCommandIsRefused(): void
     {
         $this->relay([]);

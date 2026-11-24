@@ -76,6 +76,11 @@ $writeAll = static function ($stream, string $bytes): bool {
 
 $frames = '';
 $hostGone = false;
+// When the window went: the command has this long to end on its SIGHUP,
+// then its process group is killed. One that ignores the hangup kept the
+// relay, and so wsl.exe, alive for good.
+$goneAt = null;
+const HANGUP_GRACE = 3.0;
 // Once the command's last process leaves the terminal, reading it fails (EIO on
 // Linux) or ends, and does so at once, every time it is asked: read again, it
 // spun, and its PHP notice went into the very output this relay carries.
@@ -105,6 +110,7 @@ while (true) {
         if (false === $bytes || ('' === $bytes && feof(STDIN))) {
             // The window is gone: so is the terminal.
             $hostGone = true;
+            $goneAt = microtime(true);
             posix_kill($pid, SIGHUP);
             continue;
         }
@@ -135,6 +141,10 @@ while (true) {
             $writeAll($master, substr($frames, 5, $length));
             $frames = substr($frames, 5 + $length);
         }
+    }
+    if (null !== $goneAt && microtime(true) - $goneAt > HANGUP_GRACE) {
+        posix_kill(-$pid, SIGKILL); // its own session: setsid made it a group leader
+        $goneAt = null;
     }
     $status = proc_get_status($child);
     if (!$status['running']) {
