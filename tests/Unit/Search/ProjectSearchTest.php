@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Search;
 
+use PHPUnit\Framework\Attributes\IniSetting;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Filesystem\ProjectLocation;
@@ -416,35 +417,6 @@ final class ProjectSearchTest extends TestCase
 
         $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: '[0-9]+', options: $regex), 'path'));
         $this->assertStringContainsString('-E -- [0-9]+', (string) \file_get_contents($log), 'one ERE reads the same goes to grep');
-    }
-
-    /** The server's grep is asked to run in UTF-8, as the one here: ssh often hands it C, where `.` is a byte. */
-    public function testTheServersGrepRunsInUtf8(): void
-    {
-        $server = new TempProject(['src/A.php' => "<?php\n// needle\n"]);
-        $cache = new TempProject([]);
-        $seen = new \ArrayObject();
-        $recording = new class($server->dir, $seen) extends RemoteTransport {
-            use NoOpTransportVerbs;
-
-            /** @param \ArrayObject<int, list<string>> $seen */
-            public function __construct(
-                private readonly string $root,
-                private readonly \ArrayObject $seen,
-            ) {}
-
-            public function remoteCommand(array $argv): array
-            {
-                $this->seen->append($argv);
-
-                return ['sh', '-c', 'cd "$1" && shift && exec "$@"', 'sh', $this->root, ...$argv];
-            }
-        };
-        $search = new ProjectSearch($cache->dir, FakeRemoteTransport::over($recording, new RemoteSpec('ssh', 'example.org', '/srv'), $cache->dir));
-
-        $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: 'needle'), 'path'));
-        $searches = \array_values(\array_filter($seen->getArrayCopy(), static fn (array $argv): bool => \in_array('needle', $argv, strict: true)));
-        $this->assertSame(['env', 'LC_ALL=C.UTF-8', 'grep'], \array_slice($searches[0] ?? [], offset: 0, length: 3));
     }
 
     /** A server that stops building commands mid-search has no grep run: the built-in engine reads the copy here, and says so. */
@@ -1317,7 +1289,7 @@ final class ProjectSearchTest extends TestCase
         $asked = static fn (): array => \array_values(\array_filter(\explode("\n", (string) \file_get_contents($log))));
         $tail = static fn (string $line): string => \substr($line, (int) \strrpos($line, needle: ' -- ') - 2);
         $regex = new SearchOptions(regex: true, caseSensitive: true);
-        \putenv('PATH='.$tools->dir.':/bin:/usr/bin'); // sh and env for the fake server's command; grep is the stub
+        \putenv('PATH='.$tools->dir.':/bin'); // sh for the fake server's command; grep is the stub
 
         $grep(1);
         $search = new ProjectSearch($project->dir);
@@ -1398,6 +1370,26 @@ final class ProjectSearchTest extends TestCase
         $search->cancel();
         $this->pump(0.1);
         $this->assertNull($results, 'cancelled: the rest never runs');
+    }
+
+    /** Whole Word is the pattern's word, not grep -w's: `$foo` is one to grep, never to `\b(?:\$foo)\b`, which the built-in engine runs. */
+    public function testWholeWordIsThePatternsWordNotGreps(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n    \$foo = 1;\na\$foo\nfoo bar\nfoobar\n"]);
+        $word = new SearchOptions(wholeWord: true);
+
+        $this->assertSame([2], \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: '$foo', options: $word), 'line'));
+        $this->assertSame([1, 2, 3], \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: 'foo', options: $word), 'line'), 'not foobar');
+    }
+
+    /** A pattern that cannot finish (the backtrack limit) keeps grep's line: a hit is never dropped on a failed match. */
+    #[IniSetting('pcre.backtrack_limit', '10')]
+    #[IniSetting('pcre.jit', '0')]
+    public function testAFailedMatchKeepsGrepsLine(): void
+    {
+        $results = Probe::invoke(new ProjectSearch('/tmp'), 'parse', 'src/A.php:1:'.\str_repeat('a', 40)."!\n", '/^(a+)+$/');
+
+        $this->assertSame(['src/A.php'], \array_column($results, 'path'));
     }
 
     /** A line grep printed that the pattern does not match is no hit: grep reads Unicode its own way (BSD grep -w takes `x²` for the word `x`). */

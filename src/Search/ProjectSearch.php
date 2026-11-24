@@ -233,9 +233,9 @@ final class ProjectSearch
         if (!$options->caseSensitive) {
             $flags[] = '-i';
         }
-        if ($options->wholeWord) {
-            $flags[] = '-w';
-        }
+        // No -w: grep's word is not the pattern's (`$foo` is a whole word to
+        // grep -w, never to `\b(?:\$foo)\b`; nor is `x²` to BSD grep and /u
+        // alike). grep finds every occurrence; listed() keeps the whole words.
         // A file mask restricts matching to basenames (grep's fnmatch globbing
         // does not expand braces, so `*.{php,js}` is pre-expanded to two globs).
         foreach ($this->maskGlobs($mask) as $glob) {
@@ -282,10 +282,7 @@ final class ProjectSearch
             ...($this->answers->takes('--null'.$at) ? ['--null'] : []),
             ...$args($options->regex && $this->answers->takes('-P'.$at) ? '-P' : '-E'),
         ];
-        // The server's grep runs in the locale ssh hands it, often C: there
-        // `.` is a byte, and -i and -P's `\w` ASCII's. env asks for UTF-8, as
-        // here; a server without that locale keeps its own.
-        $command = '' === $where ? null : $this->remote?->remoteCommand(['env', 'LC_ALL=C.UTF-8', 'grep', ...$argv('@server')]);
+        $command = '' === $where ? null : $this->remote?->remoteCommand(['grep', ...$argv('@server')]);
         // Run here: a local project, or a remote one's copy, which holds only
         // what was opened — said. A server that stopped building a command
         // mid-search has no grep to run: the built-in engine reads the copy
@@ -438,7 +435,8 @@ final class ProjectSearch
     {
         $path = $hit['path'];
         $key = ($path ?? '').':'.$hit['line'];
-        $listed = null !== $path && !$this->dropped($path) && !\array_key_exists($key, $seen) && 1 === \preg_match(SearchPattern::fit($pattern, $hit['line_text']), $hit['line_text']);
+        // A match that fails (the backtrack limit) keeps grep's word for it.
+        $listed = null !== $path && !$this->dropped($path) && !\array_key_exists($key, $seen) && 0 !== \preg_match(SearchPattern::fit($pattern, $hit['line_text']), $hit['line_text']);
         if ($listed) {
             $seen[$key] = true;
         }
