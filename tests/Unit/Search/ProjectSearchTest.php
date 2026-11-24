@@ -24,6 +24,7 @@ use Porta\Tests\Support\TestTui;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Process\ExecutableFinder;
 
 final class ProjectSearchTest extends TestCase
 {
@@ -85,14 +86,15 @@ final class ProjectSearchTest extends TestCase
         $transport = new FakeRemoteTransport($server->dir);
         $remote = $transport->filesystem($cache->dir);
 
-        $results = $this->awaitSearch(new ProjectSearch($cache->dir, $remote), query: 'needle');
+        $results = $this->awaitSearch($search = new ProjectSearch($cache->dir, $remote), query: 'needle');
 
         $this->assertSame(
             [['path' => 'src/Deep.php', 'line' => 1]],
             \array_map(static fn (array $r): array => ['path' => $r['path'], 'line' => $r['line']], $results),
             'vendor/ is left out there as here',
         );
-        $this->assertSame(['run grep'], $transport->calls);
+        $this->awaitSearch($search, query: 'needle');
+        $this->assertSame(['run grep', 'run grep', 'run grep'], $transport->calls, 'whether its grep takes --null, asked once, then each search');
         $this->assertNull(
             new RemoteFilesystem(
                 new ProjectLocation(),
@@ -177,6 +179,27 @@ final class ProjectSearchTest extends TestCase
 
         $this->assertSame([$own.'/Own.php'], \array_column($this->awaitSearch(new ProjectSearch($cache->dir, $remote), query: 'needle'), 'path'));
         $remote->close();
+    }
+
+    /** A server whose grep refuses --null (BusyBox's may) is never handed it: its searches go on as they were. */
+    public function testAServersGrepWithoutNullIsNotHandedIt(): void
+    {
+        $tools = new TempProject([], 'porta-nonullgrep-');
+        $real = (string) new ExecutableFinder()->find('grep');
+        $tools->write('grep', "#!/bin/sh\nfor a in \"\$@\"; do [ \"\$a\" = --null ] && exit 2; done\nexec '{$real}' \"\$@\"\n");
+        \chmod($tools->path('grep'), permissions: 0o755);
+        \putenv('PATH='.$tools->dir.':'.\PORTA_TEST_PRISTINE_PATH);
+        $server = new TempProject(['src/A.php' => "<?php\n// needle\n"]);
+        $cache = new TempProject();
+        $remote = new FakeRemoteTransport($server->dir)->filesystem($cache->dir);
+        $search = new ProjectSearch($cache->dir, $remote);
+
+        $this->awaitSearch($search, query: 'needle');
+        $this->await(static fn (): bool => null !== Probe::get($search, property: 'serverNull'), what: 'the server\'s grep to answer');
+
+        $this->assertFalse(Probe::get($search, property: 'serverNull'));
+        $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: 'needle'), 'path'));
+        $this->assertFalse(Probe::get($search, property: 'localOnly'), 'the server answered, not this copy');
     }
 
     public function testGrepSearchFindsMatchesAndExcludesVendor(): void
@@ -416,10 +439,11 @@ final class ProjectSearchTest extends TestCase
     }
 
     /**
-     * A server's grep is read without a NUL: every `:N:` is a place the name
-     * may end, overlapping ones too, and the first that names a file this
-     * copy holds is the hit. Beside `notes/a`, `notes/a:12:b.txt` cannot be
-     * told from line 12 of it: the shorter wins — what the NUL is for here.
+     * A server's grep is read without a NUL until it says it takes --null:
+     * every `:N:` is then a place the name may end, overlapping ones too, and
+     * the first that names a file this copy holds is the hit. Beside
+     * `notes/a`, `notes/a:12:b.txt` cannot be told from line 12 of it: the
+     * shorter wins. Once the grep has said it takes it, names are exact.
      */
     public function testAServersGrepIsReadAtTheFirstPlaceANameEnds(): void
     {
@@ -438,7 +462,20 @@ final class ProjectSearchTest extends TestCase
                 ['notes/x:1:y:2:z.txt', 0,  'needle :7: tail'],
                 ['src/A.php',           1,  '// needle :5: here'],
             ],
-            $this->colonHits(new ProjectSearch($cache->dir, $remote)),
+            $this->colonHits($search = new ProjectSearch($cache->dir, $remote)),
+            'the first search, before the server said whether its grep takes --null',
+        );
+
+        // That grep does (the fake server's is this machine's): from then on, read exactly.
+        $this->await(static fn (): bool => true === Probe::get($search, property: 'serverNull'), what: 'the server\'s grep to answer');
+        $this->assertSame(
+            [
+                ['notes/a:12:b.txt',    2, 'needle'],
+                ['notes/meeting-10:30', 2, 'needle'],
+                ['notes/x:1:y:2:z.txt', 0, 'needle :7: tail'],
+                ['src/A.php',           1, '// needle :5: here'],
+            ],
+            $this->colonHits($search),
         );
         $remote->close();
     }

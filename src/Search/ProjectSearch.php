@@ -71,6 +71,15 @@ final class ProjectSearch
     private ?bool $null = null;
 
     /**
+     * Whether the SERVER's grep takes `--null`: asked once, in the background
+     * — on ssh a round trip — so null until it answers, and a search until
+     * then reads names without it.
+     */
+    private ?bool $serverNull = null;
+
+    private bool $serverNullAsked = false;
+
+    /**
      * The search's answers to "is this a file here?", for a grep line read
      * without a NUL: each is asked per line, and twice — counted, then parsed.
      *
@@ -212,7 +221,7 @@ final class ProjectSearch
         // hold `:12:` itself, and `path:line:` is then no way to tell. A
         // server's grep may not take it (BusyBox), and is read without.
         $this->files = [];
-        $command = $this->remote?->remoteCommand(['grep', ...$args('-E')]) ?? $this->localGrep($grep, $args($options->regex && $this->readsPcre($grep) ? '-P' : '-E'));
+        $command = $this->remote?->remoteCommand(['grep', ...$this->serverNull(), ...$args('-E')]) ?? $this->localGrep($grep, $args($options->regex && $this->readsPcre($grep) ? '-P' : '-E'));
 
         // A grep that cannot answer hands the search to the built-in engine.
         // Linux's posix_spawn refuses an unrunnable binary outright; macOS
@@ -915,6 +924,28 @@ final class ProjectSearch
     private function localGrep(string $grep, array $args): array
     {
         return $this->readsNull($grep) ? [$grep, '--null', ...$args] : [$grep, ...$args];
+    }
+
+    /**
+     * `--null` for the server's grep once it has said it takes it; the first
+     * search asks, without waiting for the answer.
+     *
+     * @return list<string>
+     */
+    private function serverNull(): array
+    {
+        if (!$this->serverNullAsked) {
+            $this->serverNullAsked = true;
+            $probe = $this->remote?->remoteCommand(['grep', '--null', '-q', 'x', '/dev/null']);
+            // As readsNull(): an option grep does not know is a usage error (2).
+            if (null !== $probe) {
+                new AsyncProcess($probe, $this->rootDir)->start(onExit: function (int $code): void {
+                    $this->serverNull = 1 === $code;
+                });
+            }
+        }
+
+        return true === $this->serverNull ? ['--null'] : [];
     }
 
     /**
