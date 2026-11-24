@@ -36,16 +36,23 @@ final class GrepAnswers
     /** @var array<int, array{list<string>, \Closure(): void}> by engine, the flags its search waits on, and the search */
     private array $waiting = [];
 
-    /** @param float $timeout seconds a question may take before it counts as unanswered */
+    /** Seconds a question may take before it counts as unanswered. */
+    private const float TIMEOUT = 5.0;
+
     public function __construct(
         private readonly string $rootDir,
-        private readonly float $timeout = 5.0,
     ) {}
 
     /** Whether grep said it takes $flag. */
     public function takes(string $flag): bool
     {
         return $this->takes[$flag] ?? false;
+    }
+
+    /** Whether grep has said, either way, whether it takes $flag. */
+    public function answered(string $flag): bool
+    {
+        return \array_key_exists($flag, $this->takes);
     }
 
     /** A new search: a question that got no answer may be asked again. */
@@ -75,10 +82,12 @@ final class GrepAnswers
         if (null === $command) {
             return;
         }
-        $this->asking[$flag] = new AsyncProcess($command, $this->rootDir, timeout: $this->timeout)->start(onExit: function (int $code) use ($flag): void {
+        $this->asking[$flag] = new AsyncProcess($command, $this->rootDir, timeout: self::TIMEOUT)->start(onExit: function (int $code) use ($flag): void {
             $this->asking[$flag] = false;
             $this->missed[$flag] = 1 !== $code && 2 !== $code;
-            $this->unreliable[$flag] = ($this->unreliable[$flag] ?? false) || $this->missed[$flag];
+            if ($this->missed[$flag]) {
+                $this->unreliable[$flag] = true;
+            }
             if (!$this->missed[$flag]) {
                 $this->takes[$flag] = 1 === $code;
             }
@@ -104,12 +113,14 @@ final class GrepAnswers
 
     private function runAnswered(): void
     {
-        foreach ($this->waiting as $id => [$flags, $search]) {
-            if (\array_any($flags, fn (string $flag): bool => ($this->asking[$flag] ?? false) && !($this->unreliable[$flag] ?? false))) {
+        // Read live, not a copy: a search run here may start or drop another.
+        foreach (\array_keys($this->waiting) as $id) {
+            $waiting = $this->waiting[$id] ?? null;
+            if (null === $waiting || \array_any($waiting[0], fn (string $flag): bool => ($this->asking[$flag] ?? false) && !($this->unreliable[$flag] ?? false))) {
                 continue;
             }
             unset($this->waiting[$id]);
-            $search();
+            $waiting[1]();
         }
     }
 }

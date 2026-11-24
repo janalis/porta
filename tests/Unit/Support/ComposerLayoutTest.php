@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Support;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Porta\Filesystem\ProjectLocation;
 use Porta\Support\ComposerLayout;
 use Porta\Tests\Support\TempProject;
 
@@ -121,7 +122,8 @@ final class ComposerLayoutTest extends TestCase
     public function testARemoteProjectsCopyReadsNoGlobalConfig(): void
     {
         $home = new TempProject(['config.json' => '{"config":{"bin-dir":"tools"}}']);
-        $copy = new TempProject(['.porta/remote.json' => '{"url": "ssh://example.org/srv"}']);
+        // Written where ProjectLocation keeps it: ComposerLayout spells the path itself.
+        $copy = new TempProject([ProjectLocation::MARKER => '{"url": "ssh://example.org/srv"}']);
         $was = \getenv('COMPOSER_HOME');
         \putenv('COMPOSER_HOME='.$home->dir);
         try {

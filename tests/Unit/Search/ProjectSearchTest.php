@@ -222,12 +222,13 @@ final class ProjectSearchTest extends TestCase
         );
         $search = new ProjectSearch($cache->dir, $remote);
         $this->awaitSearch($search, query: 'needle');
-        $this->assertSame([], Probe::get(Probe::object($search, 'answers'), property: 'asking'), 'no server yet: not asked');
+        $this->assertTrue(self::takes($search), 'no server yet: searched here, and this machine\'s grep was asked');
+        $this->assertNull(self::takes($search, '--null@server'), 'the server\'s, not');
 
         $source->transport = new FakeRemoteTransport($server->dir);
         $this->awaitSearch($search, query: 'needle');
 
-        $this->assertTrue(self::takes($search), 'the server, reached, was asked, and the search waited for it');
+        $this->assertTrue(self::takes($search, '--null@server'), 'the server, reached, was asked, and the search waited for it');
     }
 
     /**
@@ -303,6 +304,36 @@ final class ProjectSearchTest extends TestCase
         $this->assertFalse($answered);
     }
 
+    /**
+     * A regex here whose -P question got no answer is never handed to grep
+     * as ERE (GNU's reads `\d+` as "ddd" there): the built-in engine reads it.
+     */
+    public function testARegexWithNoAnswerAboutPcreIsReadByTheBuiltInEngine(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n// 42\n"]);
+        $tools = new TempProject([], 'porta-nopgrep-');
+        $log = $tools->path('argv.log');
+        $tools->write('grep', "#!/bin/sh\nif [ \"\$1\" = --null ] && [ \"\$2\" = -q ]; then exit 1; fi\nif [ \"\$1\" = -qP ]; then exit 255; fi\nprintf '%s\\n' \"\$*\" >> '{$log}'\nexit 1\n");
+        \chmod($tools->path('grep'), permissions: 0o755);
+        \putenv('PATH='.$tools->dir.':/bin');
+
+        $results = $this->awaitSearch(new ProjectSearch($project->dir), query: '\d+', options: new SearchOptions(regex: true));
+
+        $this->assertSame(['src/A.php'], \array_column($results, 'path'), 'found, by the engine that reads it as PCRE');
+        $this->assertFileDoesNotExist($log, 'grep was never handed it');
+    }
+
+    /** On a server reached, a regex asks this machine's grep nothing about -P: the server's is asked for ERE. */
+    public function testARegexOnAServerWaitsOnNoQuestionOfThisMachine(): void
+    {
+        $server = new TempProject(['src/A.php' => "<?php\n// 42\n"]);
+        $cache = new TempProject();
+        $search = new ProjectSearch($cache->dir, new FakeRemoteTransport($server->dir)->filesystem($cache->dir));
+
+        $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: '[0-9]+', options: new SearchOptions(regex: true)), 'path'));
+        $this->assertArrayNotHasKey('-P', (array) Probe::get(Probe::object($search, 'answers'), property: 'takes'));
+    }
+
     /** A probe that gets no answer (ssh failing: 255) settles nothing: the next search asks again. */
     public function testAProbeWithNoAnswerIsAskedAgain(): void
     {
@@ -311,10 +342,11 @@ final class ProjectSearchTest extends TestCase
 
         $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: 'needle'), 'path'), 'searched all the same');
         $this->assertFileExists($marker);
-        $this->assertNull(self::takes($search), 'settled nothing');
+        $this->assertNull(self::takes($search, '--null@server'), 'settled nothing');
 
+        // Asked again; once unanswered, it is not waited on, but it answers.
         $this->awaitSearch($search, query: 'needle');
-        $this->assertTrue(self::takes($search), 'asked again, and answered');
+        $this->await(static fn (): bool => true === self::takes($search, '--null@server'), what: 'the second question to answer');
         \unlink($marker);
         unset($kept);
     }
@@ -326,7 +358,7 @@ final class ProjectSearchTest extends TestCase
 
         $this->awaitSearch($search, query: 'needle');
 
-        $this->assertFalse(self::takes($search));
+        $this->assertFalse(self::takes($search, '--null@server'));
         $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: 'needle'), 'path'));
         $this->assertFalse(Probe::get($search, property: 'localOnly'), 'the server answered, not this copy');
         unset($kept);

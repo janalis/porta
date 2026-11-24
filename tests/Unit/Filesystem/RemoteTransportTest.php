@@ -133,4 +133,23 @@ final class RemoteTransportTest extends TestCase
         $this->assertSame(['fetch composer.json', 'walk ', 'list '], $declining->calls);
         $files->close();
     }
+
+    /** Whether a transport runs commands is whether it overrides remoteCommand(): asked before one is built. */
+    public function testATransportRunsCommandsWhenItSaysHowToRunOne(): void
+    {
+        $none = new class extends RemoteTransport {
+            use NoOpTransportVerbs;
+        };
+        $some = new class extends RemoteTransport {
+            use NoOpTransportVerbs;
+
+            public function remoteCommand(array $argv): array
+            {
+                return $argv;
+            }
+        };
+
+        $this->assertFalse($none->runsCommands());
+        $this->assertTrue($some->runsCommands());
+    }
 }
