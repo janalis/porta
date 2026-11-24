@@ -138,8 +138,7 @@ final class ProjectSearchTest extends TestCase
         $this->assertSame(['lib/deps/acme/Lib.php', 'lib/deps/other/X.php'], $named, 'named as the scope, its hits are kept');
         $mixed = \array_column($this->awaitSearch(new ProjectSearch($cache->dir, $remote), query: 'needle', scope: ['lib', 'lib/deps/acme']), 'path');
         \sort($mixed);
-        // Overlapping scope paths each hand grep the file: the set is what matters here.
-        $this->assertSame(['lib/Own.php', 'lib/deps/acme/Lib.php'], \array_values(\array_unique($mixed)), 'per scope path: one naming a part of it keeps that part only');
+        $this->assertSame(['lib/Own.php', 'lib/deps/acme/Lib.php'], $mixed, 'per scope path: one naming a part of it keeps that part only — once');
 
         // More hits there than a search keeps, read first and long enough to
         // come in many chunks: they must not stop it before the real one.
@@ -347,6 +346,25 @@ final class ProjectSearchTest extends TestCase
 
         $this->assertSame(['vendor/Own.php'], \array_column($this->awaitSearch(new ProjectSearch($cache->dir, $remote), query: 'needle', scope: 'vendor'), 'path'));
         $remote->close();
+    }
+
+    /** Overlapping scope paths reach a file twice; each hit is listed once, by grep as by the built-in engine. */
+    public function testOverlappingScopePathsListEachHitOnce(): void
+    {
+        $project = new TempProject(['lib/a/A.php' => "<?php\n// needle\n// needle\n", 'lib/B.php' => "<?php\n// needle\n"]);
+        $hits = function () use ($project): array {
+            $hits = \array_map(
+                static fn (array $r): string => $r['path'].':'.$r['line'],
+                $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle', scope: ['lib', 'lib/a']),
+            );
+            \sort($hits); // the engines list in their own orders; which hits, and how often, is the point
+
+            return $hits;
+        };
+
+        $this->assertSame(['lib/B.php:1', 'lib/a/A.php:1', 'lib/a/A.php:2'], $hits(), 'grep');
+        \putenv('PATH=/nonexistent');
+        $this->assertSame(['lib/B.php:1', 'lib/a/A.php:1', 'lib/a/A.php:2'], $hits(), 'the built-in engine');
     }
 
     /** A scope holding nothing but a skipped folder leaves grep nothing to read — not its stdin, where it would wait. */

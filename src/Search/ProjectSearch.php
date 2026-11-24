@@ -347,11 +347,16 @@ final class ProjectSearch
         $results = [];
         // A grep run on the server cannot be handed the way past a moved
         // vendor dir, as one here is: its hits there are dropped instead.
+        // grep prints a file once per scope path that reaches it — `lib` and
+        // `lib/a` both reach `lib/a` — where the built-in engine reads it
+        // once: each hit is listed once, by either.
+        $seen = [];
         foreach (\explode("\n", $output) as $line) {
             $hit = $this->hit($line);
-            if (null === $hit['path'] || $this->dropped($hit['path'])) {
+            if (null === $hit['path'] || $this->dropped($hit['path']) || \array_key_exists($hit['path'].':'.$hit['line'], $seen)) {
                 continue;
             }
+            $seen[$hit['path'].':'.$hit['line']] = true;
             $results[] = ['path' => $hit['path'], 'line' => $hit['line'], 'text' => $hit['text'], 'ranges' => $this->rangesFor($hit['text'], $pattern)];
             if (\count($results) >= self::MAX_RESULTS) {
                 break;
