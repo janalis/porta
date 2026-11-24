@@ -18,6 +18,9 @@ final class WslRelayTest extends TestCase
 
     private string $output = '';
 
+    /** What the relay wrote to its stderr, drained while waiting for it to end. */
+    private string $errors = '';
+
     /**
      * A relay a test left running is ended as the window would end it. Killing
      * the relay alone left its command behind: the command has a session of its
@@ -93,7 +96,12 @@ final class WslRelayTest extends TestCase
     private function exitStatus(): int
     {
         $deadline = \microtime(true) + 8.0;
+        \stream_set_blocking($this->pipes[2], enable: false);
         do {
+            // What it still prints must flow, or the relay blocks writing it
+            // and never sees its command end — as closeTheWindow() drains.
+            $this->output .= (string) \fread($this->pipes[1], length: 65_536);
+            $this->errors .= (string) \fread($this->pipes[2], length: 65_536);
             $status = \proc_get_status($this->process);
             \usleep(20_000);
         } while ($status['running'] && \microtime(true) < $deadline);
@@ -129,7 +137,7 @@ final class WslRelayTest extends TestCase
         }
         \stream_set_blocking($this->pipes[2], enable: false);
 
-        return $report.'Its stderr: '.\fread($this->pipes[2], length: 65_536);
+        return $report.'Its stderr: '.$this->errors.\fread($this->pipes[2], length: 65_536);
     }
 
     private function type(string $bytes): void
@@ -188,6 +196,11 @@ final class WslRelayTest extends TestCase
         \fclose($this->pipes[0]);
 
         $this->assertNotSame(0, $this->exitStatus());
+        // On Linux the terminal then fails every read (EIO). Each read printed
+        // PHP's notice into the output this relay carries — once a run here,
+        // a pipeful on a loaded runner, where it blocked writing and never
+        // saw its command end (wchan=anon_pipe_write, the command a zombie).
+        $this->assertStringNotContainsString('fread()', $this->output.$this->errors);
     }
 
     public function testNoCommandIsRefused(): void

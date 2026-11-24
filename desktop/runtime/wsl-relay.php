@@ -76,21 +76,32 @@ $writeAll = static function ($stream, string $bytes): bool {
 
 $frames = '';
 $hostGone = false;
+// Once the command's last process leaves the terminal, reading it fails (EIO on
+// Linux) or ends, and does so at once, every time it is asked: read again, it
+// spun, and its PHP notice went into the very output this relay carries.
+$terminalOpen = true;
 $exit = null;
 while (true) {
-    $read = $hostGone ? [$master] : [$master, STDIN];
+    $read = [...($terminalOpen ? [$master] : []), ...($hostGone ? [] : [STDIN])];
     $write = $except = null;
-    if (false === @stream_select($read, $write, $except, 0, 100_000)) {
+    if ([] === $read) {
+        usleep(100_000); // nothing left to carry: wait for the command to be gone
+    } elseif (false === @stream_select($read, $write, $except, 0, 100_000)) {
         pcntl_signal_dispatch();
     }
     foreach ($read as $stream) {
-        $bytes = fread($stream, 65_536);
         if ($stream === $master) {
-            if (false !== $bytes && '' !== $bytes && !$writeAll(STDOUT, $bytes)) {
+            $bytes = @fread($master, 65_536);
+            if (false === $bytes || ('' === $bytes && feof($master))) {
+                $terminalOpen = false;
+                continue;
+            }
+            if ('' !== $bytes && !$writeAll(STDOUT, $bytes)) {
                 break 2;
             }
             continue;
         }
+        $bytes = fread($stream, 65_536);
         if (false === $bytes || ('' === $bytes && feof(STDIN))) {
             // The window is gone: so is the terminal.
             $hostGone = true;
@@ -129,7 +140,7 @@ while (true) {
     if (!$status['running']) {
         $exit = $status['signaled'] ? 128 + $status['termsig'] : $status['exitcode'];
         // What it printed last is still on its way.
-        while ('' !== ($bytes = (string) @fread($master, 65_536))) {
+        while ($terminalOpen && '' !== ($bytes = (string) @fread($master, 65_536))) {
             $writeAll(STDOUT, $bytes);
         }
         break;
