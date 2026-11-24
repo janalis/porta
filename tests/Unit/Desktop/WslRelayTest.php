@@ -115,6 +115,19 @@ final class WslRelayTest extends TestCase
      * thirty full CI suites, never in a loop of this test alone (480 runs, on the
      * hosted runner and a VM): the failure has to say why itself.
      */
+    /** {@see exitStatus()} for a relay whose stdout this test has closed. */
+    private function exitStatusUnread(): int
+    {
+        $deadline = \microtime(true) + 8.0;
+        do {
+            $status = \proc_get_status($this->process);
+            \usleep(20_000);
+        } while ($status['running'] && \microtime(true) < $deadline);
+        $this->assertFalse($status['running'], 'the relay ended');
+
+        return $status['exitcode'];
+    }
+
     private function stillRunning(int $pid): string
     {
         $read = static fn (string $file): string => \is_readable($file) ? (string) \file_get_contents($file) : '';
@@ -212,6 +225,28 @@ final class WslRelayTest extends TestCase
         \fclose($this->pipes[0]);
 
         $this->assertNotSame(0, $this->exitStatus());
+    }
+
+    /**
+     * A command that ignores the hangup and keeps printing: once the window
+     * is gone, the relay's write fails, and it ends the command before it
+     * leaves — it left it running with no one to see it.
+     */
+    public function testACommandStillPrintingIsEndedWhenItsWindowCannotTakeIt(): void
+    {
+        $marker = \tempnam(\sys_get_temp_dir(), prefix: 'porta-relay-');
+        $this->relay(['/bin/sh', '-c', "trap '' HUP; echo GO; while :; do echo tick; touch '{$marker}'; sleep 0.05; done"]);
+        $this->await('GO');
+
+        \fclose($this->pipes[0]);
+        \fclose($this->pipes[1]); // the window gone: no one reads what it prints
+        $this->assertNotSame(0, $this->exitStatusUnread());
+        \clearstatcache();
+        $last = (int) \filemtime($marker);
+        \usleep(1_200_000);
+        \clearstatcache();
+        $this->assertSame($last, (int) \filemtime($marker), 'the command ends with the relay');
+        \unlink($marker);
     }
 
     public function testNoCommandIsRefused(): void

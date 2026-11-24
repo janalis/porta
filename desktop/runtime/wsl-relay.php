@@ -78,7 +78,8 @@ $frames = '';
 $hostGone = false;
 // When the window went: the command has this long to end on its SIGHUP,
 // then its process group is killed. One that ignores the hangup kept the
-// relay, and so wsl.exe, alive for good.
+// relay, and so wsl.exe, alive for good. A child that left the group (its own
+// setsid, as a PTY run does) is not reached: its own terminal is its own.
 $goneAt = null;
 const HANGUP_GRACE = 3.0;
 // Once the command's last process leaves the terminal, reading it fails (EIO on
@@ -102,6 +103,10 @@ while (true) {
                 continue;
             }
             if ('' !== $bytes && !$writeAll(STDOUT, $bytes)) {
+                // Nowhere to carry it: the window is gone. Leaving now, the
+                // command would outlive it — ended first, as the grace would.
+                posix_kill(-$pid, SIGKILL);
+
                 break 2;
             }
             continue;
