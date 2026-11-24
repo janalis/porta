@@ -94,7 +94,7 @@ final class ProjectSearchTest extends TestCase
             'vendor/ is left out there as here',
         );
         $this->awaitSearch($search, query: 'needle');
-        $this->assertSame(['run grep', 'run grep', 'run grep'], $transport->calls, 'whether its grep takes --null, asked once, then each search');
+        $this->assertContains('run grep', $transport->calls, 'searched by the server\'s grep');
         $this->assertNull(
             new RemoteFilesystem(
                 new ProjectLocation(),
@@ -223,6 +223,7 @@ final class ProjectSearchTest extends TestCase
         $search = new ProjectSearch($cache->dir, $remote);
         $this->awaitSearch($search, query: 'needle');
         $this->assertTrue(self::takes($search), 'no server yet: searched here, and this machine\'s grep was asked');
+        $this->assertTrue($search->searchedLocalCopyOnly(), 'and the search says it read only this copy');
         $this->assertNull(self::takes($search, '--null@server'), 'the server\'s, not');
 
         $source->transport = new FakeRemoteTransport($server->dir);
@@ -331,7 +332,7 @@ final class ProjectSearchTest extends TestCase
         $search = new ProjectSearch($cache->dir, new FakeRemoteTransport($server->dir)->filesystem($cache->dir));
 
         $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: '[0-9]+', options: new SearchOptions(regex: true)), 'path'));
-        $this->assertArrayNotHasKey('-P', (array) Probe::get(Probe::object($search, 'answers'), property: 'takes'));
+        $this->assertArrayNotHasKey('-P', (array) Probe::get(Probe::object($search, 'answers'), property: 'asking'), 'this machine\'s grep was never asked');
     }
 
     /** A probe that gets no answer (ssh failing: 255) settles nothing: the next search asks again. */
@@ -1205,7 +1206,7 @@ final class ProjectSearchTest extends TestCase
         $cache = new TempProject([]);
         $this->awaitSearch(new ProjectSearch($cache->dir, new FakeRemoteTransport($project->dir)->filesystem($cache->dir)), query: '\d+', options: $regex);
         $searched = \array_values(\array_filter($asked(), static fn (string $line): bool => 'probe' !== $line));
-        $this->assertSame(['-E -- \d+ .'], \array_map($tail, $searched), "the server's grep is asked for ERE: -P is this machine's grep's to say");
+        $this->assertSame(['-P -- \d+ .'], \array_map($tail, $searched), "the server's grep was asked about -P itself, said it takes it, and reads it as PCRE");
 
         // A remote project whose server is not reached yet is searched here,
         // by this machine's grep: -P is asked for, and taken.

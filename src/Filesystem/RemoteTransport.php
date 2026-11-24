@@ -164,17 +164,6 @@ abstract class RemoteTransport
     }
 
     /**
-     * Whether this transport runs commands on the server at all — asked
-     * before one is built: whether a search runs there or here decides what
-     * is asked of the grep that runs it. By default, whether the subclass
-     * overrides remoteCommand().
-     */
-    public function runsCommands(): bool
-    {
-        return self::class !== new \ReflectionMethod($this, 'remoteCommand')->getDeclaringClass()->getName();
-    }
-
-    /**
      * Whether $failure, which this transport answered, is the server refusing
      * the login. Core then asks again only after a long pause — or when this
      * transport says what stopped it changed ({@see retryNow()}) — since a

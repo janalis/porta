@@ -358,12 +358,6 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
         return $this->transport()?->remoteCommand($argv);
     }
 
-    /** Whether a command runs on the server now: false before a plugin serves it, or when its transport runs none. */
-    public function runsCommands(): bool
-    {
-        return $this->transport()?->runsCommands() ?? false;
-    }
-
     /** Changes not on the server: on their way, or refused and kept here. */
     #[\Override]
     public function pending(): int
