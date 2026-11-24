@@ -83,6 +83,12 @@ final class ProjectSearch
     private bool $gaveUp = false;
 
     /**
+     * Whether grep checked the word rule itself (-w), or none was asked: a
+     * line whose match could not finish is then grep's word against none.
+     */
+    private bool $grepWords = true;
+
+    /**
      * @param GrepAnswers|null $answers shared by every engine searching this project, so grep is asked once
      *                                  — an engine made per call (an agent's search) asks nothing again
      */
@@ -233,9 +239,17 @@ final class ProjectSearch
         if (!$options->caseSensitive) {
             $flags[] = '-i';
         }
-        // No -w: grep's word is not the pattern's (`$foo` is a whole word to
-        // grep -w, never to `\b(?:\$foo)\b`; nor is `x²` to BSD grep and /u
-        // alike). grep finds every occurrence; listed() keeps the whole words.
+        // grep's word is not the pattern's: `$foo` is a whole word to grep -w,
+        // never to `\b(?:\$foo)\b`, and `foo²` is to BSD grep, not to /u. So
+        // grep finds every occurrence and listed() keeps the whole words —
+        // but for a literal with a word character at each end, -w first:
+        // there grep's lines hold every line the pattern's (a short word
+        // would print most of the project otherwise).
+        $grepWords = $options->wholeWord && !$options->regex && 1 === \preg_match('/^\w(?:.*\w)?$/sD', $query);
+        if ($grepWords) {
+            $flags[] = '-w';
+        }
+        $this->grepWords = $grepWords || !$options->wholeWord;
         // A file mask restricts matching to basenames (grep's fnmatch globbing
         // does not expand braces, so `*.{php,js}` is pre-expanded to two globs).
         foreach ($this->maskGlobs($mask) as $glob) {
@@ -422,11 +436,12 @@ final class ProjectSearch
 
     /**
      * The path of grep's $hit if it is listed, and then it is $seen; null if
-     * not. Listed is a line that names
-     * a path, not dropped, not listed already — and that $pattern, the one
-     * the built-in engine runs and the panel highlights with, matches. grep
-     * reads Unicode its own way: BSD grep -w takes `x²` for the word `x`,
-     * where `\b` under /u does not; a line only grep matched is no hit.
+     * not. Listed is a line that names a path, not dropped, not listed
+     * already — and that $pattern, the one the built-in engine runs and the
+     * panel highlights with, matches: grep reads Unicode and words its own
+     * way, and a line only grep matched is no hit. A match that could not
+     * finish (a limit) keeps grep's line where grep checked the same rule;
+     * either way the search says it gave up.
      *
      * @param array{path: ?string, line: int, text: string, line_text: string} $hit
      * @param array<string, bool>                                            $seen by `path:line`
@@ -435,13 +450,29 @@ final class ProjectSearch
     {
         $path = $hit['path'];
         $key = ($path ?? '').':'.$hit['line'];
-        // A match that fails (the backtrack limit) keeps grep's word for it.
-        $listed = null !== $path && !$this->dropped($path) && !\array_key_exists($key, $seen) && 0 !== \preg_match(SearchPattern::fit($pattern, $hit['line_text']), $hit['line_text']);
+        $listed = null !== $path && !$this->dropped($path) && !\array_key_exists($key, $seen) && ($this->matchOf($pattern, $hit['line_text']) ?? $this->grepWords);
         if ($listed) {
             $seen[$key] = true;
         }
 
         return $listed ? $path : null;
+    }
+
+    /**
+     * Whether $pattern matches $line; null when the match could not finish (a
+     * backtrack, recursion or JIT stack limit). A match that fails at all —
+     * a limit, or a pattern that does not compile without /u on a line that
+     * is not UTF-8 — is said: the search gave up on it.
+     */
+    private function matchOf(string $pattern, string $line): ?bool
+    {
+        \set_error_handler(static fn (): bool => true);
+        $matched = \preg_match(SearchPattern::fit($pattern, $line), $line);
+        \restore_error_handler();
+        $this->gaveUp = $this->gaveUp || false === $matched;
+        $limit = \in_array(\preg_last_error(), [\PREG_BACKTRACK_LIMIT_ERROR, \PREG_RECURSION_LIMIT_ERROR, \PREG_JIT_STACKLIMIT_ERROR], strict: true);
+
+        return false === $matched && $limit ? null : 1 === $matched;
     }
 
     /** Whether a server grep's hit at $path is dropped: in the vendor dir it moved, and in no scope path that names it. */
@@ -563,7 +594,8 @@ final class ProjectSearch
         foreach ($this->texts($paths, $mask) as $rel => $content) {
             // Not explode('') for a file passed over: its one empty line is a match for `^`.
             foreach (null === $content ? [] : \explode("\n", $content) as $lineIndex => $line) {
-                if (1 !== \preg_match(SearchPattern::fit($pattern, $line), $line)) {
+                // No grep stands behind the line here: one that could not finish is no hit.
+                if (true !== $this->matchOf($pattern, $line)) {
                     continue;
                 }
 

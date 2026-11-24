@@ -1382,14 +1382,101 @@ final class ProjectSearchTest extends TestCase
         $this->assertSame([1, 2, 3], \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: 'foo', options: $word), 'line'), 'not foobar');
     }
 
+    /** grep is handed -w only where its lines hold every whole-word line the pattern's do: a literal with a word character at each end. */
+    public function testGrepChecksWordsOnlyWhereItsWordHoldsThePatterns(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n"]);
+        $tools = new TempProject([], 'porta-argvgrep-');
+        $log = $tools->path('argv.log');
+        $tools->write('grep', "#!/bin/sh\nprintf '%s\\n' \"\$*\" >> '{$log}'\nexit 1\n");
+        \chmod($tools->path('grep'), permissions: 0o755);
+        \putenv('PATH='.$tools->dir.':/bin');
+        $handed = function (string $query, SearchOptions $options) use ($project, $log): bool {
+            \file_put_contents($log, data: '');
+            $this->awaitSearch(new ProjectSearch($project->dir), query: $query, options: $options);
+            $searched = \array_values(\array_filter(\explode("\n", (string) \file_get_contents($log)), static fn (string $line): bool => \str_contains($line, ' -- ')));
+
+            return \str_contains($searched[0] ?? '', '-w ');
+        };
+
+        $this->assertTrue($handed('foo_1', new SearchOptions(wholeWord: true)));
+        $this->assertFalse($handed('$foo', new SearchOptions(wholeWord: true)), 'a non-word edge');
+        $this->assertFalse($handed('foo$', new SearchOptions(wholeWord: true)), 'at either end');
+        $this->assertFalse($handed('foo', new SearchOptions(regex: true, wholeWord: true)), 'a regex');
+        $this->assertFalse($handed('foo', new SearchOptions()), 'no Whole Word');
+    }
+
+    /**
+     * A Whole Word line whose match could not finish is grep's word only
+     * where grep checked it: without -w, grep printed every occurrence.
+     */
+    #[IniSetting('pcre.backtrack_limit', '10')]
+    #[IniSetting('pcre.jit', '0')]
+    public function testAFailedMatchIsNoWordGrepDidNotCheck(): void
+    {
+        $search = new ProjectSearch('/tmp');
+        Probe::set($search, 'grepWords', false);
+
+        $this->assertSame([], Probe::invoke($search, 'parse', 'src/A.php:1:'.\str_repeat('a', 40)."!\n", '/^(a+)+$/'));
+        $this->assertTrue($search->gaveUp(), 'and the search says it gave up');
+    }
+
+    /** The same, end to end: a Whole Word regex is handed to grep without -w. */
+    #[IniSetting('pcre.backtrack_limit', '10')]
+    #[IniSetting('pcre.jit', '0')]
+    public function testAWholeWordRegexThatCannotFinishListsNothingGrepDidNotCheck(): void
+    {
+        $project = new TempProject(['src/A.php' => \str_repeat('a', 40)."! a\n"]);
+        $search = new ProjectSearch($project->dir);
+
+        $this->assertSame([], $this->awaitSearch($search, query: '(a+)+$', options: new SearchOptions(regex: true, wholeWord: true)));
+        $this->assertTrue($search->gaveUp());
+    }
+
+    /**
+     * Without Whole Word, grep's line stands — grep matched the very regex —
+     * and the built-in engine, which has no grep behind the line, lists
+     * nothing. Both say they gave up.
+     */
+    #[IniSetting('pcre.backtrack_limit', '10')]
+    #[IniSetting('pcre.jit', '0')]
+    public function testARegexThatCannotFinishIsGrepsLineAndNoBuiltInHit(): void
+    {
+        $project = new TempProject(['src/A.php' => \str_repeat('a', 40)."! a\n"]);
+        $regex = new SearchOptions(regex: true);
+        $search = new ProjectSearch($project->dir);
+
+        $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: '(a+)+$', options: $regex), 'path'));
+        $this->assertTrue($search->gaveUp());
+
+        $tools = new TempProject([], 'porta-failgrep-');
+        $tools->write('grep', "#!/bin/sh\nexit 2\n"); // no answer: the built-in engine runs
+        \chmod($tools->path('grep'), permissions: 0o755);
+        \putenv('PATH='.$tools->dir.':/bin');
+        $builtIn = new ProjectSearch($project->dir);
+        $this->assertSame([], $this->awaitSearch($builtIn, query: '(a+)+$', options: $regex));
+        $this->assertTrue($builtIn->gaveUp());
+    }
+
+    /** A pattern that does not compile without /u, on a line that is not UTF-8, is no hit — and no warning. */
+    public function testAPatternBrokenOnALatin1LineIsNoHit(): void
+    {
+        $search = new ProjectSearch('/tmp');
+
+        $this->assertSame([], Probe::invoke($search, 'parse', "src/A.php:1:Andr\xe9\n", '/\x{100}/u'));
+        $this->assertTrue($search->gaveUp());
+    }
+
     /** A pattern that cannot finish (the backtrack limit) keeps grep's line: a hit is never dropped on a failed match. */
     #[IniSetting('pcre.backtrack_limit', '10')]
     #[IniSetting('pcre.jit', '0')]
     public function testAFailedMatchKeepsGrepsLine(): void
     {
-        $results = Probe::invoke(new ProjectSearch('/tmp'), 'parse', 'src/A.php:1:'.\str_repeat('a', 40)."!\n", '/^(a+)+$/');
+        $search = new ProjectSearch('/tmp');
+        $results = Probe::invoke($search, 'parse', 'src/A.php:1:'.\str_repeat('a', 40)."!\n", '/^(a+)+$/');
 
         $this->assertSame(['src/A.php'], \array_column($results, 'path'));
+        $this->assertTrue($search->gaveUp(), 'said');
     }
 
     /** A line grep printed that the pattern does not match is no hit: grep reads Unicode its own way (BSD grep -w takes `x²` for the word `x`). */
