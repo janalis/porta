@@ -113,6 +113,28 @@ final class ProjectSearchTest extends TestCase
         );
     }
 
+    /** On a server the vendor dir its composer.json moved is left out too: what the walk read, grep's hits there dropped. */
+    public function testARemoteProjectLeavesOutTheVendorDirItsServerMoved(): void
+    {
+        $server = new TempProject([
+            'composer.json' => '{"config":{"vendor-dir":"lib/deps"}}',
+            'lib/Own.php' => "<?php\n// needle\n",
+            'lib/deps/acme/Lib.php' => "<?php\n// needle\n",
+            'src/lib/deps/Own.php' => "<?php\n// needle\n",
+        ]);
+        $cache = new TempProject();
+        $transport = new FakeRemoteTransport($server->dir);
+        $transport->walks = true;
+        $remote = $transport->filesystem($cache->dir);
+        $remote->poll();
+        $this->await(static fn (): bool => null !== $remote->vendorPath(), what: 'the walk to read the server\'s composer.json');
+
+        $paths = \array_column($this->awaitSearch(new ProjectSearch($cache->dir, $remote), query: 'needle'), 'path');
+        \sort($paths);
+        $this->assertSame(['lib/Own.php', 'src/lib/deps/Own.php'], $paths);
+        $remote->close();
+    }
+
     public function testGrepSearchFindsMatchesAndExcludesVendor(): void
     {
         $project = $this->fixtures();

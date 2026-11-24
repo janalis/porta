@@ -8,14 +8,15 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Event\StatusCellsChanged;
 use Porta\Filesystem\ProjectLocation;
+use Porta\Filesystem\RemoteEntry;
 use Porta\Filesystem\RemoteFilesystem;
 use Porta\Filesystem\RemoteSpec;
-use Porta\Filesystem\RemoteStamp;
 use Porta\Filesystem\RemoteTransport;
 use Porta\Filesystem\RemoteTransportSource;
 use Porta\I18n\Translator;
 use Porta\Search\FileIndex;
 use Porta\Tests\Support\FakeRemoteTransport;
+use Porta\Tests\Support\NoOpTransportVerbs;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\RecordingEvents;
 use Porta\Tests\Support\StatusReads;
@@ -1150,22 +1151,90 @@ final class RemoteFilesystemTest extends TestCase
 
         $this->assertSame(['list '], $this->transport->calls);
         $bare = new class extends RemoteTransport {
-            public function list(string $path, \Closure $done): void {}
-
-            public function fetch(string $path, \Closure $done): void {}
-
-            public function put(string $path, string $bytes, ?RemoteStamp $expected, \Closure $done): void {}
-
-            public function mkdir(string $path, \Closure $done): void {}
-
-            public function rename(string $from, string $to, \Closure $done): void {}
-
-            public function remove(string $path, bool $isDir, \Closure $done): void {}
-
-            public function close(): void {}
+            use NoOpTransportVerbs;
         };
         $this->assertFalse($bare->walk('', [], static function (): void {}), 'walking is optional, and off unless a transport says');
+        $this->assertFalse($bare->walks(), 'and it says it does not');
         $this->assertNull($bare->remoteCommand(['grep']), 'so is running a command there');
+    }
+
+    /**
+     * A transport written before paths could be skipped overrides walk() only:
+     * it still walks, and what lies under a skipped path is dropped from its
+     * answer — the server listed it, the tree never sees it.
+     */
+    public function testATransportThatWalksByNameOnlyStillSkipsAPath(): void
+    {
+        $byName = new class extends RemoteTransport {
+            use NoOpTransportVerbs;
+
+            public function walk(string $path, array $skip, \Closure $done): bool
+            {
+                $done(\array_map(static fn (string $name): RemoteEntry => new RemoteEntry($name, isDir: !\str_contains($name, needle: '.')), [
+                    'lib',
+                    'lib/Own.php',
+                    'lib/deps',
+                    'lib/deps/a.php',
+                    'lib/depsx',
+                    'src/lib/deps',
+                ]));
+
+                return true;
+            }
+        };
+        $this->assertTrue($byName->walks());
+
+        $answer = null;
+        $this->assertTrue($byName->walkSkipping('', [], ['lib/deps'], static function (array|string $entries) use (&$answer): void {
+            $answer = $entries;
+        }));
+        $this->assertIsArray($answer);
+        $this->assertSame(
+            ['lib', 'lib/Own.php', 'lib/depsx', 'src/lib/deps'],
+            \array_map(static fn (RemoteEntry $entry): string => $entry->name, $answer),
+            'the path and under it; not a name that starts the same, nor the same path elsewhere',
+        );
+
+        $failed = null;
+        $failing = new class extends RemoteTransport {
+            use NoOpTransportVerbs;
+
+            public function walk(string $path, array $skip, \Closure $done): bool
+            {
+                $done('find: not found');
+
+                return true;
+            }
+        };
+        $failing->walkSkipping('', [], ['lib/deps'], static function (array|string $entries) use (&$failed): void {
+            $failed = $entries;
+        });
+        $this->assertSame('find: not found', $failed, 'a failure passes through');
+    }
+
+    /**
+     * The walk prunes the vendor dir the SERVER's composer.json moved — read
+     * from there, since this copy holds only what was opened — and Find in
+     * Files learns it from the walk.
+     */
+    public function testTheWalkPrunesTheVendorDirTheServersComposerJsonMoved(): void
+    {
+        $this->server->write('composer.json', content: '{"config":{"vendor-dir":"lib/deps"}}');
+        $this->server->write('lib/Own.php', content: '<?php');
+        $this->server->write('lib/deps/acme/Lib.php', content: '<?php');
+        $this->transport->walks = true;
+        $files = $this->files();
+        $this->assertNull($files->vendorPath(), 'not known before the walk');
+
+        $files->poll();
+        $this->await(fn (): bool => \is_file($this->cache->path('lib/Own.php')));
+
+        $this->assertDirectoryDoesNotExist($this->cache->path('lib/deps'));
+        $this->assertSame('lib/deps', $files->vendorPath());
+        $this->assertSame(
+            ['fetch composer.json', 'walk '],
+            \array_values(\array_filter($this->transport->calls, static fn (string $call): bool => \str_starts_with($call, 'walk') || \str_starts_with($call, 'fetch'))),
+        );
     }
 
     /**

@@ -114,6 +114,39 @@ final class SshTransportTest extends TestCase
         $this->assertEquals($this->stampOf($this->server, relative: 'deep/er/Found.php'), $byPath['deep/er/Found.php']->stamp);
     }
 
+    /** A path is pruned by find, not listed and dropped: a folder of its name elsewhere, and one a glob would match, stay. */
+    public function testItPrunesAPathAndNothingElseOfItsName(): void
+    {
+        $this->server->write('lib/deps/x/Skipped.php', content: '');
+        $this->server->write('lib/deps[1]/Kept.php', content: '');
+        $this->server->write('lib/depsx/Kept.php', content: '');
+        $this->server->write('src/lib/deps/Kept.php', content: '');
+        $this->server->write('g[1]/Skipped.php', content: '');
+
+        $entries = $this->answer(fn (\Closure $done): bool => $this->transport->walkSkipping('', [], ['lib/deps', 'g[1]'], $done));
+
+        $this->assertIsArray($entries);
+        $names = \array_map(static fn (RemoteEntry $entry): string => $entry->name, $entries);
+        \sort($names);
+        $this->assertSame(
+            [
+                'README.md',
+                'it\'s a "name" with spaces.txt',
+                'lib',
+                'lib/deps[1]',
+                'lib/deps[1]/Kept.php',
+                'lib/depsx',
+                'lib/depsx/Kept.php',
+                'src',
+                'src/App.php',
+                'src/lib',
+                'src/lib/deps',
+                'src/lib/deps/Kept.php',
+            ],
+            $names,
+        );
+    }
+
     public function testAWalkWithNothingToSkipAndOneThatFails(): void
     {
         $this->assertCount(4, (array) $this->answer(fn (\Closure $done): bool => $this->transport->walk('', [], $done)));

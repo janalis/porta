@@ -145,14 +145,21 @@ final class FtpTransport extends CommandTransport
     #[\Override]
     public function walk(string $path, array $skip, \Closure $done): bool
     {
-        $this->walkFrom([''], $path, $skip, [], $done);
+        return $this->walkSkipping($path, $skip, [], $done);
+    }
+
+    /** The walk, never listing a directory at one of $skipPaths: it is not even asked for. */
+    #[\Override]
+    public function walkSkipping(string $path, array $skip, array $skipPaths, \Closure $done): bool
+    {
+        $this->walkFrom([''], $path, [$skip, $skipPaths], [], $done);
 
         return true;
     }
 
     /**
      * @param list<string>                             $pending directories still to list, relative to $root
-     * @param list<string>                             $skip
+     * @param array{list<string>, list<string>}        $skip    the names, then the paths, not descended into
      * @param list<RemoteEntry>                        $found
      * @param \Closure(list<RemoteEntry>|string): void $done
      */
@@ -180,10 +187,10 @@ final class FtpTransport extends CommandTransport
                 return;
             }
             foreach (self::listed(self::entries($out)) as $entry) {
-                if ($entry->isDir && \in_array($entry->name, $skip, strict: true)) {
+                $relative = self::join($dir, $entry->name);
+                if ($entry->isDir && (\in_array($entry->name, $skip[0], strict: true) || \in_array($relative, $skip[1], strict: true))) {
                     continue;
                 }
-                $relative = self::join($dir, $entry->name);
                 $found[] = new RemoteEntry($relative, $entry->isDir, $entry->stamp);
                 if ($entry->isDir) {
                     $pending[] = $relative;

@@ -267,9 +267,13 @@ final class ProjectSearch
     private function parse(string $output, string $pattern): array
     {
         $results = [];
+        // A grep run on the server cannot be handed the way past a moved
+        // vendor dir, as one here is: its hits there are dropped instead. Only
+        // a server's walk learns one, so a local project's is always null.
+        $vendor = $this->remote?->vendorPath();
         foreach (\explode("\n", $output) as $line) {
             $m = [];
-            if ('' === $line || !\preg_match('/^(?:\.\/)?(.+?):(\d+):(.*)$/', $line, $m)) {
+            if ('' === $line || !\preg_match('/^(?:\.\/)?(.+?):(\d+):(.*)$/', $line, $m) || (null !== $vendor && \str_starts_with($m[1], $vendor.'/'))) {
                 continue;
             }
             $text = \trim($m[3]);

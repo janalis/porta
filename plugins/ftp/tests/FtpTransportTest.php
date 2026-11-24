@@ -92,6 +92,22 @@ final class FtpTransportTest extends TestCase
         $this->assertEquals($this->stampOf($this->server, relative: 'deep/er/Found.php'), $byPath['deep/er/Found.php']->stamp);
     }
 
+    /** A skipped path is never listed; a folder of its name elsewhere is. */
+    public function testItNeverListsASkippedPath(): void
+    {
+        $this->server->write('lib/deps/x/Skipped.php', content: '');
+        $this->server->write('src/lib/deps/Kept.php', content: '');
+
+        $entries = $this->answer(fn (\Closure $done): bool => $this->transport->walkSkipping('', [], ['lib/deps'], $done));
+
+        $this->assertIsArray($entries);
+        $names = \array_map(static fn (RemoteEntry $entry): string => $entry->name, $entries);
+        $this->assertNotContains('lib/deps', $names);
+        $this->assertNotContains('lib/deps/x/Skipped.php', $names);
+        $this->assertContains('lib', $names);
+        $this->assertContains('src/lib/deps/Kept.php', $names);
+    }
+
     /** A folder the server will not open is passed over; the rest of the tree stands. */
     public function testAWalkPassesOverAFolderTheServerWillNotOpen(): void
     {

@@ -10,6 +10,8 @@ use Porta\Event\StatusCellsChanged;
 use Porta\I18n\Translator;
 use Porta\Search\FileIndex;
 use Porta\Search\ProjectSearch;
+use Porta\Support\ComposerLayout;
+use Porta\Support\Decoded;
 use Porta\Support\Files;
 use Porta\Ui\Glyphs;
 use Porta\Workbench\Menu\MenuItem;
@@ -113,6 +115,8 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     private int $pollCursor = 0;
     /** Whether the whole tree was asked for this session. */
     private bool $walked = false;
+    /** The vendor dir the server's composer.json moved, as the walk read it; null till then, or where none was moved. */
+    private ?string $vendorPath = null;
     private int $polls = 0;
     /** @var array<array-key, int> directories the server refused to list, and the poll that asks again */
     private array $retry = [];
@@ -415,19 +419,41 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     }
 
     /**
+     * The vendor dir the server's composer.json moved, relative to the project
+     * — what Find in Files leaves out of a grep run there. Null before the
+     * session's walk read it, and where nothing was moved.
+     */
+    public function vendorPath(): ?string
+    {
+        return $this->vendorPath;
+    }
+
+    /**
      * Ask, once a session, for the whole tree — the poll's first round after
      * what the tree was waiting on. Whether it was asked: a transport that
      * cannot walk leaves the poll to its listings.
      */
     private function walk(RemoteTransport $transport): bool
     {
-        if ($this->walked) {
+        if ($this->walked || !$transport->walks()) {
             return false;
         }
         $this->walked = true;
         $asked = $this->changes;
+        // Which dir composer.json moved is the SERVER's file to say: this copy
+        // holds only what was opened, and may hold an older one.
+        $transport->fetch('composer.json', function (RemoteFile|string $composer) use ($transport, $asked): void {
+            $this->vendorPath = ComposerLayout::from($this->rootDir, \is_string($composer) ? null : Decoded::json($composer->bytes))->vendorPath($this->rootDir);
+            $this->walkSkipping($transport, $asked);
+        });
 
-        return $transport->walk('', self::WALK_SKIP, function (array|string $answer) use ($transport, $asked): void {
+        return true;
+    }
+
+    /** The walk itself, once the server's composer.json said what to prune by path. */
+    private function walkSkipping(RemoteTransport $transport, int $asked): void
+    {
+        $transport->walkSkipping('', self::WALK_SKIP, null === $this->vendorPath ? [] : [$this->vendorPath], function (array|string $answer) use ($transport, $asked): void {
             if (\is_string($answer)) {
                 // Asked again: by the next poll once the link is back.
                 $this->link->failed(

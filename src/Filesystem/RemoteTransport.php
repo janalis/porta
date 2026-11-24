@@ -89,6 +89,66 @@ abstract class RemoteTransport
     }
 
     /**
+     * Whether this transport answers {@see walk()} at all — asked before a
+     * walk, since core first reads what to skip. By default, whether the
+     * subclass overrides walk(), so one written before this was asked keeps
+     * walking.
+     */
+    public function walks(): bool
+    {
+        return self::class !== new \ReflectionMethod($this, 'walk')->getDeclaringClass()->getName();
+    }
+
+    /**
+     * {@see walk()}, also not descending into the directories at the PATHS in
+     * $skipPaths — relative to $path, as the entries are: a vendor dir
+     * composer.json moved, which a name would match elsewhere too.
+     *
+     * By default walk() by $skip, and what lies under $skipPaths dropped from
+     * its answer: right, but the server still lists them. A transport that
+     * can prune by path overrides this, and walk() calls it with none.
+     *
+     * @param list<string>                             $skip      directory names, matched at any depth
+     * @param list<string>                             $skipPaths directory paths, relative to $path
+     * @param \Closure(list<RemoteEntry>|string): void $done
+     */
+    public function walkSkipping(string $path, array $skip, array $skipPaths, \Closure $done): bool
+    {
+        return $this->walk($path, $skip, static function (array|string $answer) use ($done, $skipPaths): void {
+            if (\is_string($answer)) {
+                $done($answer);
+
+                return;
+            }
+            /** @var list<RemoteEntry> $answer */
+            $done(self::outside($answer, $skipPaths));
+        });
+    }
+
+    /**
+     * $entries but those at or under one of $paths.
+     *
+     * @param list<RemoteEntry> $entries
+     * @param list<string>      $paths
+     *
+     * @return list<RemoteEntry>
+     */
+    protected static function outside(array $entries, array $paths): array
+    {
+        return \array_values(\array_filter($entries, static fn (RemoteEntry $entry): bool => !self::under($entry->name, $paths)));
+    }
+
+    /**
+     * Whether $path is one of $paths or lies under one.
+     *
+     * @param list<string> $paths
+     */
+    protected static function under(string $path, array $paths): bool
+    {
+        return \array_any($paths, static fn (string $skipped): bool => $path === $skipped || \str_starts_with($path, $skipped.'/'));
+    }
+
+    /**
      * $argv as a command line that runs it on the server, in the project's
      * directory there, or null when this transport cannot run anything. What
      * lets Find in Files grep the server's files rather than the cache, which

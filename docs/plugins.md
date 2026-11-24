@@ -343,6 +343,14 @@ The transport extends `Porta\Filesystem\RemoteTransport`:
   loop. A failure is the string a person is shown.
 - **Paths:** paths are relative to the project's directory on the server, and
   `RemoteSpec::remotePath()` makes them the server's.
+- **The whole tree, optionally:** override `walk($path, $skip, $done)` to
+  answer every entry below `$path` in one go, not descending into a directory
+  named in `$skip`; Go to File then finds files nobody expanded. Override
+  `walkSkipping($path, $skip, $skipPaths, $done)` as well to prune the
+  directories at the paths in `$skipPaths` (a vendor dir `composer.json`
+  moved) on the server. Without it, core drops them from `walk()`'s answer.
+  `walks()` says whether the transport walks at all, which by default is
+  whether it overrides `walk()`.
 - **Processes:** a transport that drives a command-line tool extends
   `Porta\Filesystem\CommandTransport`. It gets `run()`, `failure()` and
   `close()`.

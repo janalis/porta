@@ -186,12 +186,23 @@ done';
         return $this->command(self::IN_DIRECTORY, [$this->spec->remotePath(''), ...$argv]);
     }
 
-    /** One `find` for the whole tree: GNU's `-printf` where there is one, else a `stat` per file. */
     #[\Override]
     public function walk(string $path, array $skip, \Closure $done): bool
     {
-        $names = \implode(' -o ', \array_map(static fn (string $name): string => '-name '.self::quote($name), $skip));
-        $prune = [] === $skip ? '' : '\\( -type d \\( '.$names.' \\) \\) -prune -o';
+        return $this->walkSkipping($path, $skip, [], $done);
+    }
+
+    /** One `find` for the whole tree, pruning by name and by path: GNU's `-printf` where there is one, else a `stat` per file. */
+    #[\Override]
+    public function walkSkipping(string $path, array $skip, array $skipPaths, \Closure $done): bool
+    {
+        $tests = [
+            ...\array_map(static fn (string $name): string => '-name '.self::quote($name), $skip),
+            // find names what it walks `./a/b`, from the `cd` into "$1"; -path
+            // reads a glob, so a `*`, `?` or `[` in a name is matched as itself
+            ...\array_map(static fn (string $dir): string => '-path '.self::quote('./'.\addcslashes($dir, characters: '*?[\\')), $skipPaths),
+        ];
+        $prune = [] === $tests ? '' : '\\( -type d \\( '.\implode(' -o ', $tests).' \\) \\) -prune -o';
         $this->script(\str_replace('{prune}', $prune, self::WALK), [$this->spec->remotePath($path)], stdin: null, done: static function (int $code, string $out, string $err) use ($done): void {
             // 1 is find saying a folder refused it — a database volume owned by
             // another user — after printing everything else: the walk is whole

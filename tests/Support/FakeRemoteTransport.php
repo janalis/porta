@@ -142,19 +142,32 @@ final class FakeRemoteTransport extends RemoteTransport
     }
 
     #[\Override]
+    public function walks(): bool
+    {
+        return $this->walks;
+    }
+
+    #[\Override]
     public function walk(string $path, array $skip, \Closure $done): bool
+    {
+        return $this->walkSkipping($path, $skip, [], $done);
+    }
+
+    /** As ssh's find prunes: by name, and by path. */
+    #[\Override]
+    public function walkSkipping(string $path, array $skip, array $skipPaths, \Closure $done): bool
     {
         if (!$this->walks) {
             return false;
         }
-        $this->answer('walk', $path, $done, function () use ($path, $skip): array {
+        $this->answer('walk', $path, $done, function () use ($path, $skip, $skipPaths): array {
             $entries = [];
-            $walk = function (string $relative) use (&$walk, &$entries, $path, $skip): void {
+            $walk = function (string $relative) use (&$walk, &$entries, $path, $skip, $skipPaths): void {
                 $names = \scandir($this->at(\ltrim($path.'/'.$relative, characters: '/')));
                 foreach (\array_diff(false === $names ? [] : $names, ['.', '..']) as $name) {
                     $child = '' === $relative ? $name : $relative.'/'.$name;
                     $isDir = \is_dir($this->at(\ltrim($path.'/'.$child, characters: '/')));
-                    if ($isDir && \in_array($name, $skip, strict: true)) {
+                    if ($isDir && (\in_array($name, $skip, strict: true) || \in_array($child, $skipPaths, strict: true))) {
                         continue;
                     }
                     $entries[] = new RemoteEntry($child, $isDir, $this->stamp(\ltrim($path.'/'.$child, characters: '/')));

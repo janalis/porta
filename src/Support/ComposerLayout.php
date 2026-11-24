@@ -37,8 +37,20 @@ final readonly class ComposerLayout
     /** The layout of the project at $root, Composer's defaults where its composer.json is silent, unreadable or absent. */
     public static function of(string $root): self
     {
+        return self::from($root, JsonFile::read($root.'/composer.json'));
+    }
+
+    /**
+     * The layout $composer, a decoded composer.json, gives the project at
+     * $root — for one read from elsewhere than $root: a remote project's
+     * server, whose composer.json this machine's copy may not hold.
+     *
+     * @param array<mixed>|null $composer null when there is none
+     */
+    public static function from(string $root, ?array $composer): self
+    {
         // @mago-expect analysis:mixed-assignment -- decoded JSON, narrowed in text()
-        $config = JsonFile::read($root.'/composer.json')['config'] ?? null;
+        $config = $composer['config'] ?? null;
         $vendor = self::inside($root, self::text($config, key: 'vendor-dir') ?? 'vendor') ?? Path::makeAbsolute('vendor', $root);
         $bin = self::inside($root, \str_replace('{$vendor-dir}', $vendor, self::text($config, key: 'bin-dir') ?? '{$vendor-dir}/bin'));
 
