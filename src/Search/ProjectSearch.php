@@ -67,6 +67,17 @@ final class ProjectSearch
     /** Whether that grep takes `-P`; see {@see readsPcre()} — asked once, on the first regex search. */
     private ?bool $pcre = null;
 
+    /** Whether that grep takes `--null`; see {@see readsNull()} — asked once, on the first local search. */
+    private ?bool $null = null;
+
+    /**
+     * The search's answers to "is this a file here?", for a grep line read
+     * without a NUL: each is asked per line, and twice — counted, then parsed.
+     *
+     * @var array<string, bool>
+     */
+    private array $files = [];
+
     /**
      * Whether the regex engine GAVE UP somewhere in the last search.
      *
@@ -197,7 +208,11 @@ final class ProjectSearch
         // on the server, where every file is — named `grep` there, since the
         // path found here is this machine's, and asked for ERE, since whether
         // that grep reads PCRE was never asked.
-        $command = $this->remote?->remoteCommand(['grep', ...$args('-E')]) ?? [$grep, ...$args($options->regex && $this->readsPcre($grep) ? '-P' : '-E')];
+        // Here, a grep that takes it ends each file name with a NUL: a name may
+        // hold `:12:` itself, and `path:line:` is then no way to tell. A
+        // server's grep may not take it (BusyBox), and is read without.
+        $this->files = [];
+        $command = $this->remote?->remoteCommand(['grep', ...$args('-E')]) ?? $this->localGrep($grep, $args($options->regex && $this->readsPcre($grep) ? '-P' : '-E'));
 
         // A grep that cannot answer hands the search to the built-in engine.
         // Linux's posix_spawn refuses an unrunnable binary outright; macOS
@@ -311,52 +326,67 @@ final class ProjectSearch
      */
     private function hit(string $line): array
     {
-        $m = [];
-        if ('' === $line || !\preg_match('/^(?:\.\/)?(.+?):(\d+):(.*)$/', $line, $m)) {
+        [$path, $number, $text] = \str_contains($line, "\0") ? self::named($line) : $this->guessed($line);
+        if (null === $path) {
             return ['path' => null, 'line' => 0, 'text' => ''];
         }
-        [$path, $number, $text] = [$m[1], $m[2], $m[3]];
-        // grep prints `path:line:text`, and a name may hold `:12:` itself:
-        // `a:12:b.txt:3:x` read at its first such pair names `a`, which is no
-        // file. Then the first later reading that names one is the hit.
-        if (!$this->isFile($path)) {
-            [$path, $number, $text] = $this->laterReading($path, $number, $text);
-        }
 
-        return ['path' => \str_replace('/./', replace: '/', subject: $path), 'line' => (int) $number - 1, 'text' => \trim($text)];
+        return ['path' => self::clean($path), 'line' => (int) $number - 1, 'text' => \trim($text)];
     }
 
     /**
-     * The first reading of `$path:$number:$text` past its first `:N:` whose
-     * path is a file here — as it was when none is.
+     * `path\0line:text`, from a grep that ended the name with a NUL: exact.
      *
-     * @return array{string, string, string}
+     * @return array{?string, string, string}
      */
-    private function laterReading(string $path, string $number, string $text): array
+    private static function named(string $line): array
     {
-        // [text, N, text, N, text…]: each N a place the name may go on past.
-        $parts = \preg_split('/:(\d+):/', $text, flags: \PREG_SPLIT_DELIM_CAPTURE);
-        $parts = false === $parts ? [$text] : $parts;
-        $head = $path.':'.$number.':';
-        $name = $head;
-        $pairs = \count($parts) - 2;
-        for ($k = 0; $k < $pairs; $k += 2) {
-            $name .= $parts[$k];
-            $pair = ':'.$parts[$k + 1].':';
-            if ($this->isFile($name)) {
-                // The text is what follows that pair, as grep printed it.
-                return [$name, $parts[$k + 1], \substr($text, \strlen($name) - \strlen($head) + \strlen($pair))];
-            }
-            $name .= $pair;
-        }
+        [$path, $rest] = \explode("\0", $line, limit: 2);
+        $m = [];
 
-        return [$path, $number, $text];
+        return 1 === \preg_match('/^(\d+):(.*)$/', $rest, $m) ? [$path, $m[1], $m[2]] : [null, '', ''];
     }
 
-    /** Whether $path, as grep printed it, is a file of the project here — a remote one's placeholder too. */
+    /**
+     * `path:line:text`, from a grep that could not end the name: a name may
+     * hold `:12:` itself, overlapping its own `:N:` too (`meeting-10:30`), so
+     * every `:N:` is a place the name may end. The first reading that names a
+     * file here is the hit — a remote project's placeholder counts — and the
+     * first reading when none does. Two that both name a file cannot be told
+     * apart without the NUL; the shorter wins.
+     *
+     * @return array{?string, string, string}
+     */
+    private function guessed(string $line): array
+    {
+        $first = null;
+        $pair = [];
+        for ($at = \strpos($line, needle: ':'); false !== $at; $at = \strpos($line, needle: ':', offset: $at + 1)) {
+            if (0 === $at || 1 !== \preg_match('/\G:(\d+):/', $line, $pair, offset: $at)) {
+                continue;
+            }
+            $reading = [\substr($line, offset: 0, length: $at), $pair[1], \substr($line, $at + \strlen($pair[0]))];
+            $first ??= $reading;
+            if ($this->isFile($reading[0])) {
+                return $reading;
+            }
+        }
+
+        return $first ?? [null, '', ''];
+    }
+
+    /** A path as grep printed it, as the project names it: no `./` before it, no `/./` in it. */
+    private static function clean(string $path): string
+    {
+        return \str_replace('/./', replace: '/', subject: \str_starts_with($path, './') ? \substr($path, offset: 2) : $path);
+    }
+
+    /** Whether $path, as grep printed it, is a file of the project here — a remote one's placeholder too. Asked once a search. */
     private function isFile(string $path): bool
     {
-        return \is_file($this->rootDir.'/'.\str_replace('/./', replace: '/', subject: $path));
+        $clean = self::clean($path);
+
+        return $this->files[$clean] ??= \is_file($this->rootDir.'/'.$clean);
     }
 
     /**
@@ -875,6 +905,36 @@ final class ProjectSearch
      * which reads `\d`, `\s`, `\w` and `\b` as PCRE does and refuses a
      * lookaround outright — handing the search to the built-in engine.
      */
+    /**
+     * $grep run here on $args, ending each file name with a NUL when it can.
+     *
+     * @param list<string> $args
+     *
+     * @return list<string>
+     */
+    private function localGrep(string $grep, array $args): array
+    {
+        return $this->readsNull($grep) ? [$grep, '--null', ...$args] : [$grep, ...$args];
+    }
+
+    /**
+     * Whether $grep takes `--null`, which ends each file name it prints with a
+     * NUL — GNU's, BSD's and ugrep do; BusyBox's may not.
+     */
+    private function readsNull(string $grep): bool
+    {
+        try {
+            // As readsPcre(): an option grep does not know is a usage error (2).
+            return $this->null ??= 1 === new Process([$grep, '--null', '-q', 'x', '/dev/null'], timeout: 5)->run();
+
+            // @codeCoverageIgnoreStart
+        } catch (ProcessRuntimeException) {
+            return $this->null = false;
+        }
+
+        // @codeCoverageIgnoreEnd
+    }
+
     private function readsPcre(string $grep): bool
     {
         try {

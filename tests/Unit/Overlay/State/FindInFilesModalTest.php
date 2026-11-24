@@ -346,6 +346,14 @@ final class FindInFilesModalTest extends TestCase
         $this->assertStringContainsString('b one', $screen, 'the project\'s file previews its replacement');
         $this->assertStringNotContainsString('b old', $screen);
         $this->assertStringContainsString('(kept as saved)', $screen);
+        $this->assertStringContainsString('Alt+A replace 1', $screen, 'the count promises only what is replaced');
+
+        $modal->handleInput("\x1b[B", $this->kb); // down to the snapshot's row
+        $modal->handleInput("\x1b[B", $this->kb);
+        $modal->handleInput("\x1b[B", $this->kb);
+        $modal->handleInput("\x1b[3~", $this->kb); // Del there
+        $this->assertSame([], Probe::get($modal, property: 'excluded'), 'nothing to leave out of a row never replaced');
+        $this->assertStringContainsString('Alt+A replace 1', $this->screen($modal));
     }
 
     public function testReplacePreviewExcludeAndReplaceAll(): void

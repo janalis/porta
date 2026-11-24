@@ -463,7 +463,8 @@ final class FindInFilesModal
     private function toggleExcludeSelected(): void
     {
         $row = $this->displayRows[$this->selected] ?? null;
-        if (null !== $row && null === $row->filePath) {
+        // A snapshot's row is never replaced: there is nothing to leave out of it.
+        if (null !== $row && null === $row->filePath && !ProjectSearch::inHistory($this->results[$row->matchIndex]['path'])) {
             $this->excluded[$row->matchIndex] = !($this->excluded[$row->matchIndex] ?? false);
             ($this->invalidate)();
         }
@@ -873,8 +874,9 @@ final class FindInFilesModal
     private function keptCount(): int
     {
         $kept = 0;
-        foreach (\array_keys($this->results) as $matchIndex) {
-            if ($this->excluded[$matchIndex] ?? false) {
+        foreach ($this->results as $matchIndex => $result) {
+            // Left out by hand, or a snapshot the replace keeps as saved.
+            if (($this->excluded[$matchIndex] ?? false) || ProjectSearch::inHistory($result['path'])) {
                 continue;
             }
 

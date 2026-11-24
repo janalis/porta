@@ -379,27 +379,68 @@ final class ProjectSearchTest extends TestCase
         $this->assertCount(ProjectSearch::MAX_RESULTS, $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle', scope: ['src/In', 'src']));
     }
 
+    /** The files a grep line cannot tell apart by `path:line:` alone: names holding `:N:`, and a shorter name beside one. */
+    private const array COLON_NAMES = [
+        'notes/a' => "nothing here\n", // `notes/a:12:b.txt:3:` reads as this, line 12, at first
+        'notes/a:12:b.txt' => "x\nx\nneedle\n",
+        'notes/meeting-10:30' => "x\nx\nneedle\n", // `:30:3:` overlaps: `:30:` and `:3:` share a colon
+        'notes/x:1:y:2:z.txt' => "needle :7: tail\n", // two pairs: x:1:y is no file
+        'src/A.php' => "<?php\n// needle :5: here\n",
+    ];
+
+    /** @return list<array{string, int, string}> path, line, text of each hit */
+    private function colonHits(ProjectSearch $search): array
+    {
+        return \array_map(static fn (array $r): array => [$r['path'], $r['line'], $r['text']], $this->awaitSearch($search, query: 'needle'));
+    }
+
     /**
-     * A file name may hold `:12:` itself: grep prints `notes/a:12:b.txt:3:…`,
-     * whose first `path:line:` reading names no file. The hit is the file.
+     * A file name may hold `:12:` itself. Here grep ends each name with a NUL
+     * (`--null`), and every one is read exactly — beside a shorter name that
+     * a `path:line:` reading would have taken.
      */
     public function testAFileNameHoldingAColonNumberColonIsReadWhole(): void
     {
-        $project = new TempProject([
-            'notes/a:12:b.txt' => "x\nx\nneedle\n",
-            'notes/x:1:y:2:z.txt' => "needle :7: tail\n", // two pairs: the first later reading, x:1:y, is no file either
-            'src/A.php' => "<?php\n// needle :5: here\n",
-        ]);
+        $project = new TempProject(self::COLON_NAMES);
 
         $this->assertSame(
             [
                 ['notes/a:12:b.txt',    2, 'needle'],
+                ['notes/meeting-10:30', 2, 'needle'],
                 ['notes/x:1:y:2:z.txt', 0, 'needle :7: tail'],
                 ['src/A.php',           1, '// needle :5: here'],
             ],
-            \array_map(static fn (array $r): array => [$r['path'], $r['line'], $r['text']], $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle')),
+            $this->colonHits(new ProjectSearch($project->dir)),
             'and a :5: in a line\'s text stays text',
         );
+    }
+
+    /**
+     * A server's grep is read without a NUL: every `:N:` is a place the name
+     * may end, overlapping ones too, and the first that names a file this
+     * copy holds is the hit. Beside `notes/a`, `notes/a:12:b.txt` cannot be
+     * told from line 12 of it: the shorter wins — what the NUL is for here.
+     */
+    public function testAServersGrepIsReadAtTheFirstPlaceANameEnds(): void
+    {
+        $server = new TempProject(self::COLON_NAMES);
+        $cache = new TempProject();
+        $transport = new FakeRemoteTransport($server->dir);
+        $transport->walks = true;
+        $remote = $transport->filesystem($cache->dir);
+        $remote->poll();
+        $this->await(static fn (): bool => \is_file($cache->path('notes/meeting-10:30')), what: 'the walk to land the placeholders');
+
+        $this->assertSame(
+            [
+                ['notes/a',             11, 'b.txt:3:needle'],
+                ['notes/meeting-10:30', 2,  'needle'],
+                ['notes/x:1:y:2:z.txt', 0,  'needle :7: tail'],
+                ['src/A.php',           1,  '// needle :5: here'],
+            ],
+            $this->colonHits(new ProjectSearch($cache->dir, $remote)),
+        );
+        $remote->close();
     }
 
     /** A scope holding nothing but a skipped folder leaves grep nothing to read — not its stdin, where it would wait. */
@@ -934,7 +975,11 @@ final class ProjectSearchTest extends TestCase
         $log = $tools->path('argv.log');
         $grep = static function (int $probe) use ($tools, $log): void {
             // The probe answers $probe; a search says what it was asked, and finds nothing.
-            $tools->write('grep', "#!/bin/sh\nif [ \"\$1\" = -qP ]; then echo probe >> '{$log}'; exit {$probe}; fi\nprintf '%s\\n' \"\$*\" >> '{$log}'\nexit 1\n");
+            // --null is asked too, once: it is taken, and not what this test counts.
+            $tools->write(
+                'grep',
+                "#!/bin/sh\nif [ \"\$1\" = --null ] && [ \"\$2\" = -q ]; then exit 1; fi\nif [ \"\$1\" = -qP ]; then echo probe >> '{$log}'; exit {$probe}; fi\nprintf '%s\\n' \"\$*\" >> '{$log}'\nexit 1\n",
+            );
             \chmod($tools->path('grep'), permissions: 0o755);
             \file_put_contents($log, data: '');
         };
