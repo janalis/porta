@@ -16,6 +16,7 @@ use Porta\Search\FileIndex;
 use Porta\Search\ProjectSearch;
 use Porta\Search\SearchOptions;
 use Porta\Tests\Support\FakeRemoteTransport;
+use Porta\Tests\Support\NoOpTransportVerbs;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
@@ -415,6 +416,31 @@ final class ProjectSearchTest extends TestCase
 
         $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: '[0-9]+', options: $regex), 'path'));
         $this->assertStringContainsString('-E -- [0-9]+', (string) \file_get_contents($log), 'one ERE reads the same goes to grep');
+    }
+
+    /** A server that stops building commands mid-search has no grep run: the built-in engine reads the copy here, and says so. */
+    public function testAServerThatStopsBuildingCommandsIsReadInTheCopy(): void
+    {
+        $server = new TempProject(['src/A.php' => "<?php\n// needle\n"]);
+        $cache = new TempProject(['src/A.php' => "<?php\n// needle\n"]);
+        $once = new class($server->dir) extends RemoteTransport {
+            use NoOpTransportVerbs;
+
+            private int $built = 0;
+
+            public function __construct(
+                private readonly string $root,
+            ) {}
+
+            public function remoteCommand(array $argv): ?array
+            {
+                return 1 === ++$this->built ? ['sh', '-c', 'cd "$1" && shift && exec "$@"', 'sh', $this->root, ...$argv] : null;
+            }
+        };
+        $search = new ProjectSearch($cache->dir, FakeRemoteTransport::over($once, new RemoteSpec('ssh', 'example.org', '/srv'), $cache->dir));
+
+        $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: 'needle'), 'path'));
+        $this->assertTrue($search->searchedLocalCopyOnly());
     }
 
     /** A machine with no grep of its own still has a remote project searched by the server's. */

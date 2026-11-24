@@ -17,8 +17,9 @@ final class EreReadingTest extends TestCase
         foreach ([
             '\d+' => true,
             '[0-9]+' => false,
-            '\w+' => false,
-            '\bword\b' => false,
+            // GNU's and BSD's own: a grep without -P (BusyBox on musl) may not read them.
+            '\w+' => true,
+            '\bword\b' => true,
             'foo\.bar' => false,
             '\(?x' => false,
             '[\w.-]+@' => true,
@@ -42,6 +43,13 @@ final class EreReadingTest extends TestCase
             '[]\w]' => true,
             '[^]\w]' => true,
             'a\\' => true,
+            // A class's own `]` does not close the brackets; a PCRE verb is PCRE's.
+            '[[:digit:]\w]+' => true,
+            '[[:digit:]\.]+' => true, // `\.` is still inside, where ERE reads a backslash
+            '[[:digit:]]+' => false,
+            '[[:digit:]a]+' => false,
+            '[[:digit:]' => false,
+            '(*UTF)a' => true,
         ] as $regex => $other) {
             yield $regex => [$regex, $other];
         }

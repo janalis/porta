@@ -264,11 +264,6 @@ final class ProjectSearch
         $kept = 0;
         $counted = [];
         $partial = '';
-        if ([] === $grepPaths) {
-            $onDone([]); // nothing but the history there: grep with no path would read stdin
-
-            return;
-        }
         // The scope paths are arguments, not the cwd: grep still runs in $rootDir
         // (AsyncProcess below), so a `subdir/file:line` match stays root-relative.
         $args = static fn (string $regex): array => [...$flags, $options->regex ? $regex : '-F', '--', $query, ...$grepPaths];
@@ -299,28 +294,33 @@ final class ProjectSearch
         // Linux's posix_spawn refuses an unrunnable binary outright; macOS
         // spawns it and reports an exit code — one fallback serves both.
         $fallback = fn () => $this->builtIn($this->searchWithPhp($pattern, $paths, $mask), $onDone);
+        // Nothing but the history there: grep with no path would read stdin.
+        // A server that stopped building a command: no grep to run there.
+        if ([] === $grepPaths || null === $command) {
+            [] === $grepPaths ? $onDone([]) : $fallback();
+
+            return;
+        }
         // UTF-8, as the pattern that highlights and replaces reads it: under -i
         // grep folds É to é as that pattern does, whatever locale Porta runs in.
-        $process = new AsyncProcess($command ?? [], $this->rootDir, env: [...\getenv(), 'LC_ALL' => 'C.UTF-8']);
-        $started =
-            null !== $command
-            && $process->start(
-                // grep's own failure (2, or 126/127 for a binary that cannot run)
-                // with nothing printed is no answer; 1 is grep saying "no match",
-                // which is one.
-                onExit: fn (int $code, string $out) => $code >= 2 && '' === $out ? $fallback() : $this->finish($out, $onDone, $pattern),
-                onChunk: function (string $chunk) use ($process, $onDone, $pattern, &$kept, &$counted, &$partial): void {
-                    // A server's hits under the vendor dir it moved are dropped by
-                    // parse(): counted, they stopped a search before its real hits.
-                    $lines = \explode("\n", $partial.$chunk);
-                    $partial = \array_pop($lines);
-                    $kept += $this->keptOf($lines, $counted);
-                    if ($kept > self::MAX_RESULTS) {
-                        // Enough results; stop early
-                        $this->finish($process->output(), $onDone, $pattern);
-                    }
-                },
-            );
+        $process = new AsyncProcess($command, $this->rootDir, env: [...\getenv(), 'LC_ALL' => 'C.UTF-8']);
+        $started = $process->start(
+            // grep's own failure (2, or 126/127 for a binary that cannot run)
+            // with nothing printed is no answer; 1 is grep saying "no match",
+            // which is one.
+            onExit: fn (int $code, string $out) => $code >= 2 && '' === $out ? $fallback() : $this->finish($out, $onDone, $pattern),
+            onChunk: function (string $chunk) use ($process, $onDone, $pattern, &$kept, &$counted, &$partial): void {
+                // A server's hits under the vendor dir it moved are dropped by
+                // parse(): counted, they stopped a search before its real hits.
+                $lines = \explode("\n", $partial.$chunk);
+                $partial = \array_pop($lines);
+                $kept += $this->keptOf($lines, $counted);
+                if ($kept > self::MAX_RESULTS) {
+                    // Enough results; stop early
+                    $this->finish($process->output(), $onDone, $pattern);
+                }
+            },
+        );
         if (!$started) {
             // Reached on Linux only (the spawn refusal above), where
             // testABrokenGrepBinaryFallsBackToTheBuiltInSearch drives it; a
