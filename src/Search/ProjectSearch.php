@@ -82,6 +82,13 @@ final class ProjectSearch
      */
     private bool $localOnly = false;
 
+    /**
+     * The vendor dir a server's composer.json moved, whose hits its grep
+     * drops — null when there is none, or when the scope names it: what is
+     * named is searched.
+     */
+    private ?string $dropping = null;
+
     public function searchedLocalCopyOnly(): bool
     {
         return $this->localOnly;
@@ -150,7 +157,10 @@ final class ProjectSearch
         // a moved vendor dir are left out by handing grep their siblings instead.
         // A remote project's grep runs on the server, where no local history is
         // kept, and whose composer.json the cache may not hold.
-        $grepPaths = $this->onServer() ? $paths : $this->without($paths, $this->skippedPaths());
+        $grepPaths = $this->operands($paths);
+        $vendor = $this->remote?->vendorPath();
+        $this->dropping =
+            null === $vendor || [] !== \array_filter($paths, static fn (string $path): bool => \rtrim($path, characters: '/') === $vendor || \str_starts_with($path, $vendor.'/')) ? null : $vendor;
         if ([] === $grepPaths) {
             $onDone([]); // nothing but the history there: grep with no path would read stdin
 
@@ -180,9 +190,8 @@ final class ProjectSearch
             onChunk: function () use ($process, $onDone, $pattern): void {
                 // A server's hits under the vendor dir it moved are dropped by
                 // parse(): counted, they stopped a search before its real hits.
-                $vendor = $this->remote?->vendorPath();
                 $output = $process->output();
-                if ((\substr_count($output, needle: "\n") - (null === $vendor ? 0 : self::linesUnder($output, $vendor))) > self::MAX_RESULTS) {
+                if ((\substr_count($output, needle: "\n") - (null === $this->dropping ? 0 : self::linesUnder($output, $this->dropping))) > self::MAX_RESULTS) {
                     // Enough results; stop early
                     $this->finish($process->output(), $onDone, $pattern);
                 }
@@ -280,16 +289,16 @@ final class ProjectSearch
     {
         $results = [];
         // A grep run on the server cannot be handed the way past a moved
-        // vendor dir, as one here is: its hits there are dropped instead. Only
-        // a server's walk learns one, so a local project's is always null.
-        $vendor = $this->remote?->vendorPath();
+        // vendor dir, as one here is: its hits there are dropped instead.
+        $vendor = $this->dropping;
         foreach (\explode("\n", $output) as $line) {
             $m = [];
             if ('' === $line || !\preg_match('/^(?:\.\/)?(.+?):(\d+):(.*)$/', $line, $m) || (null !== $vendor && \str_starts_with($m[1], $vendor.'/'))) {
                 continue;
             }
             $text = \trim($m[3]);
-            $results[] = ['path' => $m[1], 'line' => (int) $m[2] - 1, 'text' => $text, 'ranges' => $this->rangesFor($text, $pattern)];
+            // `vendor/./a.php`, from a scope handed over as `vendor/.`
+            $results[] = ['path' => \str_replace('/./', replace: '/', subject: $m[1]), 'line' => (int) $m[2] - 1, 'text' => $text, 'ranges' => $this->rangesFor($text, $pattern)];
             if (\count($results) >= self::MAX_RESULTS) {
                 break;
             }
@@ -779,10 +788,46 @@ final class ProjectSearch
     }
 
     /**
+     * What grep is handed for the scope $paths. A folder it skips, named as
+     * the scope, is searched — what is named is asked for — and only what
+     * lies below it skipped. One skipped by name goes as `vendor/.`: grep
+     * skips even "a command-line directory with a name suffix" it excludes,
+     * and that one ends in `.`. Here, the skipped paths are left out of the
+     * rest by {@see without()}; a server's grep is handed the scope as it is.
+     *
+     * @param list<string> $paths
+     *
+     * @return list<string>
+     */
+    private function operands(array $paths): array
+    {
+        $skipped = $this->onServer() ? [] : $this->skippedPaths();
+        $operands = [];
+        foreach ($paths as $path) {
+            $named = \rtrim($path, characters: '/');
+            if (\in_array($named, $skipped, strict: true)) {
+                $operands[] = $named;
+
+                continue;
+            }
+            $kept = [] === $skipped ? [$path] : $this->without([$path], $skipped);
+            // Handed over whole: a folder opened up for a skipped path below goes as its entries.
+            if ([$path] === $kept && \in_array(\basename($named), self::EXCLUDES, strict: true) && \is_dir($this->rootDir.'/'.$named)) {
+                $operands[] = $named.'/.';
+
+                continue;
+            }
+            \array_push($operands, ...$kept);
+        }
+
+        return $operands;
+    }
+
+    /**
      * $paths with every folder that holds one of $skipped replaced by what is
      * in it but the way there — `.` by the root's entries, `.porta` by its own —
      * so a recursive grep never reaches a skipped folder. Unchanged when none
-     * of them is there.
+     * of them is there. {@see operands()} keeps one the scope names.
      *
      * @param list<string> $paths
      * @param list<string> $skipped
@@ -805,7 +850,7 @@ final class ProjectSearch
                 continue;
             }
             if (\in_array(\substr($prefix, offset: 0, length: -1), $holds, strict: true)) {
-                continue; // a skipped folder itself, named as the scope
+                continue; // a skipped folder reached on the way down
             }
             $entries = \scandir('' === $prefix ? $this->rootDir : $this->rootDir.'/'.$prefix);
             // A link is never handed over: grep -r follows a link named on its

@@ -132,6 +132,11 @@ final class ProjectSearchTest extends TestCase
         $paths = \array_column($this->awaitSearch(new ProjectSearch($cache->dir, $remote), query: 'needle'), 'path');
         \sort($paths);
         $this->assertSame(['lib/Own.php', 'src/lib/deps/Own.php'], $paths);
+        $this->assertSame(
+            ['lib/deps/acme/Lib.php'],
+            \array_column($this->awaitSearch(new ProjectSearch($cache->dir, $remote), query: 'needle', scope: ['lib/deps']), 'path'),
+            'named as the scope, its hits are kept',
+        );
 
         // More hits there than a search keeps, read first and long enough to
         // come in many chunks: they must not stop it before the real one.
@@ -261,7 +266,8 @@ final class ProjectSearchTest extends TestCase
         );
         $this->assertSame(['.porta/plugins/acme/porta.php', 'src/A.php'], $this->portaPaths(SearchBackend::Grep, scope: '.'));
         $this->assertSame(['.porta/plugins/acme/porta.php'], $this->portaPaths(SearchBackend::Grep, scope: '.porta'));
-        $this->assertSame([], $this->portaPaths(SearchBackend::Grep, ['.porta/history']), 'named as the scope, it is still left out');
+        $this->assertSame(['.porta/history/ab12/1700000000.snap'], $this->portaPaths(SearchBackend::Grep, ['.porta/history']), 'named as the scope, it is searched');
+        $this->assertSame(['.porta/history/ab12/1700000000.snap'], $this->portaPaths(SearchBackend::PhpFallback, ['.porta/history']), 'by either engine');
     }
 
     /**
@@ -279,6 +285,7 @@ final class ProjectSearchTest extends TestCase
             'lib/Own.php' => "<?php\n// needle beside the vendor dir\n",
             'lib/deps/pkg/B.php' => "<?php\n// needle in a package\n",
             'vendor/stale/C.php' => "<?php\n// needle in a vendor/ by name\n",
+            'vendor/stale/vendor/D.php' => "<?php\n// needle in a vendor/ below it\n",
         ]);
         $found = function (string|array $scope) use ($project): array {
             $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: 'needle', scope: $scope), 'path');
@@ -291,12 +298,16 @@ final class ProjectSearchTest extends TestCase
         $this->assertSame($own, $found('.'), 'grep');
         $this->assertSame(['lib/Own.php'], $found('lib'));
         $this->assertSame(['src/lib/deps/Own.php'], $found('src/lib'));
-        $this->assertSame([], $found(['lib/deps']), 'named as the scope, it is still left out');
+        // What the scope names is searched; what is skipped below it, still skipped.
+        $this->assertSame(['lib/deps/pkg/B.php'], $found(['lib/deps']), 'named as the scope');
+        $this->assertSame(['vendor/stale/C.php'], $found('vendor'), 'vendor/ named, not its own vendor/');
 
         \putenv('PATH=/nonexistent');
         $this->assertSame($own, $found('.'), 'the PHP walk');
         $this->assertSame(['lib/Own.php'], $found('lib'));
         $this->assertSame(['src/lib/deps/Own.php'], $found('src/lib'));
+        $this->assertSame(['lib/deps/pkg/B.php'], $found(['lib/deps']));
+        $this->assertSame(['vendor/stale/C.php'], $found('vendor'));
 
         $tools = new TempProject([], 'porta-argvgrep-');
         $log = $tools->path('argv.log');
@@ -307,6 +318,28 @@ final class ProjectSearchTest extends TestCase
         $argv = (string) \file_get_contents($log);
         $this->assertStringContainsString(' lib/Own.php', $argv, 'the way there is handed over by its entries');
         $this->assertStringNotContainsString('lib/deps', $argv);
+        $found('vendor');
+        $this->assertStringEndsWith(' -- needle vendor/.'."\n", (string) \file_get_contents($log), 'named so grep cannot skip it by name');
+    }
+
+    /** A scope holding nothing but a skipped folder leaves grep nothing to read — not its stdin, where it would wait. */
+    public function testAScopeOfNothingButHistoryFindsNothing(): void
+    {
+        $project = new TempProject(['.porta/history/ab/1.snap' => "needle\n"]);
+
+        $this->assertSame([], $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle', scope: '.porta'));
+    }
+
+    /** vendor/ named as the scope, holding the vendor dir composer.json moved: searched, but not that dir. */
+    public function testANamedVendorKeepsTheMovedDirBelowItSkipped(): void
+    {
+        $project = new TempProject([
+            'composer.json' => '{"config":{"vendor-dir":"vendor/deps"}}',
+            'vendor/Own.php' => "<?php\n// needle\n",
+            'vendor/deps/pkg/B.php' => "<?php\n// needle in a package\n",
+        ]);
+
+        $this->assertSame(['vendor/Own.php'], \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: 'needle', scope: 'vendor'), 'path'));
     }
 
     public function testThePhpWalkLeavesOutLocalHistoryAndNotTheRestOfPorta(): void
