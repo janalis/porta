@@ -101,7 +101,8 @@ that default, so a list written before a bundled plugin existed leaves it off.
 ## Trusting a project
 
 A project can run code of its own: plugins in `.porta/plugins`, binaries and
-commands its `.porta.json` names, tools in its `vendor/bin`, and whatever its
+commands its `.porta.json` names, tools in its composer bin dir (`vendor/bin`,
+or the `config.bin-dir` of its composer.json — never one outside it), and whatever its
 own config tells a language server to run (a `.phpantom.toml` can name the
 program phpantom runs as PHPStan). Since a project is something you clone,
 Porta asks before it runs any of that. The first time you open a project,
@@ -131,7 +132,7 @@ something to run:
   symfony-lsp's `php-command` and `runtime-indexing`, review's `hosts` and
   `provider`, an `outputDir`, git's `worktreeFolder`, assist's `mailbox` and
   `transit` servers, mcp's `allow…` permissions for agents);
-- tools are found on your `PATH`, never in its `vendor/bin`;
+- tools are found on your `PATH`, never in its composer bin dir;
 - phpstan, psalm, php-cs-fixer and mago do not run at all — their own config
   files can execute the project's PHP or a program it names (a `mago.toml`
   `[extension-hosts]` command), whichever binary reads them;

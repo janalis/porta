@@ -18,7 +18,7 @@ use Symfony\Component\Filesystem\Filesystem;
  * a question. An UNTRUSTED project is opened restricted instead: its own
  * plugins are not loaded, the keys of its `.porta.json` that name something to
  * run are dropped ({@see restricted()}), tools are not taken from its
- * `vendor/bin`, and the tools that execute its PHP (a phpstan bootstrap file,
+ * composer bin dir (`vendor/bin`, or its composer.json's `config.bin-dir`), and the tools that execute its PHP (a phpstan bootstrap file,
  * a php-cs-fixer config) do not run. Nor does any language server, even one
  * configured globally: a server reads the project's own config and runs what
  * it names (phpantom ran a `.phpantom.toml`'s `[phpstan] command`, and the
