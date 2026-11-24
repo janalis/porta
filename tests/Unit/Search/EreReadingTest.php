@@ -17,9 +17,9 @@ final class EreReadingTest extends TestCase
         foreach ([
             '\d+' => true,
             '[0-9]+' => false,
-            // GNU's and BSD's own: a grep without -P (BusyBox on musl) may not read them.
-            '\w+' => true,
-            '\bword\b' => true,
+            // Read as PCRE does by glibc's and musl's regcomp, and BSD grep (measured).
+            '\w+' => false,
+            '\bword\b' => false,
             'foo\.bar' => false,
             '\(?x' => false,
             '[\w.-]+@' => true,
@@ -49,6 +49,15 @@ final class EreReadingTest extends TestCase
             '[[:digit:]]+' => false,
             '[[:digit:]a]+' => false,
             '[[:digit:]' => false,
+            '[[.a.]\w]' => true,
+            '[[=a=]]+' => false,
+            '[[=a=]\.]' => true,
+            // A `[:` with no `:]` before the next `]` is a `[` member, as PCRE reads it: what follows is outside.
+            '[[:]\d+' => true,
+            '[[.]\d+' => true,
+            '[[=]x\d' => true,
+            '[[:]\.' => false,
+            '[[:a]\d:]' => true,
             '(*UTF)a' => true,
         ] as $regex => $other) {
             yield $regex => [$regex, $other];
@@ -58,8 +67,9 @@ final class EreReadingTest extends TestCase
     /**
      * What grep -E is handed without -P is decided by an allow-list: an
      * escaped metacharacter, and `\w \W \s \S \b \B` outside brackets, are
-     * read the same; anything else escaped, a backslash in brackets, `(?`, a
-     * lazy or possessive quantifier, `{,n}` might not be.
+     * read the same; anything else escaped, a backslash in brackets, `(?`,
+     * `(*`, a lazy or possessive quantifier, `{,n}` might not be. A
+     * `[:class:]` in brackets is read whole only where PCRE reads one.
      */
     #[DataProvider('ereReadings')]
     public function testWhatEreReadsTheSameIsAllowedAndNothingElse(string $regex, bool $other): void
