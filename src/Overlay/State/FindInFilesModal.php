@@ -11,6 +11,7 @@ use Porta\Overlay\Region\WindowPlacement;
 use Porta\Overlay\Region\WindowZone;
 use Porta\Search\CaseMode;
 use Porta\Search\MatchMode;
+use Porta\Search\ProjectSearch;
 use Porta\Search\SearchOption;
 use Porta\Search\SearchPattern;
 use Porta\Search\TokenScope;
@@ -578,11 +579,13 @@ final class FindInFilesModal
             $result = $this->results[$row->matchIndex];
             if ($this->inPreview()) {
                 $excluded = $this->excluded[$row->matchIndex] ?? false;
+                // A snapshot is never rewritten: shown as what the replace will do with it.
+                $kept = ProjectSearch::inHistory($result['path']);
                 $previewRows[] = FindModalRows::previewMatch(
                     $result,
                     $selected,
-                    $excluded ? null : $this->replacementFor($result['text']),
-                    $this->translator->trans('(excluded)'),
+                    $excluded || $kept ? null : $this->replacementFor($result['text']),
+                    $kept ? $this->translator->trans('(kept as saved)') : $this->translator->trans('(excluded)'),
                     $width,
                     $this->styles,
                     self::BOX_ZONE === $this->hovered && ($windowStart + $i) === $this->hoveredRow,

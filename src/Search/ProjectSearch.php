@@ -39,6 +39,16 @@ final class ProjectSearch
      */
     public const string HISTORY = '.porta/history';
 
+    /**
+     * Whether $relPath is one of local history's snapshots: searched when
+     * the scope names it, never rewritten — they are what an old version is
+     * restored from, and must stay as it was saved.
+     */
+    public static function inHistory(string $relPath): bool
+    {
+        return \str_starts_with($relPath, self::HISTORY.'/');
+    }
+
     /** The largest file the PHP walk reads: 1 MiB. */
     private const int MAX_FILE_BYTES = 1_048_576;
 

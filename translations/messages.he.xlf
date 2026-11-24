@@ -4062,6 +4062,10 @@
         <source>Not replaced in local history: its %count% snapshot stays as saved|Not replaced in local history: its %count% snapshots stay as saved</source>
         <target>לא הוחלף בהיסטוריה המקומית: תמונת המצב (%count%) נשארת כפי שנשמרה|לא הוחלף בהיסטוריה המקומית: %count% תמונות המצב נשארות כפי שנשמרו</target>
       </trans-unit>
+      <trans-unit id="1356">
+        <source>(kept as saved)</source>
+        <target>(נשאר כפי שנשמר)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

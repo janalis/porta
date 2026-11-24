@@ -329,6 +329,25 @@ final class FindInFilesModalTest extends TestCase
         $this->assertTrue($closed);
     }
 
+    /** A local-history snapshot is never rewritten: its row previews no replacement, and says it is kept. */
+    public function testAHistoryRowPreviewsAsKept(): void
+    {
+        $modal = $this->modal();
+        $modal->setCallbacks(new FindModalCallbacks(previewReplacement: static fn (string $old, string $repl): string => \str_replace('foo', $repl, $old)));
+        $modal->open('Find in Files');
+        $modal->setPreview([
+            ['path' => 'src/A.php', 'line' => 4, 'text' => 'foo one', 'ranges' => []],
+            ['path' => '.porta/history/ab/1.snap', 'line' => 4, 'text' => 'foo old', 'ranges' => []],
+        ]);
+        $modal->handleInput("\t", $this->kb); // query → replace
+        $modal->handleInput('b', $this->kb);
+
+        $screen = $this->screen($modal);
+        $this->assertStringContainsString('b one', $screen, 'the project\'s file previews its replacement');
+        $this->assertStringNotContainsString('b old', $screen);
+        $this->assertStringContainsString('(kept as saved)', $screen);
+    }
+
     public function testReplacePreviewExcludeAndReplaceAll(): void
     {
         $replaced = null;

@@ -395,8 +395,8 @@ final class ProjectSearchController
             $keptLinesByPath[$result['path']][] = $result['line'];
         }
         // Out before anything is weighed: no deletion to confirm in what is never rewritten.
-        $history = \count(\array_filter(\array_keys($keptLinesByPath), self::inHistory(...)));
-        $keptLinesByPath = \array_filter($keptLinesByPath, static fn (string $path): bool => !self::inHistory($path), \ARRAY_FILTER_USE_KEY);
+        $history = \count(\array_filter(\array_keys($keptLinesByPath), ProjectSearch::inHistory(...)));
+        $keptLinesByPath = \array_filter($keptLinesByPath, static fn (string $path): bool => !ProjectSearch::inHistory($path), \ARRAY_FILTER_USE_KEY);
 
         if ([] === $keptLinesByPath || '' === \trim($this->lastSearchQuery)) {
             $this->nothingToReplace($history);
@@ -465,16 +465,6 @@ final class ProjectSearchController
         }
 
         $this->finishReplace($touched, $skipped, $history);
-    }
-
-    /**
-     * Whether $relPath is one of local history's snapshots: searched when
-     * the scope names it, never rewritten — they are what an old version is
-     * restored from, and must stay as it was saved.
-     */
-    private static function inHistory(string $relPath): bool
-    {
-        return \str_starts_with($relPath, ProjectSearch::HISTORY.'/');
     }
 
     /**
@@ -559,8 +549,8 @@ final class ProjectSearchController
     private function replaceAllMultiline(string $replacement): void
     {
         $matched = \array_unique(\array_column($this->lastSearchResults, 'path'));
-        $history = \count(\array_filter($matched, self::inHistory(...)));
-        $paths = \array_filter($matched, static fn (string $path): bool => !self::inHistory($path));
+        $history = \count(\array_filter($matched, ProjectSearch::inHistory(...)));
+        $paths = \array_filter($matched, static fn (string $path): bool => !ProjectSearch::inHistory($path));
         if ([] === $paths) {
             $this->nothingToReplace($history);
 

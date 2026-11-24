@@ -4062,6 +4062,10 @@
         <source>Not replaced in local history: its %count% snapshot stays as saved|Not replaced in local history: its %count% snapshots stay as saved</source>
         <target>Im lokalen Verlauf nicht ersetzt: %count% Schnappschuss bleibt wie gespeichert|Im lokalen Verlauf nicht ersetzt: %count% Schnappschüsse bleiben wie gespeichert</target>
       </trans-unit>
+      <trans-unit id="1356">
+        <source>(kept as saved)</source>
+        <target>(bleibt wie gespeichert)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -4062,6 +4062,10 @@
         <source>Not replaced in local history: its %count% snapshot stays as saved|Not replaced in local history: its %count% snapshots stay as saved</source>
         <target>ローカル履歴では置換していません：%count% 件のスナップショットは保存時のままです|ローカル履歴では置換していません：%count% 件のスナップショットは保存時のままです</target>
       </trans-unit>
+      <trans-unit id="1356">
+        <source>(kept as saved)</source>
+        <target>（保存時のまま）</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
