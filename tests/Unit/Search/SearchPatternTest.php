@@ -16,19 +16,24 @@ final class SearchPatternTest extends TestCase
     {
         $this->assertSame('/a\+b/iu', SearchPattern::build('a+b', MatchMode::Literal, WordMode::Anywhere, CaseMode::Insensitive), 'literal queries are quoted');
         $this->assertSame('/a+b/u', SearchPattern::build('a+b', MatchMode::Regex, WordMode::Anywhere, CaseMode::Sensitive), 'regex queries pass through');
-        $this->assertSame('/(?<!\w)(?:foo)(?!\w)/iu', SearchPattern::build('foo', MatchMode::Literal, WordMode::WholeWord, CaseMode::Insensitive));
-        $this->assertSame('/(?<!\w)(?:fo+)(?!\w)/u', SearchPattern::build('fo+', MatchMode::Regex, WordMode::WholeWord, CaseMode::Sensitive));
+        $this->assertSame('/(?:(?<!\w)|(?!\w))(?:foo)(?:(?<!\w)|(?!\w))/iu', SearchPattern::build('foo', MatchMode::Literal, WordMode::WholeWord, CaseMode::Insensitive));
+        $this->assertSame('/(?:(?<!\w)|(?!\w))(?:fo+)(?:(?<!\w)|(?!\w))/u', SearchPattern::build('fo+', MatchMode::Regex, WordMode::WholeWord, CaseMode::Sensitive));
     }
 
-    /** A whole word touches no word character on either side: `$foo` is one beside a space, not after a letter. */
-    public function testAWholeWordThatStartsWithANonWordCharacterIsFoundBesideOne(): void
+    /** A whole word splits no word at either edge: a non-word edge of the query is an edge already. */
+    public function testAWholeWordSplitsNoWord(): void
     {
-        $pattern = SearchPattern::build('$foo', MatchMode::Literal, WordMode::WholeWord, CaseMode::Sensitive);
+        $word = static fn (string $query): string => SearchPattern::build($query, MatchMode::Literal, WordMode::WholeWord, CaseMode::Sensitive);
 
-        $this->assertMatchesRegularExpression($pattern, '    $foo = 1;');
-        $this->assertMatchesRegularExpression(SearchPattern::build('foo(', MatchMode::Literal, WordMode::WholeWord, CaseMode::Sensitive), 'x = foo();');
-        $this->assertDoesNotMatchRegularExpression($pattern, 'a$foo');
-        $this->assertDoesNotMatchRegularExpression($pattern, '$foobar');
+        $this->assertMatchesRegularExpression($word('$foo'), '    $foo = 1;');
+        $this->assertMatchesRegularExpression($word('$foo'), 'a$foo');
+        $this->assertMatchesRegularExpression($word('->save'), '$this->save();');
+        $this->assertMatchesRegularExpression($word('foo('), 'foo(1)');
+        $this->assertMatchesRegularExpression($word('::create'), 'Foo::create()');
+        $this->assertDoesNotMatchRegularExpression($word('$foo'), '$foobar');
+        $this->assertDoesNotMatchRegularExpression($word('foo'), 'foobar');
+        $this->assertDoesNotMatchRegularExpression($word('foo'), 'afoo');
+        $this->assertMatchesRegularExpression($word('foo'), 'a foo.');
     }
 
     /** `/` delimits the built pattern, so a regex of a path is a path — not a bad regex. */

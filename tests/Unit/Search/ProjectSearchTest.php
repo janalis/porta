@@ -1371,13 +1371,13 @@ final class ProjectSearchTest extends TestCase
         $this->assertNull($results, 'cancelled: the rest never runs');
     }
 
-    /** Whole Word is the pattern's word, which grep is not asked to check: `$foo` beside a space, not after a letter. */
-    public function testWholeWordIsThePatternsWordNotGreps(): void
+    /** Whole Word, through grep: a hit splits no word — `$foo` wherever it stands, `foo` not in `foobar`. */
+    public function testWholeWordSplitsNoWordThroughGrep(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n    \$foo = 1;\na\$foo\nfoo bar\nfoobar\n"]);
         $word = new SearchOptions(wholeWord: true);
 
-        $this->assertSame([1], \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: '$foo', options: $word), 'line'));
+        $this->assertSame([1, 2], \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: '$foo', options: $word), 'line'));
         $this->assertSame([1, 2, 3], \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: 'foo', options: $word), 'line'), 'not foobar');
     }
 
@@ -1400,6 +1400,19 @@ final class ProjectSearchTest extends TestCase
         $this->assertNotSame([], $searched, 'grep ran');
         $this->assertStringStartsWith('C.UTF-8 ', $searched[0]);
         $this->assertStringNotContainsString(' -w ', $searched[0]);
+    }
+
+    /** Nor is a server's grep, which runs in a locale nobody measured. */
+    public function testAServersGrepIsNeverHandedW(): void
+    {
+        $logs = new TempProject([], 'porta-serverlog-');
+        $serverLog = $logs->path('server.log');
+        [$onServer, $keep] = $this->serverSearchWith("printf '%s\\n' \"\$*\" >> '{$serverLog}'");
+        $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($onServer, query: 'needle', options: new SearchOptions(caseSensitive: true, wholeWord: true)), 'path'));
+        $onTheServer = \array_values(\array_filter(\explode("\n", (string) \file_get_contents($serverLog)), static fn (string $line): bool => \str_contains($line, ' -- needle')));
+        $this->assertNotSame([], $onTheServer, "the server's grep ran");
+        $this->assertStringNotContainsString(' -w ', $onTheServer[0]);
+        unset($keep);
     }
 
     /**
