@@ -9,7 +9,7 @@ use Symfony\Component\Filesystem\Path;
 /**
  * Where Composer puts a project's packages and their binaries: `vendor/` and
  * `vendor/bin/` by default, or what `config.vendor-dir` and `config.bin-dir`
- * in its composer.json say. Older Symfony projects set `"bin-dir": "bin"`,
+ * in its composer.json, or in Composer's global config.json, say. Older Symfony projects set `"bin-dir": "bin"`,
  * and a tool looked for in `vendor/bin` there is never found.
  *
  * Resolved as Composer does: the global config's (`config.json` in
@@ -41,16 +41,20 @@ final readonly class ComposerLayout
      */
     public static function of(string $root): self
     {
-        $global = self::config(JsonFile::read(self::home().'/config.json'));
+        // A remote project's copy here (it holds ProjectLocation::MARKER): its
+        // server's global config is not this machine's.
+        $global = \is_file($root.'/.porta/remote.json') ? [] : self::config(JsonFile::read(self::home().'/config.json'));
         $project = JsonFile::read($root.'/composer.json');
 
         return self::from($root, [...($project ?? []), 'config' => [...$global, ...self::config($project)]]);
     }
 
     /**
-     * Composer's home, where its global config is, found as Composer finds
-     * it: COMPOSER_HOME; else the first of the XDG config dir's `composer`
-     * and `~/.composer` that is there; else the XDG one.
+     * Composer's home, where its global config is, found as Composer's
+     * Factory::getHomeDir() finds it on Linux and macOS (Porta runs on
+     * Windows through WSL): COMPOSER_HOME; else, where XDG is in use (an
+     * XDG_ variable set, or /etc/xdg there), the XDG config dir's
+     * `composer` when it is there; else `~/.composer`.
      */
     private static function home(): string
     {
@@ -58,11 +62,20 @@ final readonly class ComposerLayout
         if (\is_string($set) && '' !== $set) {
             return $set;
         }
-        $user = (string) \getenv('HOME');
+        $user = \rtrim((string) \getenv('HOME'), characters: '/');
         $xdg = \getenv('XDG_CONFIG_HOME');
-        $dirs = [(\is_string($xdg) && '' !== $xdg ? $xdg : $user.'/.config').'/composer', $user.'/.composer'];
+        $dirs = [
+            ...(self::usesXdg() ? [(\is_string($xdg) && '' !== $xdg ? $xdg : $user.'/.config').'/composer'] : []),
+            $user.'/.composer',
+        ];
 
         return \array_find($dirs, static fn (string $dir): bool => \is_dir($dir)) ?? $dirs[0];
+    }
+
+    /** Whether Composer looks in the XDG config dir: an XDG_ variable is set, or /etc/xdg is there. */
+    private static function usesXdg(): bool
+    {
+        return \array_any(\array_keys(\getenv()), static fn (string $name): bool => \str_starts_with($name, 'XDG_')) || \is_dir('/etc/xdg');
     }
 
     /**

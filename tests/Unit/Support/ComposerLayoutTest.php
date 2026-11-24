@@ -82,26 +82,52 @@ final class ComposerLayoutTest extends TestCase
         $this->assertSame($project->path('tools'), $layout->binDir, 'the global one where the project is silent');
     }
 
-    /** Without COMPOSER_HOME, Composer's home is the XDG config dir's `composer` when there, else `~/.composer`. */
+    /**
+     * Without COMPOSER_HOME, Composer's home is found as Composer finds it:
+     * the XDG config dir's `composer` only where XDG is in use (an XDG_
+     * variable set, or /etc/xdg there, as on most Linux), else `~/.composer`.
+     */
     public function testComposersHomeIsFoundAsComposerFindsIt(): void
     {
         $user = new TempProject(['.composer/config.json' => '{"config":{"bin-dir":"old"}}']);
         $project = new TempProject();
-        $saved = ['COMPOSER_HOME' => \getenv('COMPOSER_HOME'), 'HOME' => \getenv('HOME'), 'XDG_CONFIG_HOME' => \getenv('XDG_CONFIG_HOME')];
+        $saved = ['COMPOSER_HOME' => \getenv('COMPOSER_HOME'), 'HOME' => \getenv('HOME')];
+        foreach (\array_keys(\getenv()) as $name) {
+            if (!\str_starts_with($name, 'XDG_')) {
+                continue;
+            }
+            $saved[$name] = \getenv($name);
+            \putenv($name);
+        }
         \putenv('COMPOSER_HOME');
-        \putenv('XDG_CONFIG_HOME');
         \putenv('HOME='.$user->dir);
+        $bin = static fn (): string => ComposerLayout::of($project->dir)->binDir;
         try {
-            $this->assertSame($project->path('old'), ComposerLayout::of($project->dir)->binDir, '~/.composer, the XDG one not there');
+            $this->assertSame($project->path('old'), $bin(), '~/.composer, no XDG dir there');
             $user->write('.config/composer/config.json', content: '{"config":{"bin-dir":"xdg"}}');
-            $this->assertSame($project->path('xdg'), ComposerLayout::of($project->dir)->binDir, '~/.config/composer before it');
+            $this->assertSame($project->path(\is_dir('/etc/xdg') ? 'xdg' : 'old'), $bin(), 'the XDG dir only where XDG is in use: here, /etc/xdg decides');
             $user->write('elsewhere/composer/config.json', content: '{"config":{"bin-dir":"set"}}');
             \putenv('XDG_CONFIG_HOME='.$user->path('elsewhere'));
-            $this->assertSame($project->path('set'), ComposerLayout::of($project->dir)->binDir, 'XDG_CONFIG_HOME where set');
+            $this->assertSame($project->path('set'), $bin(), 'XDG_CONFIG_HOME set: XDG in use, and where its dir is');
         } finally {
+            \putenv('XDG_CONFIG_HOME');
             foreach ($saved as $name => $value) {
                 \putenv(false === $value ? $name : $name.'='.$value);
             }
+        }
+    }
+
+    /** A remote project's copy here: its server's global config is not this machine's, and is not read. */
+    public function testARemoteProjectsCopyReadsNoGlobalConfig(): void
+    {
+        $home = new TempProject(['config.json' => '{"config":{"bin-dir":"tools"}}']);
+        $copy = new TempProject(['.porta/remote.json' => '{"url": "ssh://example.org/srv"}']);
+        $was = \getenv('COMPOSER_HOME');
+        \putenv('COMPOSER_HOME='.$home->dir);
+        try {
+            $this->assertSame($copy->path('vendor/bin'), ComposerLayout::of($copy->dir)->binDir);
+        } finally {
+            \putenv(false === $was ? 'COMPOSER_HOME' : 'COMPOSER_HOME='.$was);
         }
     }
 }

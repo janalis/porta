@@ -76,6 +76,19 @@ register_shutdown_function(static function () use ($claudeConfigDir): void {
     new Filesystem()->remove($claudeConfigDir);
 });
 
+// Composer's home, whose config.json Porta reads beneath a project's own
+// (ComposerLayout): the developer's real one could move every project's
+// vendor or bin dir, and tests that expect vendor/bin would fail on that box
+// only. Each worker gets an empty one, made here and removed at exit.
+// putenv() so the composer a test runs is pinned too.
+$composerHome = sys_get_temp_dir().'/porta-test-composer-'.bin2hex(random_bytes(6));
+Files::ensureDir($composerHome, permissions: 0o700);
+putenv('COMPOSER_HOME='.$composerHome);
+$_ENV['COMPOSER_HOME'] = $composerHome;
+register_shutdown_function(static function () use ($composerHome): void {
+    new Filesystem()->remove($composerHome);
+});
+
 // Every Ide boot in the suite shares one container dump here instead of each
 // recompiling (~124 ms) or touching the developer's real ~/.cache/porta.
 // putenv() deliberately, so exec()'d subprocess tests inherit the pin.
