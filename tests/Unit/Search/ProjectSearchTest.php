@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Search;
 
-use PHPUnit\Framework\Attributes\IniSetting;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Filesystem\ProjectLocation;
@@ -1382,54 +1381,26 @@ final class ProjectSearchTest extends TestCase
         $this->assertSame([1, 2, 3], \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: 'foo', options: $word), 'line'), 'not foobar');
     }
 
-    /** grep is handed -w only where its lines hold every whole-word line the pattern's do: a literal with a word character at each end. */
-    public function testGrepChecksWordsOnlyWhereItsWordHoldsThePatterns(): void
-    {
-        $project = new TempProject(['src/A.php' => "<?php\n"]);
-        $tools = new TempProject([], 'porta-argvgrep-');
-        $log = $tools->path('argv.log');
-        $tools->write('grep', "#!/bin/sh\nprintf '%s\\n' \"\$*\" >> '{$log}'\nexit 1\n");
-        \chmod($tools->path('grep'), permissions: 0o755);
-        \putenv('PATH='.$tools->dir.':/bin');
-        $handed = function (string $query, SearchOptions $options) use ($project, $log): bool {
-            \file_put_contents($log, data: '');
-            $this->awaitSearch(new ProjectSearch($project->dir), query: $query, options: $options);
-            $searched = \array_values(\array_filter(\explode("\n", (string) \file_get_contents($log)), static fn (string $line): bool => \str_contains($line, ' -- ')));
-
-            return \str_contains($searched[0] ?? '', '-w ');
-        };
-
-        $this->assertTrue($handed('foo_1', new SearchOptions(wholeWord: true)));
-        $this->assertFalse($handed('$foo', new SearchOptions(wholeWord: true)), 'a non-word edge');
-        $this->assertFalse($handed('foo$', new SearchOptions(wholeWord: true)), 'at either end');
-        $this->assertFalse($handed('foo', new SearchOptions(regex: true, wholeWord: true)), 'a regex');
-        $this->assertFalse($handed('foo', new SearchOptions()), 'no Whole Word');
-    }
-
     /**
      * A Whole Word line whose match could not finish is grep's word only
      * where grep checked it: without -w, grep printed every occurrence.
      */
-    #[IniSetting('pcre.backtrack_limit', '10')]
-    #[IniSetting('pcre.jit', '0')]
     public function testAFailedMatchIsNoWordGrepDidNotCheck(): void
     {
         $search = new ProjectSearch('/tmp');
         Probe::set($search, 'grepWords', false);
 
-        $this->assertSame([], Probe::invoke($search, 'parse', 'src/A.php:1:'.\str_repeat('a', 40)."!\n", '/^(a+)+$/'));
+        $this->assertSame([], $this->underATinyBacktrackLimit(static fn (): mixed => Probe::invoke($search, 'parse', 'src/A.php:1:'.\str_repeat('a', 16)."!\n", '/^(a+)+$/')));
         $this->assertTrue($search->gaveUp(), 'and the search says it gave up');
     }
 
-    /** The same, end to end: a Whole Word regex is handed to grep without -w. */
-    #[IniSetting('pcre.backtrack_limit', '10')]
-    #[IniSetting('pcre.jit', '0')]
+    /** The same, end to end: grep is handed no -w. */
     public function testAWholeWordRegexThatCannotFinishListsNothingGrepDidNotCheck(): void
     {
-        $project = new TempProject(['src/A.php' => \str_repeat('a', 40)."! a\n"]);
+        $project = new TempProject(['src/A.php' => \str_repeat('a', 16)."! a\n"]);
         $search = new ProjectSearch($project->dir);
 
-        $this->assertSame([], $this->awaitSearch($search, query: '(a+)+$', options: new SearchOptions(regex: true, wholeWord: true)));
+        $this->assertSame([], $this->underATinyBacktrackLimit(fn (): array => $this->awaitSearch($search, query: '(a+)+$', options: new SearchOptions(regex: true, wholeWord: true))));
         $this->assertTrue($search->gaveUp());
     }
 
@@ -1438,15 +1409,14 @@ final class ProjectSearchTest extends TestCase
      * and the built-in engine, which has no grep behind the line, lists
      * nothing. Both say they gave up.
      */
-    #[IniSetting('pcre.backtrack_limit', '10')]
-    #[IniSetting('pcre.jit', '0')]
     public function testARegexThatCannotFinishIsGrepsLineAndNoBuiltInHit(): void
     {
-        $project = new TempProject(['src/A.php' => \str_repeat('a', 40)."! a\n"]);
+        // 16: GNU grep -P gives up on 40 (its own backtrack limit); PHP's, at 10, on both.
+        $project = new TempProject(['src/A.php' => \str_repeat('a', 16)."! a\n"]);
         $regex = new SearchOptions(regex: true);
         $search = new ProjectSearch($project->dir);
 
-        $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: '(a+)+$', options: $regex), 'path'));
+        $this->assertSame(['src/A.php'], \array_column($this->underATinyBacktrackLimit(fn (): array => $this->awaitSearch($search, query: '(a+)+$', options: $regex)), 'path'));
         $this->assertTrue($search->gaveUp());
 
         $tools = new TempProject([], 'porta-failgrep-');
@@ -1454,7 +1424,7 @@ final class ProjectSearchTest extends TestCase
         \chmod($tools->path('grep'), permissions: 0o755);
         \putenv('PATH='.$tools->dir.':/bin');
         $builtIn = new ProjectSearch($project->dir);
-        $this->assertSame([], $this->awaitSearch($builtIn, query: '(a+)+$', options: $regex));
+        $this->assertSame([], $this->underATinyBacktrackLimit(fn (): array => $this->awaitSearch($builtIn, query: '(a+)+$', options: $regex)));
         $this->assertTrue($builtIn->gaveUp());
     }
 
@@ -1464,16 +1434,43 @@ final class ProjectSearchTest extends TestCase
         $search = new ProjectSearch('/tmp');
 
         $this->assertSame([], Probe::invoke($search, 'parse', "src/A.php:1:Andr\xe9\n", '/\x{100}/u'));
-        $this->assertTrue($search->gaveUp());
+        $this->assertFalse($search->gaveUp(), 'no limit was hit: nothing to give up on');
+    }
+
+    /**
+     * $run's result, run with PHP's backtrack limit at 10 and no JIT: a
+     * pattern that backtracks at all cannot finish, while grep, whose limit
+     * this is not, does. A short input keeps grep's own limit out of it.
+     *
+     * @template T
+     *
+     * @param \Closure(): T $run
+     *
+     * @return T
+     */
+    private function underATinyBacktrackLimit(\Closure $run): mixed
+    {
+        $limit = (string) \ini_get('pcre.backtrack_limit');
+        $jit = (string) \ini_get('pcre.jit');
+        // @mago-expect lint:no-ini-set -- the limit is what is under test, restored below
+        \ini_set('pcre.backtrack_limit', '10');
+        // @mago-expect lint:no-ini-set -- JIT counts its own way: off, the limit reads the same everywhere
+        \ini_set('pcre.jit', '0');
+        try {
+            return $run();
+        } finally {
+            // @mago-expect lint:no-ini-set -- restoring what was set above
+            \ini_set('pcre.backtrack_limit', $limit);
+            // @mago-expect lint:no-ini-set -- restoring what was set above
+            \ini_set('pcre.jit', $jit);
+        }
     }
 
     /** A pattern that cannot finish (the backtrack limit) keeps grep's line: a hit is never dropped on a failed match. */
-    #[IniSetting('pcre.backtrack_limit', '10')]
-    #[IniSetting('pcre.jit', '0')]
     public function testAFailedMatchKeepsGrepsLine(): void
     {
         $search = new ProjectSearch('/tmp');
-        $results = Probe::invoke($search, 'parse', 'src/A.php:1:'.\str_repeat('a', 40)."!\n", '/^(a+)+$/');
+        $results = $this->underATinyBacktrackLimit(static fn (): mixed => Probe::invoke($search, 'parse', 'src/A.php:1:'.\str_repeat('a', 16)."!\n", '/^(a+)+$/'));
 
         $this->assertSame(['src/A.php'], \array_column($results, 'path'));
         $this->assertTrue($search->gaveUp(), 'said');
