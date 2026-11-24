@@ -311,6 +311,19 @@ final class AbstractToolPluginTest extends TestCase
         $this->assertFalse($missing->callAvailable($api)());
     }
 
+    /** A composer.json that moves the binaries moves where the hint and the flash say the tool is looked for. */
+    public function testAMovedComposerBinDirIsTheOneNamed(): void
+    {
+        $this->project = new TempProject(['composer.json' => '{"config":{"bin-dir":"tools"}}']);
+        $api = $this->api(locale: 'fr');
+        $missing = $this->plugin('demo', binaryName: 'porta-nonexistent-tool');
+        $this->activate($missing, $api);
+
+        $this->assertSame('empty = tools, then PATH', $api->bufferedSettings()[0]['hint']);
+        $this->assertNull($missing->callAcquire($api));
+        $this->assertStringContainsString('demo introuvable (tools ou PATH)', $this->flashText($this->status), 'in every catalog');
+    }
+
     public function testRegistrationHelpersBufferTheirRows(): void
     {
         $api = $this->api();

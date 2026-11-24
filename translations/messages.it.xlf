@@ -2131,8 +2131,8 @@
         <target>%tool% non trovato (imposta il binario o installalo)</target>
       </trans-unit>
       <trans-unit id="655">
-        <source>%tool% not found (vendor/bin or PATH)</source>
-        <target>%tool% non trovato (vendor/bin o PATH)</target>
+        <source>%tool% not found (%dir% or PATH)</source>
+        <target>%tool% non trovato (%dir% o PATH)</target>
       </trans-unit>
       <trans-unit id="656">
         <source>%tool%: open a PHP file first</source>

@@ -39,6 +39,14 @@ final readonly class ComposerLayout
         return new self($vendor, self::absolute($root, $bin));
     }
 
+    /** The bin dir as a message to the user names it: relative to $root when inside it, else as it is. */
+    public function binDirFrom(string $root): string
+    {
+        $relative = Path::makeRelative($this->binDir, $root);
+
+        return \str_starts_with($relative, '../') ? $this->binDir : $relative;
+    }
+
     private static function text(mixed $config, string $key): ?string
     {
         // An offset into a string or a number is null under ??, as a missing key is.

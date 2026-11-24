@@ -37,6 +37,13 @@ final class ComposerLayoutTest extends TestCase
         $this->assertSame($project->path($bin), $layout->binDir);
     }
 
+    public function testTheBinDirIsNamedRelativeToTheProjectWhenInsideIt(): void
+    {
+        $this->assertSame('vendor/bin', new ComposerLayout('/p/vendor', '/p/vendor/bin')->binDirFrom('/p'));
+        $this->assertSame('/opt/bin', new ComposerLayout('/p/vendor', '/opt/bin')->binDirFrom('/p'), 'outside');
+        $this->assertSame('/pbin', new ComposerLayout('/p/vendor', '/pbin')->binDirFrom('/p'), 'a sibling sharing the prefix');
+    }
+
     public function testAnAbsoluteDirIsKeptAsItIs(): void
     {
         $project = new TempProject(['composer.json' => '{"config":{"vendor-dir":"/opt/deps","bin-dir":"/opt/bin"}}']);

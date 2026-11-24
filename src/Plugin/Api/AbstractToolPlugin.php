@@ -7,6 +7,7 @@ namespace Porta\Plugin\Api;
 use Porta\Filesystem\ProjectLocation;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Support\AsyncProcess;
+use Porta\Support\ComposerLayout;
 use Porta\Support\Files;
 
 /**
@@ -147,7 +148,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
      */
     protected function registerBinarySetting(PluginApi $api, array $via = [], ?string $hint = null): void
     {
-        $api->registerSetting('binary', $this->binaryName.' binary', kind: 'text', default: '', hint: $hint ?? $this->binaryHint());
+        $api->registerSetting('binary', $this->binaryName.' binary', kind: 'text', default: '', hint: $hint ?? $this->binaryHint($api));
         if ([] !== $via) {
             $api->registerInstaller($this->binaryName, $this->binaryAvailable($api), $via);
         }
@@ -287,11 +288,17 @@ abstract class AbstractToolPlugin extends AbstractPlugin
         );
     }
 
-    private function binaryHint(): string
+    private function binaryHint(PluginApi $api): string
     {
         return BinarySearch::PathOnly === $this->search
             ? \sprintf('empty = %s on PATH', $this->binaryName)
-            : 'empty = vendor/bin, then PATH';
+            : \sprintf('empty = %s, then PATH', self::binDir($api));
+    }
+
+    /** Where composer puts the project's binaries, as the user would type it: `vendor/bin` unless its composer.json moves them. */
+    private static function binDir(PluginApi $api): string
+    {
+        return ComposerLayout::of($api->projectRoot())->binDirFrom($api->projectRoot());
     }
 
     private function missingBinaryMessage(PluginApi $api): string
@@ -299,8 +306,8 @@ abstract class AbstractToolPlugin extends AbstractPlugin
         return $api->trans(
             BinarySearch::PathOnly === $this->search
                 ? '%tool% not found (set its binary or install it)'
-                : '%tool% not found (vendor/bin or PATH)',
-            ['%tool%' => $this->name()],
+                : '%tool% not found (%dir% or PATH)',
+            ['%tool%' => $this->name(), '%dir%' => self::binDir($api)],
         );
     }
 }
