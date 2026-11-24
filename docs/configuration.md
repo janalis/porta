@@ -102,7 +102,8 @@ that default, so a list written before a bundled plugin existed leaves it off.
 
 A project can run code of its own: plugins in `.porta/plugins`, binaries and
 commands its `.porta.json` names, tools in its composer bin dir (`vendor/bin`,
-or the `config.bin-dir` of its composer.json — never one outside it), and whatever its
+or the `config.bin-dir` of its composer.json or of Composer's global
+config.json — never one outside it), and whatever its
 own config tells a language server to run (a `.phpantom.toml` can name the
 program phpantom runs as PHPStan). Since a project is something you clone,
 Porta asks before it runs any of that. The first time you open a project,

@@ -301,7 +301,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
             : "empty = composer's bin dir, then PATH";
     }
 
-    /** Where composer puts the project's binaries, as the user would type it: `vendor/bin` unless its composer.json moves them. */
+    /** Where composer puts the project's binaries, as the user would type it: `vendor/bin` unless its composer.json or Composer's global config moves them. */
     private static function binDir(PluginApi $api): string
     {
         return ComposerLayout::of($api->projectRoot())->binDirFrom($api->projectRoot());
