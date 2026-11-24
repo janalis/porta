@@ -6,6 +6,7 @@ namespace Porta\Lsp;
 
 use Porta\Container\AsIdeService;
 use Porta\Editor\PollBackoff;
+use Porta\Support\ComposerLayout;
 use Porta\Support\GitIgnored;
 use Porta\Support\JsonKey;
 use Psr\Clock\ClockInterface;
@@ -153,10 +154,12 @@ final class WatchedFiles
             return null;
         }
         $this->watchers = \array_map(static fn (array $own): array => \array_map(self::compile(...), $own), $watchers);
+        // The vendor dir composer.json moved is skipped by its path, should git not ignore it.
+        $moved = ComposerLayout::of($this->rootDir)->vendorPath($this->rootDir);
         $walk = Finder::create()
             ->files()
             ->in($this->rootDir)
-            ->exclude(self::SKIP)
+            ->exclude([...self::SKIP, ...(null === $moved ? [] : [$moved])])
             ->ignoreDotFiles(false)
             ->ignoreUnreadableDirs()
             ->ignoreVCSIgnored(true)

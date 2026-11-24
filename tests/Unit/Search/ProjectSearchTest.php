@@ -205,6 +205,48 @@ final class ProjectSearchTest extends TestCase
         $this->assertSame([], $this->portaPaths(SearchBackend::Grep, ['.porta/history']), 'named as the scope, it is still left out');
     }
 
+    /**
+     * A vendor dir composer.json moved is left out by its PATH, as the
+     * history is: a folder of that name elsewhere, or a sibling beside it,
+     * is the project's own. Both engines, and what grep is handed.
+     */
+    public function testAMovedVendorDirIsLeftOutByItsPath(): void
+    {
+        $project = new TempProject([
+            'composer.json' => '{"config":{"vendor-dir":"lib/deps"}}',
+            'src/A.php' => "<?php\n// needle\n",
+            'src/deps/Own.php' => "<?php\n// needle in a folder of the same name\n",
+            'lib/Own.php' => "<?php\n// needle beside the vendor dir\n",
+            'lib/deps/pkg/B.php' => "<?php\n// needle in a package\n",
+            'vendor/stale/C.php' => "<?php\n// needle in a vendor/ by name\n",
+        ]);
+        $found = function (string|array $scope) use ($project): array {
+            $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: 'needle', scope: $scope), 'path');
+            \sort($paths);
+
+            return $paths;
+        };
+        $own = ['lib/Own.php', 'src/A.php', 'src/deps/Own.php'];
+
+        $this->assertSame($own, $found('.'), 'grep');
+        $this->assertSame(['lib/Own.php'], $found('lib'));
+        $this->assertSame([], $found(['lib/deps']), 'named as the scope, it is still left out');
+
+        \putenv('PATH=/nonexistent');
+        $this->assertSame($own, $found('.'), 'the PHP walk');
+        $this->assertSame(['lib/Own.php'], $found('lib'));
+
+        $tools = new TempProject([], 'porta-argvgrep-');
+        $log = $tools->path('argv.log');
+        $tools->write('grep', "#!/bin/sh\nprintf '%s\\n' \"\$*\" >> '{$log}'\nexit 1\n");
+        \chmod($tools->path('grep'), permissions: 0o755);
+        \putenv('PATH='.$tools->dir.':/bin');
+        $found('.');
+        $argv = (string) \file_get_contents($log);
+        $this->assertStringContainsString(' lib/Own.php', $argv, 'the way there is handed over by its entries');
+        $this->assertStringNotContainsString('lib/deps', $argv);
+    }
+
     public function testThePhpWalkLeavesOutLocalHistoryAndNotTheRestOfPorta(): void
     {
         $this->assertSame(

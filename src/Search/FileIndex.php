@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Search;
 
+use Porta\Support\ComposerLayout;
 use Porta\Support\FuzzyMatcher;
 use Porta\Support\GitIgnored;
 use Symfony\Component\Finder\Finder;
@@ -87,7 +88,11 @@ final class FileIndex
         // PHP project it can eat the whole MAX_FILES budget by itself, so the
         // project's own files were the ones truncated away. The setting
         // re-includes it for people who go-to-file into dependencies.
-        $excludes = [...($this->includeVendor ? \array_values(\array_diff(ProjectSearch::EXCLUDES, ['vendor'])) : ProjectSearch::EXCLUDES), ProjectSearch::HISTORY];
+        // A vendor dir composer.json moved is one too, by its path from the root.
+        $moved = ComposerLayout::of($this->rootDir)->vendorPath($this->rootDir);
+        $excludes = $this->includeVendor
+            ? [...\array_values(\array_diff(ProjectSearch::EXCLUDES, ['vendor'])), ProjectSearch::HISTORY]
+            : [...ProjectSearch::EXCLUDES, ProjectSearch::HISTORY, ...(null === $moved ? [] : [$moved])];
         // A tree git ignores — a coverage report, a framework's cache — is not
         // walked: its files filled the budget and pushed the project's own out.
         // A single ignored file (`.env`) is kept, and so is vendor/ when asked for.
@@ -101,7 +106,7 @@ final class FileIndex
             ->ignoreVCS(false)
             ->exclude($excludes)
             ->notName('.DS_Store')
-            ->filter(static fn (SplFileInfo $entry): bool => ($keepVendor && 1 === \preg_match('~(^|/)vendor(/|$)~', $entry->getRelativePathname())) || $pruner($entry), prune: true);
+            ->filter(static fn (SplFileInfo $entry): bool => ($keepVendor && self::vendored($entry->getRelativePathname(), $moved)) || $pruner($entry), prune: true);
 
         $paths = [];
         foreach (new \LimitIterator($finder->getIterator(), 0, self::MAX_FILES) as $file) {
@@ -114,5 +119,11 @@ final class FileIndex
 
             return ['path' => $path, 'lower' => $lower, 'boundary' => \strlen($lower) - \strlen(\basename($lower))];
         }, $paths);
+    }
+
+    /** Whether $path is in a vendor dir: one named so, or the one composer.json moved to $moved. */
+    private static function vendored(string $path, ?string $moved): bool
+    {
+        return 1 === \preg_match('~(^|/)vendor(/|$)~', $path) || (null !== $moved && ($path === $moved || \str_starts_with($path, $moved.'/')));
     }
 }

@@ -46,6 +46,26 @@ final class FileIndexTest extends TestCase
         $this->assertSame(['.gitignore', 'a.php', 'vendor/pkg/Lib.php'], \array_column($index->entries(), 'path'));
     }
 
+    /**
+     * A vendor dir composer.json moved is left out by its path, ignored by git
+     * or not, and the setting reaches it as it reaches vendor/ — even ignored.
+     */
+    public function testAMovedVendorDirIsLeftOutAndTheSettingReachesIt(): void
+    {
+        $project = new TempProject([
+            'composer.json' => '{"config":{"vendor-dir":"lib/deps"}}',
+            'lib/Own.php' => '',
+            'lib/deps/pkg/Lib.php' => '',
+            'src/deps/Own.php' => '',
+        ]);
+        $index = new FileIndex($project->dir);
+        $this->assertSame(['composer.json', 'lib/Own.php', 'src/deps/Own.php'], \array_column($index->entries(), 'path'), 'not ignored by git, still left out');
+
+        $project->write('.gitignore', content: "/lib/deps/\n");
+        $index->setIncludeVendor(true);
+        $this->assertSame(['.gitignore', 'composer.json', 'lib/Own.php', 'lib/deps/pkg/Lib.php', 'src/deps/Own.php'], \array_column($index->entries(), 'path'));
+    }
+
     /** A directory nobody may list — a root-owned Docker volume — is passed over, not the end of Go to File. */
     public function testAnUnreadableDirectoryIsPassedOver(): void
     {

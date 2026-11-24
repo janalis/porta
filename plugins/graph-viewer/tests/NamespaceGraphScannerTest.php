@@ -26,6 +26,18 @@ final class NamespaceGraphScannerTest extends TestCase
         ]);
     }
 
+    /** A vendor dir composer.json moved under a root is skipped too: its packages are no part of the architecture. */
+    public function testAMovedVendorDirIsSkipped(): void
+    {
+        $project = $this->project();
+        $project->write('composer.json', (string) \json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']], 'config' => ['vendor-dir' => 'src/deps']], \JSON_THROW_ON_ERROR));
+        $project->write('src/deps/acme/Lib.php', content: "<?php\nnamespace App\\Packaged;\nfinal class Lib {}\n");
+
+        $dot = new NamespaceGraphScanner($project->dir)->scan();
+        $this->assertStringContainsString('"App\\\\Editor"', $dot, 'the premise: the rest is scanned');
+        $this->assertStringNotContainsString('Packaged', $dot);
+    }
+
     public function testScansBucketsAndEmitsClusteredDot(): void
     {
         $project = $this->project();

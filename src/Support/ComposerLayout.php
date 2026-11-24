@@ -53,6 +53,18 @@ final readonly class ComposerLayout
         return '' === $relative ? '.' : $relative;
     }
 
+    /**
+     * The vendor dir as a path from $root, for a walk to leave out alongside
+     * the folders it skips by name: null when skipping every `vendor` already
+     * does (the default, or any dir of that name), or when it is the root.
+     */
+    public function vendorPath(string $root): ?string
+    {
+        $relative = Path::makeRelative($this->vendorDir, $root);
+
+        return '' === $relative || 'vendor' === \basename($relative) ? null : $relative;
+    }
+
     private static function text(mixed $config, string $key): ?string
     {
         // An offset into a string or a number is null under ??, as a missing key is.

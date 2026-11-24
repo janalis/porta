@@ -165,6 +165,22 @@ final class WatchedFilesTest extends TestCase
         $this->assertSame([], $this->sent('php-ls'));
     }
 
+    /** A vendor dir composer.json moved is not walked either, though git does not ignore it here. */
+    public function testAMovedVendorDirIsNeverWalked(): void
+    {
+        $this->project->write('composer.json', content: '{"config":{"vendor-dir":"lib/deps"}}');
+        $this->project->write('lib/deps/acme/E.php', content: '<?php // e');
+        $this->startServers();
+        $this->clients['php-ls']->fileWatchers = [['glob' => '**/*.php', 'kind' => 7]];
+        $this->watched->tick();
+
+        $this->project->write('lib/deps/acme/E.php', content: '<?php // e, updated by composer');
+        $this->project->write('lib/Own.php', content: '<?php // the project\'s own, beside it');
+        $this->watched->tick();
+
+        $this->assertSame([[['uri' => $this->uri('lib/Own.php'), 'type' => 1]]], $this->sent('php-ls'));
+    }
+
     public function testNothingIsWalkedUntilAServerWatchesAndItsFirstSweepIsItsBaseline(): void
     {
         $this->startServers();

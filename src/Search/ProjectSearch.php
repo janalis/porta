@@ -7,6 +7,7 @@ namespace Porta\Search;
 use Porta\Editor\DiskText;
 use Porta\Filesystem\RemoteFilesystem;
 use Porta\Support\AsyncProcess;
+use Porta\Support\ComposerLayout;
 use Porta\Support\Files;
 use Porta\Support\PathExecutables;
 use Revolt\EventLoop;
@@ -145,10 +146,11 @@ final class ProjectSearch
         foreach (self::EXCLUDES as $dir) {
             $flags[] = '--exclude-dir='.$dir;
         }
-        // grep's --exclude-dir matches a folder's NAME, so the history folder is
-        // left out by handing grep its siblings instead. A remote project's grep
-        // runs on the server, where no local history is kept.
-        $grepPaths = $this->onServer() ? $paths : $this->withoutHistory($paths);
+        // grep's --exclude-dir matches a folder's NAME, so the history folder and
+        // a moved vendor dir are left out by handing grep their siblings instead.
+        // A remote project's grep runs on the server, where no local history is
+        // kept, and whose composer.json the cache may not hold.
+        $grepPaths = $this->onServer() ? $paths : $this->without($paths, $this->skippedPaths());
         if ([] === $grepPaths) {
             $onDone([]); // nothing but the history there: grep with no path would read stdin
 
@@ -456,13 +458,18 @@ final class ProjectSearch
             return;
         }
         $prefix = '.' === $scope ? '' : \rtrim($scope, characters: '/').'/';
+        // A skipped path below the scope, relative to it; one that IS the scope was asked for.
+        $below = \array_map(
+            static fn (string $path): string => \substr($path, \strlen($prefix)),
+            \array_values(\array_filter($this->skippedPaths(), static fn (string $path): bool => \str_starts_with($path.'/', $prefix) && $path.'/' !== $prefix)),
+        );
         $finder = new Finder()
             ->files()
             ->in($abs)
             ->ignoreDotFiles(false)
             ->ignoreUnreadableDirs() // passed over, as grep passes it
             ->ignoreVCS(false)
-            ->exclude([...self::EXCLUDES, ...(\str_starts_with(self::HISTORY.'/', $prefix) && self::HISTORY.'/' !== $prefix ? [\substr(self::HISTORY, \strlen($prefix))] : [])]);
+            ->exclude([...self::EXCLUDES, ...$below]);
         // The mask (an OR of basename globs, as grep's --include) and the size
         // cap are judged here, not by Finder: a file Finder turns away never
         // reaches the walk, so a tree of them — 47,000 coverage pages under a
@@ -741,30 +748,47 @@ final class ProjectSearch
     }
 
     /**
-     * $paths with every folder that holds {@see HISTORY} replaced by what is
-     * in it but the way there — `.` by the root's entries, `.porta` by its own —
-     * so a recursive grep never reaches the history folder. Unchanged when the
-     * project keeps no history.
-     *
-     * @param list<string> $paths
+     * The folders, by PATH from the root, no local search walks besides
+     * {@see EXCLUDES}: the history, and the vendor dir composer.json moved
+     * where a skip of `vendor` by name misses it.
      *
      * @return list<string>
      */
-    private function withoutHistory(array $paths): array
+    private function skippedPaths(): array
     {
-        if (!\is_dir($this->rootDir.'/'.self::HISTORY)) {
+        $vendor = ComposerLayout::of($this->rootDir)->vendorPath($this->rootDir);
+
+        return null === $vendor ? [self::HISTORY] : [self::HISTORY, $vendor];
+    }
+
+    /**
+     * $paths with every folder that holds one of $skipped replaced by what is
+     * in it but the way there — `.` by the root's entries, `.porta` by its own —
+     * so a recursive grep never reaches a skipped folder. Unchanged when none
+     * of them is there.
+     *
+     * @param list<string> $paths
+     * @param list<string> $skipped
+     *
+     * @return list<string>
+     */
+    private function without(array $paths, array $skipped): array
+    {
+        $skipped = \array_values(\array_filter($skipped, fn (string $path): bool => \is_dir($this->rootDir.'/'.$path)));
+        if ([] === $skipped) {
             return $paths;
         }
         $expanded = [];
         foreach ($paths as $path) {
             $prefix = '.' === $path ? '' : \rtrim($path, characters: '/').'/';
-            if (!\str_starts_with(self::HISTORY.'/', $prefix)) {
+            $holds = \array_filter($skipped, static fn (string $skip): bool => \str_starts_with($skip.'/', $prefix));
+            if ([] === $holds) {
                 $expanded[] = $path;
 
                 continue;
             }
-            if (self::HISTORY.'/' === $prefix) {
-                continue; // the history folder itself, named as the scope
+            if (\in_array(\substr($prefix, offset: 0, length: -1), $holds, strict: true)) {
+                continue; // a skipped folder itself, named as the scope
             }
             $entries = \scandir('' === $prefix ? $this->rootDir : $this->rootDir.'/'.$prefix);
             // A link is never handed over: grep -r follows a link named on its
@@ -774,7 +798,7 @@ final class ProjectSearch
                 \array_map(static fn (string $entry): string => $prefix.$entry, \array_diff(false === $entries ? [] : $entries, ['.', '..'])),
                 fn (string $child): bool => !\is_link($this->rootDir.'/'.$child),
             ));
-            \array_push($expanded, ...$this->withoutHistory($children));
+            \array_push($expanded, ...$this->without($children, $skipped));
         }
 
         return $expanded;

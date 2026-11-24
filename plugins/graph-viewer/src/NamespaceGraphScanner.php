@@ -10,6 +10,8 @@ use Janalis\Viz\Model\Graph\Cluster;
 use Janalis\Viz\Model\Graph\Edge;
 use Janalis\Viz\Model\Graph\Graph;
 use Janalis\Viz\Model\Graph\Node;
+use Porta\Support\ComposerLayout;
+use Symfony\Component\Filesystem\Path;
 use Symfony\Component\Finder\Finder;
 
 /**
@@ -107,6 +109,7 @@ final readonly class NamespaceGraphScanner
     private function phpFiles(string $dir): array
     {
         $files = [];
+        $vendor = ComposerLayout::of($this->rootDir)->vendorDir;
         // Finder's dot-file default covers the hidden-name skip; SKIP_DIRS is
         // anchored per segment so a nested vendor/ is skipped at any depth.
         $finder = new Finder()
@@ -114,7 +117,9 @@ final readonly class NamespaceGraphScanner
             ->in($dir)
             ->ignoreUnreadableDirs()
             ->name('*.php')
-            ->notPath('~(^|/)(?:'.\implode('|', self::SKIP_DIRS).')/~');
+            ->notPath('~(^|/)(?:'.\implode('|', self::SKIP_DIRS).')/~')
+            // and the vendor dir composer.json moved, wherever it is below $dir
+            ->filter(static fn (\SplFileInfo $entry): bool => Path::canonicalize($entry->getPathname()) !== $vendor, prune: true);
         foreach ($finder as $file) {
             $files[] = $file->getPathname();
         }

@@ -52,4 +52,12 @@ final class ComposerLayoutTest extends TestCase
         $this->assertSame('.', $layout->binDirFrom($project->dir), 'named, not left blank');
         $this->assertSame('vendor/bin', new ComposerLayout('/p/vendor', '/p/vendor/bin')->binDirFrom('/p'));
     }
+
+    public function testTheVendorPathIsOnlyWhatASkipByNameMisses(): void
+    {
+        $this->assertSame('lib/deps', new ComposerLayout('/p/lib/deps', '/p/bin')->vendorPath('/p'));
+        $this->assertNull(new ComposerLayout('/p/vendor', '/p/vendor/bin')->vendorPath('/p'), 'the default');
+        $this->assertNull(new ComposerLayout('/p/lib/vendor', '/p/bin')->vendorPath('/p'), 'any dir named vendor');
+        $this->assertNull(new ComposerLayout('/p', '/p/bin')->vendorPath('/p'), 'the root is no folder to leave out');
+    }
 }
