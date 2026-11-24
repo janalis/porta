@@ -178,7 +178,11 @@ final class ProjectSearch
             // which is one.
             onExit: fn (int $code, string $out) => $code >= 2 && '' === $out ? $fallback() : $this->finish($out, $onDone, $pattern),
             onChunk: function () use ($process, $onDone, $pattern): void {
-                if (\substr_count($process->output(), needle: "\n") > self::MAX_RESULTS) {
+                // A server's hits under the vendor dir it moved are dropped by
+                // parse(): counted, they stopped a search before its real hits.
+                $vendor = $this->remote?->vendorPath();
+                $output = $process->output();
+                if ((\substr_count($output, needle: "\n") - (null === $vendor ? 0 : self::linesUnder($output, $vendor))) > self::MAX_RESULTS) {
                     // Enough results; stop early
                     $this->finish($process->output(), $onDone, $pattern);
                 }
@@ -261,6 +265,14 @@ final class ProjectSearch
         $results = $this->parse($output, $pattern);
         $this->cancel();
         $onDone($results);
+    }
+
+    /** How many of grep's $output lines are hits under $dir, as a scope of `.` or of a path prints them. */
+    private static function linesUnder(string $output, string $dir): int
+    {
+        $lines = "\n".$output;
+
+        return \substr_count($lines, "\n".$dir.'/') + \substr_count($lines, "\n./".$dir.'/');
     }
 
     /** @return list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> */

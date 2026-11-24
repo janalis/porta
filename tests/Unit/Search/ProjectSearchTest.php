@@ -132,6 +132,43 @@ final class ProjectSearchTest extends TestCase
         $paths = \array_column($this->awaitSearch(new ProjectSearch($cache->dir, $remote), query: 'needle'), 'path');
         \sort($paths);
         $this->assertSame(['lib/Own.php', 'src/lib/deps/Own.php'], $paths);
+
+        // More hits there than a search keeps, read first and long enough to
+        // come in many chunks: they must not stop it before the real one.
+        $server->write('lib/deps/acme/Many.php', \str_repeat('needle '.\str_repeat('x', times: 60)."\n", times: 20_000));
+        $paths = \array_column($this->awaitSearch(new ProjectSearch($cache->dir, $remote), query: 'needle', scope: ['lib', 'src']), 'path');
+        $this->assertContains('src/lib/deps/Own.php', $paths);
+        $remote->close();
+    }
+
+    /**
+     * A whole-project search prints `./lib/deps/…`: those hits are not
+     * counted toward the early stop either. grep walks `.` in the
+     * directory's own order, so the vendor dir is whichever it reads first.
+     */
+    public function testARemoteWholeProjectSearchIsNotStoppedByTheMovedVendorDir(): void
+    {
+        $server = new TempProject(['p/.keep' => '', 'q/.keep' => '']);
+        $dir = \opendir($server->dir);
+        \assert(false !== $dir, description: 'the server dir opens');
+        $order = [];
+        while (false !== ($entry = \readdir($dir))) {
+            $order[] = $entry; // as the disk hands them over, unsorted
+        }
+        \closedir($dir);
+        $order = \array_values(\array_intersect($order, ['p', 'q']));
+        [$vendor, $own] = $order;
+        $server->write('composer.json', (string) \json_encode(['config' => ['vendor-dir' => $vendor]], \JSON_THROW_ON_ERROR));
+        $server->write($vendor.'/acme/Many.php', \str_repeat('needle '.\str_repeat('x', times: 60)."\n", times: 20_000));
+        $server->write($own.'/Own.php', "<?php\n// needle\n");
+        $cache = new TempProject();
+        $transport = new FakeRemoteTransport($server->dir);
+        $transport->walks = true;
+        $remote = $transport->filesystem($cache->dir);
+        $remote->poll();
+        $this->await(static fn (): bool => null !== $remote->vendorPath(), what: 'the walk to read the server\'s composer.json');
+
+        $this->assertSame([$own.'/Own.php'], \array_column($this->awaitSearch(new ProjectSearch($cache->dir, $remote), query: 'needle'), 'path'));
         $remote->close();
     }
 
