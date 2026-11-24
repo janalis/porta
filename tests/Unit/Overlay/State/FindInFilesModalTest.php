@@ -194,6 +194,26 @@ final class FindInFilesModalTest extends TestCase
         $this->assertStringNotContainsString(Glyphs::FIELD_DANGER_TOP_LEFT, $plain);
     }
 
+    /** A regex that compiles alone but not as a whole word — an `(?x)` comment eats the wrapping — is a bad regex under Whole Word. */
+    public function testARegexBrokenByWholeWordSaysSo(): void
+    {
+        $modal = $this->modal();
+        $modal->open('Find in Files');
+        $modal->setOptions(['regex' => true, 'case' => false, 'word' => true, 'preserve' => false, 'tokens' => 'any']);
+        foreach (\mb_str_split('(?x)foo # c') as $char) {
+            $modal->handleInput($char, $this->kb);
+        }
+        $modal->setPreview([]);
+
+        $this->assertStringContainsString('bad regex', \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->composeWithFocus($modal, CaretVisibility::Shown, rows: 30))));
+        $modal->setOptions(['regex' => true, 'case' => false, 'word' => false, 'preserve' => false, 'tokens' => 'any']);
+        $this->assertStringContainsString(
+            'no results',
+            \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->composeWithFocus($modal, CaretVisibility::Shown, rows: 30))),
+            'it compiles alone',
+        );
+    }
+
     /** The Find window's key reads the same on its button as in the footer: Alt+⏎, never Alt+Enter spelled out. */
     public function testTheFindWindowKeyIsWrittenOneWay(): void
     {

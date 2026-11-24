@@ -649,6 +649,24 @@ final class FindBarWidgetTest extends TestCase
         $this->assertSame("[ÉTÉ]\n", $doc->getText());
     }
 
+    /** With Aa on, a lowercase regex matched only lowercase: its replacement is expanded so too, not over `aaA`. */
+    public function testARegexReplaceUnderMatchCaseExpandsWhatItMatched(): void
+    {
+        $doc = new Document("aaA\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace);
+        $bar->handleInput("\x1bx"); // regex mode
+        $bar->handleInput("\x1bc"); // match case
+        $this->type($bar, text: '(a+)');
+        $bar->handleInput("\t"); // → replace field
+        $this->type($bar, text: '[$1]');
+
+        $bar->handleInput("\x1br");
+
+        $this->assertSame("[aa]A\n", $doc->getText());
+    }
+
     public function testRegexReplaceExpandsBackreferences(): void
     {
         $doc = new Document("name: alpha\nname: beta\n");

@@ -836,10 +836,16 @@ final class FindInFilesModal
         return FieldBox::field($spec, $field, $state, $caret, $width, $height, $this->styles);
     }
 
-    /** Whether the query, in regex mode, is a pattern that cannot compile. */
+    /**
+     * Whether the query, in regex mode, is a pattern that cannot compile —
+     * built with the Whole Word the search runs, whose wrapping an `(?x)`
+     * comment can break: the search then finds nothing, and says why.
+     */
     private function patternInvalid(): bool
     {
-        return $this->options['regex'] && !SearchPattern::compiles(SearchPattern::build($this->query->value(), MatchMode::Regex, WordMode::Anywhere, CaseMode::Sensitive));
+        $word = true === $this->options['word'] ? WordMode::WholeWord : WordMode::Anywhere;
+
+        return $this->options['regex'] && !SearchPattern::compiles(SearchPattern::build($this->query->value(), MatchMode::Regex, $word, CaseMode::Sensitive));
     }
 
     /**

@@ -706,7 +706,9 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
             $this->query->value(),
             MatchMode::Regex,
             $this->wholeWord ? WordMode::WholeWord : WordMode::Anywhere,
-            \mb_strtolower($this->query->value()) !== $this->query->value() ? CaseMode::Sensitive : CaseMode::Insensitive,
+            // The search's own rule (smart case unless Aa is on): with Aa on, an
+            // insensitive pin expanded `(a+)` over `aaA` and wrote `[aaA`.
+            !$this->matchCase && \mb_strtolower($this->query->value()) === $this->query->value() ? CaseMode::Insensitive : CaseMode::Sensitive,
         );
         // Expanded where it matched, in its line: run over the match alone, a
         // lookbehind or lookahead lost its context, matched nothing, and the

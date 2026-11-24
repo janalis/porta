@@ -13,18 +13,22 @@ final class SearchPattern
     public static function build(string $query, MatchMode $match, WordMode $word, CaseMode $case): string
     {
         $body = MatchMode::Regex === $match ? self::delimited($query) : \preg_quote($query, delimiter: '/');
+        // Unicode (`u`): ignoring case folds É to é as well as E to e, and
+        // \w and \b know an accented letter — for a query that is UTF-8 at all.
+        $unicode = \mb_check_encoding($query, encoding: 'UTF-8') ? 'u' : '';
         // A whole word splits no word at either edge: no word character on
         // both sides of it. `foo` is not in `foobar`; `$foo` is in ` $foo`,
         // `->save` in `$this->save()`, `foo(` in `foo(1)` — where `\b…\b`
         // wanted a word character beyond a `$` or a `(`.
-        if (WordMode::WholeWord === $word) {
+        // A regex is wrapped only if it compiles alone — `foo)|(bar` would
+        // close into one that does — and its group ends with `\E`, so an
+        // unclosed `\Q` does not quote the edge (a lone `\E` is nothing).
+        if (WordMode::WholeWord === $word && (MatchMode::Literal === $match || self::compiles('/'.$body.'/'.$unicode))) {
             $edge = '(?:(?<!\w)|(?!\w))';
-            $body = $edge.'(?:'.$body.')'.$edge;
+            $body = $edge.'(?:'.$body.(MatchMode::Regex === $match ? '\E' : '').')'.$edge;
         }
 
-        // Unicode (`u`): ignoring case folds É to é as well as E to e, and
-        // \w and \b know an accented letter — for a query that is UTF-8 at all.
-        return '/'.$body.'/'.(CaseMode::Sensitive === $case ? '' : 'i').(\mb_check_encoding($query, encoding: 'UTF-8') ? 'u' : '');
+        return '/'.$body.'/'.(CaseMode::Sensitive === $case ? '' : 'i').$unicode;
     }
 
     /**

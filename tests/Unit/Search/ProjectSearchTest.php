@@ -1411,7 +1411,9 @@ final class ProjectSearchTest extends TestCase
         $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($onServer, query: 'needle', options: new SearchOptions(caseSensitive: true, wholeWord: true)), 'path'));
         $onTheServer = \array_values(\array_filter(\explode("\n", (string) \file_get_contents($serverLog)), static fn (string $line): bool => \str_contains($line, ' -- needle')));
         $this->assertNotSame([], $onTheServer, "the server's grep ran");
-        $this->assertStringNotContainsString(' -w ', $onTheServer[0]);
+        $flags = \array_filter(\explode(' ', (string) \strstr($onTheServer[0], needle: ' -- ', before_needle: true)), static fn (string $arg): bool => 1 === \preg_match('/^-[a-zA-Z]+$/', $arg));
+        $this->assertNotSame([], $flags);
+        $this->assertSame([], \array_values(\array_filter($flags, static fn (string $flag): bool => \str_contains($flag, 'w'))), 'no -w, alone or in a cluster');
         unset($keep);
     }
 

@@ -17,7 +17,22 @@ final class SearchPatternTest extends TestCase
         $this->assertSame('/a\+b/iu', SearchPattern::build('a+b', MatchMode::Literal, WordMode::Anywhere, CaseMode::Insensitive), 'literal queries are quoted');
         $this->assertSame('/a+b/u', SearchPattern::build('a+b', MatchMode::Regex, WordMode::Anywhere, CaseMode::Sensitive), 'regex queries pass through');
         $this->assertSame('/(?:(?<!\w)|(?!\w))(?:foo)(?:(?<!\w)|(?!\w))/iu', SearchPattern::build('foo', MatchMode::Literal, WordMode::WholeWord, CaseMode::Insensitive));
-        $this->assertSame('/(?:(?<!\w)|(?!\w))(?:fo+)(?:(?<!\w)|(?!\w))/u', SearchPattern::build('fo+', MatchMode::Regex, WordMode::WholeWord, CaseMode::Sensitive));
+        $this->assertSame('/(?:(?<!\w)|(?!\w))(?:fo+\E)(?:(?<!\w)|(?!\w))/u', SearchPattern::build('fo+', MatchMode::Regex, WordMode::WholeWord, CaseMode::Sensitive));
+    }
+
+    /** A regex is wrapped as a whole word only if it compiles alone, and an unclosed `\Q` does not quote the edge. */
+    public function testWholeWordWrapsOnlyARegexThatCompilesAndClosesItsQuote(): void
+    {
+        $quoted = SearchPattern::build('\Qa.b', MatchMode::Regex, WordMode::WholeWord, CaseMode::Sensitive);
+        $this->assertTrue(SearchPattern::compiles($quoted));
+        $this->assertMatchesRegularExpression($quoted, 'x a.b y');
+        $this->assertDoesNotMatchRegularExpression($quoted, 'xa.b');
+
+        $this->assertFalse(SearchPattern::compiles(SearchPattern::build('foo)|(bar', MatchMode::Regex, WordMode::WholeWord, CaseMode::Sensitive)), 'still a bad regex');
+        $wide = SearchPattern::build('\x{100}', MatchMode::Regex, WordMode::WholeWord, CaseMode::Sensitive);
+        $this->assertDoesNotMatchRegularExpression($wide, 'xĀ', 'a regex only /u compiles is wrapped: checked with /u');
+        $latin1 = SearchPattern::build("caf\xe9", MatchMode::Regex, WordMode::WholeWord, CaseMode::Sensitive);
+        $this->assertDoesNotMatchRegularExpression($latin1, "xcaf\xe9", 'a regex not UTF-8 is wrapped too, checked as it is built: byte for byte');
     }
 
     /** A whole word splits no word at either edge: a non-word edge of the query is an edge already. */
