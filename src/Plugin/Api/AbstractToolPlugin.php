@@ -148,7 +148,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
      */
     protected function registerBinarySetting(PluginApi $api, array $via = [], ?string $hint = null): void
     {
-        $api->registerSetting('binary', $this->binaryName.' binary', kind: 'text', default: '', hint: $hint ?? $this->binaryHint($api));
+        $api->registerSetting('binary', $this->binaryName.' binary', kind: 'text', default: '', hint: $hint ?? $this->binaryHint());
         if ([] !== $via) {
             $api->registerInstaller($this->binaryName, $this->binaryAvailable($api), $via);
         }
@@ -288,11 +288,17 @@ abstract class AbstractToolPlugin extends AbstractPlugin
         );
     }
 
-    private function binaryHint(PluginApi $api): string
+    /**
+     * The binary setting's hint. Composer's bin dir is not named: the hint is
+     * written once, when the plugin starts, and a composer.json moving it
+     * later would leave it saying the old one. The "not found" message, made
+     * when it is said, names the dir looked in.
+     */
+    private function binaryHint(): string
     {
         return BinarySearch::PathOnly === $this->search
             ? \sprintf('empty = %s on PATH', $this->binaryName)
-            : \sprintf('empty = %s, then PATH', self::binDir($api));
+            : "empty = composer's bin dir, then PATH";
     }
 
     /** Where composer puts the project's binaries, as the user would type it: `vendor/bin` unless its composer.json moves them. */

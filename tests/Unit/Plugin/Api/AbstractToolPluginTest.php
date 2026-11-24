@@ -319,7 +319,7 @@ final class AbstractToolPluginTest extends TestCase
         $missing = $this->plugin('demo', binaryName: 'porta-nonexistent-tool');
         $this->activate($missing, $api);
 
-        $this->assertSame('empty = tools, then PATH', $api->bufferedSettings()[0]['hint']);
+        $this->assertSame("empty = composer's bin dir, then PATH", $api->bufferedSettings()[0]['hint'], 'no dir named: it would go stale when composer.json moves it');
         $this->assertNull($missing->callAcquire($api));
         $this->assertStringContainsString('demo introuvable (tools ou PATH)', $this->flashText($this->status), 'in every catalog');
     }
@@ -337,7 +337,7 @@ final class AbstractToolPluginTest extends TestCase
         $settings = $api->bufferedSettings();
         $this->assertSame('binary', $settings[0]['key']);
         $this->assertSame('demo binary', $settings[0]['label']);
-        $this->assertSame('empty = vendor/bin, then PATH', $settings[0]['hint']);
+        $this->assertSame("empty = composer's bin dir, then PATH", $settings[0]['hint']);
         $this->assertSame([['tool' => 'demo', 'available' => $api->contributions()->installers->all()[0]['available'], 'via' => [['composer', 'vendor/demo']], 'plugin' => 'demo']], [[
             'tool' => $api->contributions()->installers->all()[0]['tool'],
             'available' => $api->contributions()->installers->all()[0]['available'],
