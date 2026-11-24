@@ -420,6 +420,30 @@ final class ProjectSearchControllerTest extends TestCase
     }
 
     /**
+     * A server's own .porta/history, named as the scope, is not fetched for a
+     * replace that will not rewrite it: this copy never holds a placeholder
+     * under .porta/, so there is nothing there to fetch.
+     */
+    public function testAReplaceNeverFetchesASnapshot(): void
+    {
+        $server = new TempProject(['.porta/history/ab/1.snap' => "<?php // needle\n"]);
+        $cache = new TempProject();
+        $transport = new FakeRemoteTransport($server->dir);
+        $remote = $transport->filesystem($cache->dir);
+        $remote->listed($cache->dir);
+        $controller = $this->controller($cache->dir, $remote);
+        $controller->openInFolder($cache->path('.porta/history'));
+        $controller->search('needle');
+        $this->awaitModalShows('1.snap');
+        $transport->calls = [];
+
+        $controller->replaceAll('found');
+
+        $this->assertSame([], \array_values(\array_filter($transport->calls, static fn (string $call): bool => \str_starts_with($call, 'fetch'))));
+        $this->assertStringContainsString('Not replaced in local history', $this->statusRow($this->statusBar, columns: 200));
+    }
+
+    /**
      * A query across lines cannot run in the server's grep: the files here are
      * searched — in a remote project only those opened — and the user is told,
      * where a short list read as the whole answer.
@@ -768,6 +792,8 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->search('needle');
         $this->awaitModalShows('$needle = 2;');
 
+        $controller->replaceAll('');
+        $this->assertStringNotContainsString('DELETE every match', $this->statusRow($this->statusBar, columns: 200), 'no deletion to confirm in what is never rewritten');
         $controller->replaceAll('found');
 
         $this->assertSame("<?php\n\$needle = 1;\n", \file_get_contents($project->path('.porta/history/ab12/1700000000.snap')), 'as saved');
@@ -787,6 +813,27 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->replaceAll('found');
 
         $this->assertSame("<?php\n\$needle = 1;\n\$needle = 2;\n", \file_get_contents($project->path('.porta/history/ab12/1700000000.snap')));
+        $this->assertStringContainsString('Not replaced in local history: its 1 snapshot stays as saved', $this->statusRow($this->statusBar, columns: 200));
+    }
+
+    /** A saved scope naming history beside the project's own: those are rewritten, the snapshots kept, and both said. */
+    public function testAReplaceOverHistoryAndProjectFilesRewritesOnlyTheProjects(): void
+    {
+        $project = new TempProject([
+            '.porta/history/ab12/1700000000.snap' => "<?php\n\$needle = 1;\n",
+            'src/A.php' => "<?php\n\$needle = 2;\n",
+        ]);
+        new SearchScopeStore($project->dir)->addPinned('both', ['.porta/history', 'src']);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->setScopeIndex(\count(Probe::getStatic(ProjectSearchController::class, member: 'BUILT_INS')));
+        $controller->search('needle');
+        $this->awaitModalShows('$needle = 1;');
+
+        $controller->replaceAll('found');
+
+        $this->assertSame("<?php\n\$found = 2;\n", \file_get_contents($project->path('src/A.php')));
+        $this->assertSame("<?php\n\$needle = 1;\n", \file_get_contents($project->path('.porta/history/ab12/1700000000.snap')), 'as saved');
         $this->assertStringContainsString('Not replaced in local history: its 1 snapshot stays as saved', $this->statusRow($this->statusBar, columns: 200));
     }
 

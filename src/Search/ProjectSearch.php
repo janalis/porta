@@ -170,8 +170,10 @@ final class ProjectSearch
                     static fn (string $path): bool => self::within($path, [$vendor]),
                 )),
             ];
-        // Counted as they come, chunk by chunk: what is dropped does not count.
+        // Counted as they come, chunk by chunk: what is dropped, and a hit
+        // printed again for a second scope path that reaches it, does not count.
         $kept = 0;
+        $counted = [];
         $partial = '';
         if ([] === $grepPaths) {
             $onDone([]); // nothing but the history there: grep with no path would read stdin
@@ -199,12 +201,12 @@ final class ProjectSearch
             // with nothing printed is no answer; 1 is grep saying "no match",
             // which is one.
             onExit: fn (int $code, string $out) => $code >= 2 && '' === $out ? $fallback() : $this->finish($out, $onDone, $pattern),
-            onChunk: function (string $chunk) use ($process, $onDone, $pattern, &$kept, &$partial): void {
+            onChunk: function (string $chunk) use ($process, $onDone, $pattern, &$kept, &$counted, &$partial): void {
                 // A server's hits under the vendor dir it moved are dropped by
                 // parse(): counted, they stopped a search before its real hits.
                 $lines = \explode("\n", $partial.$chunk);
                 $partial = \array_pop($lines);
-                $kept += null === $this->dropping ? \count($lines) : $this->keptOf($lines);
+                $kept += $this->keptOf($lines, $counted);
                 if ($kept > self::MAX_RESULTS) {
                     // Enough results; stop early
                     $this->finish($process->output(), $onDone, $pattern);
@@ -308,18 +310,22 @@ final class ProjectSearch
     }
 
     /**
-     * How many of grep's $lines {@see parse()} keeps.
+     * How many of grep's $lines {@see parse()} keeps, not counting again a
+     * hit already in $counted.
      *
-     * @param list<string> $lines
+     * @param list<string>               $lines
+     * @param array<string, bool> $counted the hits counted so far, by `path:line`
      */
-    private function keptOf(array $lines): int
+    private function keptOf(array $lines, array &$counted): int
     {
         $kept = 0;
         foreach ($lines as $line) {
-            $path = $this->hit($line)['path'];
-            if (null === $path || !$this->dropped($path)) {
-                ++$kept;
+            $hit = $this->hit($line);
+            if (null === $hit['path'] || $this->dropped($hit['path']) || \array_key_exists($hit['path'].':'.$hit['line'], $counted)) {
+                continue;
             }
+            $counted[$hit['path'].':'.$hit['line']] = true;
+            ++$kept;
         }
 
         return $kept;
@@ -370,7 +376,9 @@ final class ProjectSearch
      * $results by path, then line — the panel's order, whichever engine
      * found them. Each walks in an order of its own: grep -r the file
      * system's (on ext4 a hash order, File7.php before File0.php), the
-     * built-in engine Finder's.
+     * built-in engine Finder's. Past {@see MAX_RESULTS} each kept the first
+     * it reached, so the two may keep different hits: the order is shared,
+     * the cut is not.
      *
      * @param list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> $results
      *

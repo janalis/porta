@@ -363,6 +363,22 @@ final class ProjectSearchTest extends TestCase
         $this->assertSame(['lib/B.php:1', 'lib/a/A.php:1', 'lib/a/A.php:2'], $hits(), 'the built-in engine');
     }
 
+    /**
+     * The early stop counts what a search keeps: overlapping scope paths
+     * print the same hits twice, and those twice-printed lines stopped grep
+     * before the hits beyond them — fewer than a search keeps, and nothing
+     * said so. 300 nested hits and 400 more: all 500 a search keeps.
+     */
+    public function testOverlappingScopesDoNotStopASearchShort(): void
+    {
+        $project = new TempProject([
+            'src/In/A.php' => \str_repeat("needle\n", times: 300),
+            'src/B.php' => \str_repeat("needle\n", times: 400),
+        ]);
+
+        $this->assertCount(ProjectSearch::MAX_RESULTS, $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle', scope: ['src/In', 'src']));
+    }
+
     /** A scope holding nothing but a skipped folder leaves grep nothing to read — not its stdin, where it would wait. */
     public function testAScopeOfNothingButHistoryFindsNothing(): void
     {

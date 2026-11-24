@@ -394,10 +394,12 @@ final class ProjectSearchController
 
             $keptLinesByPath[$result['path']][] = $result['line'];
         }
+        // Out before anything is weighed: no deletion to confirm in what is never rewritten.
+        $history = \count(\array_filter(\array_keys($keptLinesByPath), self::inHistory(...)));
+        $keptLinesByPath = \array_filter($keptLinesByPath, static fn (string $path): bool => !self::inHistory($path), \ARRAY_FILTER_USE_KEY);
 
         if ([] === $keptLinesByPath || '' === \trim($this->lastSearchQuery)) {
-            $this->notifier->flash($this->translator->trans('Nothing to replace'));
-            $this->tui->requestRender();
+            $this->nothingToReplace($history);
 
             return;
         }
@@ -420,13 +422,7 @@ final class ProjectSearchController
 
         $touched = 0;
         $skipped = [];
-        $history = 0;
         foreach ($keptLinesByPath as $relPath => $lineIndices) {
-            if (self::inHistory($relPath)) {
-                ++$history;
-
-                continue;
-            }
             $abs = $this->paths->absolute($relPath);
             $buffer = $this->buffers->find($abs);
             // The matches are the DISK's lines and offsets: in a buffer with
@@ -562,9 +558,11 @@ final class ProjectSearchController
     /** Replace every match of a multiline query across matched files' whole text. */
     private function replaceAllMultiline(string $replacement): void
     {
-        if ([] === $this->lastSearchResults) {
-            $this->notifier->flash($this->translator->trans('Nothing to replace'));
-            $this->tui->requestRender();
+        $matched = \array_unique(\array_column($this->lastSearchResults, 'path'));
+        $history = \count(\array_filter($matched, self::inHistory(...)));
+        $paths = \array_filter($matched, static fn (string $path): bool => !self::inHistory($path));
+        if ([] === $paths) {
+            $this->nothingToReplace($history);
 
             return;
         }
@@ -574,13 +572,7 @@ final class ProjectSearchController
 
         $touched = 0;
         $skipped = [];
-        $history = 0;
-        foreach (\array_unique(\array_column($this->lastSearchResults, 'path')) as $relPath) {
-            if (self::inHistory($relPath)) {
-                ++$history;
-
-                continue;
-            }
+        foreach ($paths as $relPath) {
             $abs = $this->paths->absolute($relPath);
             $buffer = $this->buffers->find($abs);
             // The search read the disk: a match only the unsaved text holds
@@ -613,6 +605,28 @@ final class ProjectSearchController
     }
 
     /**
+     * Nothing a replace may rewrite: said as what it is — the matches there
+     * are local history's, kept as saved, or there were none. The toast
+     * brings its own render.
+     */
+    private function nothingToReplace(int $history): void
+    {
+        if (0 === $history) {
+            $this->notifier->flash($this->translator->trans('Nothing to replace'));
+
+            return;
+        }
+        $this->historyKept($history);
+    }
+
+    private function historyKept(int $history): void
+    {
+        $this->notifier->warn($this->translator->trans('Not replaced in local history: its %count% snapshot stays as saved|Not replaced in local history: its %count% snapshots stay as saved', [
+            '%count%' => $history,
+        ]));
+    }
+
+    /**
      * Flash the touched-file count, close whichever surface drove the replace,
      * and refocus the editor — then name the files left alone for their unsaved edits.
      *
@@ -620,17 +634,14 @@ final class ProjectSearchController
      */
     private function finishReplace(int $touched, array $skipped, int $history): void
     {
-        $this->notifier->flash($this->translator->trans('Replaced in %count% file|Replaced in %count% files', ['%count%' => $touched]));
+        $this->notifier->flash($this->translator->trans('Replaced in %count% file|Replaced in %count% files', ['%count%' => $touched])); // and a render
         $this->editor->findModal->close(); // replace runs from the modal
         $this->tui->setFocus($this->editor);
-        $this->tui->requestRender();
         if ([] !== $skipped) {
             $this->notifier->warn($this->translator->trans('Not replaced in %files%: unsaved edits the search did not see — save, then search again', ['%files%' => \implode(', ', $skipped)]));
         }
         if (0 !== $history) {
-            $this->notifier->warn($this->translator->trans('Not replaced in local history: its %count% snapshot stays as saved|Not replaced in local history: its %count% snapshots stay as saved', [
-                '%count%' => $history,
-            ]));
+            $this->historyKept($history);
         }
     }
 
