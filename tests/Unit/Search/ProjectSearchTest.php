@@ -193,7 +193,7 @@ final class ProjectSearchTest extends TestCase
         [$search, $kept] = $this->serverSearchWith(self::REFUSES_NULL, ['logs/app.json' => \str_repeat('{"t":"12:30:45"},', times: 10_000)."needle\n"]);
 
         $this->assertSame(['logs/app.json'], \array_column($this->awaitSearch($search, query: 'needle'), 'path'));
-        $this->assertLessThan(1_000, \count(Probe::get($search, property: 'files')), 'the paths it checked');
+        $this->assertLessThan(1_000, \count(Probe::get(Probe::object($search, 'hits'), property: 'files')), 'the paths it checked');
         unset($kept);
     }
 

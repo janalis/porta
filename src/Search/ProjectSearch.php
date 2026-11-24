@@ -50,9 +50,6 @@ final class ProjectSearch
     /** Asks a grep whether it takes --null: 1, no `x` in nothing; 2, a usage error. */
     private const array ASK_NULL = ['--null', '-q', 'x', '/dev/null'];
 
-    /** The longest path a file system takes (Linux's PATH_MAX; macOS's is 1024). */
-    private const int PATH_MAX = 4096;
-
     /** The largest file the PHP walk reads: 1 MiB. */
     private const int MAX_FILE_BYTES = 1_048_576;
 
@@ -71,13 +68,8 @@ final class ProjectSearch
     /** What the grep the searches run said it takes, asked in the background; see {@see whenAnswered()}. */
     private readonly GrepAnswers $answers;
 
-    /**
-     * The search's answers to "is this a file here?", for a grep line read
-     * without a NUL: each is asked per line, and twice — counted, then parsed.
-     *
-     * @var array<string, bool>
-     */
-    private array $files = [];
+    /** Reads grep's output lines into hits; holds what the search found to be a file here. */
+    private GrepHits $hits;
 
     /**
      * Whether the regex engine GAVE UP somewhere in the last search.
@@ -100,6 +92,7 @@ final class ProjectSearch
         ?GrepAnswers $answers = null,
     ) {
         $this->answers = $answers ?? new GrepAnswers($rootDir);
+        $this->hits = new GrepHits($rootDir);
     }
 
     /**
@@ -187,21 +180,10 @@ final class ProjectSearch
             // using what only PCRE reads (`\d+` found "ddd" in GNU's ERE) —
             // on a server, said to have read only the copy here, which beats a
             // wrong answer that looks whole.
-            $options->regex && (('' === $where && !$this->answers->answered('-P')) || (!$this->answers->takes('-P'.$where) && self::onlyPcreReads($query)))
+            $options->regex && (('' === $where && !$this->answers->answered('-P')) || (!$this->answers->takes('-P'.$where) && EreReading::differs($query)))
                 ? $this->builtIn($this->searchWithPhp($pattern, $paths, $mask), $onDone)
                 : $this->grep($grep, $query, $pattern, $onDone, $options, $paths, $mask, $where);
         });
-    }
-
-    /**
-     * Whether $regex uses what only PCRE reads, and grep -E would read as
-     * something else: `\d` (GNU's ERE: a `d`), `\h`, `\x`, `\p{…}`, a group
-     * opened with `(?` (lookarounds, flags), a lazy or possessive quantifier.
-     * GNU's ERE reads `\w`, `\s` and `\b` as PCRE does.
-     */
-    private static function onlyPcreReads(string $regex): bool
-    {
-        return 1 === \preg_match('/\\\\[dDhHvVRKxX]|\\\\[pP]\{|\(\?|[*+?}][?+]/', $regex);
     }
 
     /**
@@ -294,24 +276,24 @@ final class ProjectSearch
         // on the server, where every file is — named `grep` there, since the
         // path found here is this machine's. Each grep is handed what it said
         // it takes (see viaGrep()): its own answers, kept apart.
-        $this->files = [];
+        $this->hits = new GrepHits($this->rootDir);
         // --null ends each file name grep prints with a NUL, and a name holding
         // `:12:` is then read exactly (GNU's, BSD's and ugrep take it; BusyBox's
         // may not). -P reads a regex as the find bar does: under -E GNU grep reads
-        // POSIX ERE, where `\d` is a `d`, so `\d+` found "ddd". BSD grep has no -P
-        // and stays on -E, which reads `\d`, `\s`, `\w` and `\b` as PCRE does and
-        // refuses a lookaround outright, handing the search to the built-in engine.
+        // POSIX ERE, where `\d` is a `d`, so `\d+` found "ddd". A grep without -P
+        // is handed only a regex ERE reads the same (see EreReading); any
+        // other goes to the built-in engine before this.
         $argv = fn (string $at): array => [
             ...($this->answers->takes('--null'.$at) ? ['--null'] : []),
             ...$args($options->regex && $this->answers->takes('-P'.$at) ? '-P' : '-E'),
         ];
         $command = '' === $where ? null : $this->remote?->remoteCommand(['grep', ...$argv('@server')]);
         // Run here: a local project, or a remote one's copy, which holds only
-        // what was opened — said. (A server that stopped building a command
-        // mid-search lands here too, with this machine's own answers; a
-        // transport, once found, is kept, so none does today.)
-        $this->localOnly = $this->onServer() && null === $command;
-        $command ??= [$this->findGrep() ?? $grep, ...$argv('')];
+        // what was opened — said. A server that stopped building a command
+        // mid-search has no grep to run: the built-in engine reads the copy
+        // (a transport, once found, is kept, so none does today).
+        $this->localOnly = $this->onServer() && '' === $where;
+        $command = '' === $where ? [$grep, ...$argv('')] : $command;
 
         // A grep that cannot answer hands the search to the built-in engine.
         // Linux's posix_spawn refuses an unrunnable binary outright; macOS
@@ -319,24 +301,26 @@ final class ProjectSearch
         $fallback = fn () => $this->builtIn($this->searchWithPhp($pattern, $paths, $mask), $onDone);
         // UTF-8, as the pattern that highlights and replaces reads it: under -i
         // grep folds É to é as that pattern does, whatever locale Porta runs in.
-        $process = new AsyncProcess($command, $this->rootDir, env: [...\getenv(), 'LC_ALL' => 'C.UTF-8']);
-        $started = $process->start(
-            // grep's own failure (2, or 126/127 for a binary that cannot run)
-            // with nothing printed is no answer; 1 is grep saying "no match",
-            // which is one.
-            onExit: fn (int $code, string $out) => $code >= 2 && '' === $out ? $fallback() : $this->finish($out, $onDone, $pattern),
-            onChunk: function (string $chunk) use ($process, $onDone, $pattern, &$kept, &$counted, &$partial): void {
-                // A server's hits under the vendor dir it moved are dropped by
-                // parse(): counted, they stopped a search before its real hits.
-                $lines = \explode("\n", $partial.$chunk);
-                $partial = \array_pop($lines);
-                $kept += $this->keptOf($lines, $counted);
-                if ($kept > self::MAX_RESULTS) {
-                    // Enough results; stop early
-                    $this->finish($process->output(), $onDone, $pattern);
-                }
-            },
-        );
+        $process = new AsyncProcess($command ?? [], $this->rootDir, env: [...\getenv(), 'LC_ALL' => 'C.UTF-8']);
+        $started =
+            null !== $command
+            && $process->start(
+                // grep's own failure (2, or 126/127 for a binary that cannot run)
+                // with nothing printed is no answer; 1 is grep saying "no match",
+                // which is one.
+                onExit: fn (int $code, string $out) => $code >= 2 && '' === $out ? $fallback() : $this->finish($out, $onDone, $pattern),
+                onChunk: function (string $chunk) use ($process, $onDone, $pattern, &$kept, &$counted, &$partial): void {
+                    // A server's hits under the vendor dir it moved are dropped by
+                    // parse(): counted, they stopped a search before its real hits.
+                    $lines = \explode("\n", $partial.$chunk);
+                    $partial = \array_pop($lines);
+                    $kept += $this->keptOf($lines, $counted);
+                    if ($kept > self::MAX_RESULTS) {
+                        // Enough results; stop early
+                        $this->finish($process->output(), $onDone, $pattern);
+                    }
+                },
+            );
         if (!$started) {
             // Reached on Linux only (the spawn refusal above), where
             // testABrokenGrepBinaryFallsBackToTheBuiltInSearch drives it; a
@@ -418,80 +402,6 @@ final class ProjectSearch
     }
 
     /**
-     * One line of grep's output read: the path as the project names it —
-     * `vendor/./a.php`, from a scope handed over as `vendor/.`, is
-     * `vendor/a.php` — or null for a line that is no hit.
-     *
-     * @return array{path: ?string, line: int, text: string}
-     */
-    private function hit(string $line): array
-    {
-        [$path, $number, $text] = \str_contains($line, "\0") ? self::named($line) : $this->guessed($line);
-        if (null === $path) {
-            return ['path' => null, 'line' => 0, 'text' => ''];
-        }
-
-        return ['path' => self::clean($path), 'line' => (int) $number - 1, 'text' => \trim($text)];
-    }
-
-    /**
-     * `path\0line:text`, from a grep that ended the name with a NUL: exact.
-     *
-     * @return array{?string, string, string}
-     */
-    private static function named(string $line): array
-    {
-        [$path, $rest] = \explode("\0", $line, limit: 2);
-        $m = [];
-
-        return 1 === \preg_match('/^(\d+):(.*)$/', $rest, $m) ? [$path, $m[1], $m[2]] : [null, '', ''];
-    }
-
-    /**
-     * `path:line:text`, from a grep that could not end the name: a name may
-     * hold `:12:` itself, overlapping its own `:N:` too (`meeting-10:30`), so
-     * every `:N:` is a place the name may end. The first reading that names a
-     * file here is the hit — a remote project's placeholder counts — and the
-     * first reading when none does. Two that both name a file cannot be told
-     * apart without the NUL; the shorter wins.
-     *
-     * @return array{?string, string, string}
-     */
-    private function guessed(string $line): array
-    {
-        $first = null;
-        $pair = [];
-        // No path is longer than PATH_MAX: past it, a `:N:` is the text's own.
-        // Unbounded, a 166 KB log line of timestamps held 871 MB of readings.
-        for ($at = \strpos($line, needle: ':'); false !== $at && $at <= self::PATH_MAX; $at = \strpos($line, needle: ':', offset: $at + 1)) {
-            if (0 === $at || 1 !== \preg_match('/\G:(\d+):/', $line, $pair, offset: $at)) {
-                continue;
-            }
-            $reading = [\substr($line, offset: 0, length: $at), $pair[1], \substr($line, $at + \strlen($pair[0]))];
-            $first ??= $reading;
-            if ($this->isFile($reading[0])) {
-                return $reading;
-            }
-        }
-
-        return $first ?? [null, '', ''];
-    }
-
-    /** A path as grep printed it, as the project names it: no `./` before it, no `/./` in it. */
-    private static function clean(string $path): string
-    {
-        return \str_replace('/./', replace: '/', subject: \str_starts_with($path, './') ? \substr($path, offset: 2) : $path);
-    }
-
-    /** Whether $path, as grep printed it, is a file of the project here — a remote one's placeholder too. Asked once a search. */
-    private function isFile(string $path): bool
-    {
-        $clean = self::clean($path);
-
-        return $this->files[$clean] ??= \is_file($this->rootDir.'/'.$clean);
-    }
-
-    /**
      * How many of grep's $lines {@see parse()} keeps, not counting again a
      * hit already in $counted.
      *
@@ -502,7 +412,7 @@ final class ProjectSearch
     {
         $kept = 0;
         foreach ($lines as $line) {
-            $hit = $this->hit($line);
+            $hit = $this->hits->hit($line);
             if (null === $hit['path'] || $this->dropped($hit['path']) || \array_key_exists($hit['path'].':'.$hit['line'], $counted)) {
                 continue;
             }
@@ -540,7 +450,7 @@ final class ProjectSearch
         // once: each hit is listed once, by either.
         $seen = [];
         foreach (\explode("\n", $output) as $line) {
-            $hit = $this->hit($line);
+            $hit = $this->hits->hit($line);
             if (null === $hit['path'] || $this->dropped($hit['path']) || \array_key_exists($hit['path'].':'.$hit['line'], $seen)) {
                 continue;
             }
