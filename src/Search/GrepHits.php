@@ -28,16 +28,16 @@ final class GrepHits
      * `vendor/./a.php`, from a scope handed over as `vendor/.`, is
      * `vendor/a.php` — or null for a line that is no hit.
      *
-     * @return array{path: ?string, line: int, text: string}
+     * @return array{path: ?string, line: int, text: string, line_text: string} `text` trimmed, `line_text` as the file holds it
      */
     public function hit(string $line): array
     {
         [$path, $number, $text] = \str_contains($line, "\0") ? self::named($line) : $this->guessed($line);
         if (null === $path) {
-            return ['path' => null, 'line' => 0, 'text' => ''];
+            return ['path' => null, 'line' => 0, 'text' => '', 'line_text' => ''];
         }
 
-        return ['path' => self::clean($path), 'line' => (int) $number - 1, 'text' => \trim($text)];
+        return ['path' => self::clean($path), 'line' => (int) $number - 1, 'text' => \trim($text), 'line_text' => $text];
     }
 
     /**

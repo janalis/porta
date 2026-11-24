@@ -418,6 +418,35 @@ final class ProjectSearchTest extends TestCase
         $this->assertStringContainsString('-E -- [0-9]+', (string) \file_get_contents($log), 'one ERE reads the same goes to grep');
     }
 
+    /** The server's grep is asked to run in UTF-8, as the one here: ssh often hands it C, where `.` is a byte. */
+    public function testTheServersGrepRunsInUtf8(): void
+    {
+        $server = new TempProject(['src/A.php' => "<?php\n// needle\n"]);
+        $cache = new TempProject([]);
+        $seen = new \ArrayObject();
+        $recording = new class($server->dir, $seen) extends RemoteTransport {
+            use NoOpTransportVerbs;
+
+            /** @param \ArrayObject<int, list<string>> $seen */
+            public function __construct(
+                private readonly string $root,
+                private readonly \ArrayObject $seen,
+            ) {}
+
+            public function remoteCommand(array $argv): array
+            {
+                $this->seen->append($argv);
+
+                return ['sh', '-c', 'cd "$1" && shift && exec "$@"', 'sh', $this->root, ...$argv];
+            }
+        };
+        $search = new ProjectSearch($cache->dir, FakeRemoteTransport::over($recording, new RemoteSpec('ssh', 'example.org', '/srv'), $cache->dir));
+
+        $this->assertSame(['src/A.php'], \array_column($this->awaitSearch($search, query: 'needle'), 'path'));
+        $searches = \array_values(\array_filter($seen->getArrayCopy(), static fn (array $argv): bool => \in_array('needle', $argv, strict: true)));
+        $this->assertSame(['env', 'LC_ALL=C.UTF-8', 'grep'], \array_slice($searches[0] ?? [], offset: 0, length: 3));
+    }
+
     /** A server that stops building commands mid-search has no grep run: the built-in engine reads the copy here, and says so. */
     public function testAServerThatStopsBuildingCommandsIsReadInTheCopy(): void
     {
@@ -1288,7 +1317,7 @@ final class ProjectSearchTest extends TestCase
         $asked = static fn (): array => \array_values(\array_filter(\explode("\n", (string) \file_get_contents($log))));
         $tail = static fn (string $line): string => \substr($line, (int) \strrpos($line, needle: ' -- ') - 2);
         $regex = new SearchOptions(regex: true, caseSensitive: true);
-        \putenv('PATH='.$tools->dir.':/bin'); // sh for the fake server's command; grep is the stub
+        \putenv('PATH='.$tools->dir.':/bin:/usr/bin'); // sh and env for the fake server's command; grep is the stub
 
         $grep(1);
         $search = new ProjectSearch($project->dir);
@@ -1371,17 +1400,22 @@ final class ProjectSearchTest extends TestCase
         $this->assertNull($results, 'cancelled: the rest never runs');
     }
 
-    public function testParseSkipsMalformedGrepLines(): void
+    /** A line grep printed that the pattern does not match is no hit: grep reads Unicode its own way (BSD grep -w takes `x²` for the word `x`). */
+    public function testParseSkipsMalformedGrepLinesAndLinesThePatternDoesNotMatch(): void
     {
         $search = new ProjectSearch('/tmp');
-        $results = Probe::invoke($search, 'parse', "src/A.php:3:a match here\ngarbage without line number\n\n./src/B.php:7:no hit\n", '/match/');
+        $results = Probe::invoke($search, 'parse', "src/A.php:3:a match here\ngarbage without line number\n\n./src/B.php:7:no hit\n./src/C.php:2:  \tmatch\n", '/^\s+match/');
 
         $this->assertSame(
             [
-                ['path' => 'src/A.php', 'line' => 2, 'text' => 'a match here', 'ranges' => [['start' => 2, 'length' => 5]]],
-                ['path' => 'src/B.php', 'line' => 6, 'text' => 'no hit', 'ranges' => []],
+                ['path' => 'src/C.php', 'line' => 1, 'text' => 'match', 'ranges' => []],
             ],
             $results,
+            'matched on the line as the file holds it, before trimming',
+        );
+        $this->assertSame(
+            ['src/A.php'],
+            \array_column(Probe::invoke($search, 'parse', "src/A.php:3:a match here\n./src/B.php:7:no hit\n", '/match/'), 'path'),
         );
     }
 

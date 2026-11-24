@@ -282,7 +282,10 @@ final class ProjectSearch
             ...($this->answers->takes('--null'.$at) ? ['--null'] : []),
             ...$args($options->regex && $this->answers->takes('-P'.$at) ? '-P' : '-E'),
         ];
-        $command = '' === $where ? null : $this->remote?->remoteCommand(['grep', ...$argv('@server')]);
+        // The server's grep runs in the locale ssh hands it, often C: there
+        // `.` is a byte, and -i and -P's `\w` ASCII's. env asks for UTF-8, as
+        // here; a server without that locale keeps its own.
+        $command = '' === $where ? null : $this->remote?->remoteCommand(['env', 'LC_ALL=C.UTF-8', 'grep', ...$argv('@server')]);
         // Run here: a local project, or a remote one's copy, which holds only
         // what was opened — said. A server that stopped building a command
         // mid-search has no grep to run: the built-in engine reads the copy
@@ -303,6 +306,8 @@ final class ProjectSearch
         }
         // UTF-8, as the pattern that highlights and replaces reads it: under -i
         // grep folds É to é as that pattern does, whatever locale Porta runs in.
+        // Not every fold: BSD grep -i finds no `ſ` for `s`, no `ς` for `σ`,
+        // where /ui does — a miss no filter of grep's lines can bring back.
         $process = new AsyncProcess($command, $this->rootDir, env: [...\getenv(), 'LC_ALL' => 'C.UTF-8']);
         $started = $process->start(
             // grep's own failure (2, or 126/127 for a binary that cannot run)
@@ -314,7 +319,7 @@ final class ProjectSearch
                 // parse(): counted, they stopped a search before its real hits.
                 $lines = \explode("\n", $partial.$chunk);
                 $partial = \array_pop($lines);
-                $kept += $this->keptOf($lines, $counted);
+                $kept += $this->keptOf($lines, $pattern, $counted);
                 if ($kept > self::MAX_RESULTS) {
                     // Enough results; stop early
                     $this->finish($process->output(), $onDone, $pattern);
@@ -408,19 +413,37 @@ final class ProjectSearch
      * @param list<string>               $lines
      * @param array<string, bool> $counted the hits counted so far, by `path:line`
      */
-    private function keptOf(array $lines, array &$counted): int
+    private function keptOf(array $lines, string $pattern, array &$counted): int
     {
         $kept = 0;
         foreach ($lines as $line) {
-            $hit = $this->hits->hit($line);
-            if (null === $hit['path'] || $this->dropped($hit['path']) || \array_key_exists($hit['path'].':'.$hit['line'], $counted)) {
-                continue;
-            }
-            $counted[$hit['path'].':'.$hit['line']] = true;
-            ++$kept;
+            $kept += (int) (null !== $this->listed($this->hits->hit($line), $pattern, $counted));
         }
 
         return $kept;
+    }
+
+    /**
+     * The path of grep's $hit if it is listed, and then it is $seen; null if
+     * not. Listed is a line that names
+     * a path, not dropped, not listed already — and that $pattern, the one
+     * the built-in engine runs and the panel highlights with, matches. grep
+     * reads Unicode its own way: BSD grep -w takes `x²` for the word `x`,
+     * where `\b` under /u does not; a line only grep matched is no hit.
+     *
+     * @param array{path: ?string, line: int, text: string, line_text: string} $hit
+     * @param array<string, bool>                                            $seen by `path:line`
+     */
+    private function listed(array $hit, string $pattern, array &$seen): ?string
+    {
+        $path = $hit['path'];
+        $key = ($path ?? '').':'.$hit['line'];
+        $listed = null !== $path && !$this->dropped($path) && !\array_key_exists($key, $seen) && 1 === \preg_match(SearchPattern::fit($pattern, $hit['line_text']), $hit['line_text']);
+        if ($listed) {
+            $seen[$key] = true;
+        }
+
+        return $listed ? $path : null;
     }
 
     /** Whether a server grep's hit at $path is dropped: in the vendor dir it moved, and in no scope path that names it. */
@@ -451,11 +474,11 @@ final class ProjectSearch
         $seen = [];
         foreach (\explode("\n", $output) as $line) {
             $hit = $this->hits->hit($line);
-            if (null === $hit['path'] || $this->dropped($hit['path']) || \array_key_exists($hit['path'].':'.$hit['line'], $seen)) {
+            $path = $this->listed($hit, $pattern, $seen);
+            if (null === $path) {
                 continue;
             }
-            $seen[$hit['path'].':'.$hit['line']] = true;
-            $results[] = ['path' => $hit['path'], 'line' => $hit['line'], 'text' => $hit['text'], 'ranges' => $this->rangesFor($hit['text'], $pattern)];
+            $results[] = ['path' => $path, 'line' => $hit['line'], 'text' => $hit['text'], 'ranges' => $this->rangesFor($hit['text'], $pattern)];
             if (\count($results) >= self::MAX_RESULTS) {
                 break;
             }

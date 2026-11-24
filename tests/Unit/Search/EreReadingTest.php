@@ -17,7 +17,7 @@ final class EreReadingTest extends TestCase
         foreach ([
             '\d+' => true,
             '[0-9]+' => false,
-            // Read as PCRE does on ASCII only: BSD grep finds no `\w` in `²` or a decomposed `é` (measured).
+            // Read as PCRE does on ASCII only: BSD grep finds no `\w` in `²` or `Ⅰ` (measured).
             '\w+' => true,
             '\bword\b' => true,
             '\W' => true,
@@ -41,28 +41,23 @@ final class EreReadingTest extends TestCase
             'a{1,2}' => false,
             '[]a]' => false,
             '[^]a]+' => false,
-            '[[:alpha:]]+' => false,
+            '[[:alpha:]]+' => true,
             '\1' => true,
             // A `]` first in brackets (after a `^` too) is a member: what follows is still inside.
             '[]\w]' => true,
             '[^]\w]' => true,
             'a\\' => true,
-            // A class's own `]` does not close the brackets; a PCRE verb is PCRE's.
-            '[[:digit:]\w]+' => true,
-            '[[:digit:]\.]+' => true, // `\.` is still inside, where ERE reads a backslash
-            '[[:digit:]]+' => false,
-            '[[:digit:]a]+' => false,
-            '[[:digit:]' => false, // unclosed: refused as malformed before this is asked
-            '[[.a.]\w]' => true,
-            '[[=a=]]+' => false,
-            '[[=a=]\.]' => true,
-            // A `[:` with no `:]` before the next `]`: BSD grep refuses it, PCRE reads a `[`. Not the same.
-            '[[:]\d+' => true,
-            '[[.]\d+' => true,
-            '[[=]x\d' => true,
-            '[[:]\.' => true,
-            '[[:]]' => true,
-            '[[:a]\d:]' => true,
+            // A POSIX class is Unicode's under /u, the locale's in grep: BSD grep finds no `[[:alnum:]]` in `²`.
+            '[[:alnum:]]' => true,
+            '[[:space:]]' => true,
+            '[a[:digit:]]' => true,
+            '[[.a.]]' => true,
+            '[[=a=]]' => true,
+            '[[]' => false,
+            '[a[]' => false,
+            '[[]\.' => false, // `[` a member, `\.` outside
+            '[]:]' => false,
+            // A PCRE verb is PCRE's.
             '(*UTF)a' => true,
         ] as $regex => $other) {
             yield $regex => [$regex, $other];
@@ -71,9 +66,9 @@ final class EreReadingTest extends TestCase
 
     /**
      * What grep -E is handed without -P is decided by an allow-list: an
-     * escaped metacharacter outside brackets is read the same; anything else escaped, a backslash in brackets, `(?`,
-     * `(*`, a lazy or possessive quantifier, `{,n}` might not be. A
-     * `[:class:]` in brackets is read whole only where PCRE reads one.
+     * escaped metacharacter outside brackets is read the same. Anything else
+     * escaped, a backslash or a POSIX class in brackets, `(?`, `(*`, a lazy
+     * or possessive quantifier, `{,n}` might not be.
      */
     #[DataProvider('ereReadings')]
     public function testWhatEreReadsTheSameIsAllowedAndNothingElse(string $regex, bool $other): void
