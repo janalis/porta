@@ -60,4 +60,48 @@ final class ComposerLayoutTest extends TestCase
         $this->assertNull(new ComposerLayout('/p/lib/vendor', '/p/bin')->vendorPath('/p'), 'any dir named vendor');
         $this->assertNull(new ComposerLayout('/p', '/p/bin')->vendorPath('/p'), 'the root is no folder to leave out');
     }
+
+    /**
+     * Composer's global config (`config.json` in its home) applies to every
+     * project, beneath the project's own: a user who set `bin-dir` there has
+     * every project's tools in it.
+     */
+    public function testTheGlobalConfigIsReadBeneathTheProjects(): void
+    {
+        $home = new TempProject(['config.json' => '{"config":{"bin-dir":"tools","vendor-dir":"deps"}}']);
+        $project = new TempProject(['composer.json' => '{"config":{"vendor-dir":"lib"}}']);
+        $was = \getenv('COMPOSER_HOME');
+        \putenv('COMPOSER_HOME='.$home->dir);
+        try {
+            $layout = ComposerLayout::of($project->dir);
+        } finally {
+            \putenv(false === $was ? 'COMPOSER_HOME' : 'COMPOSER_HOME='.$was);
+        }
+
+        $this->assertSame($project->path('lib'), $layout->vendorDir, 'the project\'s own wins');
+        $this->assertSame($project->path('tools'), $layout->binDir, 'the global one where the project is silent');
+    }
+
+    /** Without COMPOSER_HOME, Composer's home is the XDG config dir's `composer` when there, else `~/.composer`. */
+    public function testComposersHomeIsFoundAsComposerFindsIt(): void
+    {
+        $user = new TempProject(['.composer/config.json' => '{"config":{"bin-dir":"old"}}']);
+        $project = new TempProject();
+        $saved = ['COMPOSER_HOME' => \getenv('COMPOSER_HOME'), 'HOME' => \getenv('HOME'), 'XDG_CONFIG_HOME' => \getenv('XDG_CONFIG_HOME')];
+        \putenv('COMPOSER_HOME');
+        \putenv('XDG_CONFIG_HOME');
+        \putenv('HOME='.$user->dir);
+        try {
+            $this->assertSame($project->path('old'), ComposerLayout::of($project->dir)->binDir, '~/.composer, the XDG one not there');
+            $user->write('.config/composer/config.json', content: '{"config":{"bin-dir":"xdg"}}');
+            $this->assertSame($project->path('xdg'), ComposerLayout::of($project->dir)->binDir, '~/.config/composer before it');
+            $user->write('elsewhere/composer/config.json', content: '{"config":{"bin-dir":"set"}}');
+            \putenv('XDG_CONFIG_HOME='.$user->path('elsewhere'));
+            $this->assertSame($project->path('set'), ComposerLayout::of($project->dir)->binDir, 'XDG_CONFIG_HOME where set');
+        } finally {
+            foreach ($saved as $name => $value) {
+                \putenv(false === $value ? $name : $name.'='.$value);
+            }
+        }
+    }
 }

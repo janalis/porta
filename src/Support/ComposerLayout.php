@@ -12,12 +12,12 @@ use Symfony\Component\Filesystem\Path;
  * in its composer.json say. Older Symfony projects set `"bin-dir": "bin"`,
  * and a tool looked for in `vendor/bin` there is never found.
  *
- * Resolved as Composer does: relative to the project, `{$vendor-dir}` in the
- * bin dir replaced by the vendor dir, a trailing slash dropped. Not read: the
- * COMPOSER_VENDOR_DIR and COMPOSER_BIN_DIR variables, which belong to the
- * shell that runs composer, not to the IDE's; the global config in
- * COMPOSER_HOME, for the same reason; and `~`, which composer.json rarely
- * holds.
+ * Resolved as Composer does: the global config's (`config.json` in
+ * Composer's home) beneath the project's own, relative to the project,
+ * `{$vendor-dir}` in the bin dir replaced by the vendor dir, a trailing slash
+ * dropped. Not read: the COMPOSER_VENDOR_DIR and COMPOSER_BIN_DIR variables,
+ * which belong to the shell that runs composer, not to the IDE's; and `~`,
+ * which composer.json rarely holds.
  *
  * A dir outside the project is not taken: Composer's default inside it
  * stands instead. A project's own files say where ITS tools are; one
@@ -34,10 +34,51 @@ final readonly class ComposerLayout
         public string $binDir,
     ) {}
 
-    /** The layout of the project at $root, Composer's defaults where its composer.json is silent, unreadable or absent. */
+    /**
+     * The layout of the project at $root: its composer.json's config over
+     * Composer's global one, and Composer's defaults where both are silent,
+     * unreadable or absent.
+     */
     public static function of(string $root): self
     {
-        return self::from($root, JsonFile::read($root.'/composer.json'));
+        $global = self::config(JsonFile::read(self::home().'/config.json'));
+        $project = JsonFile::read($root.'/composer.json');
+
+        return self::from($root, [...($project ?? []), 'config' => [...$global, ...self::config($project)]]);
+    }
+
+    /**
+     * Composer's home, where its global config is, found as Composer finds
+     * it: COMPOSER_HOME; else the first of the XDG config dir's `composer`
+     * and `~/.composer` that is there; else the XDG one.
+     */
+    private static function home(): string
+    {
+        $set = \getenv('COMPOSER_HOME');
+        if (\is_string($set) && '' !== $set) {
+            return $set;
+        }
+        $user = (string) \getenv('HOME');
+        $xdg = \getenv('XDG_CONFIG_HOME');
+        $dirs = [(\is_string($xdg) && '' !== $xdg ? $xdg : $user.'/.config').'/composer', $user.'/.composer'];
+
+        return \array_find($dirs, static fn (string $dir): bool => \is_dir($dir)) ?? $dirs[0];
+    }
+
+    /**
+     * The `config` object of a decoded composer.json, or of Composer's
+     * global config.json: [] when there is none.
+     *
+     * @param array<mixed>|null $file
+     *
+     * @return array<array-key, mixed>
+     */
+    private static function config(?array $file): array
+    {
+        // @mago-expect analysis:mixed-assignment -- decoded JSON, narrowed below
+        $config = $file['config'] ?? null;
+
+        return \is_array($config) ? $config : [];
     }
 
     /**

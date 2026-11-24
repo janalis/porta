@@ -198,8 +198,8 @@ A plugin that drives an external program declares it in `extra.porta.tools`:
 The binary is looked for in one order, everywhere: your `setting` when the user
 filled it (a bare name through the PATH, a path only while the file is there),
 then `<project>/vendor/bin` for a tool with a composer source (or the
-`config.bin-dir` the project's composer.json names), in a trusted project
-only, then the PATH, then `~/.porta/bin`, where a GitHub download lands.
+`config.bin-dir` the project's composer.json, or Composer's global
+config.json, names), in a trusted project only, then the PATH, then `~/.porta/bin`, where a GitHub download lands.
 `$api->toolBinary('dot')` returns what that finds, or null — call it each time
 rather than caching it, because the setting can change under you.
 
