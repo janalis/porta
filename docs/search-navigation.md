@@ -102,7 +102,11 @@ Search Scopes" pins one so it is never evicted.
   matches are the disk's lines, so save it and search again.
 
 Like Go to File, the search leaves out local history (`.porta/history`) but
-not project plugins under `.porta/plugins`. It runs as async `grep` streamed
+not project plugins under `.porta/plugins`, and leaves out `vendor/` (or the
+`config.vendor-dir` your composer.json names), `node_modules/` and `.git/`. A
+folder you pick as the scope is always searched, even one of those, and only
+what is skipped below it stays out. In `.porta/history`, Replace All
+rewrites the snapshots local history restores from. It runs as async `grep` streamed
 through the event loop; the UI never blocks. A multi-line query, or a machine
 without `grep`, uses the built-in engine instead.
 

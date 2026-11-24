@@ -84,10 +84,12 @@ final class ProjectSearch
 
     /**
      * The vendor dir a server's composer.json moved, whose hits its grep
-     * drops — null when there is none, or when the scope names it: what is
-     * named is searched.
+     * drops, and the scope paths at or in it, whose hits are kept: what is
+     * named is searched. Null where nothing was moved.
+     *
+     * @var array{string, list<string>}|null
      */
-    private ?string $dropping = null;
+    private ?array $dropping = null;
 
     public function searchedLocalCopyOnly(): bool
     {
@@ -159,8 +161,18 @@ final class ProjectSearch
         // kept, and whose composer.json the cache may not hold.
         $grepPaths = $this->operands($paths);
         $vendor = $this->remote?->vendorPath();
-        $this->dropping =
-            null === $vendor || [] !== \array_filter($paths, static fn (string $path): bool => \rtrim($path, characters: '/') === $vendor || \str_starts_with($path, $vendor.'/')) ? null : $vendor;
+        $this->dropping = null === $vendor
+            ? null
+            : [
+                $vendor,
+                \array_values(\array_filter(
+                    \array_map(static fn (string $path): string => \rtrim($path, characters: '/'), $paths),
+                    static fn (string $path): bool => self::within($path, [$vendor]),
+                )),
+            ];
+        // Counted as they come, chunk by chunk: what is dropped does not count.
+        $kept = 0;
+        $partial = '';
         if ([] === $grepPaths) {
             $onDone([]); // nothing but the history there: grep with no path would read stdin
 
@@ -187,11 +199,13 @@ final class ProjectSearch
             // with nothing printed is no answer; 1 is grep saying "no match",
             // which is one.
             onExit: fn (int $code, string $out) => $code >= 2 && '' === $out ? $fallback() : $this->finish($out, $onDone, $pattern),
-            onChunk: function () use ($process, $onDone, $pattern): void {
+            onChunk: function (string $chunk) use ($process, $onDone, $pattern, &$kept, &$partial): void {
                 // A server's hits under the vendor dir it moved are dropped by
                 // parse(): counted, they stopped a search before its real hits.
-                $output = $process->output();
-                if ((\substr_count($output, needle: "\n") - (null === $this->dropping ? 0 : self::linesUnder($output, $this->dropping))) > self::MAX_RESULTS) {
+                $lines = \explode("\n", $partial.$chunk);
+                $partial = \array_pop($lines);
+                $kept += null === $this->dropping ? \count($lines) : $this->keptOf($lines);
+                if ($kept > self::MAX_RESULTS) {
                     // Enough results; stop early
                     $this->finish($process->output(), $onDone, $pattern);
                 }
@@ -276,12 +290,55 @@ final class ProjectSearch
         $onDone($results);
     }
 
-    /** How many of grep's $output lines are hits under $dir, as a scope of `.` or of a path prints them. */
-    private static function linesUnder(string $output, string $dir): int
+    /**
+     * One line of grep's output read: the path as the project names it —
+     * `vendor/./a.php`, from a scope handed over as `vendor/.`, is
+     * `vendor/a.php` — or null for a line that is no hit.
+     *
+     * @return array{path: ?string, line: int, text: string}
+     */
+    private function hit(string $line): array
     {
-        $lines = "\n".$output;
+        $m = [];
+        if ('' === $line || !\preg_match('/^(?:\.\/)?(.+?):(\d+):(.*)$/', $line, $m)) {
+            return ['path' => null, 'line' => 0, 'text' => ''];
+        }
 
-        return \substr_count($lines, "\n".$dir.'/') + \substr_count($lines, "\n./".$dir.'/');
+        return ['path' => \str_replace('/./', replace: '/', subject: $m[1]), 'line' => (int) $m[2] - 1, 'text' => \trim($m[3])];
+    }
+
+    /**
+     * How many of grep's $lines {@see parse()} keeps.
+     *
+     * @param list<string> $lines
+     */
+    private function keptOf(array $lines): int
+    {
+        $kept = 0;
+        foreach ($lines as $line) {
+            $path = $this->hit($line)['path'];
+            if (null === $path || !$this->dropped($path)) {
+                ++$kept;
+            }
+        }
+
+        return $kept;
+    }
+
+    /** Whether a server grep's hit at $path is dropped: in the vendor dir it moved, and in no scope path that names it. */
+    private function dropped(string $path): bool
+    {
+        return null !== $this->dropping && self::within($path, [$this->dropping[0]]) && !self::within($path, $this->dropping[1]);
+    }
+
+    /**
+     * Whether $path is one of $dirs or lies under one.
+     *
+     * @param list<string> $dirs
+     */
+    private static function within(string $path, array $dirs): bool
+    {
+        return \array_any($dirs, static fn (string $dir): bool => $path === $dir || \str_starts_with($path, $dir.'/'));
     }
 
     /** @return list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> */
@@ -290,15 +347,12 @@ final class ProjectSearch
         $results = [];
         // A grep run on the server cannot be handed the way past a moved
         // vendor dir, as one here is: its hits there are dropped instead.
-        $vendor = $this->dropping;
         foreach (\explode("\n", $output) as $line) {
-            $m = [];
-            if ('' === $line || !\preg_match('/^(?:\.\/)?(.+?):(\d+):(.*)$/', $line, $m) || (null !== $vendor && \str_starts_with($m[1], $vendor.'/'))) {
+            $hit = $this->hit($line);
+            if (null === $hit['path'] || $this->dropped($hit['path'])) {
                 continue;
             }
-            $text = \trim($m[3]);
-            // `vendor/./a.php`, from a scope handed over as `vendor/.`
-            $results[] = ['path' => \str_replace('/./', replace: '/', subject: $m[1]), 'line' => (int) $m[2] - 1, 'text' => $text, 'ranges' => $this->rangesFor($text, $pattern)];
+            $results[] = ['path' => $hit['path'], 'line' => $hit['line'], 'text' => $hit['text'], 'ranges' => $this->rangesFor($hit['text'], $pattern)];
             if (\count($results) >= self::MAX_RESULTS) {
                 break;
             }
@@ -812,7 +866,8 @@ final class ProjectSearch
             }
             $kept = [] === $skipped ? [$path] : $this->without([$path], $skipped);
             // Handed over whole: a folder opened up for a skipped path below goes as its entries.
-            if ([$path] === $kept && \in_array(\basename($named), self::EXCLUDES, strict: true) && \is_dir($this->rootDir.'/'.$named)) {
+            // On a server the cache may not hold the folder: the server's grep is handed it as one.
+            if ([$path] === $kept && \in_array(\basename($named), self::EXCLUDES, strict: true) && ($this->onServer() || \is_dir($this->rootDir.'/'.$named))) {
                 $operands[] = $named.'/.';
 
                 continue;

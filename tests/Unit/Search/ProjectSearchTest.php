@@ -120,6 +120,7 @@ final class ProjectSearchTest extends TestCase
             'composer.json' => '{"config":{"vendor-dir":"lib/deps"}}',
             'lib/Own.php' => "<?php\n// needle\n",
             'lib/deps/acme/Lib.php' => "<?php\n// needle\n",
+            'lib/deps/other/X.php' => "<?php\n// needle\n",
             'src/lib/deps/Own.php' => "<?php\n// needle\n",
         ]);
         $cache = new TempProject();
@@ -132,11 +133,13 @@ final class ProjectSearchTest extends TestCase
         $paths = \array_column($this->awaitSearch(new ProjectSearch($cache->dir, $remote), query: 'needle'), 'path');
         \sort($paths);
         $this->assertSame(['lib/Own.php', 'src/lib/deps/Own.php'], $paths);
-        $this->assertSame(
-            ['lib/deps/acme/Lib.php'],
-            \array_column($this->awaitSearch(new ProjectSearch($cache->dir, $remote), query: 'needle', scope: ['lib/deps']), 'path'),
-            'named as the scope, its hits are kept',
-        );
+        $named = \array_column($this->awaitSearch(new ProjectSearch($cache->dir, $remote), query: 'needle', scope: ['lib/deps']), 'path');
+        \sort($named);
+        $this->assertSame(['lib/deps/acme/Lib.php', 'lib/deps/other/X.php'], $named, 'named as the scope, its hits are kept');
+        $mixed = \array_column($this->awaitSearch(new ProjectSearch($cache->dir, $remote), query: 'needle', scope: ['lib', 'lib/deps/acme']), 'path');
+        \sort($mixed);
+        // Overlapping scope paths each hand grep the file: the set is what matters here.
+        $this->assertSame(['lib/Own.php', 'lib/deps/acme/Lib.php'], \array_values(\array_unique($mixed)), 'per scope path: one naming a part of it keeps that part only');
 
         // More hits there than a search keeps, read first and long enough to
         // come in many chunks: they must not stop it before the real one.
@@ -320,6 +323,30 @@ final class ProjectSearchTest extends TestCase
         $this->assertStringNotContainsString('lib/deps', $argv);
         $found('vendor');
         $this->assertStringEndsWith(' -- needle vendor/.'."\n", (string) \file_get_contents($log), 'named so grep cannot skip it by name');
+    }
+
+    /**
+     * vendor/ named as a server's scope, holding the dir its composer.json
+     * moved: searched — though the cache never listed it — but not that dir,
+     * whose hits grep prints as `vendor/./deps/…`.
+     */
+    public function testARemoteNamedVendorKeepsTheMovedDirBelowItSkipped(): void
+    {
+        $server = new TempProject([
+            'composer.json' => '{"config":{"vendor-dir":"vendor/deps"}}',
+            'vendor/Own.php' => "<?php\n// needle\n",
+            'vendor/deps/pkg/B.php' => "<?php\n// needle in a package\n",
+        ]);
+        $cache = new TempProject();
+        $transport = new FakeRemoteTransport($server->dir);
+        $transport->walks = true;
+        $remote = $transport->filesystem($cache->dir);
+        $remote->poll();
+        $this->await(static fn (): bool => null !== $remote->vendorPath(), what: 'the walk to read the server\'s composer.json');
+        $this->assertDirectoryDoesNotExist($cache->path('vendor'), 'the premise: the cache has no vendor/');
+
+        $this->assertSame(['vendor/Own.php'], \array_column($this->awaitSearch(new ProjectSearch($cache->dir, $remote), query: 'needle', scope: 'vendor'), 'path'));
+        $remote->close();
     }
 
     /** A scope holding nothing but a skipped folder leaves grep nothing to read — not its stdin, where it would wait. */
