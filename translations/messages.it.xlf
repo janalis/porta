@@ -4058,6 +4058,10 @@
         <source>Checking…</source>
         <target>Verifica in corso…</target>
       </trans-unit>
+      <trans-unit id="1355">
+        <source>Not replaced in local history: its %count% snapshot stays as saved|Not replaced in local history: its %count% snapshots stay as saved</source>
+        <target>Non sostituito nella cronologia locale: la sua %count% istantanea resta come salvata|Non sostituito nella cronologia locale: le sue %count% istantanee restano come salvate</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

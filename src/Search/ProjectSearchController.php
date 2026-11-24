@@ -420,7 +420,13 @@ final class ProjectSearchController
 
         $touched = 0;
         $skipped = [];
+        $history = 0;
         foreach ($keptLinesByPath as $relPath => $lineIndices) {
+            if (self::inHistory($relPath)) {
+                ++$history;
+
+                continue;
+            }
             $abs = $this->paths->absolute($relPath);
             $buffer = $this->buffers->find($abs);
             // The matches are the DISK's lines and offsets: in a buffer with
@@ -462,7 +468,17 @@ final class ProjectSearchController
             }
         }
 
-        $this->finishReplace($touched, $skipped);
+        $this->finishReplace($touched, $skipped, $history);
+    }
+
+    /**
+     * Whether $relPath is one of local history's snapshots: searched when
+     * the scope names it, never rewritten — they are what an old version is
+     * restored from, and must stay as it was saved.
+     */
+    private static function inHistory(string $relPath): bool
+    {
+        return \str_starts_with($relPath, ProjectSearch::HISTORY.'/');
     }
 
     /**
@@ -558,7 +574,13 @@ final class ProjectSearchController
 
         $touched = 0;
         $skipped = [];
+        $history = 0;
         foreach (\array_unique(\array_column($this->lastSearchResults, 'path')) as $relPath) {
+            if (self::inHistory($relPath)) {
+                ++$history;
+
+                continue;
+            }
             $abs = $this->paths->absolute($relPath);
             $buffer = $this->buffers->find($abs);
             // The search read the disk: a match only the unsaved text holds
@@ -587,7 +609,7 @@ final class ProjectSearchController
             }
         }
 
-        $this->finishReplace($touched, $skipped);
+        $this->finishReplace($touched, $skipped, $history);
     }
 
     /**
@@ -596,7 +618,7 @@ final class ProjectSearchController
      *
      * @param list<string> $skipped
      */
-    private function finishReplace(int $touched, array $skipped): void
+    private function finishReplace(int $touched, array $skipped, int $history): void
     {
         $this->notifier->flash($this->translator->trans('Replaced in %count% file|Replaced in %count% files', ['%count%' => $touched]));
         $this->editor->findModal->close(); // replace runs from the modal
@@ -604,6 +626,11 @@ final class ProjectSearchController
         $this->tui->requestRender();
         if ([] !== $skipped) {
             $this->notifier->warn($this->translator->trans('Not replaced in %files%: unsaved edits the search did not see — save, then search again', ['%files%' => \implode(', ', $skipped)]));
+        }
+        if (0 !== $history) {
+            $this->notifier->warn($this->translator->trans('Not replaced in local history: its %count% snapshot stays as saved|Not replaced in local history: its %count% snapshots stay as saved', [
+                '%count%' => $history,
+            ]));
         }
     }
 

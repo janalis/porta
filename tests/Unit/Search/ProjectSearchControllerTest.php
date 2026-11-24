@@ -753,6 +753,43 @@ final class ProjectSearchControllerTest extends TestCase
         $this->assertSame("<?php\r\n\$foo = 'a\r\nb';\r\n", (string) \file_get_contents($project->path('src/A.php')));
     }
 
+    /**
+     * Local history's snapshots are searched when the scope names them, and
+     * never rewritten: they are what an old version is restored from.
+     */
+    public function testReplaceAllLeavesLocalHistoryAsSavedAndSaysSo(): void
+    {
+        $project = new TempProject([
+            '.porta/history/ab12/1700000000.snap' => "<?php\n\$needle = 1;\n",
+            '.porta/history/ab12/1700000001.snap' => "<?php\n\$needle = 2;\n",
+        ]);
+        $controller = $this->controller($project->dir);
+        $controller->openInFolder($project->dir.'/.porta/history');
+        $controller->search('needle');
+        $this->awaitModalShows('$needle = 2;');
+
+        $controller->replaceAll('found');
+
+        $this->assertSame("<?php\n\$needle = 1;\n", \file_get_contents($project->path('.porta/history/ab12/1700000000.snap')), 'as saved');
+        $this->assertSame("<?php\n\$needle = 2;\n", \file_get_contents($project->path('.porta/history/ab12/1700000001.snap')));
+        $this->assertStringContainsString('Not replaced in local history: its 2 snapshots stay as saved', $this->statusRow($this->statusBar, columns: 200));
+    }
+
+    /** A multi-line query replaces through its own whole-file path, which leaves history alone too. */
+    public function testAMultilineReplaceAllLeavesLocalHistoryAsSaved(): void
+    {
+        $project = new TempProject(['.porta/history/ab12/1700000000.snap' => "<?php\n\$needle = 1;\n\$needle = 2;\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->openInFolder($project->dir.'/.porta/history');
+        $controller->search("\$needle = 1;\n\$needle");
+        $this->awaitModalShows('$needle = 1;');
+
+        $controller->replaceAll('found');
+
+        $this->assertSame("<?php\n\$needle = 1;\n\$needle = 2;\n", \file_get_contents($project->path('.porta/history/ab12/1700000000.snap')));
+        $this->assertStringContainsString('Not replaced in local history: its 1 snapshot stays as saved', $this->statusRow($this->statusBar, columns: 200));
+    }
+
     public function testReplaceAllWritesAClosedFileToDisk(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n\$needle = 1;\n"]);
