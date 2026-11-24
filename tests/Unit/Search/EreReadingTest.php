@@ -17,9 +17,13 @@ final class EreReadingTest extends TestCase
         foreach ([
             '\d+' => true,
             '[0-9]+' => false,
-            // Read as PCRE does by glibc's and musl's regcomp, and BSD grep (measured).
-            '\w+' => false,
-            '\bword\b' => false,
+            // Read as PCRE does on ASCII only: BSD grep finds no `\w` in `²` or a decomposed `é` (measured).
+            '\w+' => true,
+            '\bword\b' => true,
+            '\W' => true,
+            '\s' => true,
+            '\S' => true,
+            '\Bx' => true,
             'foo\.bar' => false,
             '\(?x' => false,
             '[\w.-]+@' => true,
@@ -48,15 +52,16 @@ final class EreReadingTest extends TestCase
             '[[:digit:]\.]+' => true, // `\.` is still inside, where ERE reads a backslash
             '[[:digit:]]+' => false,
             '[[:digit:]a]+' => false,
-            '[[:digit:]' => false,
+            '[[:digit:]' => false, // unclosed: refused as malformed before this is asked
             '[[.a.]\w]' => true,
             '[[=a=]]+' => false,
             '[[=a=]\.]' => true,
-            // A `[:` with no `:]` before the next `]` is a `[` member, as PCRE reads it: what follows is outside.
+            // A `[:` with no `:]` before the next `]`: BSD grep refuses it, PCRE reads a `[`. Not the same.
             '[[:]\d+' => true,
             '[[.]\d+' => true,
             '[[=]x\d' => true,
-            '[[:]\.' => false,
+            '[[:]\.' => true,
+            '[[:]]' => true,
             '[[:a]\d:]' => true,
             '(*UTF)a' => true,
         ] as $regex => $other) {
@@ -66,8 +71,7 @@ final class EreReadingTest extends TestCase
 
     /**
      * What grep -E is handed without -P is decided by an allow-list: an
-     * escaped metacharacter, and `\w \W \s \S \b \B` outside brackets, are
-     * read the same; anything else escaped, a backslash in brackets, `(?`,
+     * escaped metacharacter outside brackets is read the same; anything else escaped, a backslash in brackets, `(?`,
      * `(*`, a lazy or possessive quantifier, `{,n}` might not be. A
      * `[:class:]` in brackets is read whole only where PCRE reads one.
      */
