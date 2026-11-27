@@ -141,8 +141,7 @@
                 "issues": "https://github.com/janalis/viz/issues",
                 "source": "https://github.com/janalis/viz"
             },
-            "time": "2026-11-23T16:08:59+00:00",
-            "published-time": "2026-11-23T16:09:05+00:00"
+            "time": "2026-11-23T16:08:59+00:00"
         },
         {
             "name": "psr/clock",
@@ -524,23 +523,23 @@
         },
         {
             "name": "symfony/console",
-            "version": "v8.2.0-BETA2",
+            "version": "v8.2.0-RC1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/console.git",
-                "reference": "dc3c284882e545b47f590c392e7be0da4184b6e2"
+                "reference": "ea1860277087a43c75a02591d71a5a217682f494"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/console/zipball/dc3c284882e545b47f590c392e7be0da4184b6e2",
-                "reference": "dc3c284882e545b47f590c392e7be0da4184b6e2",
+                "url": "https://api.github.com/repos/symfony/console/zipball/ea1860277087a43c75a02591d71a5a217682f494",
+                "reference": "ea1860277087a43c75a02591d71a5a217682f494",
                 "shasum": ""
             },
             "require": {
                 "php": ">=8.4.1",
                 "symfony/deprecation-contracts": "^2.5|^3",
                 "symfony/polyfill-mbstring": "^1.0",
-                "symfony/polyfill-php85": "^1.32",
+                "symfony/polyfill-php85": "^1.33",
                 "symfony/service-contracts": "^2.5|^3",
                 "symfony/string": "^7.4.6|^8.0.6"
             },
@@ -600,7 +599,7 @@
                 "terminal"
             ],
             "support": {
-                "source": "https://github.com/symfony/console/tree/v8.2.0-BETA2"
+                "source": "https://github.com/symfony/console/tree/v8.2.0-RC1"
             },
             "funding": [
                 {
@@ -620,7 +619,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-11-06T16:44:18+00:00"
+            "time": "2026-11-24T16:01:15+00:00"
         },
         {
             "name": "symfony/dependency-injection",
@@ -775,8 +774,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-16T14:15:10+00:00",
-            "published-time": "2026-11-04T11:25:34+00:00"
+            "time": "2026-09-16T14:15:10+00:00"
         },
         {
             "name": "symfony/event-dispatcher",
@@ -1166,8 +1164,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-04-10T16:19:22+00:00",
-            "published-time": "2026-04-26T14:44:50+00:00"
+            "time": "2026-04-10T16:19:22+00:00"
         },
         {
             "name": "symfony/polyfill-deepclone",
@@ -1421,8 +1418,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-23T22:02:09+00:00",
-            "published-time": "2026-09-30T10:23:47+00:00"
+            "time": "2026-09-23T22:02:09+00:00"
         },
         {
             "name": "symfony/polyfill-mbstring",
@@ -1507,8 +1503,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-28T09:35:49+00:00",
-            "published-time": "2026-10-28T10:07:45+00:00"
+            "time": "2026-10-28T09:35:49+00:00"
         },
         {
             "name": "symfony/polyfill-php85",
@@ -1668,21 +1663,20 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-25T15:46:47+00:00",
-            "published-time": "2026-09-30T10:23:43+00:00"
+            "time": "2026-09-25T15:46:47+00:00"
         },
         {
             "name": "symfony/process",
-            "version": "v8.2.0-BETA1",
+            "version": "v8.2.0-RC1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/process.git",
-                "reference": "c9fb4cfeb0fe4b6fdacd0113b46fd54eaa04835f"
+                "reference": "2c176461fd9614ffa1bb292ca7c95205d0e928c9"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/process/zipball/c9fb4cfeb0fe4b6fdacd0113b46fd54eaa04835f",
-                "reference": "c9fb4cfeb0fe4b6fdacd0113b46fd54eaa04835f",
+                "url": "https://api.github.com/repos/symfony/process/zipball/2c176461fd9614ffa1bb292ca7c95205d0e928c9",
+                "reference": "2c176461fd9614ffa1bb292ca7c95205d0e928c9",
                 "shasum": ""
             },
             "require": {
@@ -1721,7 +1715,7 @@
             "description": "Executes commands in sub-processes",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/process/tree/v8.2.0-BETA1"
+                "source": "https://github.com/symfony/process/tree/v8.2.0-RC1"
             },
             "funding": [
                 {
@@ -1741,7 +1735,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-11-03T14:34:49+00:00"
+            "time": "2026-11-23T09:50:06+00:00"
         },
         {
             "name": "symfony/service-contracts",
@@ -1832,16 +1826,16 @@
         },
         {
             "name": "symfony/string",
-            "version": "v8.1.10",
+            "version": "v8.1.13",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/string.git",
-                "reference": "6c6110979c0150393bbb336170e286d51ab4d76c"
+                "reference": "ff6a90fe4c4e0e4de484d07189aa25d6d7f447be"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/string/zipball/6c6110979c0150393bbb336170e286d51ab4d76c",
-                "reference": "6c6110979c0150393bbb336170e286d51ab4d76c",
+                "url": "https://api.github.com/repos/symfony/string/zipball/ff6a90fe4c4e0e4de484d07189aa25d6d7f447be",
+                "reference": "ff6a90fe4c4e0e4de484d07189aa25d6d7f447be",
                 "shasum": ""
             },
             "require": {
@@ -1898,7 +1892,7 @@
                 "utf8"
             ],
             "support": {
-                "source": "https://github.com/symfony/string/tree/v8.1.10"
+                "source": "https://github.com/symfony/string/tree/v8.1.13"
             },
             "funding": [
                 {
@@ -1918,8 +1912,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-23T17:06:53+00:00",
-            "published-time": "2026-10-28T18:24:27+00:00"
+            "time": "2026-11-27T13:27:33+00:00"
         },
         {
             "name": "symfony/translation",
@@ -2504,8 +2497,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-11-20T21:17:01+00:00",
-            "published-time": "2026-11-20T21:25:08+00:00"
+            "time": "2026-11-20T21:17:01+00:00"
         },
         {
             "name": "behat/gherkin",
@@ -2590,21 +2582,20 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-11-20T10:20:57+00:00",
-            "published-time": "2026-11-20T10:21:40+00:00"
+            "time": "2026-11-20T10:20:57+00:00"
         },
         {
             "name": "brianium/paratest",
-            "version": "v7.29.0",
+            "version": "v7.30.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/paratestphp/paratest.git",
-                "reference": "2e4bbc8340be877d4f1a82f993a387e2c8c76272"
+                "reference": "1da6863b66deed9f23a0bab222e5d3c864f39e71"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/paratestphp/paratest/zipball/2e4bbc8340be877d4f1a82f993a387e2c8c76272",
-                "reference": "2e4bbc8340be877d4f1a82f993a387e2c8c76272",
+                "url": "https://api.github.com/repos/paratestphp/paratest/zipball/1da6863b66deed9f23a0bab222e5d3c864f39e71",
+                "reference": "1da6863b66deed9f23a0bab222e5d3c864f39e71",
                 "shasum": ""
             },
             "require": {
@@ -2618,7 +2609,7 @@
                 "phpunit/php-code-coverage": "^14.5.2",
                 "phpunit/php-file-iterator": "^7.0.2",
                 "phpunit/php-timer": "^9",
-                "phpunit/phpunit": "^13.4.7",
+                "phpunit/phpunit": "^13.4.8",
                 "sebastian/environment": "^9.3.3",
                 "symfony/console": "^7.4.20 || ^8.1.8",
                 "symfony/process": "^7.4.19 || ^8.1.7"
@@ -2628,7 +2619,7 @@
                 "ext-pcntl": "*",
                 "ext-pcov": "*",
                 "ext-posix": "*",
-                "phpstan/phpstan": "^2.3.5",
+                "phpstan/phpstan": "^2.3.7",
                 "phpstan/phpstan-deprecation-rules": "^2.0.5",
                 "phpstan/phpstan-phpunit": "^2.1.2",
                 "phpstan/phpstan-strict-rules": "^2.1.1",
@@ -2672,7 +2663,7 @@
             ],
             "support": {
                 "issues": "https://github.com/paratestphp/paratest/issues",
-                "source": "https://github.com/paratestphp/paratest/tree/v7.29.0"
+                "source": "https://github.com/paratestphp/paratest/tree/v7.30.0"
             },
             "funding": [
                 {
@@ -2684,7 +2675,7 @@
                     "type": "paypal"
                 }
             ],
-            "time": "2026-11-14T20:49:33+00:00"
+            "time": "2026-11-23T07:40:24+00:00"
         },
         {
             "name": "carthage-software/mago",
@@ -3021,8 +3012,7 @@
                 "issues": "https://github.com/cucumber/tag-expressions/issues",
                 "source": "https://github.com/cucumber/tag-expressions-php/tree/v11.0.1"
             },
-            "time": "2026-03-24T10:42:49+00:00",
-            "published-time": "2026-08-15T17:37:27+00:00"
+            "time": "2026-03-24T10:42:49+00:00"
         },
         {
             "name": "fidry/cpu-core-counter",
@@ -3498,8 +3488,7 @@
                 "issues": "https://github.com/janalis/custos/issues",
                 "source": "https://github.com/janalis/custos"
             },
-            "time": "2026-11-22T23:25:22+00:00",
-            "published-time": "2026-11-22T23:25:27+00:00"
+            "time": "2026-11-22T23:25:22+00:00"
         },
         {
             "name": "janalis/tuink",
@@ -3562,8 +3551,7 @@
                 "issues": "https://github.com/janalis/tuink/issues",
                 "source": "https://github.com/janalis/tuink/tree/v0.1.0"
             },
-            "time": "2026-11-22T20:34:26+00:00",
-            "published-time": "2026-11-22T22:10:19+00:00"
+            "time": "2026-11-22T20:34:26+00:00"
         },
         {
             "name": "jean85/pretty-package-versions",
@@ -4524,16 +4512,16 @@
         },
         {
             "name": "phpunit/phpunit",
-            "version": "13.4.7",
+            "version": "13.4.8",
             "source": {
                 "type": "git",
                 "url": "https://github.com/sebastianbergmann/phpunit.git",
-                "reference": "e6458d44279e3b4fc492d4c41fe8e677efed7a2c"
+                "reference": "291e66a76eb39f2fb8f880d38edc30dbd7acd9a2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/e6458d44279e3b4fc492d4c41fe8e677efed7a2c",
-                "reference": "e6458d44279e3b4fc492d4c41fe8e677efed7a2c",
+                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/291e66a76eb39f2fb8f880d38edc30dbd7acd9a2",
+                "reference": "291e66a76eb39f2fb8f880d38edc30dbd7acd9a2",
                 "shasum": ""
             },
             "require": {
@@ -4604,7 +4592,7 @@
             "support": {
                 "issues": "https://github.com/sebastianbergmann/phpunit/issues",
                 "security": "https://github.com/sebastianbergmann/phpunit/security/policy",
-                "source": "https://github.com/sebastianbergmann/phpunit/tree/13.4.7"
+                "source": "https://github.com/sebastianbergmann/phpunit/tree/13.4.8"
             },
             "funding": [
                 {
@@ -4612,7 +4600,7 @@
                     "type": "other"
                 }
             ],
-            "time": "2026-11-13T11:10:10+00:00"
+            "time": "2026-11-19T12:17:15+00:00"
         },
         {
             "name": "psr/log",
@@ -6219,8 +6207,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-18T14:56:39+00:00",
-            "published-time": "2026-10-28T18:24:46+00:00"
+            "time": "2026-10-18T14:56:39+00:00"
         },
         {
             "name": "systemsdk/phpcpd",
@@ -6543,5 +6530,5 @@
     "platform-overrides": {
         "php": "8.5.0"
     },
-    "plugin-api-version": "2.11.0"
+    "plugin-api-version": "2.9.0"
 }
